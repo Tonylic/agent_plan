@@ -1,0 +1,975 @@
+[
+ {
+  "id": "F051",
+  "origin": "9 Oct",
+  "name": "School digest from each parent's own Gmail: weekdays at 16:00, school senders only",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "Weekday afternoons each parent gets a five-line text of the day's school and activity mail found in their own Gmail, with dates spelled out, a dated to-do list, and one line per child from the school platforms' own summary emails where the school uses them. Only mail from senders on the family's school list is searched. A parent who wants a day-before reminder for a line asks their own agent for it. Attachments are not opened in the first version.",
+  "example": "Trigger: weekdays at 16:00. Text: 'School mail today: picture day is Thursday 15 October, order form due Wednesday 14 October; PTA meeting moved to Tuesday 20 October at 7 pm; lunch balance is low.' Jordan then texts Happy: 'remind me Tuesday evening about the picture day form.'",
+  "how": "Reads through the read-only Gmail connection of G015: no separate mailbox, no forwarding and no IMAP plugin. One job per parent on that parent's mail agent: `automations create '0 16 * * 1-5' --agent <p>-mail --session isolated --announce --to <owner>` with `--tools \"<p>-gmail__*\"`. The job's search is fixed to the school sender list from family.json5 and to mail since the last run. Setup done once by a parent, per platform, so that one tidy email arrives per day: ParentSquare posts set to Digest with email on, PowerSchool's scheduled emails and Balance Alert, Google Classroom guardian summaries, the lunch service's low-balance alert, library notices; each sender goes on the list.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "Both parents receive the same school mail, so each digest is built from its owner's inbox and the two texts will mostly match. One digest from one inbox sent to both parents would need the family delivery primitive (G009).",
+   "The sender filter is a Gmail search on the From address, not an authenticity check. Gmail's own spam and spoofing filters are the only guard, so a faked school address that reaches the inbox would reach the digest. The mail agent can only text its owner, which limits the harm to a misleading line.",
+   "The read-only grant covers the whole mailbox; 'school senders only' is the job's fixed search and a hook check still to be built, not a limit of the token (see G015).",
+   "Urgent alerts are not this digest's job: the school's own alert system reaches the parents' phones first. Gmail's push route needs a public endpoint, which the house rules exclude, so a closure notice is not passed on before 16:00 unless a sweep job is added later.",
+   "PowerSchool emails carry grades and attendance and Classroom summaries carry assignment titles: these are a child's education records and they reach the cloud model, which is why the card is rated medium risk.",
+   "Classroom summaries (missing and upcoming work, no grades) arrive only if the school uses Classroom and the teacher switches them on.",
+   "Attachments are not opened in the first version, so a newsletter sent as a PDF or a picture shows up as a subject line only.",
+   "For a school or team app that sends no email, try the app's own email notifications first and a parent's screenshot to Happy second; Canvas and ClassDojo have no verified email path.",
+   "The reminder step is not wired end to end: the mail agent holds no reminder tool on purpose, because it reads untrusted mail, so a parent names the line when asking their own agent for a reminder.",
+   "The sender list lives in family.json5 and changes only with a reviewed deploy, so a parent who needs a new coach or teacher added asks Tony.",
+   "A calendar link that a school platform offers is subscribed in the family calendar (F009), not read by this job."
+  ],
+  "corrections": [
+   "'IMAP passes body text only' is slightly off: the plugin's prompt also lists attachment file names (dist/extensions/imap/index.js:55735). Contents of attached PDFs or images are still not passed, so flyer attachments remain unread.",
+   "'school-mail-ro MCP is gog (Gmail)' needs no wrapper code on the Gmail path: upstream gogcli ships a read-only stdio MCP server (`gog mcp`).",
+   "The built-in scheduling tool is listed as `automations`, with `cron` kept as an alias (docs/gateway/config-tools/tool-policy.md:73)."
+  ],
+  "unverified": [
+   "Which platforms this family's district uses, and each platform's exact sender address.",
+   "Whether the school uses Google Classroom at all.",
+   "ClassDojo's notification behaviour and Canvas's calendar feed for observers; neither page could be opened.",
+   "Whether a parent's reply to the digest reaches an agent that can see the digest text.",
+   "That one job takes exactly one delivery target; only single-target examples were seen.",
+   "gog is not installed, so its Gmail search and read tools, and what they return for attachments, come from upstream docs.",
+   "That a before_tool_call hook can check the search query of an MCP tool call (implied by the docs, not stated)."
+  ],
+  "safety": "School mail is untrusted and is read only by each parent's locked-down mail agent, which has no web, file or code tools, cannot draft or send mail, and can only text its owner. Links are relayed only when their domain matches the listed sender. No agent logs in to a school portal and no portal credentials are stored. The open exposure is the model: mail text from the parents' inboxes goes to the cloud model, with Zero Data Retention applied for and not yet approved.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:29",
+    "title": "Managing automation jobs",
+    "anchor": "openclaw automations create",
+    "supports": "A recurring isolated job is created from a cron expression and prompt with a time zone, announce delivery, a channel and one explicit target.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools",
+    "supports": "Each job can be restricted to a named tool list, so the digest run sees only the mailbox read tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:42",
+    "title": "iMessage: media and delivery targets",
+    "anchor": "chat_id:123",
+    "supports": "iMessage delivery accepts a stable chat id target, the recommended way to address one group thread holding both parents.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:71",
+    "title": "Bundled gog skill",
+    "anchor": "gog sheets append",
+    "supports": "The gog CLI appends rows to a spreadsheet range from a JSON array.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.myschoolbucks.com/ver2/help/gethelp",
+    "title": "MySchoolBucks: Help / FAQ",
+    "anchor": "a total of 3 email messages",
+    "supports": "A school meal payment service documents an opt-in low-balance email per student, set by the parent, with a fixed small number of emails per episode.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/prompt-injection.md:34",
+    "title": "Prompt injection: What helps in practice",
+    "anchor": "reader agent",
+    "supports": "The docs recommend a tool-disabled reader agent to summarise untrusted content before anything with tools sees it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:13",
+    "title": "Web fetch",
+    "anchor": "login-protected pages",
+    "supports": "Plain fetch cannot read pages behind a login, so an account balance page is out of its reach.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.spl.org/using-the-library/manage-your-account/notifications",
+    "title": "The Seattle Public Library: Get Library Notifications (example public library)",
+    "anchor": "Account Email Notifications",
+    "supports": "Example of a public library that emails due-date, overdue and hold-ready notices to the address on each card, and notes that a third-party reminder service is being discontinued.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://apps.apple.com/app/id6746368694",
+    "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+    "anchor": "reads the school emails",
+    "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp",
+    "title": "gog documentation: MCP server",
+    "anchor": "mcp",
+    "supports": "gog ships its own MCP server mode whose tools read Gmail for the signed-in account.",
+    "check": "unchecked",
+    "added_round": 6
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/mail/answer/7190",
+    "title": "Gmail Help: refine searches in Gmail",
+    "anchor": "from:",
+    "supports": "Gmail search can be limited to named senders and to a date range, which is how the job keeps to school senders.",
+    "check": "unchecked",
+    "added_round": 6
+   }
+  ],
+  "absorbs": [
+   "F056",
+   "F057",
+   "WEB-07",
+   "WEB-08"
+  ],
+  "adds": [
+   "Lunch-balance line: from the lunch service's own low-balance email, once a parent switches that alert on.",
+   "Library overdue and hold-ready notice emails are one more sender class; the full checked-out list stays in the library's own app.",
+   "Absorbed in review: the urgent school alert relay (F055), the school platform feed map (SRC-08), Classroom guardian summaries (MKT-01) and the sender-list rule (G016)."
+  ],
+  "wave": "A",
+  "section": "School and kids",
+  "includes": [
+   {
+    "id": "F056",
+    "name": "School and activities mail digest (weekdays 16:00): five-line summary, dated checklist, lunch-balance and school-platform lines"
+   }
+  ],
+  "history": [
+   "r1: edited how, caveats. Kept. Its build note pointed to F050 for a delivery caveat; F050 is being removed, so the caveat is written out here. One caveat is added about which mail provider to pick, because the reason F050 is removed (a Google app password) would follow this item if the new mailbox were a Gmail address.",
+   "r1: kept; credible mention: IMAP email trigger",
+   "r1: merged with F056 (same batch). The dedicated school mailbox with its isolated reader and the weekday 16:00 digest that is the reader's only output are one build on one agent in wave B, so they become one card; allowlist changes by chat (G016) stay separate.",
+   "r2: edited description, example, caveats, unverified, depends_on. Kept: a shipping family assistant sells the same school-mail digest. One promise ran ahead of the design: the digest offered day-before reminders, but the reader that writes it holds no reminder or store tool by design, and it is untested whether the parent's own agent, which gets the 'yes', can see the digest text. The description, example, dependencies, a caveat and an unverified line now say so.",
+   "r2: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r3: edited effort, caveats. Kept: a shipping family assistant sells the same school-mail digest. Effort rises from medium to large, because this card now holds two medium-sized entries (the mailbox with its reader, and the digest) plus the per-platform setup and the closure pass-through, and it was left at medium when they were merged. Two lines round 2 said to carry over were also missing and are added: new senders are added by Tony through a reviewed deploy, and a platform's calendar link goes to the family calendar.",
+   "r3: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r4: edited description, safety, caveats, unverified, how. Kept: a shipping family assistant sells the same school-mail digest, and OpenClaw's mail guide describes this isolated reader. Two lines promised more than the design gives: the description did not say that attachments are not opened (a PDF newsletter shows up only as a file name), and the safety note credited the sender check to the whole card when it guards only the mail plugin's per-message path, not the 16:00 job that reads the mailbox through its own tool.",
+   "r4: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r5: edited caveats. Kept: a shipping family assistant sells the same school-mail digest, and OpenClaw's mail guide describes this isolated reader. Three facts on that guide's page were not on the card: a per-sender address token for a listed sender whose mail cannot pass the authentication check, the rejection of mail more than 48 hours old, and that a message whose reading failed because the model was down is not read again; the last two matter if the digest is built only from what the plugin let in.",
+   "r5: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r6 (Tony's decisions, 11 Oct): Tony: all school mail already arrives in the parents' personal Gmail. Redesigned to read it there through the read-only connection of G015, one digest per parent; the separate school mailbox, the IMAP plugin, forwarding and the provider question are dropped. Effort lowered from L to M because the connection work now sits in G015.",
+   "r8 (Wave definition, 12 Oct): moved from wave B to wave A. It ships as the school lines at the top of the 07:00 mail text, so it goes wherever mail goes."
+  ],
+  "demand": {
+   "ref": "https://apps.apple.com/app/id6746368694",
+   "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide; opened in this run."
+  },
+  "depends_on": [
+   "G015 read-only Gmail connection and mail agent (both parents approve access once)",
+   "the school sender list in family.json5",
+   "knowing which platforms the district uses",
+   "G003 jobs registry",
+   "F007 reminders (the parent asks their own agent for a day-before reminder)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "CRT-11",
+  "name": "Childcare coverage planner: no-school days and summer weeks",
+  "tier": 2,
+  "cluster": "school year and jordan",
+  "description": "A grid of every weekday the kids have no school (teacher days, breaks, early releases, the ten or so summer weeks) against who covers it: camp, grandparents, a trip, a parent off work. Happy keeps the grid, lists the open cells months ahead, reminds the parents of the registration dates they give it (with a page watch for a camp whose site can be read), and at tax time lists what was paid to which day camp from the receipts a parent sent. School and camp form paperwork is the form kit on the family paperwork card (CRT-13).",
+  "example": "Trigger: first Sunday of February. Happy texts both parents: 'Jordan coverage: 4 of 10 weeks open for the 10-year-old, 6 for the 8-year-old. Two camps you saved open registration this week.'",
+  "how": "Inputs: the district calendar (a public feed the family Google Calendar is subscribed to, read through F009, or a photo or PDF through the dates-after-a-yes flow, F010) gives the no-school weekdays; parents add coverage by text. Store: household store rows (F031) keyed by date range and child nickname, with a status (open, pencilled, booked, paid) and a provider name. Jobs: a monthly isolated job on <p>-main from January to May, and weekly in the four weeks before each break ('--cron'), listing open cells; page watchers for 'registration opens' on camps the parents name (the changed-page watch in F018, created by Tony); options research by the stateless research agent given ages, weeks and a distance only (F019). Parents register and pay themselves. After paying, a parent sends the receipt and Happy records amount and provider. In February it lists day-camp totals per provider and which providers still lack a taxpayer number, because IRS Publication 503 treats day camp, and not overnight camp, as a possible work-related care expense for a child under 13, and asks for the provider's name, address and taxpayer number (Form W-10 is the request form).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F009 family calendar subscribed to the district feed, or F010 for a district calendar PDF",
+   "F018 page watchers and F019 research agent",
+   "F007 reminders",
+   "F002 photo and PDF reading, for receipts (its privacy gate screens text PDFs only)"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Most states set the school year near 180 days (28 states in the NCES table), which leaves roughly 80 weekdays a year without school, holidays included. The planner earns its keep only if both parents work on those days.",
+   "Camp sites are often script-heavy or bot-walled. Expect 'could not verify' and rely on the parent pasting dates.",
+   "Registration is a booking and a payment. Happy stops at the reminder and the link.",
+   "The tax list is for the preparer, not tax advice. Whether a camp qualifies depends on facts Happy does not have.",
+   "A shared spreadsheet does the grid. The gain here is the reminders, the registration watch and the receipts list for tax time."
+  ],
+  "safety": "The grid lives with <p>-main, which holds private data and does not browse. The research agent gets ages, date ranges and distance only, never names, school or address. The page watchers are host scripts with no model (F018) and hold no private data. No registration, booking or payment is performed. A receipt sent as a photo is read by the cloud model like any other photo; the privacy gate in F002 screens text PDFs only.",
+  "unverified": [
+   "Whether the family's district publishes a calendar feed or only a PDF.",
+   "That the 2025 edition of Publication 503 carries over unchanged to the 2026 tax year."
+  ],
+  "overlaps_existing": [
+   "G012",
+   "F011",
+   "F029",
+   "F026",
+   "F015",
+   "F061",
+   "F031"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/publications/p503",
+    "title": "IRS Publication 503 (2025), Child and Dependent Care Expenses",
+    "anchor": "overnight camp",
+    "supports": "Day camp can count as a work-related care expense for a child under 13 while overnight camp does not, and the care provider must be identified by name, address and taxpayer number.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nces.ed.gov/programs/statereform/tab1_1-2020.asp",
+    "title": "NCES State Education Practices, Table 1.1: minimum instructional days and hours by state, 2020",
+    "anchor": "Minimum number of instructional days",
+    "supports": "Most states require about 180 instructional days a year, which is what leaves the remaining weekdays to cover.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:89",
+    "title": "openclaw automations: schedule types",
+    "anchor": "--cron <expression>",
+    "supports": "Recurring jobs take a cron expression with a time zone, which carries the monthly and pre-break reminders.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+    "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+    "anchor": "Jordan Care Scramble",
+    "supports": "A university early-childhood institute describes parents building spreadsheets of camps, hitting waitlists on registration day and still having weeks of summer with no cover, which is the planning job this entry takes on.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "none",
+  "section": "School and kids",
+  "includes": [],
+  "history": [
+   "r1: edited description, how, depends_on. Kept. Two small fixes: form paperwork is left to CRT-12 so the two entries do not overlap, and the district calendar now comes through the family calendar (F009) because another review this round folds the separate feeds entry (G012) into it.",
+   "r1: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r2: edited depends_on, caveats, safety. Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. Two lines overclaimed: receipts were said to pass the document privacy gate, but that gate reads text PDFs only, so a photographed receipt goes to the cloud model like any photo; and one caveat still counted forms as part of this card after round 1 moved them to the paperwork kit (CRT-12).",
+   "r2: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r3: edited description, how, depends_on, safety. Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. Four entries this card leaned on were folded into others last round, so its build note, dependencies and safety text now point to the cards that exist (the safety note also said the page watchers run on the research agent; they are scripts with no model). 'Tracks registration dates' promised more than the card's own caveat allows, since camp sites often cannot be read: Happy reminds about the dates the parents give it, with a page watch where a site can be read.",
+   "r3: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r4: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r5: edited description. Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. The description still sent the reader to the form-kit entry by a number (CRT-12) that round 4 folded into the family paperwork card (CRT-13).",
+   "r5: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r8 (Wave definition, 12 Oct): moved from wave C to not in a wave yet. Later plan 'shared household data': its premise (which days need cover, camps, who helps) is unconfirmed (Q2, Q3), and it depends on the household database and the page watchers."
+  ],
+  "demand": {
+   "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+   "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "supports": "A university early-childhood institute describes parents building camp spreadsheets months ahead, racing registration openings, landing on waitlists and still having weeks of summer with no cover; opened in this run."
+  }
+ },
+ {
+  "id": "F014",
+  "origin": "9 Oct",
+  "name": "Family logistics briefs: evening (19:30), Sunday week-ahead (18:00), weekday morning (07:00)",
+  "tier": 2,
+  "cluster": "digests-briefs",
+  "description": "Each parent gets short scheduled texts built from the family calendar and the weather. Sunday to Thursday at 19:30: tomorrow's events, who drives where the event carries the family's driver tag, what to pack and the weather, and nothing when the day is unremarkable. Sunday at 18:00: the week ahead, with early releases, activities, drivers, packing, the weather outlook and open school deadlines. Optionally, weekdays at 07:00: weather and alerts, today's calendar, items due and trash day. Mail stays in its own digests: the school digest (F051) and each parent's 07:00 mail digest (part of G015).",
+  "example": "Sunday to Thursday at 19:30 each parent gets one text: tomorrow's two events and who drives each, 'pack shin guards', and rain after 3.",
+  "how": "One isolated job per parent per brief on <p>-main, all from one template: tools `home_weather` plus the read-only calendar MCP (`<p>-calendar__*`), no web tools, no `--light-context`, `--tz` set, `--announce --to imessage:<owner>`. Schedules: evening `--cron \"30 19 * * 0-4\"`, week-ahead `--cron \"0 18 * * 0\"`, morning `--cron \"0 7 * * 1-5\"`. The routines and gear table lives in AGENTS.md; a run replies `NO_REPLY` to stay silent. The week-ahead and morning legs also read the household store (F031) for items due, trash day and open school deadlines. Email-derived dates for the week-ahead come from a separate <p>-mail job using `llm-task`, never the same run. Build the evening brief first; the morning brief is the optional one.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "On Sundays the 18:00 week-ahead and the 19:30 evening brief would both arrive within ninety minutes. Either let the Sunday week-ahead carry Monday's detail and run the evening brief Monday to Thursday only (`1-4`), or accept two texts.",
+   "'Who drives' is read from a tag the parents put on each calendar event themselves ([T] or [S]). The calendar holds no driver otherwise, so an event without the tag gets no driver line: the brief's instructions say to leave it out, not to guess, and that is a prompt rule, not something enforced in code.",
+   "The morning leg is the optional one: it needs the household store (F031) for items due and trash day, and the weather plugin returns no sunset, so a sunset line, if wanted, needs a small local calculation.",
+   "If the optional 07:00 morning brief and the morning mail digest (part of G015) are both switched on, a parent gets two texts at 07:00. They cannot be one job, because the mail agent and the parent's main agent are kept apart; move one of them by a quarter of an hour, or leave the morning brief off for a parent who has the mail digest.",
+   "Dates taken from mail are not part of the first build: they would come from a separate job on the mail agent (G015, wave C), and how that job hands dates to the brief without passing email text into the parent's main agent still has to be designed. Until then the school deadlines in the week-ahead are rows a parent typed or confirmed (F010).",
+   "The National Weather Service forecast reaches seven days ahead, so the Sunday 18:00 weather outlook covers the coming week and no further.",
+   "Google's Gemini app can already send a scheduled daily digest of a person's own Google calendar, to-do list and email (being rolled out gradually to personal accounts, up to ten active actions). What Happy's brief adds is the family's own layer: who drives, what to pack from the routines table, the forecast for home, silence on an unremarkable day, and arrival in the iMessage thread.",
+   "A mute or a vacation pause (G001) is dependable only for a job that reads the paused-until row in the household store before it writes. The week-ahead and morning legs hold that tool; the evening brief as specified does not, so either add the store read to its tool list or accept that its pause rests on G001's best-effort delivery hook."
+  ],
+  "corrections": [],
+  "unverified": [
+   "The [T]/[S] driver tag is a family habit the brief depends on, not a product feature; no source can vouch that both adults will keep it up.",
+   "gog is not installed, so its flags were checked only against its website, not a binary.",
+   "The deadlines input (home-store rows or a sheet) does not exist yet; its shape is a design choice, not a sourced fact.",
+   "The catalog passes `home-store__*` in `--tools`; the installed docs document the `<server>__<tool>` prefix only for MCP servers, and home-store is planned as a native plugin, so that glob is untested.",
+   "That the NWS forecast endpoints carry no sunrise or sunset field: the opened documentation page does not list one, absence was not proven.",
+   "The weather plugin's current fields (12-hour periods, alerts without id, no sunset) were read in ~/src/happy-config/plugins/home-weather/nws.js, which is not one of the two citable source kinds."
+  ],
+  "safety": "Each brief job holds only the weather tool and the read-only calendar tool (plus the household store on the week-ahead and morning legs), has no web tool, and sends its one text only to its own parent. Calendar text can be written by people outside the family (an invitation, a subscribed feed), so it is outside content (see F009); the job's only way out is that one text to its own parent.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:270",
+    "title": "Automation payloads: unattended run contract",
+    "anchor": "NO_REPLY",
+    "supports": "An unattended scheduled turn is expected to answer with the silent token when nothing needs doing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:284",
+    "title": "CLI reference: silent token suppression",
+    "anchor": "NO_REPLY",
+    "supports": "When an isolated run returns only the silent token, nothing is posted to chat, which gives the quiet-night behaviour.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:81",
+    "title": "Automation schedules",
+    "anchor": "croner",
+    "supports": "Cron expressions are parsed by the croner library, so its day-of-week numbering applies.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-workspace.md:80",
+    "title": "Agent workspace",
+    "anchor": "4,000-character budget",
+    "supports": "USER.md is capped, so the per-kid routines and gear table belongs in AGENTS.md instead.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/Hexagon/croner",
+    "title": "Hexagon/croner README",
+    "anchor": "0 to 6 are Sunday",
+    "supports": "Day-of-week 0 is Sunday, so the range 0-4 means Sunday through Thursday evenings.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp",
+    "title": "gog documentation: MCP server",
+    "anchor": "calendar_events",
+    "supports": "The calendar input is a read tool that gog's MCP server registers by default; write tools stay hidden.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/calendar/api/auth",
+    "title": "Google Calendar API: choose scopes",
+    "anchor": "calendar.events.readonly",
+    "supports": "Google offers an events-only read scope, so the brief's calendar token does not need write access.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16316416",
+    "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+    "anchor": "Daily digests of your calendar",
+    "supports": "Google ships scheduled daily digests of a person's calendar and to-do list to prepare for the day ahead, the same kind of recurring logistics text.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From F013 (Weekday morning brief (07:00, no mail yet)): F014's edit in this review already carries the 07:00 weekday schedule and its content as the optional leg. Still to move across: F013's sources, and the two notes it absorbed earlier (an optional pollen line from Google's Pollen API; keyless government inputs for sunrise and sunset, federal holidays and UV index). The weather plugin returns no sunset, so that line needs the small local calculation.",
+   "From F015 (Sunday 18:00 week-ahead): F014's edit in this review already carries the Sunday 18:00 schedule, its content and the rule that email-derived dates come from a separate mail job. Still to move across: F015's sources."
+  ],
+  "wave": "C",
+  "section": "Daily briefs and digests",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, example, how, depends_on, effort, unverified, caveats. Kept as the one entry for Happy's scheduled calendar-and-weather texts. The weekday morning brief (F013) and the Sunday week-ahead (F015) are the same job on other schedules, built in the same piece of work, so they are folded in here and the effort rises from small to medium.",
+   "r1: kept; credible mention: Schedule actions in Gemini Apps - Gemini Apps Help",
+   "r2: edited description, caveats, depends_on. Kept as the one card for Happy's scheduled calendar-and-weather texts. The description still pointed to the school digest by its old number (F056, now part of F051), and one clash was not mentioned: with the optional morning brief and the mail digest (F016) both on, a parent gets two texts at 07:00. The build note also takes dates from a mail job that belongs to a later wave, so the dependency list now says that part is not in the first build.",
+   "r2: kept; credible mention: Schedule actions in Gemini Apps - Gemini Apps Help",
+   "r3: edited caveats, unverified, safety. Kept as the one card for Happy's scheduled calendar-and-weather texts; Google ships the same kind of daily calendar digest. Leftovers are tidied (a folded-away number, two open points that are now answered), the card gains the safety note it lacked, and it now says what Happy's brief adds over Google's own digest.",
+   "r3: kept; credible mention: Schedule actions in Gemini Apps - Gemini Apps Help",
+   "r4: edited description, caveats. Kept as the one card for Happy's scheduled calendar-and-weather texts; Google ships the same kind of daily digest. Round 3 folded the morning mail digest (F016) into the mail agent (G015) after this card was reviewed, so two pointers are updated, and one gap between cards is now stated: the evening brief holds no household-store tool, so as written it cannot check a mute (G001) by itself.",
+   "r4: kept; credible mention: Schedule actions in Gemini Apps - Gemini Apps Help",
+   "r5: edited description, caveats. Kept as the one card for Happy's scheduled calendar-and-weather texts; Google's own assistant ships the same kind of daily digest (page opened again in this round). One promise ran ahead of the data: the brief says who drives, but the calendar only knows that when a parent has tagged the event, which the card listed as an open point and never said in its description or caveats. Both now say so.",
+   "r5: kept; credible mention: Schedule actions in Gemini Apps - Gemini Apps Help",
+   "r8 (Wave definition, 12 Oct): moved from wave B to wave C. It needs calendar questions first, and ships as one evening text only when Tony asks for it."
+  ],
+  "demand": {
+   "ref": "https://support.google.com/gemini/answer/16316416",
+   "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+   "supports": "Google's own assistant offers scheduled daily digests of a person's calendar, to-do list and emails to prepare for the day ahead, the same kind of recurring logistics text."
+  },
+  "depends_on": [
+   "F009 family calendar read-only",
+   "home_weather plugin (exists; an hour-by-hour line such as 'rain after 3' needs the hourly upgrade in F083)",
+   "F031 household store for items due, trash day and open school deadlines (week-ahead and morning legs only)",
+   "G015 per-person mail agent, only for email-derived dates in the week-ahead (wave C; not needed for the first build)"
+  ]
+ },
+ {
+  "id": "F010",
+  "origin": "9 Oct",
+  "name": "Dates into reminders and the family calendar after a yes (typed request, flyer photo or PDF)",
+  "tier": 2,
+  "cluster": "calendar-reminders",
+  "description": "After reading a flyer, slip or schedule, or on a typed request, Happy lists the dates it found, each spelled out in full, and offers reminders or family-calendar entries; nothing is written until the parent says yes. Reminders come first and need no new tool; the calendar entry is a separate, higher-risk step: a write to the family calendar with no invitees after an explicit approve, or a tap-to-add calendar file if a test shows the iPhone offers to add one from Messages.",
+  "example": "Jordan sends a photo of the soccer season schedule. Happy replies with the eight game dates it read, flags one with no start time, and asks whether to set a reminder the evening before each and to put the games on the family calendar. Nothing is written until she answers.",
+  "how": "Part 1, proposals (F011): a prompt-level standing order on the parent's own agent, on top of photo and PDF reading (F002) and reminders (F007); a plain conversational proposal, not `ask_user`. Optionally the bundled `llm-task` plugin returns the dates as a schema-checked list (enable the plugin, add it with `tools.alsoAllow`, list both custom model ids in `llm.allowedCompletionModels`, keep `allowModelOverride` false). Part 2, calendar write (F010): an in-house write MCP wrapping `gog calendar create` with its own write token; a `before_tool_call` hook returns `requireApproval` (10-minute cap) and rejects attendees, and the wrapper leaves delete out. A small plugin that emits an .ics attachment is built only if the tap-to-add test passes on both parents' phones.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Dates read from a photo can be wrong (a missing year, two children on one sheet, a blurry corner), so every proposal spells each date out in full and nothing is written until the parent says yes.",
+   "Until the calendar write is built the offer is reminders only; that part needs only photo and PDF reading (F002) and reminders (F007).",
+   "The yes before a reminder is a prompt rule; the approval before a calendar write is enforced by the hook. On iMessage that makes a calendar write two steps: the yes to the proposal, then a typed /approve line carrying the request's id, within ten minutes. That typed approval has not been tried end to end in iMessage Basic mode.",
+   "The tap-to-add calendar file is unconfirmed: the one report found is of a calendar file that came through Gmail and opened in Files on iOS 18 with no option to add it, so it is tested on both parents' phones before anything is built for it.",
+   "The phone and Google's own assistant already cover part of this. For one event on a poster a recent iPhone can offer to add it from the camera, and on iOS 26 an iPhone that runs Apple Intelligence can suggest reminders from text or a website shared to Reminders (support.apple.com/124025). Google's Gemini app can create events on a person's Google calendars, shared ones included, from event details pasted into the chat, and it cannot invite people (support.google.com/gemini/answer/15305236); the one photo on that help page, a concert flyer, is used to check whether the person is free, not to add its dates. Happy's part is a sheet with many dates or a PDF handled in the thread the parents already use, every date spelled out before anything is written, a text from Happy the evening before, and the calendar both parents share. The reminder half stands without the calendar write, so the approved write is the optional, later step: if the parents are content to add events in Gemini, it need not be built.",
+   "The calendar write applies only if the calendar decision lands on Google, and neither the write wrapper nor the calendar-file plugin exists yet.",
+   "A list of school deadlines or a season schedule is one more dated document: rows are stored (F031) only after a yes, and the week-ahead brief (F014) reads open school deadlines from there. A lunch menu can be read and asked about like any other photo, but no brief reads stored menu rows, and Happy is never the allergy authority.",
+   "Plugin approvals are asked once per tool call, the approval text is capped at 512 characters, and a prompt also offers 'allow always' unless the hook leaves it out. A season schedule is many events, so the write tool should take the whole confirmed list in one call, the approval text should give the count and the date range instead of every row, and the hook should offer only allow-once and deny."
+  ],
+  "corrections": [
+   "A 9 Oct note says gog has no delete command. That holds only for the bundled skill text; the gog command index (gogcli.sh/commands) lists gog calendar delete, and gog calendar create accepts --attendees and --send-updates, so the write wrapper must leave delete out and strip those flags itself.",
+   "Catalog JSON 'needs' relies on ask_user for the confirmation. ask-user.md:181 says not to use it to confirm a plan, and its wait is clamped to one hour at most (ask-user.md:116-117). The Markdown already switches to a plain proposal."
+  ],
+  "unverified": [
+   "That Messages on iPhone offers to add an event when an .ics attachment is tapped. Apple's guide documents .ics import from Mail and by link, and its page body could not be read by the fetch tool. One iOS 18 user on Apple's forum (discussions.apple.com/thread/255997328) reports a calendar file, received through Gmail and opened in the Files app, with no option to add it to Calendar, and a 2022 developer blog post (vadosware.io/post/how-to-import-or-open-ics-files-in-icalendar/) says only Mail and Safari offer to add one; neither covers Messages. Test on both parents' phones before building step 1; if it fails, go straight to the approved write, or try the same file by email to the asker once mailout (F049) exists.",
+   "That an .ics file passes OpenClaw's outbound media checks on iMessage (reference/rich-output-protocol.md:22) was not tested.",
+   "The in-house .ics generator plugin and the write wrapper do not exist yet.",
+   "Typing /approve in iMessage Basic mode to resolve a plugin approval was not tested end to end; the docs say channels without interactive controls fall back to plain-text /approve (exec-approvals-advanced.md:299).",
+   "Date extraction accuracy on real flyers (missing years, two children, blurry photos) has not been measured.",
+   "The calendar half has not been assessed end to end, because the write wrapper and its approval hook are not built; the reminder half needs only F002 and F007.",
+   "Which iPhones the parents carry: MacRumors' guide lists Visual Intelligence for the iPhone 16 family. Apple's own iPhone guide page for the feature returned only its menu in this review, so the phone-side claim rests on MacRumors and iPhone Life.",
+   "Whether llm-task runs with a truly empty tool surface on Happy's OpenAI provider route; the doc says the Agents API runtime may keep built-in helpers.",
+   "Whether Gemini turns a photographed schedule with many dates into calendar events: Google's help page shows events created from pasted details, and its one photo example (a concert flyer) only checks whether the person is free."
+  ],
+  "safety": "The riskier part is the calendar write: it changes the shared family calendar, so it gets its own token, an approval enforced by a hook that fails closed, no invitees and no delete. Proposals and reminders stay on the parent's own agent and reach only the asker. Flyer text is outside content, so every write waits for a yes.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:63",
+    "title": "gog skill (bundled with OpenClaw)",
+    "anchor": "gog calendar create",
+    "supports": "The bundled gog skill documents creating a calendar event from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:88",
+    "title": "Plugin permission requests",
+    "anchor": "capped at 600000",
+    "supports": "A plugin approval waits two minutes by default and ten at most, after which the call is blocked, so the parent must approve promptly or Happy must propose again.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/calendar/api/v3/reference/events/insert",
+    "title": "Events: insert (Google Calendar API reference)",
+    "anchor": "sendUpdates",
+    "supports": "Creating an event needs a write scope such as calendar.events, and guests are only notified when sendUpdates asks for it, so an event without attendees contacts nobody.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "The .ics file is the standard iCalendar format whose event component carries title, start and end, which a small generator can emit.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ohai.ai/",
+    "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+    "anchor": "pictures of schedules",
+    "supports": "On a shipping family assistant's own page a parent describes sending pictures of schedules and having the events put on the family calendar.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:181",
+    "title": "Ask user",
+    "anchor": "ask whether it may proceed",
+    "supports": "The ask_user tool is not meant for confirming the agent's own plan, so the yes-or-no step should be an ordinary chat proposal.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:267",
+    "title": "Media understanding",
+    "anchor": "EXTERNAL_UNTRUSTED_CONTENT",
+    "supports": "Text extracted from an attached file reaches the model wrapped in untrusted-content markers, which supports treating flyer text as data and confirming before any write.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:9",
+    "title": "LLM task",
+    "anchor": "optional plugin tool",
+    "supports": "Schema-validated JSON extraction exists as an optional bundled plugin tool that must be enabled and allowed; this feature does not require it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "capped to the tools available",
+    "supports": "A job created by an agent can never hold more tools than the turn that created it, which bounds what a chat-created return-by reminder could do.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://customerservice.costco.com/app/answers/answer_view/a_id/1191/~/what-is-costcos-return-policy%3F",
+    "title": "What is Costco's return policy? - Costco Customer Service",
+    "anchor": "within 90 days",
+    "supports": "The 90-day return window applies to a listed set of electronics and major appliances; other merchandise falls under an open-ended satisfaction guarantee.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/publications/p502",
+    "title": "Publication 502, Medical and Dental Expenses - IRS",
+    "anchor": "Medical and Dental Expenses",
+    "supports": "The IRS publication is the authority on which medical costs qualify, which is what any FSA eligibility hint would have to be checked against.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F011",
+   "F040"
+  ],
+  "adds": [
+   "From SRC-14 (School lunch menu answers (no documented feed)): One line at most: a monthly lunch menu PDF or photo is one more document whose dated rows Happy can propose and, after a yes, store (F031) for the evening brief to read; the proposed rows must be confirmed and Happy is never the allergy authority.",
+   "From F082 (Clarifying questions and clean extraction (ask_user, llm-task)): F011's edit in this review already carries the llm-task config lines (enable the plugin, tools.alsoAllow, a JSON schema, both custom model ids in llm.allowedCompletionModels, allowModelOverride false) and the unverified point about an empty tool surface on Happy's OpenAI route. Still to do: allow ask_user on <p>-main only if numbered choices are ever wanted (AUT-01 names it as an option), and have WEB-11, F051, F016 and F014 name 'llm-task plugin enabled' as a config prerequisite instead of F082."
+  ],
+  "wave": "C",
+  "section": "Calendar and family coordination",
+  "includes": [
+   {
+    "id": "F011",
+    "name": "Snap-to-action: photo or PDF dates become reminder and calendar proposals"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r2: edited description, unverified, depends_on. Kept. The tap-to-add calendar file is untested: the one report found, on Apple's forum, is of a calendar file that came through Gmail and opened in Files on iOS 18 with no way to add it. So the entry leads with the approved calendar write and lists what it builds on; the list no longer names snap-to-action (F011) as a prerequisite, because that entry itself waits on this one.",
+   "r2: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r2: merged with F011 (same purpose). Offering reminders and calendar entries for the dates Happy reads, and writing the calendar entry after an approve, are one outcome in the same wave, and the proposal card's calendar half could not exist without the write card, so they become one card that states the reminder part and the higher-risk calendar write separately.",
+   "r3: edited caveats, unverified. Kept: a shipping family assistant's own page has a parent sending it pictures of schedules to put on the calendar. Two fixes: one open point still said the calendar half 'waits on F010', which is this card since the merge, and the card did not say that an approval is asked for each calendar write, so the eight games in its own example would mean eight approvals.",
+   "r3: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r4: edited caveats, depends_on. Kept: a shipping family assistant's own page has a parent sending pictures of schedules to put on the calendar. Two fixes: the card never said in plain words that a calendar write on iMessage takes a second, typed approval after the yes, and it listed the household store for lunch-menu rows that no brief reads (the briefs read school deadlines from it), a leftover of the lunch-menu import removed in round 1.",
+   "r4: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r5: edited caveats, unverified. Kept: a shipping family assistant's own page has a parent sending pictures of schedules to put on the calendar. One thing no earlier round recorded: Google's Gemini app already adds events to shared Google calendars from details pasted into it, and iOS 26 suggests reminders from shared text, so the card now says what Happy adds beyond them and that the higher-risk calendar write is the optional, later step. Google's page does not show a photographed schedule being turned into events, so that is listed as an open point and not as something Gemini does. One line about the untested typed approval appeared twice and is merged. For the rebuild: two listed sources (a store's return policy and an IRS publication) support nothing on this card and can be dropped.",
+   "r5: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r8 (Wave definition, 12 Oct): moved from wave B to wave C. Its dates become reminders, so it follows reminders."
+  ],
+  "demand": {
+   "ref": "https://www.ohai.ai/",
+   "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "supports": "On a shipping family assistant's own page a parent says she sends it pictures of schedules and it puts them on the calendar, and its FAQ says it scans emails, PDFs and photos such as school newsletters and team schedules."
+  },
+  "depends_on": [
+   "F002 photo and PDF reading with inbound attachments on (for dates taken from a photo or PDF)",
+   "F007 reminders (the reminder part)",
+   "F009 calendar connection (gog and the Google sign-in); the write uses its own separate token",
+   "Decision 4 (Google or iCloud calendar): the approved write wraps gog, so it applies only on the Google path",
+   "An in-house before_tool_call hook that asks for approval and rejects attendees",
+   "F031 household store, only for keeping confirmed dated rows such as school deadlines, which the week-ahead brief (F014) reads"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F006",
+  "origin": "9 Oct",
+  "name": "Happy in the parents' group chat: answers when named, and one place for shared announcements",
+  "tier": 2,
+  "cluster": "media-voice-channel",
+  "description": "Happy joins a three-way iMessage group with both parents and answers when addressed by name. In version 1 the group helper answers from weather and web search only: it keeps no memory and has no calendar or list tools, and passing a message on stays with family delivery (G009). The same chat becomes the one delivery target for announcements meant for both parents, so a watcher needs one job instead of one per parent.",
+  "example": "In the parents' group Jordan writes: 'Happy, will it rain on Saturday afternoon?' and both parents see the answer. Later a storm-alert text from the weather watcher (F018) arrives once, in the same group, instead of once per parent.",
+  "how": "groupPolicy allowlist with groupAllowFrom and a groups[chat_id] entry; bindings[] with peer kind group routes it to a stateless family-group agent; mention gating uses the agent name; `channels.imessage.historyLimit: 0`, so that group messages the helper skipped are not handed to it the next time it is named.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "The roadmap's M1 milestone and its S1 channel-isolation baseline keep iMessage groups disabled. This entry re-opens them for one registered chat, with a sender allowlist and mention gating, so it is a change to that baseline for Tony to approve. OpenClaw's security guide calls a private room whose members you trust (team, family or friends) a normal deployment (gateway/security/access-control.md:29).",
+   "In Basic mode Happy can read and reply in a group but has no group actions such as renaming it or adding people (private-api.md:29), so a parent creates the group from a phone and Tony reads its chat id with imsg chats.",
+   "Both parents see every answer given in the group, so nothing from one parent's memory or mail belongs there; the group helper holds none.",
+   "A group that answers only when named still keeps the messages it skipped and adds them as context the next time Happy is named (channels/groups.md:547); the default window is 50 messages. Left on, what the two parents write to each other in the group would reach the cloud model in the same turn as web search results. The group history limit is therefore set to 0 (config-channels/mention-gating-and-history.md:61), so the helper sees only the message that names it.",
+   "A text to the group reaches both phones at once. The daily cap in the notification policy (G001) is counted per parent, and a mute one parent sets for themselves cannot hold a group text back for that parent alone: it reaches both or neither. So the group is the delivery target only for announcements both parents want at the same moment, such as the storm alert, and a job one parent may want to pause stays one job per parent."
+  ],
+  "corrections": [
+   "Catalog JSON description includes a 'tell everyone dinner is at 6:30' relay and gives the group agent calendar and list tools. Neither exists on the installed stack; the Markdown already moves the relay to G009 and limits version 1 to weather and search."
+  ],
+  "unverified": [
+   "Receiving and replying in a three-person group in Basic mode has not been tried live on this Mac; the docs warn that some multi-person threads arrive flagged as non-group unless the chat id is registered (access-control.md:152-153).",
+   "Whether a voice memo in the group can satisfy the mention gate on iMessage is not documented (audio.md:286 defers to channel docs).",
+   "The numeric chat id is unknown until the group is created and read with imsg chats.",
+   "That a history limit of 0 on the iMessage channel stops skipped group messages reaching the helper has not been tried on this Mac; the docs describe the window for all channels and show the key in the iMessage example config (config-channels/personal-messaging.md:172)."
+  ],
+  "safety": "The group helper is a separate agent with no memory tools and no calendar, list or mail tools, so nothing held by one parent's own agent can surface in front of the other. Only the two parents' handles pass the group sender allowlist, only the one registered chat is admitted, and Happy answers only when it is named. By default a group that answers only when named keeps up to 50 skipped messages and hands them to the helper the next time it is named, which would put the parents' own conversation in the same turn as web search results; the group history limit is set to 0 so that the helper sees only the message that names it. Web search results are outside content, and the helper can reply only in this group.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:45",
+    "title": "iMessage access control and routing",
+    "anchor": "gates back-to-back",
+    "supports": "Group messages must pass a sender allowlist and then a per-chat registry keyed by chat_id before they reach an agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-bindings.md:98",
+    "title": "Agent bindings",
+    "anchor": "peer.kind",
+    "supports": "A binding can match one specific group conversation and route it to a dedicated agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/imsg",
+    "title": "steipete/imsg README (GitHub)",
+    "anchor": "imsg chats",
+    "supports": "Without disabling SIP, imsg can list chats with their ids, watch a chat and send text and files; only rich actions and chat management need the injected helper.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/multi-agent.md:589",
+    "title": "Multi-agent routing: family agent bound to a group",
+    "anchor": "dedicated family agent",
+    "supports": "OpenClaw's own multi-agent guide describes binding a dedicated family agent to one group chat, with mention gating and a tighter tool policy than the personal agent.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "none",
+  "section": "Calendar and family coordination",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Multi-agent routing: family agent bound to a group",
+   "r2: edited name, description, caveats, depends_on. Kept: OpenClaw's own guide shows a family agent bound to one group chat. One thing no earlier round recorded: the roadmap's iMessage milestone (M1) keeps group chats switched off, so this entry is a deliberate change to that baseline and now says so. The name is put in plain words and the description says what the group helper can answer in its first version.",
+   "r2: kept; credible mention: Multi-agent routing: family agent bound to a WhatsApp group",
+   "r3: edited example, safety. Kept: OpenClaw's own guide shows a family agent bound to one group chat. The card had no example and no safety note; both are filled in from what the entry already says about the group helper (no memory, no calendar, list or mail tools, one registered chat, the two parents only). The example asks about Saturday afternoon and not a set hour, because the hour-by-hour forecast is a separate upgrade (F083).",
+   "r3: kept; credible mention: Multi-agent routing: family agent bound to a WhatsApp group",
+   "r4: edited how, caveats, unverified, safety. Kept: OpenClaw's own guide shows a dedicated family agent bound to one group chat. One thing no earlier round recorded: a group that answers only when named keeps the messages it skipped (50 by default) and gives them to the helper the next time it is named, so 'the helper holds nothing private' was not true as written. The card now sets that history to zero and says so.",
+   "r4: kept; credible mention: Multi-agent routing: family agent bound to a WhatsApp group",
+   "r5: edited caveats. Kept: OpenClaw's own guide shows a dedicated family agent bound to one group chat, and its security page calls a private family room a normal deployment (both read again in this round). One gap between cards that no earlier round recorded: the notification policy (G001) caps and pauses texts per parent, but a text to the group reaches both phones or neither, so the card now limits the group to announcements both parents want at the same moment.",
+   "r5: kept; credible mention: Multi-agent routing: family agent bound to a WhatsApp group",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Waits for Tony's yes: it re-opens iMessage groups, which the M1 sign-off keeps disabled, and nobody has asked for a group chat with Happy (Q3)."
+  ],
+  "demand": {
+   "ref": "docs/concepts/multi-agent.md:589",
+   "title": "Multi-agent routing: family agent bound to a WhatsApp group",
+   "supports": "OpenClaw's own multi-agent guide gives, as a worked example, a dedicated family agent bound to a single group chat with mention gating and a tighter tool policy than a personal agent."
+  },
+  "depends_on": [
+   "Decision: re-open iMessage groups for this one chat (the roadmap's M1 baseline has groups disabled)",
+   "A three-person iMessage group created by a parent, with its chat id registered in config",
+   "A new shared, memory-less family-group agent in the family registry"
+  ]
+ },
+ {
+  "id": "MKT-06",
+  "name": "Two-parent calendar conflict watch",
+  "tier": 2,
+  "cluster": "calendar",
+  "description": "When a kid's event on the family calendar in the next 14 days falls at a time when both parents' own calendars show busy, both parents get one line naming the event and the time, once, with an optional who-covers question. Which family-calendar events count has to be a written rule (for example a tag on events that need a driver); without one the watch also flags overlaps that are no problem. Happy only reports; it moves and declines nothing.",
+  "example": "Trigger: a Thursday 16:00 entry appears on Tony's own calendar; Jordan's already shows the dentist then, and practice is on the family calendar at the same time. Both get: 'Thursday 16:00: both of you show busy during practice. Who covers?'",
+  "how": "A zero-model command job (`--command-argv`) every few hours, inside the allowed hours only, runs a host script under the happy user: `gog calendar conflicts` (or `freebusy`) across the shared family calendar and the two parents' calendars, compares against a seen-id state file, and prints `NO_REPLY` when nothing is new. To keep each parent's data separate, the script uses one read-only credential that sees the family calendar in full and each parent's own calendar as free/busy only (Google's 'See only free/busy (hide details)' share), so the message names the family-calendar event and says only 'busy' for personal ones. The docs show a single `--to` target per job, so plan one job per parent or the parents' group chat once F006 exists; the follow-up question reuses the ask-and-relay step of G009.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F009 read-only calendar on the Google path (decision 4)",
+   "gog installed",
+   "G009 family delivery, ask-and-relay step (only for the follow-up question)",
+   "each parent shares their own calendar with the reading account as free/busy only",
+   "F006 parents' group chat, only if one job should reach both parents"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Only applies if the calendar decision lands on Google; the iCloud path would need a different overlap script.",
+   "An overlap is not always a problem (both parents at the same recital). Without a rule such as 'kid event with no driver tag' it will cry wolf.",
+   "Happy reports; it does not move or decline anything.",
+   "No Google or Apple help page was found that describes a warning when two people's calendars clash (web searches in rounds 3 and 5 turned up only booking tools and forum posts), so this looks like a gap the phones leave open; that is the absence of a finding, not proof.",
+   "The notification policy (G001) drops a text sent outside the allowed hours or over the daily cap instead of holding it, and by then the script has recorded the overlap as seen. So the job runs only inside the allowed hours. Timing does not cover the daily cap: a line dropped because the day's cap was reached is lost the same way, since the script cannot tell that its text was cancelled, so this watch's line either sits in a class the cap lets through or that loss is accepted and written into the job's charter.",
+   "The watch sees only calendars that are shared with its reading account. A parent's work calendar counts only if it is a Google calendar and the employer lets its busy times be shared outside the organisation; if not, work meetings are invisible to the watch and it misses that kind of clash unless the parent also blocks the time on their own calendar."
+  ],
+  "safety": "No model call, so text in event titles cannot steer anything. The calendar grant is read-only. Personal calendars are read as free/busy only, so one parent's private event titles are not shown to the other; only shared family-calendar titles appear, the same exposure as the evening brief. The message goes only to the two parents.",
+  "unverified": [
+   "Flags and JSON output of `gog calendar conflicts`: gog is not installed, only its command list page was read.",
+   "How Ohai's conflict check behaves in use; its feature page says it scans connected calendars, flags overlapping events and offers to reschedule, which goes further than Happy's report-only line.",
+   "Whether `gog calendar conflicts` works on calendars shared as free/busy only.",
+   "That phone calendars give no cross-person overlap warning: web searches in rounds 3 and 5 found no Google or Apple help page describing one, only booking tools and forum posts, so it is still not settled by an official source.",
+   "Whether one job can announce to two recipients; the docs' examples show a single `--to` target.",
+   "Where each parent's work meetings live: an employer's Google calendar can be shared outside the organisation only up to the level its administrator sets (Google's admin page 'Set Google Calendar sharing options', knowledge.workspace.google.com/admin/calendar/set-google-calendar-sharing-options, lists 'Only free/busy information' as the narrowest choice), and a work calendar that is not on Google cannot be read by gog at all."
+  ],
+  "overlaps_existing": [
+   "F009",
+   "F014",
+   "F015",
+   "F018",
+   "G010"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.ohai.ai/",
+    "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+    "anchor": "avoid conflicts",
+    "supports": "Ohai markets cross-family schedule conflict avoidance as a core feature, with a premium tier from about ten dollars a month.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/",
+    "title": "Commands - gog",
+    "anchor": "gog calendar conflicts",
+    "supports": "The gog CLI has a subcommand that finds busy-time overlaps across calendars, plus freebusy and changed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "CLI automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run an exact command without a model, deliver its output, and stay silent when it prints the silent token.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/calendar/answer/37082",
+    "title": "Share your calendar - Google Calendar Help",
+    "anchor": "See only free/busy (hide details)",
+    "supports": "A Google calendar can be shared with another account so that only busy times are visible, without event names.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads: command payloads",
+    "anchor": "Gateway host",
+    "supports": "Command jobs run a script on the gateway machine with no model call and can announce their output.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ohai.ai/features/ai-calendar-management",
+    "title": "Ohai.ai features: AI calendar management",
+    "anchor": "flags overlapping events",
+    "supports": "A shipping family assistant's own feature page says it scans the household's connected calendars and flags overlapping events, sold as conflict detection that avoids double bookings.",
+    "check": "unchecked",
+    "added_round": 2
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The zero-model command job is sound, but as written one script holds both parents' calendar credentials and prints each parent's private event titles to the other, which cuts across the roadmap's one-data-domain-per-person rule. Effort is closer to M once the no-driver rule, the state file, gog setup and per-parent delivery are counted."
+  ],
+  "reviewed_by": 1,
+  "wave": "none",
+  "section": "Calendar and family coordination",
+  "includes": [],
+  "history": [
+   "r1: edited caveats. Two caveats contradicted each other: one stated as fact that phone calendars do not warn about overlaps between two people, the next said this was never checked. The unsourced claim is removed; nothing else changes.",
+   "r1: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "r2: edited description, how, depends_on. Kept. The description opened with a line about another product instead of what the parents get, and the follow-up question pointed at the request relay, which round 1 made a step of family delivery (G009); both are fixed.",
+   "r2: kept; credible mention: Ohai.ai features: AI calendar management",
+   "r3: edited description, example, unverified. Kept: a shipping family assistant sells this same check. The description promised more than the script can know (it sees busy times, not who is driving), so it now says what is detected and that a written rule decides which events count; the example text is changed to match.",
+   "r3: kept; credible mention: Ohai.ai features: AI calendar management",
+   "r4: edited how, caveats, unverified. Kept: a shipping family assistant sells this same check. Three gaps are now written down: the card's own example turns on a work meeting, and whether a work calendar's busy times can reach the family's reading account depends on the employer and on that calendar being Google's; a text outside the allowed hours is dropped, not held, so the job has to run inside those hours; and a text dropped by the daily cap is lost the same way, which timing does not fix.",
+   "r4: kept; credible mention: Ohai.ai features: AI calendar management",
+   "r5: edited example, caveats, unverified. Kept: a shipping family assistant sells this same check on its own feature page (opened again in this round). Two wording fixes: the example hinged on a work meeting, which the card's own open points say the watch may never see, so the example now uses a parent's own calendar and the work-calendar limit is a caveat a parent can read; and one caveat said the phones' behaviour 'was not checked' while another line said it had been searched, so both now say the same thing, with this round's search added.",
+   "r5: kept; credible mention: Ohai.ai features: AI calendar management",
+   "r8 (Wave definition, 12 Oct): moved from wave C to not in a wave yet. Waits for Tony's yes: nobody has asked for a conflict watch (Q3), the shared calendar is unknown (Q4), and it needs each parent to share a calendar as busy-only."
+  ],
+  "demand": {
+   "ref": "https://www.ohai.ai/features/ai-calendar-management",
+   "title": "Ohai.ai features: AI calendar management",
+   "supports": "A shipping family assistant's own feature page says it scans the user's connected calendars and flags overlapping events, sold as conflict detection that avoids double bookings."
+  }
+ },
+ {
+  "id": "F028",
+  "origin": "9 Oct",
+  "name": "Trip and outing planner (day trip, weekend, multi-day)",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "'Plan Saturday for us, kids 8 and 10, rain likely' returns two options with opening hours, the weather and links, and admission prices where a page could be read. A longer plan (a weekend or several days) can be emailed to the asker; hotels and transport come as links, not prices. For a trip abroad with the children the plan ends with a paperwork line: whether the passports cover the dates, and a pointer to the official page on the consent letter advised when a child travels with only one parent or without either parent. An optional Friday 16:00 job sends a 'this weekend near us' text built the same way. The parents book.",
+  "example": "Jordan texts: 'Plan Saturday for us, kids 8 and 10, rain likely.' Happy answers 'on it', then sends two options, one indoors and one outdoors with a rain fallback, each with opening hours, Saturday's forecast, a link, and the admission price where the venue's page showed one.",
+  "how": "One research sub-agent run via `sessions_spawn` with `runTimeoutSeconds`, composing `web_fetch`, the place lookup and `home_weather`; calendar free time crosses as date ranges only; the Friday 16:00 job reuses it. The place lookup is a tool on the research agent and one of two connections to Google's place data: the `goplaces` command that OpenClaw bundles a skill for, wrapped as a host-side stdio MCP with `GOOGLE_PLACES_API_KEY` and the home coordinates held in the wrapper, or Google's hosted Maps server (Grounding Lite), which the roadmap names. For a trip abroad the parent's own agent, not research, adds the paperwork line from the renewals table (F063) and fixed official links; passport dates and names are never handed to research.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 4,
+  "effort": "L",
+  "caveats": [
+   "Happy books and pays for nothing: the plan ends in links and the parents book.",
+   "Prices are best effort. Plain page reads fail on many booking, hotel and transport sites, so those come as links, and an admission price appears only when a page that could be read showed it.",
+   "The pieces arrive at different times: opening hours and ratings need the place lookup (formerly F021, now part of this entry and not built), an hour-by-hour rain line needs the weather upgrade (F083), the emailed long version needs mailout (F049) and the passport line needs the renewals table (F063). Until then the plan is built from web pages and the half-day forecast and comes back as a text.",
+   "Drive time is not part of the plan unless a route lookup is added with the place lookup.",
+   "Only ages, a place, a distance and free dates as ranges are meant to reach the research agent; that is an instruction to the parent's agent, not an enforced limit.",
+   "The paperwork line is a pointer, not a ruling. USAGov's page on travel documents for children (usa.gov/travel-documents-children) covers trips abroad and says a consent letter, preferably notarised, should come from the other parent when a child travels with one parent, and from both when the child travels with a guardian or alone. Entry rules differ by country and airline, and Happy certifies nothing.",
+   "A general assistant such as Gemini already drafts an itinerary from a typed prompt, as the Google post behind this card shows. Happy's version saves retyping the family's ages, free dates and home weather, and adds the paperwork line. Gemini's scheduled actions can also send a weekly roundup of new local cafes and restaurants for the weekend (support.google.com/gemini/answer/16316416), the same kind of scheduled local roundup as the optional Friday 16:00 text; round 1 dropped a nightly topic brief on the research agent because those scheduled actions already cover it. The Friday text is therefore the last part to build, and only if a parent asks for it.",
+   "The roadmap's research milestone names Google's hosted Maps server (Grounding Lite) for place data, and OpenClaw bundles a skill for the goplaces command instead. Both read Google's place data and both need billing switched on, so one is chosen before building. Google's page says the hosted server's place search returns an AI-generated summary with place ids and Maps links and does not mention opening hours, so check first that it can answer 'is it open now?'.",
+   "For a one-off 'is it open now?' the maps app on a parent's phone is quicker and has live traffic. The place lookup is here as data for the plan, not as a separate thing to ask Happy."
+  ],
+  "corrections": [
+   "Drive time was dropped from the 9 Oct wording because goplaces was thought to lack it; upstream goplaces `directions` or Grounding Lite `compute_routes` can supply it."
+  ],
+  "unverified": [
+   "Hotel and train price snapshots: no opened source shows these sites are readable logged-out; expect links instead of prices.",
+   "The weather plugin returns 12-hour periods today (read in ~/src/happy-config, not citable), so an hourly rain window needs the plugin change in F083.",
+   "The emailed long version depends on the mailout server (F049), not built.",
+   "Current Places and Routes prices and free allowances were not read.",
+   "goplaces is not installed, so its flags were checked against the bundled skill and the upstream README only.",
+   "Whether Grounding Lite is generally available or a preview: Google's page does not label it."
+  ],
+  "safety": "The research agent holds no family data: it is given ages, a place, a distance and free dates as ranges only (a prompt rule on the parent's agent, not an enforced limit), and it has no payment or booking tool. The paperwork line for a trip abroad uses passport dates and names, so the parent's own agent writes it and none of it is handed to research. Answers go only to the asking parent. The Google key and the home coordinates sit in the host-side wrapper, not in the prompt, and every place query goes to Google.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "A long planning run can be given its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:301",
+    "title": "Web fetch: limits and safety",
+    "anchor": "best-effort",
+    "supports": "Booking and transport sites often need a browser, so price snapshots are best effort.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service API Web Service documentation",
+    "anchor": "A User Agent is required",
+    "supports": "The government weather API also offers an hourly forecast endpoint, the basis for a rain window once the weather plugin exposes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Google Maps Platform: Grounding Lite",
+    "anchor": "compute_routes",
+    "supports": "Google's Maps MCP includes a route tool, one of two sourced ways to add drive time.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+    "title": "Places API (New): Text Search",
+    "anchor": "openNow",
+    "supports": "Opening hours and ratings for each stop come from the Places API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "CLI reference: automations (cron)",
+    "anchor": "--agent <id>",
+    "supports": "A job must be pinned to an agent at creation, otherwise it falls back to the default agent rather than research.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/brave-search.md:86",
+    "title": "Brave search",
+    "anchor": "`day` is 24 hours",
+    "supports": "The search tool has a freshness filter, which the topic-brief variant would have used.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/websearch/answer/4815696",
+    "title": "Google Search Help: Create an alert",
+    "anchor": "Google Alerts",
+    "supports": "Google already emails new search results for saved topics, which is why the Sunday topic brief was judged redundant.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/mozilla/readability",
+    "title": "mozilla/readability README",
+    "anchor": "Firefox Reader View",
+    "supports": "The extractor behind page fetching is the Firefox Reader View library, built for article-style HTML rather than feeds or calendars.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+    "title": "5 ways Google parents are using Gemini",
+    "anchor": "kid-friendly activities",
+    "supports": "Google's own post shows parents using its assistant to find kid-friendly activities and to build a multi-day family trip itinerary.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F017"
+  ],
+  "adds": [
+   "From CRT-14 (Trip paperwork check: children's travel documents): For a trip abroad with the children, the parent's own agent ends the plan with a paperwork line: whether the passports are valid for the dates (from the renewals table, F063), whether a consent letter may be needed when one parent or a grandparent travels with a child (USAGov link, with a draft for the other parent to sign and have notarised), and TSA's rule that under-18s need no ID on domestic flights. Passport dates and names stay with the parent's agent and are never handed to research; Happy certifies and books nothing, links the official page for the destination's entry rules and says to check with the airline.",
+   "From F021 (Places lookup: hours, ratings, distance, phone (goplaces)): Carry the place lookup into the outing planner as one of its tools: up to three picks with hours, rating, phone and a Maps link from Google Places, drive time only through the directions command with the Routes API, and no reservations. List its prerequisites there in place of 'F021': a Google Cloud project with billing on, a key held in the host-side wrapper with a budget alert, and the choice between the bundled goplaces command and Google's hosted Maps server named in the roadmap (whose place search returns a generated summary and Maps links, so check it can answer 'is it open now?' first); the note in F076 that points to F021 should point to F028."
+  ],
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: 5 ways Google parents are using Gemini",
+   "r2: edited description, depends_on, risk, safety. Kept: trip planning is the roadmap's own research milestone. 'Cost' overclaimed (the entry's notes expect links, not prices, for hotels and transport), the Friday weekend-ideas text it absorbed earlier went unmentioned and its building blocks were not listed; all three are fixed. The children's travel-paperwork check (CRT-14) is folded in as a last step for trips abroad; because that step uses passport dates and names, the risk rises to medium and the safety note says which agent may see them.",
+   "r2: kept; credible mention: 5 ways Google parents are using Gemini",
+   "r3: edited description, how, example, caveats. Kept: Google's own post shows parents using an assistant for outings and family trip plans, and trip research is a milestone of the roadmap. Round 2 folded the children's travel-paperwork check into this card but the description and build note never said so; both now name it, in the federal travel page's own terms. The card also had no example and no caveats, so those are filled in from its own notes.",
+   "r3: kept; credible mention: 5 ways Google parents are using Gemini",
+   "r4: edited how, depends_on, caveats, unverified, safety. Kept: Google's own post shows parents using an assistant to find kid-friendly activities and build family trip itineraries, and trip research is a milestone of the roadmap. Round 3 folded the place lookup (F021) into this card, but the card still named F021 as a separate prerequisite that no longer exists; its real prerequisites (a Google key with billing on, and the choice between two Google connections), its open points and where the key sits are now written here.",
+   "r4: kept; credible mention: 5 ways Google parents are using Gemini",
+   "r5: edited caveats. Kept: Google's own post shows parents using an assistant to find kid-friendly activities and build family trip itineraries, and trip research is a milestone of the roadmap. One thing no earlier round recorded: Gemini's scheduled actions already offer a weekly roundup of local places for the weekend, which is close to the card's optional Friday text, and round 1 dropped a nightly topic brief for that same reason; the card now says so and puts the Friday text last.",
+   "r5: kept; credible mention: 5 ways Google parents are using Gemini"
+  ],
+  "demand": {
+   "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+   "title": "5 ways Google parents are using Gemini",
+   "supports": "Google's own post has parents using its assistant as a travel planner: listing the kid-friendly activities near them and finding child-friendly activities, places to stay and transport for a family trip."
+  },
+  "depends_on": [
+   "F019 research agent (does the reading)",
+   "Place lookup for hours and ratings (formerly F021, now part of this entry): a Google Cloud project with billing switched on, a Places API key held in a host-side wrapper, and a budget alert",
+   "Decision: the bundled goplaces command or Google's hosted Maps server (Grounding Lite), which the roadmap names",
+   "home_weather plugin (exists); an hourly rain window needs F083",
+   "F009 calendar read, only to pass free dates as date ranges",
+   "F049 mailout, only for the emailed long version",
+   "F063 renewals table, only for the passport line on a trip abroad"
+  ]
+ }
+]

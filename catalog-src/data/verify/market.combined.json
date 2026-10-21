@@ -1,0 +1,859 @@
+[
+ {
+  "id": "MKT-01",
+  "verdict": "revise",
+  "reason": "All five sources hold and the placement is safe, but the build text calls the reader tool-less while giving it llm-task and does not say how extracted rows reach the digest. Value 4 is generous for something that depends on the school using Classroom, a teacher switching summaries on, and that Google already emails to parents.",
+  "source_checks": [
+   {
+    "ref": "https://support.google.com/edu/classroom/answer/6388136",
+    "ok": true,
+    "note": "Fetched. Lists 'Missing work', upcoming work and class activities; weekly or weekday-daily frequency; says summaries exclude grades and can go to any email address (a Google Account is needed only to view or change settings); invitations expire after 120 days. No limit on guardians per student is stated."
+   },
+   {
+    "ref": "https://support.google.com/edu/classroom/answer/6386354",
+    "ok": true,
+    "note": "Fetched. Says a teacher or school administrator can invite a guardian and that email summaries for classes are turned off by default."
+   },
+   {
+    "ref": "docs/automation/imap.md:86",
+    "ok": true,
+    "note": "Line 86 reads as cited: the From address is checked against allowedSenders before any message reaches a model. Lines 56 and 103 confirm senderAuth.min and that 'verified' is the default."
+   },
+   {
+    "ref": "docs/tools/llm-task.md:9",
+    "ok": true,
+    "note": "Line 9 as cited: bundled optional plugin tool, one JSON-only call, optional JSON Schema validation. Lines 14-36 show it must be enabled and added with tools.alsoAllow, so it is a tool the reader holds."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "ok": true,
+    "note": "Lines 56-57: --tools restricts which tools a job can use."
+   }
+  ],
+  "corrections": {
+   "how": "One-time human step: each teacher (or the school administrator) invites the dedicated school mailbox address (F051) as a guardian and a parent accepts the invitation from that mailbox; Google says summaries can go to any email address. Add Google's Classroom sender to the IMAP account's `allowedSenders` with `senderAuth.min: \"verified\"` so the summary is admitted like other school mail. The extraction happens inside the existing F056 digest job, not in the per-message IMAP reader, which has no store to hand rows to: the digest job (isolated, `--tools` limited to the read-only school-mail server, home-store and `llm-task`) reads the day's summary, turns it into {kid, missing[], upcoming[]} with `llm-task` and a JSON Schema, and relays titles and dates only, never links. `llm-task` is the only tool the `school-mail` reader holds, as F082 already assigns; it has no memory. Day-before reminders reuse F007.",
+   "value": 3,
+   "caveats": [
+    "Only useful if the kids' classes run on Google Classroom; many elementary schools use other tools. Not checked for this family.",
+    "Google's teacher page says class summaries are turned off until the teacher enables them, and the invitation must be accepted within 120 days.",
+    "Summaries do not include grades.",
+    "Google already sends this email to the parent for free. Happy's added value is merging it into the one digest both parents read and setting the reminder.",
+    "If a parent stays the guardian and auto-forwards the summary instead, the forwarded mail may fail the IMAP plugin's sender authentication.",
+    "A Google Account is needed to view or change the summary settings (frequency, unsubscribe), even though the summary itself can go to any address."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-02",
+  "verdict": "revise",
+  "reason": "Buildable as described once attachments and the privacy gate are in. Minor fixes: the Gemini page cited shows only scheduled practice quizzes, so a Gemini quiz-from-files page is added, and the optional re-quiz reminder needs the automations tool (F007), which the person agents do not hold today.",
+  "source_checks": [
+   {
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "ok": true,
+    "note": "Fetched (page updated July 2026). Contains 'upload study materials and ask Alexa to turn them into a quiz'."
+   },
+   {
+    "ref": "https://support.google.com/gemini/answer/16316416",
+    "ok": true,
+    "note": "Fetched. Lists 'Daily practice quizzes' as a scheduled-action example. That is a scheduled quiz, not a quiz built from an uploaded study guide; a second Gemini page is added for that part."
+   },
+   {
+    "ref": "docs/channels/imessage/media.md:17",
+    "ok": true,
+    "note": "Line 17 as cited: inbound attachments are off by default and attachment-only messages are dropped until channels.imessage.includeAttachments is true."
+   },
+   {
+    "ref": "docs/tools/skills.md:451",
+    "ok": true,
+    "note": "Lines 450-451: user-invocable defaults to true and exposes the skill as a slash command."
+   }
+  ],
+  "corrections": {
+   "depends_on": [
+    "F001 inbound attachments",
+    "F002 photo understanding",
+    "F084 privacy gate",
+    "F007 automations tool on <p>-main (only for the optional re-quiz reminder)",
+    "MKT-03 skill (optional; needs the `read` tool, see MKT-03)"
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16275879",
+    "title": "Create quizzes, flashcards, practice tests & more in Gemini Apps - Gemini Apps Help",
+    "anchor": "Create a quiz about",
+    "supports": "Gemini Apps builds a quiz from a prompt, and the user can attach files as the source material."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-03",
+  "verdict": "revise",
+  "reason": "Skills, the /skill command and the per-agent allowlist all exist as cited, but readiness 'now' is wrong. The docs say the model loads a skill body with the `read` tool, and the person agents deny `group:fs` and have no `read` in their sandbox tool allowlist, so a tool-policy change comes first; the safety text claiming no new tool has to change with it.",
+  "source_checks": [
+   {
+    "ref": "https://support.google.com/gemini/answer/15146780",
+    "ok": true,
+    "note": "Fetched. The page says that from November 2026 Gems go away on personal Google accounts and automatically 'transition to skills'. Gems can be shared."
+   },
+   {
+    "ref": "https://poke.com/",
+    "ok": true,
+    "note": "Fetched. Heading 'Adapts to your needs with Poke Recipes'; describes an assistant reached through Messages, WhatsApp and Telegram."
+   },
+   {
+    "ref": "https://support.claude.com/en/articles/12512176-what-are-skills",
+    "ok": true,
+    "note": "Fetched. 'Skills work through progressive disclosure'; skills are folders of instructions, scripts and resources; listed for Free, Pro, Max, Team and Enterprise."
+   },
+   {
+    "ref": "docs/tools/skills.md:41",
+    "ok": true,
+    "note": "Line 41: workspace skills at <workspace>/skills are priority 1."
+   },
+   {
+    "ref": "docs/tools/slash-commands.md:386",
+    "ok": true,
+    "note": "Line 386: '/skill <name> [input]' always works as the generic entrypoint. Line 387 adds that skills may also register under their own name."
+   },
+   {
+    "ref": "docs/tools/slash-commands.md:92",
+    "ok": true,
+    "note": "Lines 90-93: iMessage is listed among surfaces without native commands where text commands are parsed."
+   },
+   {
+    "ref": "docs/tools/skills.md:243",
+    "ok": true,
+    "note": "Lines 241-247: an empty agents.entries.*.skills list exposes no skills, a non-empty list is final, and leaving defaults unset keeps all skills unrestricted."
+   }
+  ],
+  "corrections": {
+   "readiness": "build",
+   "how": "Plain Markdown: one `SKILL.md` folder per playbook under each `<p>-main` workspace `skills/` directory, generated from templates in the config repo. `user-invocable: true` (the default) exposes `/skill <name> [input]`, and text commands are parsed on iMessage. Use `disable-model-invocation: true` for playbooks that should run only when asked. Pin the visible set per agent with `agents.entries.<id>.skills`, and set `skills: []` on research and the mail readers so they see none. Skill bodies are instructions only; they grant no tools. Prerequisite: the model loads a skill body by calling `read` on its SKILL.md, so `<p>-main` needs `read` allowed in both its tool policy and `tools.sandbox.tools.allow`; today `group:fs` is denied. With `workspaceAccess: \"none\"` the eligible skills are mirrored into the sandbox as read-only copies.",
+   "depends_on": [
+    "`read` tool granted to <p>-main (denied today through group:fs and missing from the sandbox tool allowlist); it arrives with the F041 memory write path",
+    "one test skill to confirm the sandbox mirror of skill files is readable"
+   ],
+   "caveats": [
+    "The model loads a skill by calling `read` on its SKILL.md. `<p>-main` has no `read` tool today (the config denies `group:fs` and the sandbox tool allowlist omits it), so skills do nothing until `read` is granted; then test with one skill inside the Colima sandbox.",
+    "Without an explicit allowlist, any bundled skill whose requirements are met is offered to the agent as well. Set the list explicitly.",
+    "Each skill adds a few dozen tokens to every prompt; keep it to five to eight.",
+    "The catalog put this kind of rule in AGENTS.md standing orders. Skills are better when the recipe is long and used rarely, AGENTS.md when it applies to every turn."
+   ],
+   "safety": "Skill bodies are instructions and grant no tool by themselves, but using them puts one new tool on `<p>-main`: `read`. It is sandbox-rooted, so it reaches only the agent's own sandbox workspace (skill copies, inbound media, the memory files the agent already loads). With `workspaceAccess: \"none\"` skills are mirrored read-only, so injected text cannot rewrite a playbook. No account or egress is added. Skill files deploy from the config repo. Agents that read untrusted content get an empty skill list."
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/system-prompt.md:199",
+    "title": "System prompt: Skills",
+    "anchor": "<available_skills>",
+    "supports": "The prompt lists skills by file path and tells the model to load a skill by calling the read tool on its SKILL.md."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/workspace-access.md:91",
+    "title": "Sandbox workspace access: skills note",
+    "anchor": "read-only instruction roots",
+    "supports": "The read tool is sandbox-rooted, and with workspace access set to none eligible skills are mirrored into the sandbox as read-only copies."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:68",
+    "title": "Tool policy: tool groups",
+    "anchor": "group:fs",
+    "supports": "The read tool belongs to the file-system tool group, the group the person agents deny today."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills.md:820",
+    "title": "Skills: token impact",
+    "anchor": "24 tokens per skill",
+    "supports": "Each eligible skill adds roughly two dozen tokens plus its name, description and path to every prompt."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-04",
+  "verdict": "revise",
+  "reason": "Safe on the research agent and honestly rated low, but 'nothing when there is no news' cannot come from an isolated run with no state; the documented way is a condition trigger carrying `trigger.state`, as F029 already uses. It also re-opens the topic brief the catalog dropped in favour of Google Alerts, so it stays low priority.",
+  "source_checks": [
+   {
+    "ref": "https://techcrunch.com/2025/09/25/openai-launches-chatgpt-pulse-to-proactively-write-you-morning-briefs/",
+    "ok": true,
+    "note": "Fetched (25 Sep 2025). 'Pulse offers users five to 10 briefs'; draws on memory and connected Gmail and Google Calendar; started with Pro users."
+   },
+   {
+    "ref": "https://support.google.com/gemini/answer/16316416",
+    "ok": true,
+    "note": "Fetched. 'You can have up to 10 active scheduled actions at a time.' The page describes timing with and without a Google AI plan and a gradual rollout; it does not say 'free' outright."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:247",
+    "ok": true,
+    "note": "Line 247: session value 'isolated' runs in a dedicated cron session, best for reports and background chores."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:270",
+    "ok": true,
+    "note": "Line 270: unattended runs return NO_REPLY when nothing needs doing."
+   },
+   {
+    "ref": "docs/tools/web-fetch.md:11",
+    "ok": true,
+    "note": "Lines 11-13: plain HTTP GET with readable-content extraction, no JavaScript."
+   }
+  ],
+  "corrections": {
+   "how": "One `automations` job per parent owned by the stateless `research` agent: isolated session, tools limited to `web_search,web_fetch`, announce delivery pinned to that parent. Topics are literal text in the job message, rendered by gen-family from an `interests` list in family.json5, never read from memory. Output follows the F022 citation rule and the job returns `NO_REPLY` when nothing is new. 'More of this' or 'drop that topic' is a proposal the parent confirms; the jobs registry (G003) regenerates the job. Seen links are kept in the job's condition-trigger state (`--trigger-script`, compared against `trigger.state`), the F029 pattern, because an isolated run remembers nothing between mornings; Tony creates these jobs from the CLI.",
+   "depends_on": [
+    "F019 research agent with web_fetch",
+    "G003 jobs registry",
+    "G001 notification policy",
+    "F029 trigger-state pattern for seen links"
+   ],
+   "caveats": [
+    "Pulse is good because it mixes memory, chat history and connected Gmail and Calendar. That mix is exactly what the trifecta rule forbids here, so Happy's brief is deliberately less personal.",
+    "The catalog already removed headlines from the morning brief and dropped the Sunday topic brief; this only fits because it is a separate job on an agent with no private data.",
+    "Gemini offers scheduled actions (up to 10 active; Google's page describes behaviour with and without a paid AI plan and says the rollout is gradual). If a parent already uses Gemini or Google Alerts, skip this.",
+    "An isolated run remembers nothing from yesterday, so de-duplication has to live in the job's condition-trigger state (the F029 pattern); without it the brief repeats items.",
+    "Topics travel to Brave and OpenAI, so keep them non-identifying: no kid names, no school name."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:120",
+    "title": "Automation schedules: condition watchers",
+    "anchor": "trigger.state",
+    "supports": "Watcher jobs are told to de-duplicate by comparing against stored trigger state instead of relying on model memory."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-05",
+  "verdict": "revise",
+  "reason": "The endpoint and the MCP server are real, but a working key is not a given: Instacart's docs describe a production key that stays pending until Instacart reviews the integration, a process aimed at apps and websites and averaging 30 to 40 days. Readiness 'build' and effort S were optimistic; the alternative of putting Instacart's free-text MCP tool on a memory-holding agent should be dropped.",
+  "source_checks": [
+   {
+    "ref": "https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page",
+    "ok": true,
+    "note": "Fetched. POST /idp/v1/products/products_link returns products_link_url; line-item names are used as search terms; the user selects a store and checks out on Instacart; bearer API key."
+   },
+   {
+    "ref": "https://docs.instacart.com/developer_platform_api/guide/tutorials/mcp",
+    "ok": true,
+    "note": "Fetched. Tools 'create-recipe' and 'create-shopping-list'; Streamable HTTP; bearer key in the Authorization header; separate development and production server URLs; the tutorial uses a development key."
+   },
+   {
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "ok": true,
+    "note": "Fetched. The page says Alexa+ can order groceries from 'Amazon Fresh' and the company's other grocery chain."
+   },
+   {
+    "ref": "docs/tools/mcp.md:66",
+    "ok": true,
+    "note": "Lines 63-67 show `openclaw mcp add` with --url, --transport streamable-http and --include; line 96 says sensitive headers go through the secret mechanisms."
+   },
+   {
+    "ref": "docs/plugins/hooks.md:164",
+    "ok": true,
+    "note": "Line 164: before_tool_call blocks a tool or requests approval."
+   }
+  ],
+  "corrections": {
+   "readiness": "blocked",
+   "effort": "M",
+   "how": "Gate first: Instacart must approve a production API key (see caveats). Then the shape is a small host-side tool plugin `home-cart` with one tool that takes no free-text arguments. It reads the grocery list itself (Reminders bridge F030 or home-store), calls Instacart's `POST /idp/v1/products/products_link` and returns `products_link_url`. Held by `<p>-main`. Not advised: adding Instacart's own remote MCP server to `<p>-main` (`openclaw mcp add ... --transport streamable-http --include 'create-shopping-list'`), because that tool takes model-written text and would be a third-party egress path on an agent that holds memory. The result is a URL.",
+   "depends_on": [
+    "F030 or F031 grocery list",
+    "an approved Instacart production API key (Instacart review required)",
+    "the family actually ordering through Instacart"
+   ],
+   "caveats": [
+    "Zero value if the family's store is not on Instacart or they shop in person.",
+    "Instacart matches items by search term, so brand and size are approximate; the parent still edits the cart.",
+    "Needs an Instacart production API key. Per Instacart's docs the key does not work until Instacart has reviewed the integration (terms, API usage, error handling, a help-desk account), and the average time from access request to production key is about 30 to 40 days. The process is written for apps and websites; a development key only reaches the development servers.",
+    "A shared Reminders grocery list plus the store's own app is what most families use and needs no build."
+   ],
+   "safety": "No purchase, cart or checkout happens on Happy's side; the never-list holds because the tool can only produce a link. The risk is egress: a tool that posts model-written text to a third party is a way to send data out from an agent that holds memory. Close it by having the tool read the list itself and accept no free-text arguments; do not put Instacart's MCP server on a memory-holding agent. Item names still reach Instacart, and the returned link is shareable, so anyone holding it can see the list.",
+   "unverified": [
+    "Ohai's Instacart connection: seen only on a non-canonical Ohai subdomain, so not cited.",
+    "Whether Instacart would approve a production key for one household's private tool.",
+    "Whether a link created with a development key opens a real, orderable Instacart page.",
+    "Whether the family uses Instacart."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/guide/concepts/launch_activities/approval_process",
+    "title": "Approval process | Instacart Docs",
+    "anchor": "Production API key",
+    "supports": "Creating a production key starts an Instacart review of the integration, and the key does not work until it is approved."
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/get_started/overview",
+    "title": "Get started | Instacart Docs",
+    "anchor": "production key access",
+    "supports": "Instacart puts the average time from access request to an approved production key at roughly 30 to 40 days."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-06",
+  "verdict": "revise",
+  "reason": "The zero-model command job is sound, but as written one script holds both parents' calendar credentials and prints each parent's private event titles to the other, which cuts across the roadmap's one-data-domain-per-person rule. Effort is closer to M once the no-driver rule, the state file, gog setup and per-parent delivery are counted.",
+  "source_checks": [
+   {
+    "ref": "https://www.ohai.ai/",
+    "ok": true,
+    "note": "Fetched. The phrase 'avoid conflicts' sits in an FAQ answer about syncing several kinds of calendars so families can coordinate schedules; premium plans start at $9.99 per month. It shows Ohai markets conflict avoidance, not that it is a headline feature."
+   },
+   {
+    "ref": "https://gogcli.sh/commands/",
+    "ok": true,
+    "note": "Fetched. The command list has 'gog calendar conflicts' (described as finding busy-time overlaps across calendars) and 'gog calendar freebusy'. No flags are shown. The bundled skills/gog/SKILL.md mentions neither subcommand, and gog is not installed."
+   },
+   {
+    "ref": "docs/cli/cron.md:70",
+    "ok": true,
+    "note": "Line 70 as cited: --command-argv runs an exact argv, output goes through announce delivery, and a command that prints only NO_REPLY is suppressed."
+   }
+  ],
+  "corrections": {
+   "how": "A zero-model command job (`--command-argv`) every few hours runs a host script under the happy user: `gog calendar conflicts` (or `freebusy`) across the shared family calendar and the two parents' calendars, compares against a seen-id state file, and prints `NO_REPLY` when nothing is new. To keep each parent's data separate, the script uses one read-only credential that sees the family calendar in full and each parent's own calendar as free/busy only (Google's 'See only free/busy (hide details)' share), so the message names the family-calendar event and says only 'busy' for personal ones. The docs show a single `--to` target per job, so plan one job per parent or the parents' group chat once F006 exists; the follow-up question reuses the G010 relay.",
+   "effort": "M",
+   "depends_on": [
+    "F009 read-only calendar on the Google path (decision 4)",
+    "gog installed",
+    "G010 for the follow-up question",
+    "each parent shares their own calendar with the reading account as free/busy only"
+   ],
+   "caveats": [
+    "Only applies if the calendar decision lands on Google; the iCloud path would need a different overlap script.",
+    "An overlap is not always a problem (both parents at the same recital). Without a rule such as 'kid event with no driver tag' it will cry wolf.",
+    "Happy reports; it does not move or decline anything.",
+    "Whether phone calendars already warn about cross-person overlaps was not checked; if they do not, this is a gap the phone leaves open."
+   ],
+   "safety": "No model call, so text in event titles cannot steer anything. The calendar grant is read-only. Personal calendars are read as free/busy only, so one parent's private event titles are not shown to the other; only shared family-calendar titles appear, the same exposure as the evening brief. The message goes only to the two parents.",
+   "unverified": [
+    "Flags and JSON output of `gog calendar conflicts`: gog is not installed, only its command list page was read.",
+    "Ohai's exact behaviour beyond the marketing phrase.",
+    "Whether `gog calendar conflicts` works on calendars shared as free/busy only.",
+    "That phone calendars give no cross-person overlap warning (no source read).",
+    "Whether one job can announce to two recipients; the docs' examples show a single `--to` target."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/calendar/answer/37082",
+    "title": "Share your calendar - Google Calendar Help",
+    "anchor": "See only free/busy (hide details)",
+    "supports": "A Google calendar can be shared with another account so that only busy times are visible, without event names."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads: command payloads",
+    "anchor": "Gateway host",
+    "supports": "Command jobs run a script on the gateway machine with no model call and can announce their output."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-07",
+  "verdict": "revise",
+  "reason": "Works today with no build and stays as written in substance. The Siri source was the Mac guide and the read-aloud part was unverified; Apple's AirPods and CarPlay articles now cover it, and the 'current Siri acts in apps' line is narrowed to what Apple's page says (Siri AI, beta in iOS 27, English first).",
+  "source_checks": [
+   {
+    "ref": "https://support.apple.com/guide/messages/icht35827",
+    "ok": true,
+    "note": "Fetched. This is the Messages guide for Mac: 'Ask Siri something like, \"Message Mom that I'll be late.\"' and Siri can send, listen to and respond to messages. It is not the iPhone guide; the iPhone guide's Siri page returned only its table of contents to the fetch tool."
+   },
+   {
+    "ref": "https://www.apple.com/apple-intelligence/",
+    "ok": true,
+    "note": "Fetched. Heading 'Take action in more apps'; says Siri AI can take actions in apps like Messages, Music and Reminders. The page marks Siri AI as beta in iOS 27, rolling out in English."
+   },
+   {
+    "ref": "https://www.trymartin.com/",
+    "ok": true,
+    "note": "Fetched. Headings 'Text Martin.', 'Call Martin.', 'Email Martin.'"
+   },
+   {
+    "ref": "docs/channels/imessage.md:19",
+    "ok": true,
+    "note": "Line 19: the gateway spawns `imsg rpc` and speaks JSON-RPC over stdio, so a dictated iMessage arrives like any other."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "One message per request. With AirPods and Announce Notifications on, Siri reads Happy's reply aloud and takes a spoken reply, which is as close to a conversation as this gets.",
+    "Dictation mangles names and times; Happy should repeat back anything it schedules.",
+    "No always-listening room speaker; that is MKT-08 territory.",
+    "Apple describes Siri AI (beta in iOS 27, English first) taking actions in apps such as Messages and Reminders, so for a plain reminder Siri alone may be faster than going through Happy."
+   ],
+   "unverified": [
+    "The iPhone User Guide's own Siri messaging page could not be read in this run (the fetch returned only its table of contents); the Mac Messages guide, the AirPods article and the CarPlay article were read instead."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102536",
+    "title": "Announce notifications with Siri on AirPods or Beats - Apple Support",
+    "anchor": "Announce Notifications",
+    "supports": "With compatible headphones connected to a locked iPhone, Siri reads incoming messages aloud and can take a spoken reply."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "In the car, Siri can announce incoming messages and read them in full on request."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-08",
+  "verdict": "revise",
+  "reason": "Every cited doc line checks out, but the safety picture is understated. Pairing the app hands the phone an operator token (Full access is the default), and even the narrowest documented voice pairing carries operator.read, which the docs say is not a per-person privacy boundary. That fits Tony, who is already the operator, but not Jordan under the roadmap's rule that family members only chat.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/ios.md:15",
+    "ok": true,
+    "note": "Line 15: the official iPhone app is available on the App Store."
+   },
+   {
+    "ref": "docs/platforms/ios.md:662",
+    "ok": true,
+    "note": "Lines 655-665: the Start Live Voice App Shortcut and the Siri phrase; the shortcut does not bypass unlock or foreground restrictions."
+   },
+   {
+    "ref": "docs/platforms/ios.md:651",
+    "ok": true,
+    "note": "Line 651: iOS may suspend background audio; voice is best-effort when the app is not active."
+   },
+   {
+    "ref": "docs/nodes/talk.md:12",
+    "ok": true,
+    "note": "Line 12 as cited. The same line says Apple Speech recognition on macOS and iOS may use network services."
+   },
+   {
+    "ref": "docs/nodes/voicewake.md:12",
+    "ok": true,
+    "note": "Line 12 as cited. Line 9 confirms one global wake-word list; lines 44-48 confirm a route target can be an agentId."
+   },
+   {
+    "ref": "docs/platforms/ios.md:527",
+    "ok": true,
+    "note": "Line 527: App Store builds use the hosted push relay, hardcoded for App Store distribution."
+   },
+   {
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "ok": true,
+    "note": "Fetched. The page gives the price as '$19.99 per month' and says Prime members get the service at no extra charge."
+   }
+  ],
+  "corrections": {
+   "how": "Install the OpenClaw iPhone app on Tony's phone only (he is already the gateway operator) and pair it with `openclaw qr --voice-node`, which issues node credentials plus an operator token limited to `operator.read` and `operator.talk`; pairing from the Control UI defaults to Full access. Reach the gateway over the tailnet and configure `talk` on the gateway. The native loop uses the phone's speech recognition and speaks replies through `talk.speak`; the docs name a `system` provider for macOS-local playback and mention an iOS system-voice fallback, so no new OpenClaw voice provider should be needed, while realtime voice instead needs an OpenAI realtime provider entry. Keep the phone's device commands off with `gateway.nodes.commands.deny` and keep `group:nodes` denied for every agent. Wake-word routing can target an agent id. A 'Hey Happy' microphone on the Mac mini would need the macOS app, which is not installed, and macOS 26 or newer.",
+   "depends_on": [
+    "OpenClaw iPhone app on Tony's phone (not Jordan's, see safety)",
+    "Tailscale on the phone",
+    "pairing with `openclaw qr --voice-node`, then a test of which agent a Talk session reaches",
+    "`gateway.nodes.commands.deny` covering location, contacts, calendar, reminders, photos, camera and screen commands"
+   ],
+   "caveats": [
+    "The docs call voice best-effort when the app is not active, and the shortcut cannot bypass unlock or foreground limits.",
+    "Pairing a phone as a node also offers the gateway its camera, screen and location commands; these must stay denied.",
+    "The M1 design routes people by iMessage handle. How an app session maps to tony-main versus jordan-main on a two-adult gateway needs a test before anyone relies on it.",
+    "App Store builds deliver push through a relay hosted by OpenClaw, a third party in the loop that the iMessage path does not have.",
+    "Realtime voice would add the catalog OpenAI provider that the catalog deliberately avoided, and its retention terms were not checked.",
+    "The wake-word list is one global list for the whole gateway.",
+    "Siri to iMessage (MKT-07) covers most of the need for free.",
+    "A paired phone is an operator client: the app has an agent picker and can read sessions. The docs say `operator.read` is not a per-person privacy boundary, so Jordan's phone could read Tony's agent's conversations and the reverse. Under the roadmap only Tony holds operator access.",
+    "Apple's speech recognition may use Apple's network services, so 'no new cloud provider' means no new OpenClaw provider, not on-device speech."
+   ],
+   "safety": "Adds a second way into a memory-holding agent that does not pass through the iMessage sender allowlist, and the phone holds an operator token. Limit it to Tony's phone, pair with `--voice-node` (read and talk scopes only) instead of the default Full access, and deny device commands at the gateway. Tools on the agent do not change, so the trifecta is unchanged as long as node capabilities stay denied. Not suitable for Jordan's or a child's phone: the read scope it carries is not a privacy boundary between people on one gateway.",
+   "unverified": [
+    "Per-person agent selection for app sessions on this gateway.",
+    "Data retention for realtime voice audio.",
+    "Whether native iPhone Talk speaks with the system voice when no Talk voice provider is configured; the docs name `system` for macOS-local playback and separately mention an iOS system-voice fallback."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:58",
+    "title": "CLI qr: voice-node pairing",
+    "anchor": "--voice-node",
+    "supports": "A voice-client pairing mode hands the phone node credentials plus an operator token limited to read and talk scopes."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:482",
+    "title": "Operator scopes: audit and read scope",
+    "anchor": "not a per-person",
+    "supports": "The read scope is explicitly not a privacy boundary between people sharing one gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:192",
+    "title": "iOS app: pair and connect",
+    "anchor": "Full access is recommended",
+    "supports": "Pairing a phone from the web UI gives it full operator access unless Limited is chosen."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:55",
+    "title": "Node command policy",
+    "anchor": "gateway.nodes.commands.deny",
+    "supports": "A gateway-level deny list overrides default and allowlisted node commands."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:114",
+    "title": "iOS app: New Thread agent picker",
+    "anchor": "agent picker",
+    "supports": "The app lets its user choose which configured agent a new thread talks to."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-09",
+  "verdict": "reject",
+  "reason": "The widget and scope mechanics exist as cited, but the only documented way to show the board is to pair the kitchen tablet as a Control UI operator client, and the docs say operator.read includes session reads and is not a per-person privacy boundary, so a shared-room screen could open both parents' private conversations. With no kid check-off either, a shared calendar on an old iPad or the printed sheet already does the job.",
+  "source_checks": [
+   {
+    "ref": "https://myskylight.com/products/skylight-calendar",
+    "ok": true,
+    "note": "Fetched. 'Magic Import: Forward any email or PDF from school'; tasks are free, rewards and meal planning sit in Plus at $79 a year; the 15-inch calendar lists at $299.99. The page says email or PDF, not photos."
+   },
+   {
+    "ref": "https://hearthdisplay.com/",
+    "ok": true,
+    "note": "Fetched. 'Kid-friendly routines' bullet; routines and rewards, meal planning and an AI 'Hearth Helper'. No prices on this page."
+   },
+   {
+    "ref": "https://hearthdisplay.com/blogs/hearth-at-home/meet-our-family-membership",
+    "ok": true,
+    "note": "Fetched. 'For $9 per month' covers shared calendars and to-dos, routines, Hearth Helper and meal planning. No publication date shown."
+   },
+   {
+    "ref": "docs/tools/show-widget.md:44",
+    "ok": true,
+    "note": "Line 44: the scheduled surface is pinned-only, requires pin: true and writes to the bound session dashboard."
+   },
+   {
+    "ref": "docs/web/dashboards.md:9",
+    "ok": true,
+    "note": "Line 9: every thread in the Control UI can own a dashboard of widgets."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "ok": true,
+    "note": "Line 34 defines operator.read as read-only status, lists, logs and session reads. Line 482 of the same file adds that operator.read is not a per-person privacy boundary, which is what sinks this design."
+   }
+  ],
+  "corrections": {
+   "readiness": "not-recommended",
+   "risk": "high",
+   "safety": "Not safe as designed. The tablet would be an operator client of the gateway in a shared room. `operator.read` covers session reads across the gateway and the docs say it is not a per-person privacy boundary, so anyone at the tablet, children and guests included, could open the parents' conversations with Happy. The roadmap keeps operator access with Tony alone and treats an operator key on a household device as full owner access. Revisit only if a display identity whose visible sessions are limited to the board session can be proven on this install. The board agent itself would have no web and no send tools.",
+   "unverified": [
+    "Whether a device paired with only `operator.read` can open a session dashboard.",
+    "Kiosk behaviour of the Control UI in iPad Safari.",
+    "Whether a paired display identity can be restricted to one session's dashboard; the session-scoped operator scopes speak of 'visible sessions' but this was not tested."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:482",
+    "title": "Operator scopes: audit and read scope",
+    "anchor": "not a per-person",
+    "supports": "The read scope is explicitly not a privacy boundary between people sharing one gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:229",
+    "title": "Show widget: native dashboard reports",
+    "anchor": "at most 8KB",
+    "supports": "A native report is limited to 24 blocks and 8 KB of JSON."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/dashboards.md:18",
+    "title": "Session dashboards",
+    "anchor": "starts fresh widget views",
+    "supports": "Reloading the page resets the widget views."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-10",
+  "verdict": "revise",
+  "reason": "Keep as a not-recommended entry; the reasoning holds. The Find My claim rested on the Apple Watch page alone, so Apple's Find My guide for Mac is added (arrive, leave and 'is not at' alerts, with the other person told or asked to approve). One safety sentence cites a roadmap list of things kept out of prompts that the roadmap text does not contain.",
+  "source_checks": [
+   {
+    "ref": "https://support.apple.com/guide/watch/apd1132106dc/watchos",
+    "ok": true,
+    "note": "Fetched. 'tap Add Location Alert' under Notify Me; notifications when a friend leaves their current location or arrives at your location. Narrower than the iPhone and Mac versions."
+   },
+   {
+    "ref": "docs/nodes/location-command.md:11",
+    "ok": true,
+    "note": "Lines 11-12: location.get is a node command invoked via node.invoke, off by default."
+   },
+   {
+    "ref": "docs/nodes/location-command.md:81",
+    "ok": true,
+    "note": "Line 81: LOCATION_BACKGROUND_UNAVAILABLE when the app is backgrounded with only While Using granted."
+   },
+   {
+    "ref": "docs/channels/location.md:14",
+    "ok": true,
+    "note": "Lines 14-19 list LINE, Matrix, Telegram and WhatsApp only; iMessage is absent."
+   }
+  ],
+  "corrections": {
+   "safety": "The catalog already keeps home coordinates on the server side (F021) and keeps the address out of research handoffs. An always-on location source attached to an agent that holds memory and talks to a cloud model adds a high-value private-data leg with no matching benefit, so the rule is respected by not building it.",
+   "caveats": [
+    "Find My does arrive and leave alerts natively; the phone also does location-based reminders. Happy has no location at all.",
+    "A standing location feed for two adults and later two children is the most sensitive data the house has, and no feature in the catalog needs it.",
+    "Leave-by nudges (G017) were deferred for the same reason: the phone already does it.",
+    "The iOS docs describe background wakes as short reconnects that record a presence beacon; nothing documents answering `location.get` from the background on iPhone, so an arrival alert polled from the gateway would be unreliable at best."
+   ],
+   "unverified": [
+    "The iPhone User Guide's Find My page could not be read in this run (the fetch returned only its table of contents); the Apple Watch and Mac Find My guide pages were read instead.",
+    "How `location.get` behaves on a backgrounded iPhone with Always permission; the docs give the error code and say platforms may differ."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/findmy-mac/notified-friends-change-location-fmm9ba4ceb0d/mac",
+    "title": "Get notified when someone's location changes in Find My on Mac - Apple Support",
+    "anchor": "Add Location Alert",
+    "supports": "Find My can alert you when a person arrives at, leaves or is not at a place, and the other person is told or must approve."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:566",
+    "title": "iOS app: background alive beacons",
+    "anchor": "node.presence.alive",
+    "supports": "When iOS wakes the app in the background it makes a brief reconnect and records a presence beacon."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-11",
+  "verdict": "revise",
+  "reason": "Keep as blocked; Apple's page confirms requests are answered by a parent or guardian from their own Messages. The statement that Happy's Apple Account sits outside the family group is not in any plan document read in this run, so it becomes a rule to keep and an unverified item.",
+  "source_checks": [
+   {
+    "ref": "https://support.apple.com/guide/child-safety/dq4vly6fq1je/web",
+    "ok": true,
+    "note": "Fetched. Requests are tapped in Messages with fixed choices starting at 'Approve for 15 minutes'; the parent or guardian approves, and another adult in the family can be set as parent or guardian."
+   },
+   {
+    "ref": "docs/channels/imessage.md:19",
+    "ok": true,
+    "note": "Line 19: replies, tapbacks, effects, polls and group actions require `imsg launch` and a successful private API probe; the install runs Basic mode."
+   }
+  ],
+  "corrections": {
+   "how": "No mechanism on this stack. The iMessage channel runs in Basic mode, where private-API actions are unavailable, and the approval lives in Apple's own interface on a parent's or guardian's device. Happy's Apple Account must never be given the parent or guardian role in the family group. What Happy can do instead: a weekly 'review Screen Time' reminder (F007), keep the agreed limits as a fact in the vault (F043), and draft the family media rules.",
+   "unverified": [
+    "Whether imsg surfaces Screen Time request bubbles at all; nothing in the installed docs mentions them.",
+    "Whether Happy's Apple Account is in the Family Sharing group at all; no plan document read in this run says.",
+    "That Google's equivalent controls live in the Family Link app (only the Gemini-for-children page, which names Family Link, was read)."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-12",
+  "verdict": "revise",
+  "reason": "Keep as a do-not-build-now entry; both product pages support the claims. Two caveats are reworded to what the pages actually say (Khan's 'active classroom' limit, Google's list of cautions).",
+  "source_checks": [
+   {
+    "ref": "https://www.khanmigo.ai/parents",
+    "ok": true,
+    "note": "Fetched. The parent plan covers 'up to 10 kids' at four dollars a month, says the tutor does not hand out answers, lets parents view chat history and get moderation alerts, and requires a U.S. residence and billing address. The FAQ says activation may not be possible for a child who is part of an active Khan Academy classroom; it does not mention school districts."
+   },
+   {
+    "ref": "https://support.google.com/gemini/answer/16109150",
+    "ok": true,
+    "note": "Fetched. A parent must enable Gemini Apps for a child under 13 with a supervised account, managed in Family Link; cautions cover hallucination, not being a person, imperfect filters and not sharing sensitive personal information."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "The 'not recommended' is for building kid chat on Happy's cloud model now; the recommendation is to use the purpose-built product meanwhile.",
+    "Khanmigo requires a U.S. residence and billing address, and Khan says a parent may not be able to activate it for a child who is part of an active Khan Academy classroom.",
+    "Google's own page warns that filters are not perfect, that Gemini can present wrong information as fact, that it is not a person, and that children should not share sensitive personal information such as their address or school name.",
+    "Family Link supervises Google accounts; children on Apple child accounts would need a supervised Google account as well.",
+    "Neither product knows the family's schedule or routines, so the catalog's kid weekly card and check-in relay remain Happy's future territory."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-13",
+  "verdict": "revise",
+  "reason": "The three hooks exist as cited and the design respects the kids rule, but readiness 'build' misleads: nothing here can ship before the kid agent, which waits for a local model that this batch skips. How a hook sends the proactive parent alert is also not confirmed in the hook docs.",
+  "source_checks": [
+   {
+    "ref": "https://techcrunch.com/2025/09/29/openai-rolls-out-safety-routing-system-parental-controls-on-chatgpt/",
+    "ok": true,
+    "note": "Fetched (29 Sep 2025). Parents can set quiet hours and switch off voice, memory and image generation; parents are contacted on signs of acute distress after a small trained team reviews. The article speaks of teen accounts, not under-13s."
+   },
+   {
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "ok": true,
+    "note": "Line 164: before_dispatch is a claim hook that handles an inbound message before normal model dispatch."
+   },
+   {
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "ok": true,
+    "note": "Lines 15-18: returning { handled: true, text } sends a final reply with no model call."
+   },
+   {
+    "ref": "docs/plugins/hooks/reference.md:161",
+    "ok": true,
+    "note": "Line 161: message_sending rewrites outbound content or cancels delivery."
+   }
+  ],
+  "corrections": {
+   "readiness": "blocked",
+   "caveats": [
+    "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven. False alarms will annoy; misses matter more.",
+    "OpenAI puts trained human reviewers between the flag and the parent notice; a home system has none.",
+    "This is a heads-up to parents, not a crisis service, and the parents should be told so.",
+    "Not buildable before the kid agent itself, which waits for a local model.",
+    "The quiet-hours half needs no model at all (a `before_dispatch` claim with a fixed reply) and can ship the day the kid agent does; only the safety flag needs the local classifier.",
+    "ChatGPT's controls cover teen accounts; there is no market baseline for under-13 chat alerts to copy."
+   ],
+   "unverified": [
+    "Whether ChatGPT's controls changed after the September 2025 launch report; OpenAI's own page returned 403 in this run.",
+    "How the plugin sends a proactive message to the parents from inside a hook; G009 covers the agent `message` tool and host jobs, and no plugin-side send path was found in the hook docs read."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-14",
+  "verdict": "revise",
+  "reason": "Keep as not recommended; all four sources hold and both call paths do collide with the house rules. The only change: the Emergency Bypass fallback, left unverified, is now confirmed on Apple's support site.",
+  "source_checks": [
+   {
+    "ref": "https://www.trymartin.com/",
+    "ok": true,
+    "note": "Fetched. Heading 'Call Martin.' and a 'Wake Up Calls - An alarm that talks.' link."
+   },
+   {
+    "ref": "docs/plugins/voice-call.md:89",
+    "ok": true,
+    "note": "Lines 88-93: for Twilio, Telnyx and Plivo setup must resolve to a public webhook URL and fails on loopback or private network space. Line 53 adds the from-number requirement; line 33 the package name @openclaw/voice-call."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:22",
+    "ok": true,
+    "note": "Lines 20-25: private Apple APIs, helper injection, reduced SIP debugging protections."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:16",
+    "ok": true,
+    "note": "Line 16: 'Status: experimental, disabled by default.' Lines 32 and 35 confirm full Xcode and an administrator account."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "A public webhook contradicts 'reachable only over Tailscale' and is the same class of exposure as the Gmail Pub/Sub endpoint on the never-list.",
+    "Reducing SIP weakens the one Mac that holds every credential.",
+    "Calls to anyone outside the family break the family-only outbound rule; calls to book something are on the never-list.",
+    "A realtime voice provider would be a new cloud audio path.",
+    "A per-contact Emergency Bypass setting on the parents' phones (Contacts, Edit, Ringtone or Text Tone) lets Happy's texts sound even when other notifications are silenced, which covers the school-closure case."
+   ],
+   "unverified": []
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108127",
+    "title": "If you don't receive Messages notifications on your iPhone or iPad - Apple Support",
+    "anchor": "Emergency Bypass",
+    "supports": "A per-contact setting lets that contact's message sounds come through when other notifications are silenced."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/facetime.md:32",
+    "title": "FaceTime plugin: requirements",
+    "anchor": "Full Xcode installed",
+    "supports": "The FaceTime integration needs a full Xcode install on the gateway Mac."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-15",
+  "verdict": "keep",
+  "reason": "Both sources open and support the claims, and every action named is on the never-list. Stays in the catalog as a not-recommended entry with the stop-short pattern.",
+  "source_checks": [
+   {
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "ok": true,
+    "note": "Fetched. The page names 'OpenTable and Vagaro' for reservations and appointments, grocery orders from Amazon's own stores, food delivery through two delivery services, and navigating the web with a home-services marketplace to arrange a repair."
+   },
+   {
+    "ref": "docs/tools/browser-login.md:12",
+    "ok": true,
+    "note": "Lines 11-12: sign in manually in the host browser's openclaw profile; automated logins often trigger anti-bot defenses and can lock the account."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MKT-16",
+  "verdict": "revise",
+  "reason": "Keep as guidance, not a build; both sources hold. Google's post says the rollout began in the U.S. in English, so 'every Gmail user' is narrowed.",
+  "source_checks": [
+   {
+    "ref": "https://blog.google/products-and-platforms/products/gmail/gmail-gemini",
+    "ok": true,
+    "note": "Fetched (8 Jan 2026). 'AI Overview conversation summaries are rolling out today for everyone at no cost'; Help Me Write and Suggested Replies likewise; inbox questions and Proofread need Google AI Pro or Ultra; AI Inbox goes to trusted testers first. The rollout starts in the U.S. in English."
+   },
+   {
+    "ref": "docs/automation/imap.md:11",
+    "ok": true,
+    "note": "Line 11: the IMAP plugin starts an isolated session per allowed message and does not send email, change flags or expose a public webhook."
+   }
+  ],
+  "corrections": {
+   "description": "Since January 2026 Google has been rolling out AI thread summaries, Help Me Write and Suggested Replies to Gmail users at no cost, starting in the U.S. in English; asking questions across the whole inbox is for paid Google AI plans. So 'summarise this thread' and 'draft a reply' on a parent's own Gmail are already on the phone. This is a reason to keep the personal-inbox features behind the school mailbox, not to pull them forward."
+  },
+  "added_sources": [],
+  "removed_sources": []
+ }
+]

@@ -1,0 +1,310 @@
+[
+ {
+  "id": "F031",
+  "verdict": "edit",
+  "applied": [
+   "special case: planned only in the smallest form the planned cards need. The dose log (CRT-10) and the coverage planner (CRT-11) each need rows that both parents' agents write; the dinner plan (F033) and the form kit (CRT-13) do not",
+   "answer 1: All features (CRT-10 and CRT-11 are now planned, so the database has users)",
+   "S8 (built only for a picked feature that needs it; typed, short inputs instead of a secret detector; no fact_get or fact_set tools)",
+   "S2 (no change-journal table and no copy of anyone's notes in this store)",
+   "S4 and S5 (no notification counters and no table of open requests)",
+   "S10 and S11 (the evening text does not read from it; no renewals or upkeep rows: a repeating date is a calendar event or a reminder)",
+   "S13 (F033 loses its saved week plan, so it keeps no row here)",
+   "S1 (the secret-pattern guard is dropped; this card adds no rule to the house-rules plugin)",
+   "per-card finding: built with its first user, not ahead of it",
+   "per-card finding: typed, short inputs in the tool's own schema replace the secret detector",
+   "per-card finding on CRT-13: its form checklist lives on the child's handbook page (F043), so the row per form is dropped",
+   "card correction kept: a job's tool list uses the names the plugin declares, not the server__tool form",
+   "wording fix 15: the 'who' chip should read adults ('both' meant both parents); that field is outside this row's edits, so it is flagged for the merge step",
+   "sizing: 2.5 h covers the plugin, the file, its tool permissions, the backup check and the typed-input tests; each table and its tools are counted on CRT-10 and CRT-11",
+   "card fact corrected: an in-house plugin is deployed like the weather plugin (the config repo's plugins folder, an explicit load path, a gateway restart), not through the flat-config step, which is for plugins installed with OpenClaw's own install command",
+   "hard-rule note: rows that both parents' agents write step outside 'one data domain per person'; that follows from Tony's pick of the dose log and the coverage planner and is said on the card"
+  ],
+  "reason": "Tony's 'All features' brings in the dose log and the coverage planner, which both need rows that either parent's agent can write and the other can read, so the database is planned in exactly that size: one in-house plugin, one file, one table per feature, and none of the general schedule or fact tools. The dinner plan and the form kit, in their simplified forms, need no table.",
+  "edits": {
+   "name": "Household database: shared rows for the dose log and the coverage planner",
+   "description": "A small database on the Mac mini that both parents' agents read and write, so either parent gets the same answer whoever entered the row. It is built only as far as two planned features need it: one table for the sick-day dose log (CRT-10) and one for the childcare coverage grid (CRT-11). It has no general 'save a fact' tools: reference text both parents look up lives in the family handbook (F043), and each parent's own notes stay with that parent (F041).",
+   "example": "One parent texts Happy what they gave the kindergartner and when. Later the other parent asks 'when was the last dose logged?' and gets the same row, with who logged it. In the same way, one parent texts that a no-school week is covered, and the other parent's 'which weeks are still open?' no longer lists it.",
+   "how": "One in-house tool plugin over Node's built-in `node:sqlite`, with one database file on the Mac mini. It sits in the config repo's `plugins/` folder like the weather plugin: the ordinary deploy copies it and it loads from `plugins.load.paths` after a restart. No general tools: no schedule tools and no `fact_get` or `fact_set`. Each feature adds one table and its own typed tools: the dose log (CRT-10) and the coverage grid (CRT-11). Every input is typed and short in the tool's own schema (a date or time, a whole number, a choice from a fixed list, a label of at most about 40 characters); no separate secret detector. The tools are allowed by name on the two parents' own agents (`tools.alsoAllow` and the sandbox gate `tools.sandbox.tools`) and on no shared agent or mail reader. A scheduled job that reads a table lists the tool by the name the plugin declares. No house-rules rule is added.",
+   "depends_on": [
+    "No other planned card is needed first. It is built in the same plan as its first user, the dose log (CRT-10) or the coverage planner (CRT-11), whichever comes first; the other adds its own table when it is built",
+    "Node's built-in SQLite module on the installed Node, so no new package",
+    "The config repo's plugins folder and the ordinary deploy with a gateway restart, the way the weather plugin is deployed, plus one more path in `plugins.load.paths`"
+   ],
+   "caveats": [
+    "Everything in it is shared between the two adults on purpose: neither table filters by person. That steps outside 'one data domain per person', by Tony's pick of the two features on 12 Oct. Something meant for one parent belongs in that parent's own notes (F041).",
+    "Only two tables are planned. There is no general upkeep or 'when is the filter due?' table: a repeating date is a calendar event or a reminder.",
+    "A later feature that needs rows both parents' agents write adds its own table and typed tools here; it does not start a second store.",
+    "Inputs are short and typed, with no secret detector, so a short secret typed as a label would be stored; the standing instruction never to ask for or reveal passwords, keys or codes is the only guard against that.",
+    "The dose table holds what was given to a child, and that text goes to the cloud model whenever a parent's agent reads it back. Tony picked the dose log knowing this, and its card (CRT-10) carries his confirm step at execution.",
+    "The rows can be read only through Happy: when the Mac mini or the cloud model is down, neither parent can get at them."
+   ],
+   "safety": "Both parents' agents read and write the same rows, so the store is shared between the two adults on purpose. Its tools are allowed by name on those two agents only. The tool's own schema keeps every input short and typed, which leaves a planted instruction little room to persist. No send and no web access is added.",
+   "unverified": [
+    "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done.",
+    "That a tool in this plugin is told which agent called it, so a row can carry who wrote it without asking the model: the installed tool-context type lists the calling agent's id and the sender's id (dist/agent-harness-runtime-BbN1SctJ.d.ts), and the docs show that context reaching a tool built through a factory (plugins/tool-plugins.md:138); not tried on a live turn.",
+    "Which plugin form is used: the card named `defineToolPlugin`, which the installed docs describe as a TypeScript package with a build step (plugins/tool-plugins.md:20), while the one plugin in the config repo is plain JavaScript written with `definePluginEntry` and `api.registerTool`. Settled at execution.",
+    "Where the database file is kept so that the nightly backup includes it and a restore brings it back: not tried.",
+    "That the tools are offered to the two parents' agents and to no other agent or its eval-only copy: the separation check is extended to them at execution. The parents' own eval-only copies are generated with the same tool list as the parents' agents, so what a test run may write into the real file is settled then."
+   ],
+   "effort": "S",
+   "readiness": "build"
+  },
+  "tony_provides": [],
+  "new_risk": "rows both parents' agents write that persist between chats, shared outside one data domain per person; one table holds children's health details",
+  "hours": 2.5,
+  "check_note": "Corrected how the plugin reaches the Mac (copied by the ordinary deploy and loaded from an explicit path, as the weather plugin is, not through the flat-config step), made the 'who wrote the row' open point match the installed type, and said on the card that shared rows step outside one data domain per person by Tony's choice."
+ },
+ {
+  "id": "F041",
+  "verdict": "edit",
+  "applied": [
+   "S1 (no guard of its own: when T6 passes this card adds no rule to the house-rules plugin; the one rule 'notes may be written only inside the notes folder' belongs to the fallback after a failed T6)",
+   "S2 (no journal copy of notes and no undo; 'what did you save about me?' is answered from the parent's own notes)",
+   "S8 (one of the two per-person places for what the family knows; MEMORY.md is left to OpenClaw)",
+   "S12 (no skills-folder write proof)",
+   "wording fix 28 (a deploy does not touch the notes; Jordan stays a non-owner and the design has to pass as she is; the Chinese note is dropped; a neutral example)",
+   "wording fix 16 (the example carries no family fact)",
+   "per-card findings: T6 first, with the sandbox closed to the agent folder; one check that a long chat saves nothing by itself; no tracking of web tool calls; the 'survives a deploy' question removed",
+   "default Tony kept on 12 Oct: no chat excerpts kept overnight, so the session-memory hook stays off",
+   "default Tony kept on 12 Oct: children's health details not stored, so one instruction line says not to save them in notes",
+   "default Tony kept on 12 Oct: Jordan is not a command owner",
+   "planned for both parents: the earlier lines that hung on Tony's yes and on the unanswered questions about Jordan, health details and chat excerpts are removed",
+   "sizing: 4.75 h, the wave definition's figure for notes with T6, both parents and the memory-search canaries; the fallback after a failed T6, about 2.5 h more, is not counted",
+   "finding overturned in the review, so respected: search by meaning and Active Memory stay named on the card as later options that are Tony's call; neither is built here"
+  ],
+  "reason": "The card opened each parent's whole agent folder for writing and then needed its own hook to close it again. The decided form tries the smaller design first (T6): notes in a folder inside the agent's own sandbox, found by keyword search, for both parents, with no guard unless the test shows a need; the journal copy, the web-call tracking and the overnight chat excerpts are out, and the lines that waited on Tony's answers are gone.",
+  "edits": {
+   "name": "Saved notes: 'remember this' goes to that parent's own notes and is found again by keyword",
+   "description": "A parent texts 'remember that...' and their own agent saves the line to that parent's own notes and says what it saved. In a later chat the note is found by searching for its words; it is not in view at the start of a chat, and Happy saves nothing a parent did not ask it to save. Each parent's notes stay with that parent: the other parent's agent cannot find them.",
+   "example": "A parent texts: 'Remember that the library books are due back on the 20th.' A week later, in a new chat, the same parent asks 'when are the library books due?' and Happy finds the note and answers. The other parent's agent cannot find it.",
+   "how": "T6 runs first, on Tony's eval-only copy. Then the generator gives each parent's agent `write` and `edit` (also in the sandbox tool gate), with `apply_patch` denied by name and `read` left denied, plus `memory_search` and `memory_get`, keyword-only (`memory.search.provider: \"none\"`, already set). The sandbox stays closed to the agent folder (`workspaceAccess: \"none\"`), so a note lands in a notes folder inside the agent's own sandbox workspace; that folder is added to that agent's own search paths (`agents.entries.<id>.memory.search.extraPaths`, never the global list). Instructions: save only what the parent asked, in the parent's words; say what was saved; do not save a child's health details. Not built: a read-write workspace, tracking of web tool calls, the session-memory hook, any copy of notes outside the agent, search by meaning. House-rules plugin: no rule when T6 passes. The separation canaries are extended to memory search.",
+   "depends_on": [
+    "A generator change in happy-config: `write`, `edit`, `memory_search` and `memory_get` allowed on each parent's own agent and in its sandbox tool gate, with `apply_patch` denied by name",
+    "The line in each parent's agent instructions that says Happy cannot write files is reworded for notes",
+    "Tony provides at execution: one harmless fact saved from his phone and one from Jordan's phone, for the two-day recall test"
+   ],
+   "caveats": [
+    "A saved note is found only when the agent searches for it: it is not in view at the start of a chat, and a scheduled text or a hand-off to a helper does not know it.",
+    "Notes are found by their words, not their meaning, so a question worded differently from the note may miss it. Search by meaning (an embedding model on the Mac mini, a deliverable of the roadmap's local-models milestone, which Tony has put off) and OpenClaw's Active Memory recall stay later options that are Tony's call; neither is part of this build.",
+    "Notes belong to one parent. A fact both parents should get the same answer to goes into the family file (F042) or the family handbook (F043), both typed by Tony.",
+    "No refusal is built for a 'remember' in a turn that also carried web results. OpenClaw is expected to label such a note untrusted by itself, T6 records what actually happens, and a prompt rule plus a behaviour test are what stand against a planted 'remember this'.",
+    "There is no undo and no copy of note text anywhere else. A parent asks 'what did you save about me?' to read their notes back; the weekly text (G006) only lists which note files changed.",
+    "The design rests on T6, which has not been run, and it has to pass for Jordan as she is, a non-owner. If it fails for her, notes go live for Tony first while a fix is found. If it fails outright, the fallback left is the original design (a read-write agent folder plus one house-rules rule that keeps writes inside the notes folder), which reverses two signed-off settings; Tony says yes or no to it at execution."
+   ],
+   "safety": "Notes stay in the parent's own agent. The write tools reach only that agent's own sandbox folder, so they cannot change its rules file or the rendered family facts; shared agents and mail readers have no memory search. A note is where a planted instruction could persist, so a planted 'remember this' must save nothing in five runs of five.",
+   "unverified": [
+    "T6 has not been run: that `write` and `edit`, with the sandbox closed to the agent folder, can save a note into a folder inside the sandbox workspace; that memory search finds it there through a per-agent extra path; and that it survives a sandbox rebuild and is in the nightly backup.",
+    "Whether a note saved in one of Jordan's turns (she is not the command owner) comes back from memory search like any other note, or is shown to the model with an untrusted label: the installed code records a non-owner's write as untrusted (dist/agent-tools-D5UK6LHM.mjs:496); not seen on a live turn.",
+    "How a note saved in a turn that carried web content is recorded, and whether it is then found only by search: read in the installed docs and code (memory-architecture.md:117 and :215), not tried.",
+    "That a long chat writes no note by itself while the sandbox has no workspace access: concepts/memory.md says the automatic memory flush is skipped then; checked once in T6.",
+    "That the file tools can be split as planned: they are denied as one group today and a deny wins over an allow, so the generator names them one by one; whether `edit` works on a note while `read` stays denied is seen in T6.",
+    "Notes kept outside the agent folder carry the platform's 'untrusted' origin label; T6 has to show that this does not hide them from search.",
+    "For the fallback after a failed T6: whether a plugin's blocking check is given the path of a file write (the file-write turn of T5)."
+   ],
+   "effort": "M",
+   "readiness": "build"
+  },
+  "tony_provides": [
+   "One harmless fact saved from his own phone, and one from Jordan's phone, for the two-day recall test",
+   "If T6 fails at execution: his yes or no on the fallback that reverses two signed-off settings"
+  ],
+  "new_risk": "Happy writes: notes that persist between chats, a place where a planted instruction could stay",
+  "hours": 4.75,
+  "check_note": "Kept the editor's design and hours; the safety line now names the limit that is not a prompt rule (the write tools reach only the agent's own sandbox folder), search by meaning and Active Memory stay as later options because the finding that removed them was overturned, and the fallback after a failed T6 is worded as Tony's decision at execution, not as a condition on the card."
+ },
+ {
+  "id": "F042",
+  "verdict": "edit",
+  "applied": [
+   "answer 4: two children, a third-grader and a kindergartner, in one school district",
+   "deferred: the children's first names, their school years and the school district's name are typed into the family file by Tony at execution",
+   "S8 (facts Tony types, rendered into files the generator already writes: USER.md or a section of AGENTS.md; MEMORY.md left to OpenClaw; no trigger comments)",
+   "wording fix 29 (readiness 'needs a build'; the reply-language and grandparent lines dropped: no second language was stated, so English only)",
+   "wording fix 13 (delete the VOX-06 driving-style line from this card's 'adds' and from the removal reason; that field is outside this row's edits, so it is flagged for the merge step)",
+   "wording fix 16 (the example carries no name, age or made-up family fact)",
+   "per-card findings: the generator must not start writing MEMORY.md; 'ready now' corrected; the second-language half removed",
+   "default Tony kept on 12 Oct: children's health details not stored, so none are typed into the family file",
+   "default Tony kept on 12 Oct: web searches may include the town and the children's ages, never names or school",
+   "the earlier lines that hung on the unanswered questions about the children and about health details are removed",
+   "sizing: 1.5 h (the wave definition counted typed facts at 1.25 h and 3 steps; the canary re-run is added)"
+  ],
+  "reason": "The card said Happy already knew the children's school, routines and a reply language, when the family file held two adults and a home town and the generator rendered no facts. Tony has now given the facts, so the card is one generator step that renders what he types into files the generator already owns; the second-language and grandparent half is out, because no second language was stated.",
+  "edits": {
+   "name": "Family facts from the family file, known to each parent's agent in every chat",
+   "description": "Tony types the family facts he wants Happy to know into the family file: to start with, the two children, their school years and the school district. After the next deploy both parents' agents begin every one-to-one chat already knowing them, so nobody has to explain who 'the third-grader' is. The facts are not rendered into the web helper, the mail readers or any shared agent.",
+   "example": "In a fresh chat a parent texts: 'write a two-line absence note for our third-grader for Friday.' Happy drafts it with the child's first name and the school district, which nobody typed in that chat, and the parent sends it themselves.",
+   "how": "One generator step. New fields in family.json5 hold the facts Tony types; gen-family.mjs renders them through new template placeholders into files it already writes for each parent's own agent: USER.md while they fit under its 4,000-character cap, otherwise a section of AGENTS.md. The generator does not start writing MEMORY.md, which stays with OpenClaw and the eval marker (the deploy script never touches it), and no trigger comments are used. Nothing is rendered into the bootstrap files of the web helper, the mail readers or any shared agent; a scheduled job that needs a fact carries it in its own message. No reply-language line is rendered. No tool, no send path and no house-rules rule is added. Once the web helper (F019) exists, its hand-off canary is run with the real facts present.",
+   "depends_on": [
+    "family.json5 and the gen-family generator in happy-config: new fields, new template placeholders and a few lines in the generator (today it renders four files per person, with the person's name and the home town and no other fact)",
+    "Tony provides at execution: the two children's first names, their school years and the school district's name, entered into the family file and nowhere else, and any routine or standing preference he wants known"
+   ],
+   "caveats": [
+    "USER.md has a 4,000-character cap that everything rendered into it shares, so the list has to stay short; what does not fit goes into a section of AGENTS.md and takes prompt space in every session of that parent's agent.",
+    "Rendered facts change only when Tony edits the family file and redeploys; a parent cannot change one by text. What a parent tells Happy in chat goes to that parent's own saved notes (F041).",
+    "The typed facts, the children's names and school among them, are sent to the cloud model at the start of every chat of each parent's own agent.",
+    "Children's health details are not typed into the family file: that is the default Tony kept, and the dose log (CRT-10) is the one planned feature that holds any.",
+    "Each parent's agent can search the web today. The default Tony kept (a search may use the town and the children's ages, never their names or the school) is a prompt rule, not an enforced limit.",
+    "Whether a scheduled run loads the rendered file has not been tried on a live job, so a scheduled text that needs a fact carries it in its own message."
+   ],
+   "safety": "The rendered files go only into the two parents' own agents, never into the web helper, a mail reader or a shared agent. They hold the children's names and school and go to the cloud model with every chat; children's health details stay out. No tool or send path is added, and the hand-off canary is re-run with real facts present.",
+   "unverified": [
+    "Whether a scheduled run loads USER.md was not tried on a live job: the installed code lists it among the files a scheduled run gets and leaves MEMORY.md out (dist/workspace-DmDIneFk.mjs:742), while the scheduler guide only says a job does not infer a reply language (cron-jobs/delivery.md:140).",
+    "Whether the facts Tony wants fit under USER.md's 4,000-character cap is unknown until he types them, and the overflow route into a section of AGENTS.md has not been tried.",
+    "That a parent's agent keeps a child's name and the school out of a web search and out of a task for the web helper is a behaviour, tested by the hand-off canary; it has never been run with real facts present."
+   ],
+   "effort": "S",
+   "readiness": "build"
+  },
+  "tony_provides": [
+   "The two children's first names, their school years and the school district's name, entered into the family file and nowhere else",
+   "Any routine or standing preference of his or Jordan's that he wants Happy to know in every chat"
+  ],
+  "new_risk": "the children's names, school years and school district sent to the cloud model with every chat of a parent's agent",
+  "hours": 1.5,
+  "check_note": "Kept the editor's row; the text no longer calls the mail readers shared agents, the generator line says what it renders today (the name and the home town), and the 'keeps off MEMORY.md' rule moved from the list of needs into the build note, where it is a rule and not a dependency."
+ },
+ {
+  "id": "F043",
+  "verdict": "edit",
+  "applied": [
+   "answer 1: All features (the shared family handbook is now planned; picking it also answers the shared-place question: yes, for household facts)",
+   "S8 (a plain handbook folder only; the wiki step is not built)",
+   "per-card finding: step 1 only. The memory-wiki plugin and its four tools, the data-plate photo route and manuals by link are out, so F002, F019 and F031 leave its list of needs",
+   "per-card finding: the search of a shared folder from a sandboxed agent is tried first (the last part of T6)",
+   "wording fix 30 (readiness 'needs a build' until that test passes; the sitter and pet lines removed)",
+   "wording fix 16 (the example is marked as made up)",
+   "S11 (there is no renewals table to point at: a date that needs a reminder is a calendar event or a reminder)",
+   "S2 (no weekly-review row for handbook saves, because no agent writes pages)",
+   "S1 (the card never had a guard and adds no rule to the house-rules plugin)",
+   "the default on the shared-place question, which Tony's pick of the handbook left in place: household facts only; each parent's own notes, and any copy of them, stay out",
+   "deferred: the first pages, typed by Tony at execution",
+   "nothing waits: the line that hung on the unanswered shared-place question is removed, and the untried search is a test at execution with its fallback named",
+   "sizing: 1.5 h, the wave definition's figure for the plain-folder step; about half an hour more if this card is built before saved notes and has to grant the two search tools itself"
+  ],
+  "reason": "Tony picked the shared family handbook on 12 Oct, so it is planned in the form the review described: a plain folder of pages Tony types, searched by both parents' agents, with no wiki plugin, no saving a page from a photo and no agent that can write to it.",
+  "edits": {
+   "name": "Family handbook: shared pages Tony types that both parents' agents can search",
+   "description": "One shared family handbook that both parents' agents can search: plain pages Tony types, such as appliance details and who services what, plus the reference pages other planned cards read. Either parent asks and gets the same stored answer. Happy does not write or change pages; a parent who wants something added tells Tony.",
+   "example": "Made up to show the feature: suppose Tony has typed a page listing appliance model numbers and repair contacts. Jordan asks 'who do we call about the dishwasher?' and gets the contact from that page; Tony would get the same answer.",
+   "how": "One shared Markdown folder on the Mac mini, outside both parents' workspaces. Tony types the pages in the config repo, and the ordinary deploy, which already copies Markdown files under its shared folder, puts them in place. The generator adds the folder to each parent's own agent (`agents.entries.<id>.memory.search.extraPaths`, never the global list); the agents find pages with `memory_search` and `memory_get`, keyword-only (`memory.search.provider: \"none\"`, already set). No agent gets a tool that writes to the folder, and shared agents and the mail readers keep memory search off. Not built: the memory-wiki plugin and its four tools, saving a page from a photo, manuals by link. The shared-folder part of T6 runs first, on an eval-only copy. No house-rules rule is needed.",
+   "depends_on": [
+    "F041 saved notes, which grants the two search tools (`memory_search` and `memory_get`, keyword-only) to each parent's agent; a plan that builds this card before F041 grants them here, about half an hour more",
+    "Tony provides at execution: the first pages, typed by him (which page comes first is his choice)"
+   ],
+   "caveats": [
+    "Only Tony adds or changes a page, by typing or pasting it and deploying; that includes a page another planned card produces, such as the emergency page of CRT-13. A parent cannot save a page by text or by sending a photo.",
+    "Pages are found by their words when the agent searches; they are not in view at the start of a chat, and a scheduled text or a hand-off to a helper does not know them.",
+    "The folder is shared on purpose, which steps outside 'one data domain per person' by Tony's choice of 12 Oct. It holds household reference only: no copy of either parent's own notes, and by the default he kept, no child's health details.",
+    "The text of a page goes to the cloud model whenever a search returns it.",
+    "A date that needs a reminder does not belong here: it is a calendar event or a reminder.",
+    "The card rests on a search that has not been tried. If a sandboxed agent cannot find pages in a shared folder, the few facts go into the rendered family facts (F042) instead of a searched folder."
+   ],
+   "safety": "Shared between the two adults on purpose, for household reference only. No agent can write a page: only Tony does, through the reviewed deploy, so a planted instruction cannot be saved into it from a chat. The folder is added to the two parents' agents alone; shared agents and mail readers keep memory search off. No send path is added.",
+   "unverified": [
+    "The shared-folder part of T6: that a search from a sandboxed parent's agent finds a page kept in a folder outside both workspaces, through a per-agent extra path. Not tried.",
+    "The installed code labels files indexed from outside an agent's workspace as untrusted origin (dist/memory-path-provenance-BiFQlpIk.mjs:32); whether that hides handbook pages or brings them back with a warning label was not tested.",
+    "That the same folder listed as an extra path on two agents is indexed for both and for no other agent: the multi-agent page describes a shared extra-path folder for reference material; not tried here.",
+    "That the deploy's existing copy step for shared Markdown files is a workable home for the pages: read in the deploy script, not tried with a handbook folder."
+   ],
+   "effort": "S",
+   "readiness": "build"
+  },
+  "tony_provides": [
+   "The first handbook pages, typed by him; which page comes first is his choice, and he adds a line later when the same question comes up twice"
+  ],
+  "new_risk": "a shared place both parents' agents read, outside one data domain per person; page text goes to the cloud model",
+  "hours": 1.5,
+  "check_note": "Kept the editor's row; named the per-agent setting in full, worded the search-tools need so it is not a condition, and folded the working rule about later pages into the one line of what Tony supplies."
+ },
+ {
+  "id": "AUT-06",
+  "verdict": "park",
+  "applied": [
+   "fact sheet, 12 Oct: stays parked; nothing is built until a parent names a first routine",
+   "S12 (no skills pipeline yet: a routine is a few reviewed lines in the agent's instruction file, with nothing new granted)",
+   "wording fix 31 (the practice quiz is one example with no fixed format; nobody has asked for a quiz)",
+   "per-card finding: the re-quiz reminder and the read-aloud spelling leg are dropped, so reminders and voice leave its list of needs"
+  ],
+  "reason": "S12 defers the skills pipeline (no skills step in the deploy, no file-read grant on the agents that hold private notes, no skills-folder write proof, no practice quiz as a fixed first deliverable), and no parent has described a routine, so there is nothing to build. Skills inside each agent stay the roadmap's long-term home for know-how: this is a deferral, not a reversal.",
+  "park_note": "Teaching Happy how the family does something it does often: a parent describes the routine once and Tony reviews it. It comes back when either parent names a first routine, and it is then a few reviewed lines in that parent's agent instruction file, added in an ordinary deploy with nothing new granted.",
+  "tony_provides": [],
+  "new_risk": "none",
+  "hours": 0,
+  "check_note": "Verdict and note kept; emptied the list of what Tony supplies, because nothing is executed while the card is parked and the note already says that a routine named by either parent brings it back."
+ },
+ {
+  "id": "G015",
+  "verdict": "edit",
+  "applied": [
+   "S6 (one weekday 07:00 text per connected inbox, school lines first, Gmail read tools only: no afternoon school text, no sender filter and no check on it, no tax-form job, no extra model tool, no links; medical mail by sender and subject as one prompt line)",
+   "S9 and S4 (the job comes from the short jobs script: the owner's handle read from the family file, a time limit and a tool list, its rules in its own message; it starts with its own label and stays silent when there is nothing to report)",
+   "S1 (no coded check of its own: this card adds the account-connector rule when the house-rules plugin is first created; until then tool permissions, an explicit deny and two tests; mail does not wait)",
+   "S5 (each reader texts only its own owner; the two parents' texts are two jobs)",
+   "S10 (no hand-off of mail dates from a reader into an evening text)",
+   "S3 (no watcher: an alert or recall email a parent has signed up for simply shows up in the text)",
+   "S15 (the small extras on this card, the tax-form job and the extra model tool, are gone)",
+   "Tony, 12 Oct: real mail may go to the cloud model before OpenAI answers on Zero Data Retention",
+   "answer 5: Jordan has agreed to connect her own Gmail and gets the 07:00 text",
+   "answer 7a: mail is read with one firewall rule before the full firewall and the outbound proxy exist",
+   "default Tony kept on 12 Oct: one mail text at 07:00",
+   "the assistant's reading, which Tony did not contradict: 'did I get an email about X?' is built with mail, live after its own two tests",
+   "wording fix 32 (the two lines about the cloud model now agree: decided; the seven-day token point is marked untested)",
+   "wording fix 17, applied by analogy: each parent who has connected their Gmail gets the text",
+   "deferred: the Google project and consent screen, both parents' approvals on Google's screen, a test mailbox, a capped model key per reader, the school senders' addresses",
+   "the earlier lines that hung on unanswered questions (the hour, Jordan, the firewall order) and on a separate yes for the lookup are removed",
+   "sizing: 14.25 h from the wave definition's figures: Google sign-in set-up and day one of T1 3.25, the one-rule firewall 2, the reader proven on a test copy 5 (the test mailbox included, the coded check left out), the lookup with T4 and the seeded mail 2.25, Jordan's inbox 1.75. Not counted here, to avoid counting twice: the 07:00 job itself with its planted-mail runs and first digests (the wave definition's 'morning text' phase, 2.75 h), which the school-lines row F051 carries in its 3 h; and the account-connector rule, which the wave definition counts with the first creation of the house-rules plugin (about 1.5 h, on whichever card first needs a rule). Fixed wait: the day-8 half of T1"
+  ],
+  "reason": "The card is rewritten to the form S6, S9 and S1 approve and to Tony's answers of 12 Oct: one weekday 07:00 text per parent with the school lines first, Gmail read tools only, for both parents now that Jordan has agreed, and 'did I get an email about X?' built with it after its own tests. The second school text, the sender filter and its check, the Saturday tax-form job and the extra model tool are out, and the coded check on who may call the connector becomes a rule this card adds when the house-rules plugin is first created.",
+  "edits": {
+   "name": "Read-only Gmail for each parent: a 07:00 weekday mail text and 'did I get an email about X?'",
+   "description": "Each parent approves read-only access to their own Gmail once, on Google's own screen; the token stays on the Mac mini, Happy never holds a password, and nothing in Gmail is changed, labelled, drafted or sent. Each weekday at 07:00 Eastern a locked-down mail reader texts its owner a short list of what needs a reply, has a deadline or involves money, with the school lines first and no links. A parent can also ask 'did I get an email about X?' and get the sender, the date and the gist from their own inbox.",
+   "example": "07:00, text to Tony: 'Mail. School: a form for the third-grader is due back on Friday 16 October. Needs you: the plumber asks you to confirm Thursday's visit by tomorrow; a bill is due on Tuesday 20 October.' Later Jordan texts her own Happy 'did I get an email about class photo day?' and gets the sender, the date and one line of gist from her own inbox.",
+   "how": "Connector: `gog mcp`, gog's own MCP server, as one host-side stdio entry under `mcp.servers` per parent, started with only that parent's token and narrowed with `--allow-tool` to the Gmail read tools; a read-only token each from `gog auth add` (`--services` Gmail only, `--gmail-scope readonly`). Reader: one generated `<p>-mail` agent per parent: `profile: \"minimal\"`, only `<p>-gmail__*` allowed (also in `tools.sandbox.tools`) and denied by name elsewhere; memory search off; one cloud model, storage off, no fallback. Firewall: one rule, the connector reaches Google only. Text: one weekday 07:00 Eastern job per reader from the jobs script (G003), Gmail read tools only, delivered to its owner: own label, school lines first (F051), no links, medical mail by sender and subject only, silent on an empty morning. Lookup: `<p>-main` hands a mail question to its own `<p>-mail` through `subagents.allowAgents`, with a time limit. House rules: adds the account-connector rule when that plugin is first created.",
+   "depends_on": [
+    "G003 in its small form: the three scheduler switches and the short jobs script, which creates each 07:00 job with its owner's handle read from the family file. The job is made by that script, not by the scheduling tool, so Jordan's copy needs no command-owner right",
+    "gog installed at a pinned version, with its read-only, service and tool-filter options confirmed on the installed program",
+    "A Google Cloud project, sign-in client and consent screen published to In production: Tony sets these up by hand at execution",
+    "Each parent's own approval of read-only Gmail on Google's screen: Tony first, then Jordan, who has agreed",
+    "One firewall rule: the mail connector may reach Google and nothing else. Tony accepted on 12 Oct that mail is read with this one rule before the full firewall and the outbound proxy exist",
+    "Tony provides at execution: a second Google account used only as a test mailbox for planted mail, and a capped model key for each mail reader",
+    "Tony provides at execution: the school senders' addresses, used as a hint in the job's message for the school lines (F051), not as a filter",
+    "The Zero Data Retention application to OpenAI filed and its date written down; mail does not wait for the answer (Tony, 12 Oct)"
+   ],
+   "caveats": [
+    "The read-only grant lets the connector read every message in the account. The school lines are picked out by the model, with no sender filter and no check, so it may miss a school mail or list one that is not; and mail that arrives during the day waits for the next morning's text.",
+    "Mail text goes to the cloud model on Tony's go-ahead of 12 Oct, and is read before the full firewall and the outbound proxy exist. Until OpenAI approves Zero Data Retention its abuse-monitoring log can keep that text for up to 30 days. Both points depart from the roadmap's rules for mail readers, by his choice.",
+    "Nothing about the connector has been tried on this Mac: gog is not installed, so its flags come from upstream docs, and whether a token from the published sign-in app outlives seven days on a personal account is test T1. If the day-8 search fails, the choice is a weekly sign-in per parent or a different connector.",
+    "'No links' and 'sender and subject only for medical mail' are instructions to the reader, not enforced limits. What limits harm is that the reader holds only Gmail read tools and its one output is the scheduled text to its owner.",
+    "The lookup goes one step beyond the roadmap's mail design: its answer comes back into the parent's own agent, which holds that parent's chats, can search the web and will later hand tasks to the web helper. Only a prompt rule and a seeded-mail test stand between them, so it goes live in its own step and can be switched off without touching the morning text.",
+    "Google's Gemini app already answers questions from a person's own Gmail and lists a daily digest among its scheduled actions; Happy adds only asking, and being told, in the iMessage thread."
+   ],
+   "safety": "Each reader holds private mail and reads outsiders' text, so it has no way out: only Gmail read tools, and one output, the scheduled text, which the jobs script addresses from the family file. One reader, connector and token per parent, held apart by tool permissions, an explicit deny and two tests until the house-rules plugin exists. The lookup is the weaker half.",
+   "unverified": [
+    "gog is not installed on this Mac; its flags (`--gmail-scope readonly` and `--services` on `gog auth add`, `--allow-tool` on `gog mcp`) come from the upstream docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the installed version.",
+    "T1: that publishing the self-made Google sign-in app to In production keeps a read-only Gmail token alive past seven days on a personal, unverified app. One search by hand on day 1 and again on day 8 or later, before the rest is built on the token; Google's scope page marks gmail.readonly as a Restricted scope.",
+    "Whether each adult's token can sit in a folder of its own under the happy user: upstream says tokens use the platform keyring by default with a file backend for headless hosts; splitting them with a per-adult GOG_HOME is an inference from the paths doc.",
+    "T2: that the minimal tool profile plus a per-agent allow shows each reader exactly one account server and shows it to no other agent; the roadmap lists this as not yet confirmed on this version. The 'read the other parent's mail' canary is run both ways.",
+    "T5, the connector turn: whether a plugin's blocking check is called for connector tools at all. The docs say 'every tool call in the run' (plugins/hooks/tool-policy.md:222) but no sentence names MCP tools. It decides whether the account-connector rule can be written when the house-rules plugin is first created.",
+    "Whether a parent's own agent can see or quote the 07:00 text when the parent replies to it: checked at go-live. If it can, mail text reaches that agent even with the lookup switched off, and Tony signs that as the same departure from the roadmap as the lookup.",
+    "For the lookup, T4: that a hand-off from the parent's agent to its own mail reader returns the answer in the same chat while agents cannot see each other's sessions.",
+    "For the lookup, the seeded mail: a planted mail that tells the reader to make the parent's agent search for, save or pass on something must cause no tool call on the parent's agent in three runs, and the other parent's agent must be refused the reader. If either lookup test fails, the lookup stays off and the morning text is unaffected.",
+    "Whether this OpenAI account will be approved for Zero Data Retention; until then the 30-day abuse-monitoring log applies to mail text sent to the model. The per-person provider setting that sends store false was verified in M1 and not re-read here."
+   ],
+   "effort": "L",
+   "readiness": "build"
+  },
+  "tony_provides": [
+   "The Google Cloud project, sign-in client and consent screen, set up and published by him in a browser",
+   "His own approval of read-only Gmail on Google's screen, and Jordan's approval on hers",
+   "A second Google account used only as a test mailbox for planted mail",
+   "A capped model key for each mail reader",
+   "The firewall's system approval at the Mac",
+   "The Zero Data Retention application to OpenAI, filed, with its date",
+   "The school senders' addresses, as a hint for the school lines (F051)"
+  ],
+  "new_risk": "private mail read by a reader agent on the cloud model; Google sign-in tokens kept on the Mac; mail answers entering a parent's own agent through the lookup; Happy's first scheduled text",
+  "hours": 14.25,
+  "check_note": "Kept the editor's design and hours; the safety line now says what fixes the text's recipient (the jobs script, from the family file), the sizing note points to where the account-connector rule is counted instead of giving a new figure, and the reply check is worded to fit a plan in which the lookup is built."
+ }
+]

@@ -1,0 +1,1631 @@
+[
+ {
+  "id": "F002",
+  "origin": "9 Oct",
+  "name": "Photos and PDFs sent to Happy are read and answered (attachment intake switched on)",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it. Today a message that is only an attachment is dropped without a reply, so the first step is switching attachment intake on.",
+  "example": "",
+  "how": "Set channels.imessage.includeAttachments: true; Basic mode already carries media, the default attachment root covers the happy user, and the inbound caps are 10 MB for an image and 20 MB for audio. Images then pass natively to gpt-6-sol; attached PDFs arrive as extracted text blocks; the optional pdf tool (group:media) adds page selection via local PDFium, 10 MB and 20 pages by default.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "S",
+  "caveats": [
+   "The same switch also lets voice memos and video in. Audio auto-detection tries a configured provider key before any local binary, and the documented OpenAI default for that is a cloud transcription model, so a voice memo could be sent to a cloud transcription service: set tools.media.audio.enabled: false until local transcription (F003) is in place. The docs also say attachments are still passed to the model when understanding is disabled, so check once on a live turn what a voice memo turns into. Whether the family's custom provider ids count as such a key is undocumented.",
+   "Happy cannot watch video on this provider set: the bundled video-understanding providers are Google, Qwen and Moonshot and none is configured. Add a line to AGENTS.md so Happy says so and asks for a photo or a few screenshots; a clip's sound track could later reuse the local transcription path from F003.",
+   "store:false covers less than it reads: OpenAI still keeps abuse-monitoring logs, which can include prompt and response content, for up to 30 days unless the organisation has Zero Data Retention, so family photos sent to the model fall under that."
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' says view_image is already granted and sets agents.defaults.pdfModel to luna. The minimal profile contains only session_status and gateway (tool-policy.md:36), and pdfModel is an agents.defaults key that is unset by default (pdf.md:124). The Markdown already drops both."
+  ],
+  "unverified": [
+   "Reading accuracy on blurry phone photos and scanned image-only PDFs was not measured; pages with under 200 characters of text are rendered to images for the vision model (pdf.md:93).",
+   "Whether PDF links, as opposed to attachments, should be readable is left open; the pdf tool rejects remote URLs when it runs sandboxed (pdf.md:68).",
+   "That the gateway process under the happy account already has Full Disk Access to the Messages attachments folder comes from the 9 Oct notes and was not re-checked.",
+   "Whether OpenClaw treats the per-person custom provider ids exactly like the stock OpenAI provider for image input was not tested live (the config repo does declare image input for both models)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:92",
+    "title": "PDF tool",
+    "anchor": "document-extract",
+    "supports": "For providers other than Anthropic and Google the pdf tool extracts text and page images locally with the bundled document-extract plugin (clawpdf, PDFium).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, OpenClaw hands it the original image instead of a text summary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:92",
+    "title": "Configuration — tool policy",
+    "anchor": "group:media",
+    "supports": "The pdf tool belongs to group:media, so under the minimal profile it must be allowed explicitly and any group deny removes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "title": "GPT-6 Sol model reference (OpenAI API docs)",
+    "anchor": "gpt-6-sol",
+    "supports": "OpenAI lists text and image as this model's input modalities and text as its only output; audio input is not listed.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From F001 (Inbound iMessage attachments (photos, PDFs, voice memos)): F002's edit in this review already carries the includeAttachments switch, the size caps, F001's two unverified points and the OpenAI retention caveat. Still to move across: F001's four sources (media.md:17, private-api.md:84, media-understanding.md:63 and the OpenAI data-controls page).",
+   "From CRT-15 (Video clips sent to Happy): F002's edit in this review already adds the caveat: videos cannot be watched on this provider set, so Happy says so and asks for a photo or a few screenshots; a clip's sound track could later reuse F003's local transcription. Nothing else needs to move."
+  ],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, caveats, unverified. Kept, and widened to absorb F001 (the attachment switch it cannot work without) and the one usable line of CRT-15 (ask for a photo when a video arrives), so 'send Happy a photo or a PDF' is one item built in one go.",
+   "r1: kept; credible mention: Media understanding"
+  ],
+  "demand": {
+   "ref": "docs/nodes/media-understanding.md:10",
+   "title": "Media understanding",
+   "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step and says the original media is still handed to the model."
+  }
+ },
+ {
+  "id": "F003",
+  "origin": "9 Oct",
+  "name": "Voice memos in, transcribed locally",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "A parent sends a voice memo instead of typing; the Mac mini transcribes it locally, echoes the text back and answers. The speech-to-text step runs on the Mac mini; that the audio file itself is also kept away from the cloud model still has to be confirmed on a live turn.",
+  "example": "",
+  "how": "Explicit tools.media.models CLI entry (whisper-cli, capabilities audio, {{AttachmentPath}}) plus echoTranscript; needs brew whisper.cpp, ffmpeg and a GGML model file; OpenClaw converts to WAV itself.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Markdown pairs a whisper-cpp install with audio.preferredModel: \"cli:whisper\". The matcher compares that value with cli: plus the entry's exact command string (dist/resolve-KJuMET3H.mjs:148), so for whisper-cpp it must be cli:whisper-cli, or cli: plus the full path used in the entry; cli:whisper only matches the Python whisper CLI.",
+   "The Homebrew formula is now named whisper.cpp (formerly whisper-cpp) and its page says GGML model files are not downloaded by default. The 9 Oct note about a model that downloads automatically describes the Python whisper CLI (media-understanding.md:168), not whisper-cli.",
+   "ffmpeg is a hard requirement the Markdown leaves out: upstream whisper-cli reads only 16-bit WAV (github.com/ggml-org/whisper.cpp README), OpenClaw shells out to ffmpeg for that conversion (dist/ffmpeg-exec-VIr-PIWC.mjs:25 prints the brew install hint), and the formula does not pull ffmpeg in."
+  ],
+  "unverified": [
+   "The container format of iMessage voice memos, and whether ffmpeg decodes it cleanly, were not tested.",
+   "Transcription speed on the M5 Pro and accuracy for Chinese or mixed-language speech were not measured.",
+   "Whether the per-person custom provider ids count as OpenAI audio auth in auto-detection is undocumented; the explicit CLI entry sidesteps the question.",
+   "That only the transcript reaches the cloud model: the media docs say the original attachment is still passed to the model, and the model's listed inputs are text and image, so the audio file should be left out, but this was not checked on a live turn."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "In auto-detection a configured provider API key is tried before any local speech binary, which is why the local CLI has to be listed explicitly to keep audio on the Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/runner.entries-Du3EDemB.mjs:338",
+    "title": "OpenClaw media-understanding CLI runner (bundled source)",
+    "anchor": "whisper-cli",
+    "supports": "For whisper-cli the runner first converts any non-WAV attachment to 16 kHz mono WAV with ffmpeg, so ffmpeg must be present on the host.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://formulae.brew.sh/formula/whisper.cpp",
+    "title": "Homebrew Formulae: whisper.cpp",
+    "anchor": "GGML model files",
+    "supports": "The Homebrew formula (formerly whisper-cpp) installs whisper-cli but ships no model files and does not list ffmpeg as a dependency; both must be added separately.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": [
+   "r1: edited depends_on, unverified, description. Kept; three small corrections. The promise that only the transcript reaches the cloud model has not been checked on a live turn, so the description no longer states it as fact, and the dependency on the attachment switch (now part of F002) was not recorded.",
+   "r1: kept; credible mention: Audio and voice notes"
+  ],
+  "demand": {
+   "ref": "docs/nodes/audio.md:2",
+   "title": "Audio and voice notes",
+   "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply as a supported flow, with local command-line transcribers among the options."
+  },
+  "depends_on": [
+   "F002 (attachment intake switched on; formerly F001)",
+   "whisper.cpp, ffmpeg and a GGML model file installed on the Mac mini"
+  ]
+ },
+ {
+  "id": "VOX-04",
+  "name": "Spoken replies in a local voice (macOS say first, a neural voice later, cloud speech switched off)",
+  "tier": 1,
+  "cluster": "Text to speech",
+  "description": "On request, or after a voice memo, Happy's reply also arrives as an audio file to tap and play, synthesized entirely on the Mac mini: first with the built-in macOS `say` voice, which needs no install, later with a natural neural voice. Read-aloud answers, briefs and later any kids' content then never touch a cloud TTS provider, but only once the default-on Microsoft online voice is disabled in config. The same local engine can later serve Talk mode, which has its own speech setting.",
+  "example": "Parent texts: read me today's brief. Or sends `/tts latest` after a long answer and gets an audio file back in iMessage.",
+  "how": "Gateway `tts` block. Step 1, no install: provider `tts-local-cli` running the macOS `say` command (WAV file, offline), with `tts.auto: \"inbound\"` per agent so a voice memo gets a voice answer, and `/tts latest` or `/tts audio` on demand. Step 2, a natural voice, one of three documented routes. Option A: Speech Swift's local server on loopback (`brew install speech`, `speech-server --port 8080`) with the `openai` speech provider pointed at the loopback base URL, `model` tts-1 (which selects Kokoro) and `responseFormat` wav. Option B: `tts-local-cli` running the `speech` command. Option C: a Piper voice through sherpa-onnx; the bundled sherpa-onnx-tts skill runs a local binary from a shell, which needs an exec tool no agent here has, so in practice point `tts-local-cli` at that binary. In every step set `tts.providers.microsoft.enabled: false`, so the default-on Microsoft online provider cannot serve as a fallback when the local engine fails. Per-agent control through `agents.entries.<id>.tts` (off for research and inbox). iMessage gets a plain audio attachment, not a voice bubble. ffmpeg on the host for conversions.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F003 for the voice-memo round trip (tts.auto inbound)",
+   "Homebrew installs done from the admin account (speech, ffmpeg), for the neural voice only",
+   "decision: which local engine"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+   "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+   "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+   "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+   "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio.",
+   "Local-only is not the default. The keyless Microsoft provider is enabled by default, and the docs say other configured providers act as fallbacks, so a stopped local server could end in a cloud call unless Microsoft is disabled.",
+   "`/tts provider <id>` is open to any authorized sender and writes one preference file on the gateway host, so a single text can move speech to another provider for everyone. Having no cloud provider configured is the control; a prompt rule is not.",
+   "Option A adds a third-party Homebrew package and a long-running loopback server under the happy user, plus a model download: an install, a launch agent, a firewall rule and a one-time egress exception.",
+   "The loopback route needs Speech Swift v0.0.23 or later. It is a 0.0.x project, so pin the version and expect rough edges; the server also needs its own launchd job to stay up.",
+   "None of `speech`, `speech-server` or `ffmpeg` is installed on this Mac today.",
+   "iMessage outbound media is capped by `channels.imessage.mediaMaxMb` (default 16 MB), which bounds the length of a WAV reply.",
+   "In the car the phone already does the speaking: Siri announces Happy's text replies (VOX-06), so no audio file is needed there."
+  ],
+  "safety": "Speech synthesis is an output transformation on the gateway host and adds no new way for an agent to send data out. It is local-only, and so usable for kids' content later, only after the cloud speech providers are disabled in config and blocked at the proxy; the default provider chain and the provider slash command would otherwise allow a cloud voice. Long replies pass through a summary model before synthesis, which must be local or off for kids. Keep provider switching by directive off (VOX-03).",
+  "unverified": [
+   "Kokoro or Piper voice quality and speed on this Mac.",
+   "Whether pointing `tts.providers.openai` at loopback has any side effect on the earlier decision not to add a catalog openai model provider (it is a different config block).",
+   "Whether scheduled announce deliveries (briefs) pass through Auto-TTS or only interactive replies do.",
+   "Which hosts the Speech Swift package contacts to download its models.",
+   "Whether a failed local synthesis actually falls through to the Microsoft online provider when only one provider block is written. The docs say other configured providers are fallbacks and that Microsoft is enabled by default; this was not tested.",
+   "That the documented say preset writes a valid WAV on macOS 27 without extra data-format flags was not run.",
+   "How Messages on iPhone presents a WAV attachment (inline player or plain file) was not tested.",
+   "The 1,500-character summarise-or-truncate threshold is documented (tts/commands.md:104) but its effect on long replies here was not tried."
+  ],
+  "overlaps_existing": [
+   "F004",
+   "F074"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:297",
+    "title": "Text-to-speech configuration",
+    "anchor": "Speech Swift",
+    "supports": "OpenClaw documents Speech Swift and speech-core as local speech engines for macOS, Linux and Windows.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/quickstart.md:44",
+    "title": "Text-to-speech quickstart",
+    "anchor": "explicit-intent only",
+    "supports": "The tts agent tool stays silent unless the user asks for audio or Auto-TTS is enabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts.md:12",
+    "title": "Text-to-speech",
+    "anchor": "audio attachment",
+    "supports": "Only four channels get native voice messages; every other channel, including iMessage, receives an audio attachment.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:49",
+    "title": "iMessage rich messages",
+    "anchor": "asVoice",
+    "supports": "Sending a file as a voice message is part of the private-API action list.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:11",
+    "title": "iMessage private API",
+    "anchor": "SIP off",
+    "supports": "The private-API action set requires disabling SIP, which this install does not do.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:84",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "/tts latest",
+    "supports": "A slash command re-sends the latest assistant reply as audio once.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:28",
+    "title": "Text-to-speech field reference",
+    "anchor": "inbound",
+    "supports": "The inbound auto mode sends audio only after an inbound voice message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sherpa-onnx-tts/SKILL.md:3",
+    "title": "sherpa-onnx-tts skill",
+    "anchor": "offline, no cloud",
+    "supports": "A bundled skill provides offline local TTS through sherpa-onnx.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sag/SKILL.md:3",
+    "title": "sag skill",
+    "anchor": "ElevenLabs text-to-speech",
+    "supports": "The sag skill is a front end to the ElevenLabs cloud service.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/speech-provider-UuMpLqsM.mjs:150",
+    "title": "OpenClaw source: Microsoft speech provider",
+    "anchor": "isConfigured",
+    "supports": "The Microsoft provider reports itself as configured whenever its enabled flag is not set to false.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:85",
+    "title": "Text-to-speech output",
+    "anchor": "Summary on",
+    "supports": "Replies over the length limit are summarized by a model before synthesis, or truncated when summaries are off or unavailable.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:25",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.mediaMaxMb",
+    "supports": "Outbound iMessage media has a size cap that defaults to 16 MB.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [
+   "From F004 (Spoken replies (TTS) and voice round trip): VOX-04's edit in this review already adds the say first step, the voice-memo round trip (tts.auto inbound), F004's three unverified points and the note that the phone already reads texts aloud in the car. Still to move across: F004's sources (field-reference.md:27, configuration.md:141, output.md:46 and the Apple CarPlay page)."
+  ],
+  "review_notes": [
+   "The local engine is sound, but 'never touches a cloud TTS provider' is not true by default: the keyless Microsoft online voice is enabled and counts as a configured fallback, and any authorized sender can switch provider with a slash command. The neural-engine route is also an install and a service, not a small config change.",
+   "All 13 sources hold. One safety gap: the keyless Microsoft speech provider is an online service that is enabled by default, and configured providers act as fallbacks, so the promise that no text leaves the Mac only holds once `tts.providers.microsoft.enabled` is false. The sherpa-onnx option also needs rewording, since running it as a skill needs an exec tool no agent has."
+  ],
+  "reviewed_by": 2,
+  "wave": "C",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, depends_on, caveats, unverified. Kept, and widened to absorb F004, which was the same feature with the built-in voice; the roadmap itself asks for an audio reply from a local speech command when the question was a voice memo. Two overclaims are softened: replies stay local only after the default-on Microsoft online voice is disabled, and Talk mode has its own speech setting, so this is not automatically the voice of every other voice feature.",
+   "r1: kept; credible mention: Text-to-speech configuration"
+  ],
+  "demand": {
+   "ref": "docs/tools/tts/configuration.md:295",
+   "title": "Text-to-speech configuration",
+   "supports": "OpenClaw documents local speech engines on a Mac as a supported way to turn replies into audio."
+  }
+ },
+ {
+  "id": "VOX-06",
+  "name": "In the car: Siri plus iMessage, with a driving reply style",
+  "tier": 1,
+  "cluster": "Voice workflows",
+  "description": "While driving, a parent talks to Happy through what the car already has: Siri sends the iMessage and announces Happy's reply. Happy's part is a driving style: at most two short sentences, no links, no lists, numbers written for speech, details deferred until parked.",
+  "example": "Hey Siri, text Happy: driving, what time does practice end and who has pickup?",
+  "how": "No new tool or plugin. A rule in each <p>-main AGENTS.md: when a message starts with the word driving (or the person says they are in the car), answer in at most two plain sentences and offer to send the rest later. Siri's message announcements in CarPlay do the listening and speaking.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "I found no CarPlay surface in the installed OpenClaw docs or changelog (a search for the word returned nothing), so there is no Happy app on the car screen to plan for.",
+   "The OpenClaw Start Live Voice shortcut is not a car feature: it needs the phone unlocked and the app in the foreground.",
+   "Anything that needs a tap, such as an approval prompt, has to wait until parked.",
+   "This is mostly the phone doing its job; the only work is making Happy's replies fit to be read aloud.",
+   "Announced replies are heard by everyone in the car, so the driving style should also hold back private detail (money, health, the other adult's plans) until parked.",
+   "The example needs calendar knowledge Happy does not have yet; today the rule only improves weather and search answers.",
+   "Apple's CarPlay page says that when a message is long, Siri announces only the sender's name and that a message arrived, and reads it in full only when asked. A long reply from Happy is therefore not heard unless the driver asks, which is the real reason for the two-sentence cap."
+  ],
+  "safety": "Identical to typed iMessage: allowlisted sender, same agent, same hooks, same family-only outbound pin. No new device credential and no audio leaves the phone other than through Apple's own Siri.",
+  "unverified": [
+   "Whether a voice memo (F003) can be recorded hands-free in CarPlay.",
+   "Apple's detailed CarPlay Messages pages returned only navigation when fetched, so only the general CarPlay support page is cited.",
+   "How long a message has to be before Siri stops reading it out, and how several messages in a row are announced.",
+   "A `before_dispatch` keyword hook that keeps a short-lived car flag on the session. The installed docs describe that hook as a claim on the inbound message, not a way to shape the reply, so the AGENTS.md rule is the mechanism to rely on."
+  ],
+  "overlaps_existing": [
+   "F003"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "Apple states that Siri can announce incoming messages in the car and that CarPlay sends and receives messages.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:665",
+    "title": "iOS app",
+    "anchor": "foreground restrictions",
+    "supports": "The OpenClaw live-voice shortcut does not bypass iOS unlock or foreground requirements.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:18",
+    "title": "Plugin hooks: messages",
+    "anchor": "claim, not an API",
+    "supports": "The before_dispatch hook claims an inbound message; it is not a way to rewrite inbound or outbound content.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/messages/icht35827",
+    "title": "Send a message on Mac - Apple Support",
+    "anchor": "Message Mom",
+    "supports": "Apple documents sending, hearing and answering messages by asking Siri.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/apple-intelligence/",
+    "title": "Apple Intelligence and Siri - Apple",
+    "anchor": "Take action in more apps",
+    "supports": "Current Siri can act inside apps such as Messages and Reminders by voice.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.trymartin.com/",
+    "title": "Martin: Personal Assistant",
+    "anchor": "Call Martin",
+    "supports": "A commercial assistant markets voice access (calling it) as a headline channel.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage.md:19",
+    "title": "iMessage channel: status",
+    "anchor": "imsg rpc",
+    "supports": "The gateway receives iMessages through the imsg helper, so a Siri-dictated message is an ordinary inbound message.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102536",
+    "title": "Announce notifications with Siri on AirPods or Beats - Apple Support",
+    "anchor": "Announce Notifications",
+    "supports": "With compatible headphones connected to a locked iPhone, Siri reads incoming messages aloud and can take a spoken reply.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MKT-07"
+  ],
+  "adds": [
+   "Asking Siri to message Happy works today with no build; save Happy as a contact under a name Siri hears reliably.",
+   "From IPH-10 (iPhone Shortcuts automations as triggers for Happy): Optional tip only, no gateway hook: a parent can make a Shortcuts automation on CarPlay connect (Apple lists CarPlay among the triggers that can run without asking) that texts Happy a fixed phrase over the existing iMessage channel. Whether the send runs without a tap is untested.",
+   "From VOX-08 (Parent talks to Happy from the Apple Watch): Add one line to VOX-06: asking Happy from an Apple Watch is the same no-build path, a dictated iMessage to Happy's contact. If the OpenClaw Watch companion is ever wanted it belongs under VOX-01, since it relays through that iPhone pairing."
+  ],
+  "review_notes": [
+   "Safe and available today, so it survives; the changes are small. Value is overstated for what is a reply-style rule on top of the phone's own feature, one item listed as unverified is answered by the Apple page already cited, and a passenger-privacy caveat is missing.",
+   "All 3 sources hold and nothing needs installing. The Apple page also settles one item listed as unverified (long messages are not read aloud automatically), and the optional `before_dispatch` car flag is not a documented use of that hook, so it moves to unverified."
+  ],
+  "reviewed_by": 2,
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": [
+   "r1: edited caveats, unverified. Kept: Apple documents Siri announcing messages in the car and says a long message is not read out unless asked, which is exactly what the two-sentence driving style answers. Two caveats said the same thing, and one open question is already answered by that Apple page.",
+   "r1: kept; credible mention: Use CarPlay with your iPhone - Apple Support"
+  ],
+  "demand": {
+   "ref": "https://support.apple.com/en-us/108415",
+   "title": "Use CarPlay with your iPhone - Apple Support",
+   "supports": "Apple documents Siri announcing and reading incoming messages in the car, and that a long message is only announced, not read, unless the driver asks."
+  }
+ },
+ {
+  "id": "G009",
+  "origin": "9 Oct",
+  "name": "Family-only delivery: text the other parent or the parents' group, and ask-and-relay a yes or no, with the recipient pinned in code",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Happy can pass a short text from one parent to the other or to the parents' group, and can ask the other parent a question, relay the yes or no back and remind once before the ask expires. It can never message anyone outside the family.",
+  "example": "Tony texts: 'Ask Jordan if she can do Thursday pickup.' Jordan gets one line, answers 'yes', and Tony gets her answer back.",
+  "how": "Delivery (G009): the `message` tool on <p>-main with a `before_tool_call` plugin hook that blocks any target not in family.json5 and fails closed. The live config has both `tools.message.crossContext` switches off, which confines sends to the current conversation, so `allowWithinProvider` is turned back on (`allowAcrossProviders` stays off) and the hook is then the only recipient limit. Host jobs use `openclaw agent --deliver` or `openclaw message send`. Request relay (G010), an optional second step that need not hold up the first: a pending_requests table in the household store, a `before_dispatch` plugin that matches a bare yes or no from the asked parent to that parent's one open request, and a one-shot `--at` automation for the reminder and the expiry.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "Only the before_tool_call check fails closed; a message_sending hook can be added as a second check but is logged and skipped when its handler throws or times out, so it must not be relied on.",
+   "Re-opening the same-provider crossContext switch makes the hook the only recipient limit, and the hook and its family-only test case do not exist yet.",
+   "The exact parameter that carries the recipient in a message tool call, which the hook must match, was not read from source.",
+   "`openclaw message send` takes no agent flag and runs as the configured System Agent; whether that suits per-person jobs was not tested.",
+   "The relay step adds little, because the parents can already text each other or ask in the parents' group chat (F006): the gain is tracking, one reminder and an expiry.",
+   "In iMessage Basic mode there is no tap-to-answer, so the reply to a relayed request is a typed yes or no.",
+   "How plugin code sends the relayed answer on to the other parent is unverified, since no plugin-side outbound send call was found in the docs read.",
+   "For anyone outside the family (a plumber, a coach, carpool parents) Happy returns paste-ready wording and the parent sends it from their own phone."
+  ],
+  "corrections": [
+   "Markdown adds message_sending 'as a second gate'. That hook can cancel a send, but when its handler throws or times out it is logged and skipped (hooks/reference.md:94), so it fails open; only the before_tool_call check is fail-closed.",
+   "The 9 Oct 'needs' implies that enabling the tool plus the hook is enough. The live config turns both crossContext switches off, and tool-permissions.md:39 says that confines sends to the current conversation, so the same-provider switch must be re-opened and the hook then becomes the only recipient limit."
+  ],
+  "unverified": [
+   "The exact parameter that carries the recipient in a message tool call, which the hook must match, was not read from source.",
+   "openclaw message send takes no agent flag and runs as the configured System Agent (cli/message.md:35-50); whether that suits per-person jobs was not tested.",
+   "The hook plugin and its family-only test case do not exist yet, so blocking an unknown recipient is unproven on this install.",
+   "How plugin code sends the relayed answer to the other parent; no plugin-side outbound send call was found in the docs read, and it depends on the family delivery primitive (G009).",
+   "Group-chat use assumes iMessage groups, which are switched off today.",
+   "Judgement, not sourced: the parents can already text each other, so the gain is only tracking, expiry and the calendar offer."
+  ],
+  "safety": "This is the house rule that outbound messages go only to the family, enforced by code that fails closed and not by a prompt. It gives <p>-main, which holds private data, a way out limited to the two parents and their group chat. The relay step adds no new recipient and no new data source.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Configuration — tool policy",
+    "anchor": "group:messaging",
+    "supports": "The message tool is the single member of group:messaging, so it is granted or denied as one unit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/tool-permissions.md:39",
+    "title": "Tool and agent permissions",
+    "anchor": "allowWithinProvider",
+    "supports": "The documented built-in limits on where the message tool may send are switches for other conversations, open by default; nothing on the page pins recipients, so a hook is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Hook reference",
+    "anchor": "Fail closed",
+    "supports": "A before_tool_call handler that throws or times out blocks the tool call, so a recipient check placed there cannot be skipped by an error.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/agent-send.md:80",
+    "title": "Agent send",
+    "anchor": "--deliver",
+    "supports": "A host-side script can run one agent turn and deliver the reply to a chat target from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Message and delivery hooks (installed docs)",
+    "anchor": "handled: true",
+    "supports": "A plugin can claim an incoming message before the model runs and send a fixed reply, which makes yes/no matching deterministic.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1067",
+    "title": "Plugin hook types (installed source)",
+    "anchor": "PluginHookBeforeDispatchEvent",
+    "supports": "That hook receives the message text and the sender id, enough to bind a reply to the right parent's open request.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:120",
+    "title": "iMessage private API actions (installed docs)",
+    "anchor": "numbered emoji choices",
+    "supports": "Tap-to-answer reactions belong to the private API bridge, so in Basic mode the answer has to be a typed reply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work (installed docs)",
+    "anchor": "--at",
+    "supports": "A one-shot job runs once at a set time and removes itself after success, which fits a single reminder or expiry.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ourfamilywizard.com/node/12394",
+    "title": "Trade/Swap Requests | Parents - Mobile | OurFamilyWizard (page heading: Schedule Change Requests)",
+    "anchor": "the request will expire",
+    "supports": "A shipping app for parents lets one parent send the other a schedule change request with a respond-by date; the other approves or refuses, a notification goes out, and an unanswered request expires.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "G010"
+  ],
+  "adds": [
+   "From F037 (Draft-only outreach texts (vendors, coaches, carpool parents)): Add one line to G009: for anyone outside the family Happy returns paste-ready wording and the parent sends it from their own phone."
+  ],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [
+   {
+    "id": "G010",
+    "name": "Parent-to-parent request relay with acknowledgement"
+   }
+  ],
+  "history": [
+   "r1: edited name, how. Kept: it implements the house rule that outbound messages go only to the family (the roadmap's recipient-pin hook that fails closed), and nine other items depend on it. The build note left out a step its own review notes had found: the live config confines the message tool to the current conversation, so one switch has to be re-opened before the hook becomes the only recipient limit. The name is also put in plain words.",
+   "r1: kept; credible mention: Tool and agent permissions",
+   "r1: merged with G010 (same purpose). The parent-to-parent request relay is the family-only send with an answer coming back, so it becomes an optional second step of the family delivery card."
+  ],
+  "demand": {
+   "ref": "docs/gateway/security/tool-permissions.md:35",
+   "title": "Tool and agent permissions",
+   "supports": "OpenClaw documents that an agent holding the message tool can send to other conversations by default, which is the ability this item switches on and then pins to the family with a fail-closed hook."
+  },
+  "depends_on": [
+   "family.json5 registry (the list of allowed recipients)",
+   "F031 household store (pending requests; relay step only)",
+   "F007 timed reminders (reminder and expiry; relay step only)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "OCL-06",
+  "name": "Built-in chat commands for parents (/stop, /new, /btw, /status, /usage, /tools, /loop)",
+  "tier": 1,
+  "cluster": "Everyday controls",
+  "description": "A handful of typed commands that already work in the iMessage thread: stop an answer that is going wrong, start a clean conversation, see what Happy can do right now, and check health and cost, all handled before any model call. Two more do use the model: /btw asks a side question that is not remembered (its page does not list iMessage, so treat it as untested here), and /loop (owner only, and only once the scheduling tool is granted in F007) starts a repeating check inside a thread.",
+  "example": "Jordan texts '/stop' when a long answer is heading the wrong way, then '/new'. Tony texts '/loop 30m tell me when the winter storm warning ends'.",
+  "how": "Text commands are core and work on iMessage: command-only messages from allowlisted senders are handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary. /btw answers from the current session with a separate one-shot model query and writes nothing to history. /loop is owner-only and asks the agent to create a recurring agent-turn job bound to the conversation through the cron (automations) tool, at a fixed interval or self-paced between one minute and one hour, so it works only after F007 grants that tool to <p>-main. Put the five everyday ones in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and Tony should decide whether /restart, which is on by default for owners, stays available from chat.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "G005 kill switch for the stop-everything case",
+   "F007 (automations/cron tool on <p>-main) before /loop works at all; Jordan in the owner list if she should use it"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+   "/loop needs owner status, which only Tony has today, and it asks the agent to create the job with the cron (automations) tool, so it does nothing until <p>-main holds that tool (F007).",
+   "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+   "/usage figures are local estimates, like G004.",
+   "In a plain iMessage bubble the /status and /tools output may be long.",
+   "A /loop job is written by the model in chat, outside the G003 jobs registry, and is capped to the tools of the turn that created it; a self-paced loop may run as often as once a minute, so count it under G004 and review it with /loop status.",
+   "/btw is a separate one-shot model call on the session's model; it is not free and not model-less."
+  ],
+  "safety": "No new capability for the five everyday commands: they are read from the sender's own message, authorised by the sender allowlist and the owner list, and handled before the model runs. /btw and /loop are model turns on <p>-main under its normal tool policy, and <p>-main cannot browse. /loop additionally needs the cron tool and creates a job outside the registry, visible in the automations list (G003, G020); the job cannot hold more tools than the turn that created it.",
+  "unverified": [
+   "Whether /btw works over the iMessage channel in 2026.9.7",
+   "How /status and /tools render in iMessage"
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G004",
+   "F007",
+   "G014",
+   "G020"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:623",
+    "title": "Slash commands: fast path",
+    "anchor": "bypass queue + model",
+    "supports": "Command-only messages from allowlisted senders are handled immediately without a model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/btw.md:9",
+    "title": "BTW side questions",
+    "anchor": "/btw",
+    "supports": "A side question uses the current session as context and is never written to history.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:77",
+    "title": "Automation schedules: /loop chat shortcut",
+    "anchor": "recurring agent-turn job",
+    "supports": "The loop command creates a recurring model-backed job bound to the conversation, self-paced between one minute and one hour when no interval is given.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:60",
+    "title": "Automation payloads: tool policy",
+    "anchor": "Jobs created by an agent",
+    "supports": "A job an agent creates is capped to the tools of the creating turn and the agent cannot widen it.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources check out, but two of the listed commands are not model-free as described: /btw runs a one-shot model query and /loop asks the agent to create a recurring agent-turn job through the cron tool, which <p>-main does not hold until F007. Description, dependencies and safety corrected; the five everyday commands remain ready now."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": [
+   "r1: edited description, depends_on. Kept. The five everyday commands work today with no model call; /btw and /loop stay listed as extras with their limits. The first reviewer moved /loop out to AUT-03, but AUT-03's own reviewer is folding that item into this one, so /loop has to stay here or it would drop out of the catalog. The only fixes are a duplicated dependency and a note that /btw is untested on iMessage.",
+   "r1: kept; credible mention: Slash commands"
+  ],
+  "demand": {
+   "ref": "docs/tools/slash-commands.md:212",
+   "title": "Slash commands",
+   "supports": "OpenClaw's command table documents the typed commands a chat user gets, including stopping the current run and starting a fresh session."
+  }
+ },
+ {
+  "id": "F007",
+  "origin": "9 Oct",
+  "name": "Timed reminders over iMessage (one-shot and recurring)",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "\"Remind me at 4:30 to pick up the kids\" or \"every Sunday 7 pm: bins out\" becomes a scheduled text to the asker, and reminders can be listed and cancelled.",
+  "example": "",
+  "how": "automations tool (cron alias) allowed on <p>-main; --at one-shots auto-delete; recurring --cron with --tz; jobs capped with --tools \"\"; only senders in commands.ownerAllowFrom may use it.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "For a plain personal timer, Siri and the iPhone Reminders app already do the job, including reminders tied to a place or to messaging a chosen person. Happy's version earns its place for reminders that come out of something Happy just read or answered, and because the same scheduler carries the briefs, watchers and other timed jobs."
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' lists --delete-after-run. One-shot --at jobs already delete themselves after confirmed delivery (how-it-works.md:19). The Markdown already says so."
+  ],
+  "unverified": [
+   "Creating a reminder from an iMessage owner turn has not been tried live on this install; managing-jobs.md:81 describes chat creation for Control UI administrators, and the owner-only /loop command is the documented chat shortcut for recurring jobs.",
+   "The comparison with Siri and Apple Reminders for one-off personal timers was not sourced."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:73",
+    "title": "Configuration — tool policy",
+    "anchor": "automations",
+    "supports": "The scheduler is exposed to agents as the automations tool, with cron kept as an alias, inside group:automation.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work",
+    "anchor": "auto-delete after successful completion",
+    "supports": "One-shot reminders remove themselves once delivery is confirmed, so no clean-up flag is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:99",
+    "title": "Automation delivery",
+    "anchor": "preserved live delivery target",
+    "supports": "A reminder an agent creates from a live chat keeps that chat as its delivery target, so it texts the person who asked.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baselines",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Only owner senders may use the scheduling tool from chat, so each parent has to be listed as an owner before they can set reminders.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:27",
+    "title": "Standing intents",
+    "anchor": "commands.ownerAllowFrom",
+    "supports": "Only channel owners receive the intent tool to create, list or cancel standing intents.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2606.23459",
+    "title": "TriggerBench: Investigating Prospective Memory for Large Language Models (arXiv 2606.23459)",
+    "anchor": "TriggerBench",
+    "supports": "A 2026 benchmark paper finds language models get much worse at acting on a remembered future trigger as context grows, the reason a structural matcher is used here.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "is not valid with",
+    "supports": "A timezone cannot be combined with a fixed-interval schedule, so fixed local dose times need cron expressions or dated one-shots.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Cron sessions do not load MEMORY.md, so each reminder must carry its own text and the refill arithmetic happens in the parent's normal chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105064",
+    "title": "Add and log medications with iPhone, iPad, and Apple Watch",
+    "anchor": "Skipped or Taken",
+    "supports": "Apple's Health app already schedules medication alerts and lets the user log each dose as taken or skipped, so per-dose pings duplicate the phone.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:154",
+    "title": "Memory overview: memory tools",
+    "anchor": "creates, lists, or explicitly cancels",
+    "supports": "The intent tool is one of three memory tools provided by the active memory plugin, memory-core by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102484",
+    "title": "Use Reminders on your iPhone, iPad, or iPod touch - Apple Support",
+    "anchor": "When Messaging",
+    "supports": "The built-in Reminders app can raise a reminder when you message a chosen person and can tie a reminder to a location.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/index.md:35",
+    "title": "Automation",
+    "anchor": "Remind me in 20 minutes",
+    "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, with one-shot and recurring schedules.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F008",
+   "F065",
+   "AUT-05"
+  ],
+  "adds": [
+   "The documented limits of topic-triggered intents (keyword match with no model call, 24-hour cooldown, three fires, 90-day expiry, owner-only tool) for the footnote on reminders.",
+   "From G020 (Pending items view: approvals waiting, drafts unsent, watchers, reminders, open requests): Add the phrase 'what is pending?' to the reminders entry: it answers from the same automations list with every reminder and watcher and its next run time, and leaves gateway approvals out. Note that an owner's list shows every job on the gateway, not only that parent's; open requests (G010) and unanswered proposals join the list only if their tables are ever built."
+  ],
+  "wave": "A",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": [
+   "r1: edited depends_on, caveats. Kept: timed reminders are OpenClaw's own standard example for its scheduler, and eleven other items list this one as a dependency. Two things were missing. Only a command owner may use the scheduling tool from chat and the roadmap makes Tony the only owner, so Jordan cannot set a reminder until that is decided. And for a plain personal timer the phone already does the job, which the entry now says.",
+   "r1: kept; credible mention: Automation"
+  ],
+  "demand": {
+   "ref": "docs/automation/index.md:35",
+   "title": "Automation",
+   "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, with one-shot and recurring schedules."
+  },
+  "depends_on": [
+   "Decision: add Jordan to commands.ownerAllowFrom so she can set reminders from chat (the roadmap sets the command owner to Tony's handle only, and owner status also opens the owner-only commands such as /loop and /restart)"
+  ]
+ },
+ {
+  "id": "F009",
+  "origin": "9 Oct",
+  "name": "Family calendar read-only (<p>-calendar MCP)",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "\"What's on Saturday?\" or \"is anyone free Friday at 1?\" is answered from the family Google Calendar, read-only; it also feeds the daily briefs.",
+  "example": "",
+  "how": "Host-side stdio MCP per person: gog mcp with --readonly exposes calendar_events; freebusy and conflicts need a thin wrapper; allow bundle-mcp in the sandbox gate; publish the OAuth app.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Public feeds (the school district calendar, library and recreation events, team schedules) show up in Happy's calendar answers only after the family Google Calendar is subscribed to each feed link, which Google allows from a computer browser only; a search of the installed OpenClaw docs and skills found no .ics handling of its own. Google gives no refresh interval and TeamSnap says changes can take up to 24 hours to appear, so change alerts are a separate job (SRC-09)."
+  ],
+  "corrections": [
+   "The 9 Oct wording has Tony hand-write the calendar MCP server. gogcli.sh/mcp.html documents a built-in stdio server (gog --account <account> mcp) with a read-only calendar_events tool and an --allow-tool filter, so listing events needs no custom code. Freebusy and conflicts exist only as CLI commands (gogcli.sh/commands) and still need a wrapper.",
+   "Catalog JSON 'needs' expects a calendar.readonly scope from --services calendar. The documented switch is --readonly on gog auth add; Google's scope list does include calendar.readonly (developers.google.com/workspace/calendar/api/auth). The Markdown asked to verify the flag; gog's command page confirms it."
+  ],
+  "unverified": [
+   "gog is not installed on this Mac, so its flags were read from gogcli.sh and not from the binary; the bundled skill names the brew formula gogcli while the site shows a tap-qualified name.",
+   "Whether gog's calendar_events MCP tool can be pinned to a single calendar id was not confirmed.",
+   "Google or iCloud is still Tony's open decision; the iCloud route needs the OpenClaw macOS app paired as a node, which is not installed.",
+   "That events from a URL-subscribed calendar are returned through the Google Calendar API, and so through gog, was not confirmed.",
+   "Whether this family's district, club and library actually publish feed links was not checked."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Configuration — tool policy",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers are plugin-owned tools that sandboxed sessions only see when the sandbox tool allowlist includes bundle-mcp or the server's tool names.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp.html",
+    "title": "gogcli docs: MCP server",
+    "anchor": "calendar_events",
+    "supports": "gog ships its own stdio MCP server whose only Calendar tool is a read tool that lists events; write tools stay hidden unless explicitly allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/gog-auth-add.html",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--readonly",
+    "supports": "Adding an account with the read-only flag requests read-only OAuth scopes and blocks mutating requests at runtime.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Using OAuth 2.0 to Access Google APIs (Google for Developers)",
+    "anchor": "expiring in 7 days",
+    "supports": "An external OAuth app left in Testing status gets refresh tokens that expire after seven days, so the app must be published for an always-on agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/delegate-architecture.md:48",
+    "title": "Delegate architecture",
+    "anchor": "read events, surface conflicts",
+    "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From G012 (External calendar feeds (.ics): district calendar, team schedules, library and rec events): F009's edit in this review already adds the feed-subscription caveat and the two unverified points. Still to move across: G012's Google Help and TeamSnap sources. If a change alert is wanted for the district calendar too, widen SRC-09's wording from sports feeds to any public feed."
+  ],
+  "wave": "A",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": [
+   "r1: edited caveats, unverified. Kept; it now also carries the setup note from G012 (public feeds show up once the family Google Calendar is subscribed to them), because that entry needed nothing built beyond this one.",
+   "r1: kept; credible mention: Delegate architecture"
+  ],
+  "demand": {
+   "ref": "docs/concepts/delegate-architecture.md:48",
+   "title": "Delegate architecture",
+   "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+  }
+ },
+ {
+  "id": "F019",
+  "origin": "9 Oct",
+  "name": "Research agent: reads public web pages behind egress guardrails, with cited answers and background-task etiquette",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Happy can read public web pages that load without JavaScript or a login: a memory-less research helper fetches the page and the parent's own agent relays the answer with its link and the time it was fetched. Slow lookups get an 'on it', one message when done and a working 'cancel that', and nothing the helper fetches can reach the home network.",
+  "example": "Jordan texts: 'What time does the town pool open on Saturday? Check their site.' Happy replies 'on it', then sends the hours with the link and when the page was fetched.",
+  "how": "Agent (F019): a new `research` agent, memory search off, tools `web_search` and `web_fetch`, sandboxed; each <p>-main gains `sessions_spawn` and `subagents.allowAgents: [\"research\"]`; its rules live in AGENTS.md only. Guardrails (WEB-01): leave both `dangerouslyAllowPrivateNetwork` keys unset, keep `tools.web.fetch.headers` empty, install no fetch-provider plugin, set `browser.evaluateEnabled: false`, keep `browser.enabled: false` until F020, and add two eval cases (a LAN address, a public URL that redirects to one) to the M3 exit test. Answer rules (F022): quote `fetchedAt`, use `published` when present, flag pages undated or older than 30 days, allow 'could not verify'; a fact check returns true, false, mixed or unclear with two or three dated sources. Etiquette (G014): `runTimeoutSeconds` on the spawn, the automatic completion announce, `subagents` `action: \"cancel\"`, and concurrency caps.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "The plain fetch runs no JavaScript and cannot log in, so such pages wait for the research browser (F020) or stay unread.",
+   "web_fetch blocks private hosts and re-checks redirects, but the browser's own check is weaker (the docs say its request interception is not a network firewall), which matters once F020 switches the browser on.",
+   "Leave the private-network keys truly unset: an explicitly written `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork: false` turns hostname navigation into an allowlist and would stop a later research browser from loading hostnames.",
+   "The SSRF policy covers the `web_fetch` and browser tools only, so host-side helpers that take a URL (the summarize wrapper, the print plugin's download, watcher scripts) need their own scheme, host and resolved-address checks.",
+   "A hostname block list is not an exfiltration control and is not worth curating: what counts is the private-network block, no headers, no fallback provider, and no private data in the agent that browses.",
+   "Once research has web_fetch, the roadmap's egress proxy cannot double as an exfiltration allowlist; it can deny private ranges and named hosts and nothing more (an inference from the routing description).",
+   "A sandboxed requester cannot spawn an unsandboxed target, so research has to stay sandboxed, and sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file.",
+   "An official-sites-only mode for admin questions would need a before_tool_call hook and is not planned."
+  ],
+  "corrections": [
+   "The 9 Oct verifier notes advised turning the sandbox off for research; the installed docs say a sandboxed requester cannot spawn an unsandboxed target, so the catalog's final wording (keep mode all) is the only workable one.",
+   "A verifier note asked for research rules in AGENTS.md and SOUL.md; the installed docs say sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file."
+  ],
+  "unverified": [
+   "That a cross-agent handoff returns its result with agent-to-agent messaging off: the roadmap lists this as untested on 2026.9.7 and the CLI was not run here.",
+   "The handoff privacy rule (ages yes, names and school no) is a prompt rule; nothing mechanical enforces what <p>-main writes into the task text.",
+   "The roadmap's plan to drop LAN access inside the Colima VM would not cover a browser that runs on the host; this follows from where the process runs and was not tested.",
+   "Which hosts belong on the blocklist is a judgment call, not something the docs prescribe.",
+   "The explicit-false behaviour of the browser policy was read in the installed source only; the docs do not describe it and it was not exercised.",
+   "Nothing in the installed stack enforces citations; this is a prompt rule the model can ignore, and Tony's promptfoo evals are the only check.",
+   "The 30-day staleness threshold and the three-links-per-text cap are house choices with no source.",
+   "Nothing on the current stack runs longer than about 20 seconds, so the convention has no user until the research hand-off (F019) exists.",
+   "The acknowledgement wording and the 'about three minutes' estimate are prompt conventions; the model can skip them."
+  ],
+  "safety": "The research agent reads untrusted pages but holds no memory, no accounts and no family data, and the guardrails take the home network out of its reach; that is what breaks the trifecta. They do not stop an injected page making it request some public URL. Its answer returns to an agent that holds memory, so the relayed text is treated as untrusted.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:17",
+    "title": "Web fetch",
+    "anchor": "Enabled by default",
+    "supports": "Page fetching is built in and needs no key or plugin, so granting it is configuration only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+    "title": "Sub-agents: allowlist",
+    "anchor": "agents.entries.*.subagents.allowAgents",
+    "supports": "A person's agent may hand work to another configured agent only if that agent id is on its allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agents: tool policy",
+    "anchor": "session_status",
+    "supports": "A spawned helper always loses messaging, scheduling and status tools, so research cannot text anyone or create jobs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/THREAT-MODEL-ATLAS/execution.md:35",
+    "title": "Threat model: T-EXEC-002 indirect prompt injection",
+    "anchor": "Separate execution contexts",
+    "supports": "OpenClaw's own threat model recommends a separate context for fetched content, which is what the research agent provides.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+    "title": "Simon Willison: The lethal trifecta for AI agents",
+    "anchor": "The lethal trifecta",
+    "supports": "Private data, untrusted content and a way to send data out are dangerous in one agent; keeping page reading away from the memory-holding agent removes one leg.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2510.09023",
+    "title": "arXiv 2510.09023: The Attacker Moves Second",
+    "anchor": "The Attacker Moves Second",
+    "supports": "Adaptive attacks defeated most published prompt-injection defences, so isolation and tool limits are used instead of trusting the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:216",
+    "title": "Browser configuration: SSRF policy",
+    "anchor": "do not automatically proxy",
+    "supports": "The managed browser launches direct and ignores the gateway's proxy environment variables.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:54",
+    "title": "Browser control risks: Browser SSRF policy",
+    "anchor": "special-use destinations stay blocked",
+    "supports": "Private and internal destinations are blocked for the browser by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/network-proxy.md:11",
+    "title": "Network proxy",
+    "anchor": "does not ship, download, start",
+    "supports": "The egress proxy is operator-provided; OpenClaw only routes through it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:276",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "requires an IP-literal URL",
+    "supports": "When the browser policy carries an explicit false for private-network access, a hostname navigation is refused unless the host is on the allowed list; IP-literal URLs still pass.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/config-DLo8Wb5-.mjs:118",
+    "title": "Browser config resolution (installed source)",
+    "anchor": "hasExplicitPrivateSetting",
+    "supports": "An unset key resolves to a policy without the strict flag, while an explicitly written value resolves to true or false, so unset and false behave differently.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/browser.md:122",
+    "title": "openclaw browser CLI: Profiles",
+    "anchor": "enabled by default",
+    "supports": "Cookie import from a real browser profile is on unless disabled, for both CLI and agent-triggered imports.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:49",
+    "title": "Browser setup",
+    "anchor": "control service as one unit",
+    "supports": "The browser agent tool and control service exist only when both the browser plugin and the browser enabled setting are on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/firecrawl.md:25",
+    "title": "Firecrawl: Install plugin",
+    "anchor": "@openclaw/firecrawl-plugin",
+    "supports": "The only documented fetch-fallback provider is a separately installed plugin, so with nothing installed a failed fetch has no third party to be retried through.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:84",
+    "title": "Configuration: browser, UI, and desktop",
+    "anchor": "ssrfPolicy.blockedHostnames",
+    "supports": "The browser block has its own hostname deny list with the same exact-host and wildcard rules as the fetch one.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web.md:186",
+    "title": "Web search: result shape",
+    "anchor": "published?: string",
+    "supports": "Search hits carry a publication date only sometimes and no fetch time, so search-only claims need the weaker stamp.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:20",
+    "title": "Standing orders",
+    "anchor": "AGENTS.md",
+    "supports": "Rules placed in AGENTS.md are injected into every session, the right home for a citation rule.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2304.09848",
+    "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+    "anchor": "51.5%",
+    "supports": "A peer-reviewed audit found that only about half of generated search-engine sentences were fully backed by their citations, so the rule needs evals, not trust.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-web-search",
+    "title": "Web search (OpenAI API docs)",
+    "anchor": "clearly visible and clickable",
+    "supports": "OpenAI requires that information taken from web results be shown to end users with clearly visible, clickable inline citations.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "Each background run can carry its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/nesting.md:24",
+    "title": "Sub-agents: nesting",
+    "anchor": "maxConcurrent: 8",
+    "supports": "Concurrent child runs per session are capped by config, default eight, and can be lowered.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:14",
+    "title": "Sub-agents",
+    "anchor": "announces",
+    "supports": "A finished helper reports its result back to the requester by default, giving the single completion message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:18",
+    "title": "iMessage: Private API mode",
+    "anchor": "typing indicators and read receipts",
+    "supports": "Typing indicators exist only in the mode that needs system protection off, so in today's Basic mode a text acknowledgement is the only progress signal.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-01",
+   "F022",
+   "G014"
+  ],
+  "adds": [
+   "From F025 (Fact check and official-source answers): Carry the four-way verdict (true, false, mixed, unclear) backed by two or three dated sources, and the rule to answer admin questions from official sites. An official-sites-only mode would need a before_tool_call hook and is not planned."
+  ],
+  "wave": "A",
+  "section": "Web reading and research",
+  "includes": [
+   {
+    "id": "WEB-01",
+    "name": "Web egress guardrails for fetch and browser (no LAN, no headers, no fallback provider)"
+   },
+   {
+    "id": "F022",
+    "name": "Citation and freshness rules"
+   },
+   {
+    "id": "G014",
+    "name": "Long-running task etiquette: acknowledge, background, notify, cancel"
+   }
+  ],
+  "history": [
+   "r1: edited description. Kept; 'any public web page' overclaims, because the plain fetch runs no JavaScript and cannot log in (those pages wait for F020 or stay unread).",
+   "r1: kept; credible mention: Web fetch",
+   "r1: merged with WEB-01, F022, G014 (same batch). The research agent, the egress guardrails that sit in front of it, the citation and freshness rules written into its instructions, and the acknowledge-and-cancel etiquette for its hand-off become one wave A card."
+  ],
+  "demand": {
+   "ref": "docs/tools/web-fetch.md:11",
+   "title": "Web fetch",
+   "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+  },
+  "depends_on": [
+   "roadmap egress proxy (optional second layer, for the gateway's own HTTP clients)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F021",
+  "origin": "9 Oct",
+  "name": "Places lookup: hours, ratings, distance, phone (goplaces)",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Happy can answer 'is it open now, is it any good, what is the phone number' from Google Places and return a Maps link.",
+  "example": "",
+  "how": "`goplaces` CLI wrapped as a host-side stdio MCP for research; `GOOGLE_PLACES_API_KEY` supplied by the wrapper or Gateway environment, home coordinates fixed in the wrapper; Google Cloud billing must be on.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog says goplaces returns straight-line distance, not drive time; the upstream README now lists a `directions` command returning distance and duration through the Routes API. Check `goplaces --help` on the installed version.",
+   "Install line: upstream now gives `brew install openclaw/tap/goplaces`; the catalog and the bundled skill say steipete/tap/goplaces.",
+   "'Key as SecretRef': the installed SecretRef surface lists no `mcp.servers.*.env` target, so the key must be loaded by the wrapper (for example from Keychain) or set in the Gateway process environment."
+  ],
+  "unverified": [
+   "Current Places and Routes prices and free allowances were not read; the billing page points to separate price lists.",
+   "goplaces is not installed, so its flags were checked against the bundled skill and upstream README only.",
+   "Whether Grounding Lite is generally available or preview: the opened page did not label it."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/goplaces/SKILL.md:41",
+    "title": "Bundled goplaces skill",
+    "anchor": "--open-now --min-rating 4",
+    "supports": "The bundled skill documents text search with open-now and minimum-rating filters.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:54",
+    "title": "MCP servers",
+    "anchor": "openclaw mcp add local-tools",
+    "supports": "A local stdio MCP server is registered with one CLI command, the route for exposing a network CLI to a sandboxed agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/secretref-credential-surface.md:131",
+    "title": "SecretRef credential surface",
+    "anchor": "acpx.config.mcpServers",
+    "supports": "The supported SecretRef list has an MCP environment entry only for the acpx plugin, none for ordinary configured MCP servers.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/goplaces",
+    "title": "steipete/goplaces README",
+    "anchor": "GOOGLE_PLACES_API_KEY",
+    "supports": "Upstream describes a client for Places API (New) with search, details and, in the current version, route and directions commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+    "title": "Places API (New): Text Search",
+    "anchor": "openNow",
+    "supports": "Google's Text Search accepts open-now, minimum-rating and location-bias parameters and can return hours, rating, phone and a Maps link.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/usage-and-billing",
+    "title": "Places API usage and billing",
+    "anchor": "enable billing",
+    "supports": "The Places API works only on a project with billing enabled, so a budget alert is a real requirement.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Google Maps Platform: Grounding Lite",
+    "anchor": "search_places",
+    "supports": "Google's own Maps MCP server is the alternative: a hosted endpoint with place search, weather and route tools.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From F027 (Find a place and route errands: open-now dinner, urgent care, pharmacy, Saturday loop): Carry the answer shape (three picks with rating, hours, phone and a Maps link, no reservations) and the note that drive time needs the upstream goplaces directions command with the Routes API switched on. Ordering errand stops waits for the Reminders bridge (F030) and is not promised."
+  ],
+  "wave": "C",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Bundled goplaces skill"
+  ],
+  "demand": {
+   "ref": "skills/goplaces/SKILL.md:41",
+   "title": "Bundled goplaces skill",
+   "supports": "OpenClaw ships a skill for asking Google Places which nearby places are open now and well rated, with details and reviews on request."
+  }
+ },
+ {
+  "id": "F030",
+  "origin": "9 Oct",
+  "name": "Shared Apple Reminders lists bridge (read, add, tick off)",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "Happy can read, add to and tick off items on the Reminders lists the family already shares, so changes show up on both parents' iPhones.",
+  "example": "",
+  "how": "In-house host-side tool plugin wrapping remindctl (list/add/complete, named lists only, no delete); happy's Apple Account joins the shared lists; Reminders permission granted in the gateway's own process context.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "A shared Apple Note as a second filing target is not part of this build. The memo command-line tool edits notes only through an interactive editor, and an unattended AppleScript append to a shared iCloud note has no opened source and no test. Treat it as a later experiment once the Reminders bridge works."
+  ],
+  "corrections": [],
+  "unverified": [
+   "No opened source confirms that remindctl can add to or complete items on a shared iCloud list owned by another family member; its README only says reminders sync through the normal iCloud path.",
+   "Which binary macOS records the Reminders permission against when the launchd gateway spawns remindctl is not documented in any opened source; it needs one test on happy's logged-in desktop.",
+   "The Notes half (appending to a shared folder with osascript) has no first-party Apple scripting reference opened in this run; the memo CLI page only confirms it relies on AppleScript and an editor."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "OpenClaw has a supported way to build a small plugin that only adds typed agent tools, which is the shape of the planned home-reminders bridge.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/remindctl",
+    "title": "steipete/remindctl README",
+    "anchor": "remindctl complete",
+    "supports": "The CLI lists, adds, completes and deletes Apple Reminders with JSON output, needs macOS 14 or later, and needs Reminders access granted to the app that runs it on that Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/device-commands.md:134",
+    "title": "Device commands (OpenClaw docs)",
+    "anchor": "reminders.list",
+    "supports": "The node reminders commands are offered by iOS and Android nodes only, and adding a reminder is a dangerous command that needs an explicit gateway allow, so a macOS node is not an alternative path.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/reminders/share-a-reminder-list-remnd509c0d9/mac",
+    "title": "Share a reminder list on Mac - Apple Support",
+    "anchor": "Share a reminder list",
+    "supports": "A shared list lives in iCloud Reminders, invitees must accept and also use iCloud Reminders, and accepted participants can create and edit items from any of their devices.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From OCL-08 (Notes and task apps as a filing target (Apple Notes, Obsidian, Things, Bear, Notion, Trello)): Carry one caveat into F030: a shared Apple Note could later be a second filing target using the same host-side wrapper, but only after an unattended append is proven. Things, Bear, Notion and Trello are not pursued, and the F043 vault folder can be opened in Obsidian by a person with no agent tool.",
+   "From F032 (Grocery and errand capture by text or voice, plus Saturday shop list): Give F030 the example 'add oat milk' and one optional Saturday-morning job per parent that texts the open shopping list. Note that Reminders exposes no purchase history, so 'not bought in three weeks' is out, and that capture by voice memo waits on local transcription (F003)."
+  ],
+  "wave": "A",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": [
+   "r1: edited name, caveats. Kept, with the name narrowed to what is sourced: the Reminders bridge. The shared-Notes half has no tested way to add to a note unattended, so it becomes a later experiment recorded as a caveat (this is also all that is carried over from OCL-08).",
+   "r1: kept; credible mention: Share a reminder list on Mac - Apple Support"
+  ],
+  "demand": {
+   "ref": "https://support.apple.com/guide/reminders/share-a-reminder-list-remnd509c0d9/mac",
+   "title": "Share a reminder list on Mac - Apple Support",
+   "supports": "Apple ships shared Reminders lists that everyone invited can add to and edit from their own devices, which is the family list Happy would write to."
+  }
+ },
+ {
+  "id": "F031",
+  "origin": "9 Oct",
+  "name": "Household structured store (in-house tool plugin: schedules, ledgers, facts)",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "A small household database for dated schedules and simple facts (filter every 90 days, last oil change) that both parents' agents can read and update.",
+  "example": "",
+  "how": "In-house defineToolPlugin over node:sqlite with schedule_get/upsert/mark_done and fact_get/set; allowlisted on both mains and in tools.sandbox.tools; secret check inside execute or via definePluginEntry.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct verifier note says the secret-rejecting before_tool_call hook can live in the same plugin as the defineToolPlugin store. docs/plugins/tool-plugins.md:11 says defineToolPlugin adds tools only, and :233 points to definePluginEntry when tools are combined with hooks.",
+   "The catalog chooses defineToolPlugin for the store but still names its tools home-store__schedule_* in the automations. docs/tools/multi-agent-sandbox-tools.md:242 gives that server__tool form to MCP servers only; a plugin's tools carry the names it declares, so job tool lists must use those."
+  ],
+  "unverified": [
+   "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "A defineToolPlugin plugin adds agent-callable tools only (no hooks or services), which fits a local store with a handful of typed tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nodejs.org/api/sqlite.html",
+    "title": "SQLite | Node.js documentation",
+    "anchor": "node:sqlite",
+    "supports": "Node ships a built-in synchronous SQLite module (added in 22.5.0, release-candidate stability), so the store needs no extra database dependency on the installed Node 26.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools (OpenClaw docs)",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "The double-underscore server__tool name belongs to configured MCP servers; a native plugin tool is addressed by the name it declares.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+    "title": "Maintenance Checklist | ENERGY STAR",
+    "anchor": "change air filters once a month",
+    "supports": "A US government energy programme tells households to check or change heating and cooling filters on a fixed interval and book yearly check-ups, the kind of dated upkeep schedule this store keeps.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": [
+   "r1: edited name. Kept: about a dozen other items keep their dates and facts here (upkeep calendar, chore rota, sick-day log, coverage planner and more), so it stays as the one shared store instead of being folded into any single one of them. The name is corrected: it is an in-house tool plugin, not an MCP server, and shopping-style lists live in the Reminders bridge (F030).",
+   "r1: kept; credible mention: Maintenance Checklist | ENERGY STAR"
+  ],
+  "demand": {
+   "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+   "title": "Maintenance Checklist | ENERGY STAR",
+   "supports": "A US government energy programme tells households to check or change heating and cooling filters on a fixed interval and book yearly check-ups, the kind of dated upkeep schedule this store keeps."
+  }
+ },
+ {
+  "id": "F041",
+  "origin": "9 Oct",
+  "name": "Durable per-person memory: 'remember this' write path, recall tools, and memory scopes",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "'Remember this' actually sticks: each parent's agent can save a fact to its own notes and find it again later.",
+  "example": "",
+  "how": "Allow write/edit (deny apply_patch) on <p>-main with rw workspace; in-house before_tool_call hook limits paths to MEMORY.md, USER.md, memory/*.md; memory_search FTS-only; session-memory hook.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog relies on `sessions_search` with visibility `agent` to find pre-reset conversations. docs/gateway/config-tools/sessions-and-subagents.md:58 says a sandboxed session stays limited to sessions it spawned while agents.defaults.sandbox.sessionToolsVisibility is 'spawned' (the default); the mains run with sandbox mode all, so that key must change as well. docs/tools/multi-agent-sandbox-tools.md:372 adds that tools.sessions.visibility is gateway-wide, not per agent."
+  ],
+  "unverified": [
+   "Whether visibility 'self' already reaches the same chat's pre-reset history (the docs define self as the current session key) was not tested.",
+   "The opened hook docs expose no taint flag, so 'refuse writes after web results' means the hook plugin tracking web tool calls itself; untested.",
+   "'Most-asked family-assistant request' has no source opened in this run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:149",
+    "title": "Memory overview (OpenClaw docs)",
+    "anchor": "three tools",
+    "supports": "The memory plugin gives the agent search, read and intent tools but no write tool, so saving a fact needs the general file tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:189",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "apply_patch",
+    "supports": "Allowing write also enables apply_patch, and denying write does not deny it, so apply_patch has to be denied by name when only narrow file writes are wanted.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "A plugin hook sees each tool call's name and parameters and can block it, which is the mechanism for limiting writes to the memory files.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/sessions-and-subagents.md:58",
+    "title": "Sessions and subagents config (OpenClaw docs)",
+    "anchor": "sessionToolsVisibility",
+    "supports": "A sandboxed session can only reach sessions it spawned unless the sandbox session-tools setting is widened, whatever the gateway-wide visibility says.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From AUT-14 (Deep recall of earlier conversations (Active Memory)): Add to F041 as a later option: if saved notes plus memory search prove too weak, test Active Memory's cross-conversation recall per agent, starting with whether yesterday's pre-reset transcript of the same DM is recalled at all. It adds a blocking model call to the replies it runs on."
+  ],
+  "wave": "A",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Memory overview"
+  ],
+  "demand": {
+   "ref": "docs/concepts/memory.md:31",
+   "title": "Memory overview",
+   "supports": "OpenClaw's memory guide presents asking the agent to remember a fact, which it then writes to its memory files, as the normal way to use memory."
+  }
+ },
+ {
+  "id": "F042",
+  "origin": "9 Oct",
+  "name": "Family facts, standing preferences and reply language rendered into each parent's agent from family.json5",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "Both parents' agents start every chat already knowing the kids' school, routines and activities and each adult's standing preferences, including the language to reply in. On request Happy also turns a school note into a short Chinese text a parent can forward to a grandparent.",
+  "example": "Jordan writes to Happy in Chinese and is answered in Chinese; Tony texts 'put this school note in Chinese for grandma' and gets three short lines to forward.",
+  "how": "One generator, one file. From family.json5 the generator renders each adult's directives into USER.md (4,000-character cap), the per-person reply-language line among them (G011), and the kid and routine facts into MEMORY.md with trigger comments (F042); nothing is rendered into shared agents. Scheduled jobs do not read that line, so the language is written into each job message. The grandparent version is a prompt-only request on the parent's own agent: no new tool and no send path, and the parent forwards the text.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "USER.md has a 4,000-character cap that all standing preferences share, so the list has to stay short.",
+   "Rendered facts change only when the family file is edited and redeployed, and a chat edit to a generated file is expected to be lost on the next deploy; things a parent says in chat go through the memory write path (F041).",
+   "On supported iPhones Messages can already translate a conversation automatically and on device, so plain back-and-forth with a grandparent may need nothing from Happy; whether that covers Chinese on this family's phones is not confirmed.",
+   "Happy's distinct part on the language side is the shortened Chinese version of a school note, and its translation quality for school notices was not evaluated.",
+   "A per-language voice switch is documented only for the bundled Microsoft speech provider, which is an online service, so it does not help the offline say path, and whether the default say voice pronounces Chinese was not tested.",
+   "The generator script and the family registry were not opened in this review."
+  ],
+  "corrections": [
+   "A 9 Oct verifier note says there is no per-language voice switch. tts/output.md:56 documents one for the bundled Microsoft provider, which is an online service; it does not help the offline say path."
+  ],
+  "unverified": [
+   "The generator script and the family registry live in happy-config and were not opened in this run.",
+   "That a chat edit to a generated file is lost on the next deploy is a property of Tony's generator, not something an opened source states.",
+   "Translation quality into Chinese by gpt-6-sol for school notices was not evaluated.",
+   "Which iPhone models and languages Apple's Live Translation covers for this family was not confirmed; the Apple page defers to an availability list.",
+   "Whether the macOS say default voice pronounces Chinese text was not tested."
+  ],
+  "safety": "The rendered files hold the children's school and routines, so they go only into the two parents' own agents and never into shared agents such as research, the group agent or the mail readers. No tool and no send path are added; a translated note leaves the family only when a parent forwards it.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:367",
+    "title": "User model (OpenClaw docs)",
+    "anchor": "4,000-character bootstrap cap",
+    "supports": "USER.md has a fixed small budget that config can only lower, so it cannot hold a full family fact sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "USER.md and MEMORY.md are among the files injected at the start of every session, which is why generated facts are known without re-typing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-architecture.md:239",
+    "title": "Memory architecture (OpenClaw docs)",
+    "anchor": "trigger:",
+    "supports": "A fact line can carry trailing trigger phrases so it is pulled in when a message is about that topic.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:140",
+    "title": "Automation delivery",
+    "anchor": "do not infer a reply language",
+    "supports": "Scheduled jobs do not pick up a language from the chat, so each digest or reminder must state its language in the job text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:56",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "zh-CN-XiaoxiaoNeural",
+    "supports": "Only the online Microsoft speech provider switches to a Chinese voice automatically for mostly-Chinese text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/123720",
+    "title": "Use Live Translation on iPhone - Apple Support",
+    "anchor": "Live Translation",
+    "supports": "On supported iPhones Messages can translate a conversation automatically and on device, which overlaps with the grandparent-translation use.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "G011"
+  ],
+  "adds": [],
+  "wave": "A",
+  "section": "Memory, knowledge and skills",
+  "includes": [
+   {
+    "id": "G011",
+    "name": "Bilingual replies and grandparent-facing translations"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: User model",
+   "r1: merged with G011 (same batch). The reply-language line is one of the standing preferences the same generator renders into each adult's USER.md, so bilingual replies and the grandparent-facing translation join the family-facts card."
+  ],
+  "demand": {
+   "ref": "docs/concepts/user-model.md:12",
+   "title": "User model",
+   "supports": "OpenClaw documents USER.md as the place for stable preferences, relationships and context that are loaded at session start to guide later chats."
+  },
+  "depends_on": [
+   "family.json5 registry and the gen-family generator in happy-config"
+  ],
+  "review_notes": []
+ }
+]

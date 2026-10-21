@@ -1,0 +1,12 @@
+#!/bin/zsh -f
+# happy-healthcheck: probe the gateway's /readyz and report to healthchecks.io.
+# Installed root:wheel 755 at /usr/local/libexec/happy-healthcheck; run as "nobody" every 5 minutes
+# by /Library/LaunchDaemons/local.happy.healthcheck.plist. Silence (a dead Mac) also alerts.
+# The ping URL goes to curl on stdin (-K -), so it never shows in the process list.
+url=$(</usr/local/etc/happy-healthcheck.url)
+if /usr/bin/curl -fsS -m 10 -o /dev/null http://127.0.0.1:18789/readyz; then
+  target=$url
+else
+  target=$url/fail
+fi
+printf 'url = "%s"\n' "$target" | /usr/bin/curl -fsS -m 10 --retry 5 -o /dev/null -K -

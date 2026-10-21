@@ -1,0 +1,317 @@
+[
+  {
+    "id": "F041",
+    "kind": "over-engineering",
+    "part": "read-write workspace plus an in-house hook that limits where Happy may write",
+    "where": "how, depends_on",
+    "problem": "To save notes, the card opens each parent's whole agent folder for writing (rules file, family facts and skills included) and then needs custom code to close it again down to the notes folder. That folder is not writable today, and the installed docs describe settings that may give a notes-only writable folder with no custom code.",
+    "checked": "Config repo openclaw/openclaw.json:198 (workspaceAccess \"none\", comment 'Colima mounts only ~/.openclaw/sandboxes'); roadmap section 1b, Memory and workspace row (the sandbox folder is the only folder the VM mounts); installed docs gateway/sandboxing/workspace-access.md (with \"none\" the file tools reach only a private sandbox workspace and skills are mirrored read-only), gateway/sandboxing/multiple-folders-for-one-agent.md (bind mounts are called 'the supported multi-folder boundary'), reference/memory-config.md:381 and :446-467 (extra search folders can be set per agent, by absolute path). No roadmap rule asks for a path hook; it is needed only because the card switches the workspace to read-write.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Before writing any hook, try this on one parent's agent: keep workspaceAccess \"none\", allow write and edit (apply_patch still denied), and add the memory folder inside that agent's own sandbox workspace to its own memory.search.extraPaths. Second choice: bind-mount only the real memory/ folder read-write. Save a note, start a new chat, search for it. If it is found, drop the read-write workspace, the path hook and the separate skills-folder write proof in AUT-06."
+    },
+    "loses": "Today's and yesterday's notes would no longer load by themselves at the start of a chat; they are found by search only (already the card's rule for older notes). Notes indexed from outside the workspace may come back labelled untrusted, which the test has to show. If neither setting works, the hook stays.",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "F041",
+    "kind": "over-engineering",
+    "part": "the bundled session-memory hook",
+    "where": "how",
+    "problem": "The card is about 'remember this', but it also switches on a hook that saves the last 15 messages of every chat to the notes folder at each reset, whether or not anyone asked. That hook then makes extra work in other cards: the weekly review has to count those files and the sick-day log leaks into them.",
+    "checked": "Installed docs automation/hooks/bundled-hooks.md:114-150 (what the hook saves and when); config repo openclaw.json has no hooks section, so it is off today; removed.json AUT-14 (the hook came in to cover 'what did we decide last week?', a purpose this card's name and description do not promise); G006 how and CRT-10 caveats in r7.json (both carry extra handling because of it). No statement by Tony asks for recall of past chats; the daily 04:00 session reset is a recorded decision.",
+    "proposal": {
+      "action": "drop",
+      "text": "Leave the session-memory hook off. Happy keeps what a parent asks it to keep, and nothing else."
+    },
+    "loses": "Happy does not carry yesterday's chat across the 04:00 reset unless the parent said 'remember'; that is how it behaves today.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F041",
+    "kind": "over-engineering",
+    "part": "later step: local embedding server for search by meaning, and the further Active Memory option",
+    "where": "how, depends_on, description",
+    "problem": "Two extra stages sit inside the card (a local embedding plugin with a model download and re-index, then a recall feature that adds a model call to each reply). Nobody asked for them, and the card itself says the gain for a few hundred family notes is a judgement, not a measured figure.",
+    "checked": "Card caveats and unverified list; config repo openclaw.json:102 (search is already keyword-only, so nothing goes to a cloud embedding service); roadmap M2 lists a local embedding model, and the fact sheet records that Tony chose to skip M2 for now; the example that motivates it (a child's allergy note) rests on facts the fact sheet lists as never stated.",
+    "proposal": {
+      "action": "defer",
+      "text": "Take the later step and the Active Memory option out of this card. One line stays: revisit with M2, or when a parent reports a saved note that keyword search did not find."
+    },
+    "loses": "A question worded differently from the saved note, or asked in another language, may not find it; the agent can try a second keyword.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F041",
+    "kind": "over-engineering",
+    "part": "the hook also tracking web tool calls so it can refuse a note after web results",
+    "where": "caveats, unverified",
+    "problem": "The plan has the in-house hook remember which tool calls happened in a turn and refuse a save after a web search. OpenClaw already labels such a save as untrusted by itself, no roadmap rule asks for more, and the rule already blocks a wanted use in another card (saving research findings to a project note, AUT-01).",
+    "checked": "Installed docs concepts/memory-architecture.md:117-125 (the platform marks everything written after network content in a turn as untrusted, and clears that on the next user message); roadmap section 5 table (the ways out for a parent's agent are a text or email to its owner and the hand-off to research; a saved note is neither); AUT-01 caveat in r7.json; the card says this part is untested and that no flag a hook can read was found.",
+    "proposal": {
+      "action": "drop",
+      "text": "No call tracking in the hook. Keep one prompt rule (save only what the parent asked to save, in the parent's own words) and rely on the platform's own untrusted label."
+    },
+    "loses": "An instruction hidden in a search result could get a note saved in that same turn; it would carry the platform's untrusted label and sit in the notes until someone reads them.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F031",
+    "kind": "over-engineering",
+    "part": "the store itself in wave A (SQLite plugin with schedule and fact tools)",
+    "where": "wave, how, description",
+    "problem": "The store is built in wave A, but no wave A feature uses its schedule or fact tools, and the wave B features that mention it call it optional or 'only if parents add rows by chat'. It is kept because many later cards plan to hang a table on it, not because something needs it now.",
+    "checked": "depends_on and how of every card in r7.json: in wave A only G009's optional relay step (which adds its own table) and F043 ('optional'); F063 'only if parents are to add rows by chat', F014's morning leg 'optional', F010 'only for keeping confirmed dated rows'. Card history r1 to r5 ('kept as the one shared store that fourteen other entries build on'). Fact sheet: none of Tony's recorded statements asks for upkeep tracking, and whether the family shares Reminders lists is listed as never stated.",
+    "proposal": {
+      "action": "defer",
+      "text": "Do not build it in wave A. Create the store together with the first built feature that needs rows a parent enters by chat and both parents read (likely the sick-day log, CRT-10, or the relay step in G009). Until then 'filter every 90 days' is a repeating item on a shared Reminders list (F030) if the family uses one, or a row Tony types into the dates table that the renewals look-ahead (F063) already reads."
+    },
+    "loses": "Happy cannot answer 'when is the furnace filter due?' from its own data until then, and a parent cannot restart an upkeep interval by text.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F031",
+    "kind": "over-engineering",
+    "part": "secret-pattern check inside the store's tools",
+    "where": "how, safety",
+    "problem": "The plugin is to refuse values that look like passwords or keys, and separately the card says values 'should' be short and typed. That is two guards for one worry, and the simpler one is only a wish.",
+    "checked": "Roadmap never list and section 5: no rule asks for secret scanning of a household table; config repo templates/person/AGENTS.md already tells each agent never to ask for or reveal passwords, keys or codes; card safety text ('facts should stay short and typed').",
+    "proposal": {
+      "action": "simplify",
+      "text": "Make the tool inputs typed and short in the tool's own schema (a date, a whole number of days, a label of at most about 40 characters) and drop the separate secret detector. One limit then covers both a stray secret and a stored instruction."
+    },
+    "loses": "A short secret typed as a label would be stored; the prompt rule is then the only guard against that.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F042",
+    "kind": "over-engineering",
+    "part": "generator taking over MEMORY.md, with trigger comments on each fact",
+    "where": "how, caveats",
+    "problem": "The generator would start writing a second file, MEMORY.md, which OpenClaw's own memory system also manages and which the deploy script deliberately never touches. That choice is what creates the clash with saved notes in F041, and the card admits the same facts must be written again into AGENTS.md or the job text because scheduled jobs do not load MEMORY.md.",
+    "checked": "Config repo scripts/gen-family.mjs:144 (renders AGENTS.md, SOUL.md, IDENTITY.md and USER.md only), system/happy-deploy:97-100 ('MEMORY.md and memory/ are never touched'), bin/happy-eval:78-83 (the eval plants its marker block in MEMORY.md), family.json5 (no children, routines or preferences recorded, so there is nothing to render yet); installed docs concepts/user-model.md:367-376 (USER.md cap; MEMORY.md is left out of scheduled, group and helper sessions); G003 and F014 in r7.json already put job programs and the routines table in AGENTS.md.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Render family facts into the template files the generator already owns: USER.md while they fit under its 4,000 characters, otherwise a section of AGENTS.md, which jobs load too. Leave MEMORY.md to OpenClaw and the eval marker. No trigger comments while the file is injected whole."
+    },
+    "loses": "The facts take prompt space in every session of that parent's agent, scheduled jobs included, and the trigger-phrase feature is not used.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F042",
+    "kind": "assumption",
+    "part": "reply-language line and the Chinese version for a grandparent (G011)",
+    "where": "how, description, example",
+    "problem": "The card builds in a per-person language setting and a grandparent translation. Nothing on record says either parent wants replies in another language or that a grandparent reads Chinese, and both things already work by simply writing or asking in that language.",
+    "checked": "Fact sheet, 'Never stated by Tony': any second language, grandparents. Config repo family.json5: no language field. Card how ('a prompt-only request ... no new tool and no send path') and caveat (Messages on the iPhone already translates a conversation). F041 also carries a test note 'saved in Chinese' on the same assumption.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Does either parent want Happy's scheduled texts in a language other than English? Default: no. The language line and the grandparent leg come out of the card as nothing-to-build (a parent can already ask for a translation in chat), and the Chinese test note comes out of F041."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F042",
+    "kind": "over-engineering",
+    "part": "'driving reply style' line carried over from a removed item",
+    "where": "adds",
+    "problem": "The card still lists a standing 'when a parent says they are driving' reply rule taken from an item that was removed, while the catalog's own summary says the driving style was removed.",
+    "checked": "frame.json findings ('The \"driving reply style\" was removed: AAA rates voice texting at the wheel as a high distraction'); removed.json VOX-06; the card's how does not mention it.",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove the driving line from this card so the card and the summary agree."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F043",
+    "kind": "over-engineering",
+    "part": "step 2: the memory-wiki plugin with four wiki tools, plus the data-plate photo and manual-by-link routes",
+    "where": "how, depends_on, safety",
+    "problem": "Step 1 (a shared folder of pages that Tony types and both agents search) already answers 'what filter does the furnace take?'. Step 2 adds a second knowledge system with four more tools, a vault that only tool policy keeps away from other agents, a mode that must never be switched on, and a new row in the weekly review, mainly so a handful of appliance details can be saved from a photo instead of typed once.",
+    "checked": "Installed docs plugins/memory-wiki.md:11-60 (a compiled wiki with claims, provenance and dashboards; one vault for all agents or one per agent) and concepts/multi-agent.md:265 (a shared extraPaths folder is the documented way to share reference pages, which is step 1); the card's own safety paragraph; r7.json: only the recipe box in F033 (wave C, value 2) needs step 2; family.json5 records no home systems or providers; none of Tony's statements in the fact sheet asks for a home-systems registry.",
+    "proposal": {
+      "action": "defer",
+      "text": "Ship step 1 only. Take the memory-wiki step, the photo route and the manual-by-link route out of this card, so its only need is the search tools from F041 (F002, F019 and F031 drop off its list). Revisit when hand-typing pages has become a real chore."
+    },
+    "loses": "Saving a page by texting a photo, pages edited by Happy, and the wiki's own ranking; the recipe box in F033 would need another home.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "AUT-06",
+    "kind": "over-engineering",
+    "part": "the skills pipeline (deploy step, read-tool grant, skill-folder write proof) before any routine exists",
+    "where": "how, depends_on, frame.decisions",
+    "problem": "The card sets up a new deploy step, a new file-reading permission on the agents that hold private notes, and an extra write test, yet it says itself that a routine of a few lines can live in AGENTS.md. The quiz it uses as the first skill was described in its original record as a prompt-only addition with the skill optional.",
+    "checked": "Card how ('A routine of a few lines can live in AGENTS.md instead'); r0.json MKT-02 ('No new tool ... a prompt-only addition', skill 'optional'); config repo scripts/gen-family.mjs:144 and system/happy-deploy (AGENTS.md is already rendered per person, reviewed in the repo and deployed); roadmap section 9, Agents vs skills ('skills inside each', By: You) backs skills as the unit but sets no date; frame.json decisions, 'Let the person agents read skill files': the recommendation is '(a).' with no reason given.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Start with routines as reviewed sections of the AGENTS.md template: same review, same deploy, nothing new granted. Build the skills step, the read grant and the write proof when the routines no longer fit comfortably in AGENTS.md. Drop the separate 'who may request a new skill' decision: either parent asks, Tony decides."
+    },
+    "loses": "Routines sit in every prompt instead of loading on demand, there is no '/skill <name>' shortcut, and the roadmap's 'skills inside each agent' arrives later.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "AUT-06",
+    "kind": "assumption",
+    "part": "the practice quiz as the first routine",
+    "where": "description, example, how",
+    "problem": "The only concrete use of this card is a quiz from a child's study guide or spelling list. Nothing on record says the family has school-age children or would use it, and the card says the ChatGPT or Gemini app on a parent's phone already does the same thing.",
+    "checked": "Fact sheet ('Never stated by Tony': how many children, ages, schools, grades); config repo family.json5 (two adults, no children recorded); card caveats ('Happy's only edge is that it lives in the same thread'); no routine has been named by either parent in the records.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Is there a routine you want Happy taught, or a quiz you would actually use? Default: neither is built until you name one, and the card stays parked."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "AUT-06",
+    "kind": "over-engineering",
+    "part": "optional re-quiz reminder and read-aloud spelling leg",
+    "where": "how, depends_on",
+    "problem": "Two optional extras pull two more cards (timed reminders and voice) into this card's list of needs, for a quiz that is itself optional.",
+    "checked": "Card depends_on ('F007 ... only for the optional re-quiz reminder', 'F003 ... only for reading spelling words aloud'); card caveat (voice quality for spelling words is untried); no request for either in the fact sheet.",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove both legs and the F007 and F003 entries from this card. A parent who wants a nudge asks for a reminder the normal way once reminders exist."
+    },
+    "loses": "Spelling practice by ear, and the automatic night-before offer.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "G015",
+    "kind": "over-engineering",
+    "part": "two mail texts per parent per weekday from the same inbox (07:00 whole inbox, 16:00 school)",
+    "where": "description, how",
+    "problem": "Each parent's mail agent would run a whole-inbox digest at 07:00 and a separate school digest at 16:00 over the same mailbox, and both parents get the same school mail, so that is four scheduled mail jobs a day with overlapping content. Tony's own reason for moving the whole inbox forward was that the school digest then becomes trivial.",
+    "checked": "Fact sheet ('once having the whole email inbox read, school digest would be very trivial'; school mail arrives in both parents' Gmail); F051 how and caveats in r7.json ('the two texts will mostly match'); the card does not say the 07:00 digest leaves school mail out; preferred times and a daily cap on texts are listed as never stated.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "One mail text a day per parent, with the school lines first, or two (07:00 everything, 16:00 school)? Default: one digest per parent with a School section; the separate 16:00 job is added only if the morning text proves too late for school notices."
+    },
+    "loses": "School mail that arrives during the day waits until the next morning's text.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G015",
+    "kind": "over-engineering",
+    "part": "Saturday tax-form check, January to April (F061)",
+    "where": "how, description, depends_on",
+    "problem": "A second seasonal job with its own list of expected senders, switched off by hand after filing, was folded into this card. Nobody asked for it, it only knows that a notice email arrived, and the lookup this card already builds answers 'has my form from the bank arrived?' on demand.",
+    "checked": "Fact sheet (Tony's recorded statements cover reading mail, the whole-inbox features and the school digest; none mentions tax forms); card caveats ('a form that came by post or sits in a portal shows as missing'); depends_on ('the family's own list of expected tax-form senders', which is not in family.json5); removed.json F061 (kept only as a seasonal line of the digest).",
+    "proposal": {
+      "action": "drop",
+      "text": "No Saturday job and no sender list. The 07:00 digest already flags mail that involves money, and a parent can ask the lookup about a specific form."
+    },
+    "loses": "The weekly 'still missing' line during tax season.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G015",
+    "kind": "over-engineering",
+    "part": "hook check that holds the school job to school senders",
+    "where": "caveats",
+    "problem": "The card plans custom code to make sure the school job searches only school senders. The same agent, with the same token, reads the whole inbox every morning for the same parent, so the check protects nothing.",
+    "checked": "Card caveats ('that job's fixed search, plus a hook check still to be built') and the matching F051 caveat; the roadmap rules on mail (one agent per inbox, no way out, texts only to the owner) say nothing about limiting which of the owner's own mail the reader may see; Tony's 11 Oct decision puts whole-inbox reading in the same wave.",
+    "proposal": {
+      "action": "drop",
+      "text": "No hook. The school lines come from the job's fixed search on the sender list, and that is all."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G015",
+    "kind": "over-engineering",
+    "part": "llm-task plugin in the digest job",
+    "where": "how, depends_on",
+    "problem": "The digest job is given a second model-call tool and the card lists a plugin to enable for it, with no reason stated. The mail agent is itself a model that can read the mail and write ten lines.",
+    "checked": "Installed docs tools/llm-task.md:1-12 (a JSON-only model step meant for workflow engines); r0.json F016 (the tool list was copied from the first draft, which gives no reason); no roadmap rule or card caveat explains it.",
+    "proposal": {
+      "action": "drop",
+      "text": "Run the digest with the Gmail read tools only. Add llm-task back only if a later feature needs dates out of mail in a fixed shape."
+    },
+    "loses": "A fixed-shape output from the digest, if that was the intent; nothing the card promises depends on it.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F049",
+    "kind": "over-engineering",
+    "part": "the whole mailout, in its plain-text first version",
+    "where": "how, description, wave",
+    "problem": "The first version sends plain text, which is what a long iMessage already delivers. To get that text into the inbox instead, the card needs a new Google account, a send grant, a published sign-in app, a fail-closed hook and seeded tests.",
+    "checked": "Card caveats ('a table arrives as lined-up text, not as a formatted table'); roadmap M3 and section 2 list email to the asker, but section 9 has no 'By: You' row for it; the fact sheet's 10 and 11 Oct statements do not mention it; r7.json: only the trip planner's optional long version (F028) uses it.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you still want long answers emailed to you? Default: leave it parked and build nothing until a long answer in iMessage has actually been a problem; a parent can copy or share a long text to Mail from the phone."
+    },
+    "loses": "Long answers are not filed in the inbox by Happy, and the roadmap's M3 email step waits.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F049",
+    "kind": "over-engineering",
+    "part": "general send tool guarded by a seven-condition hook",
+    "where": "how, caveats, depends_on",
+    "problem": "The card grants a general mail-sending tool and then relies on custom code to catch every field that could add a recipient (to, cc, bcc, reply, reply-all, alias, HTML). The card says it is not yet shown that the hook sees all of them.",
+    "checked": "Roadmap section 1 Email out row, section 1b Code check row and S2 (the recipient is pinned in code, fails closed, tested five ways); card caveats and unverified list; G015 caveat (that a hook reaches MCP tool calls is 'implied by the docs but not stated'); bundled skills/gog/SKILL.md:54-56 (a plain send takes one recipient, a subject and a body); config repo plugins/home-weather (an in-house tool already exists); installed dist/types-Bp7Bycw8.d.ts:27749-27760 (a plugin tool's context has an optional agentId field).",
+    "proposal": {
+      "action": "test-first",
+      "text": "Check on a live turn that an in-house tool is told which agent called it. If so, build one small tool with only a subject and a body, no recipient field at all, that sends plain text to the calling agent's owner from family.json5 and refuses to send when the owner lookup fails. The rule 'only to the asker, enforced in code, fails closed' then holds by construction and the field-by-field hook checks go. If not, keep the card's design."
+    },
+    "loses": "It departs from the mechanism the roadmap names (a mailout MCP server plus the registry hook, a 'Default' choice), and it is one more small in-house tool to keep.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F049",
+    "kind": "over-engineering",
+    "part": "in-house daily send cap",
+    "where": "how, caveats",
+    "problem": "Custom code would count sends per day, although the only place a mail can go is the asker's own inbox.",
+    "checked": "Roadmap sections 1b, 5 and 9: the mail rules are the recipient pin and failing closed, and the spend rule is one capped key per agent; no rule or cited risk asks for a send count. The card notes no built-in cap exists, so this is new code.",
+    "proposal": {
+      "action": "drop",
+      "text": "No send cap. The recipient pin and the per-agent spend cap stay."
+    },
+    "loses": "A runaway loop could fill the asker's own inbox until someone notices or the spend cap stops the agent.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "PLAN",
+    "kind": "over-engineering",
+    "part": "four places to keep a fact (F031 store, F041 notes, F042 rendered facts, F043 handbook)",
+    "where": "F031 description, F041 caveats, F042 how, F043 description",
+    "problem": "Wave A sets up four separate homes for family facts, each card carrying rules about which fact belongs where, for a household whose records hold two adults' names and a home town. The store's fact_get and fact_set tools repeat what the rendered facts and the handbook already do.",
+    "checked": "The four cards' own boundary notes (for example F041: 'belongs in the household store (F031) or the family handbook (F043)'; F043: 'Dates that need a reminder live in the renewals table (F063), not here'); F031 history r2 ('all three were described as places for facts'); config repo family.json5; fact sheet (whether the family uses any shared list or notes app is not stated).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Start with two homes instead of four? Default: yes. (1) Facts Tony types in the repo, shown to both parents' agents (F042, with long pages in the searched folder of F043 step 1). (2) Each parent's own saved notes (F041). The shared store (F031) and the wiki step wait for a built feature that needs them, and the fact_get and fact_set tools are dropped."
+    },
+    "loses": "A parent cannot change a shared fact by text; they tell Tony, or keep it on a shared list on the phone.",
+    "saves": "S",
+    "severity": "medium"
+  }
+]

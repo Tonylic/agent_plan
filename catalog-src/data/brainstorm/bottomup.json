@@ -1,0 +1,687 @@
+[
+  {
+    "id": "OCL-01",
+    "name": "Happy in the OpenClaw iOS app (second chat surface with files, approvals and push)",
+    "tier": 1,
+    "cluster": "Channels and surfaces",
+    "description": "Each parent can also reach Happy in the free OpenClaw iPhone app: a native chat that takes PDFs, Office files, audio and photos from Files or the share sheet, queues messages while offline, shows source cards and lets files be saved back to the phone. It also turns approvals and agent questions into tap-to-answer cards with a notification, which Basic-mode iMessage cannot do.",
+    "example": "Jordan shares a 12-page camp packet PDF from Mail to OpenClaw and asks 'what do I have to sign, and by when?'. Later a card appears: 'Add camp drop-off to the Family calendar? Allow once / Deny'.",
+    "how": "Install the App Store app on a parent's iPhone and pair it from the Control UI (Nodes > Devices > Pair device, or a setup code) over the existing Tailscale Serve URL. Pairing creates an operator session and a node session. For per-person separation configure gateway.roles: one role per parent with agents: ['<p>-main'], sessions.others: 'none' and a scope list below operator.admin, bound to each verified profile with users.setRole; without roles every paired phone is a shared-owner operator that can open any agent. Deny show_widget on <p>-main (or allow native reports only), do not grant the nodes tool, and keep the personal-data node commands denied until OCL-15 and OCL-16 are decided. A lighter alternative for Jordan is the Control UI added to her Home Screen as a web app, which also receives Web Push for approvals. iMessage stays the main channel; the app is the surface for documents, approvals and a fallback if imsg breaks after a macOS update.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "Decision: per-person sign-in (gateway.roles plus a verified identity) or Tony-only at first",
+      "Tailscale on each phone (already needed for the Control UI)",
+      "F084 privacy gate extended to app uploads, or uploads switched off",
+      "OpenClaw iOS app from the App Store (iOS 18 or later)"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Pairing defaults to Full access (operator.admin): the app then also opens Dashboard settings, automations and every agent. Use Limited access or a role for anyone who is not the operator.",
+      "With gateway.roles configured, operator connections that authenticate only with device or bootstrap tokens are refused; whether the iPhone app can present a per-person verified identity instead is not confirmed (see unverified).",
+      "App Store builds receive push through OpenClaw's hosted relay, a service outside the tailnet; the Gateway stores a relay handle rather than the raw APNs token.",
+      "iOS suspends the app in the background: camera and screen node commands need the app in front, and voice is best-effort.",
+      "Files a parent uploaded earlier cannot yet be downloaded again from native history; assistant-sent documents are capped at 100 MB.",
+      "Progress cards and inline widgets only exist on app and web surfaces, so behaviour will differ between the app and the iMessage thread.",
+      "iMessage already covers quick text and photos well; the app earns its place for multi-page documents, approvals and offline queueing."
+    ],
+    "safety": "The app adds no tool by itself but changes two things. First, uploads reach <p>-main as files, so the F084 gate and the attachments-to-cloud decision apply to this surface too; gateway.uploads.enabled: false switches client uploads off entirely. Second, runs started from the app advertise inline widgets, so show_widget becomes available unless denied; HTML widgets may load CDN scripts that can see the widget's content, so keep it denied on memory-holding agents. OpenClaw states that session ownership and sidebar visibility are not security boundaries, so keeping the two parents apart must come from roles that limit which agents a profile can run. Outbound messaging and the family-only recipient pin are unchanged.",
+    "unverified": [
+      "Whether the App Store iOS app can sign in with a per-person verified identity (for example Tailscale identity headers) so that gateway.roles applies per parent; the docs describe setup-code pairing and say role-configured Gateways reject token-only operator connections",
+      "Whether a before_agent_run privacy gate (F084) sees files attached from the native app exactly as it sees iMessage attachments",
+      "What the hosted push relay learns beyond a wake request",
+      "Whether sessions started in the app and the iMessage DM for the same parent share one conversation or stay separate under session.dmScope per-channel-peer"
+    ],
+    "overlaps_existing": ["F001", "F002", "F010", "F082", "G008"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/platforms/ios.md:15", "title": "iOS app", "anchor": "App Store", "supports": "The official iPhone app is distributed through the App Store." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:28", "title": "iOS app: what it does", "anchor": "ZIP archives", "supports": "Native chat can attach audio, video, PDFs, text, CSV and Office files from Files, within size limits the Gateway advertises, and earlier uploads cannot yet be re-downloaded." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:24", "title": "iOS app: what it does", "anchor": "durable per-gateway outbox", "supports": "Text sent while disconnected is queued (up to 50 messages) and flushed on reconnect, expiring after 48 hours offline." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:450", "title": "iOS app: review command approvals", "anchor": "allow-once/deny", "supports": "Pending approvals can be reviewed on the iPhone, and a paired Apple Watch offers the allow-once or deny subset." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:469", "title": "iOS app: answer agent questions", "anchor": "operator.questions", "supports": "Pending agent questions appear as native cards with options and an expiry countdown." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:193", "title": "iOS app: quick start", "anchor": "Limited access", "supports": "Pairing selects Full access by default and offers Limited access to omit administrative Gateway controls." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:527", "title": "iOS app: relay-backed push", "anchor": "ios-push-relay.openclaw.ai", "supports": "Official builds send push through an OpenClaw-hosted relay instead of giving the Gateway the raw APNs token." },
+      { "kind": "installed", "ref": "CHANGELOG.md:13", "title": "OpenClaw 2026.9.7 changelog, highlights", "anchor": "Native Apple chat", "supports": "Release 2026.9.7 added file and audio attachments to the native macOS and iOS chat." },
+      { "kind": "installed", "ref": "docs/gateway/operator-scopes.md:104", "title": "Operator scopes: named operator roles", "anchor": "named operator roles", "supports": "A Gateway can bind verified profiles to roles that limit which agents they may run, their access to other people's sessions and their maximum scopes." },
+      { "kind": "installed", "ref": "docs/gateway/operator-scopes.md:173", "title": "Operator scopes: named operator roles", "anchor": "device or bootstrap tokens", "supports": "When roles are configured, operator connections without a verified user identity are rejected, so token-only pairing does not carry a role." },
+      { "kind": "installed", "ref": "docs/concepts/multi-user.md:15", "title": "Multi-user mode: trust boundary", "anchor": "not security boundaries", "supports": "Anyone who can operate an agent can use everything that agent can do; ownership and visibility are usability features only." },
+      { "kind": "installed", "ref": "docs/tools/show-widget.md:42", "title": "Show widget", "anchor": "inline-widgets", "supports": "show_widget is offered only when the originating client declares inline widget support, which the Control UI and native apps do and plain channel runs do not." },
+      { "kind": "installed", "ref": "docs/gateway/config-gateway.md:231", "title": "Gateway config: disable file and image uploads", "anchor": "gateway.uploads.enabled", "supports": "One config key disables client file and image uploads to the Gateway." },
+      { "kind": "installed", "ref": "docs/web/notifications.md:62", "title": "Notifications", "anchor": "Add to Home Screen", "supports": "On iPhone and iPad the Control UI can receive Web Push only after it is installed to the Home Screen and opened from there." },
+      { "kind": "web", "ref": "https://apps.apple.com/app/openclaw-ai-that-does-things/id6780396132", "title": "OpenClaw on the App Store", "anchor": "OpenClaw", "supports": "The app is a free App Store listing that requires iOS 18 or later and includes an Apple Watch app." },
+      { "kind": "web", "ref": "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/", "title": "Web Push for Web Apps on iOS and iPadOS (WebKit blog)", "anchor": "Home Screen web apps", "supports": "Apple supports Web Push on iOS and iPadOS only for web apps added to the Home Screen." }
+    ]
+  },
+  {
+    "id": "OCL-02",
+    "name": "Hands-free voice with Happy (Talk mode, Siri shortcut, Apple Watch)",
+    "tier": 1,
+    "cluster": "Voice",
+    "description": "A parent can hold a spoken back-and-forth with Happy from the iPhone app, start it by asking Siri or pressing the Action Button, or dictate one question on an Apple Watch and hear the answer.",
+    "example": "Hands full in the kitchen: 'Hey Siri, start live voice with OpenClaw', then 'what's on tomorrow and who is driving?'",
+    "how": "Needs OCL-01. Native Talk is a loop of on-device speech recognition, a normal chat turn on the parent's <p>-main session, and talk.speak text-to-speech; the documented talk.providers list includes a system voice and a local mlx model, so no speech vendor has to be added. The app's 'Start Live Voice' App Shortcut opens the current chat in Talk and can be bound to Siri or the Action Button. Apple Watch 'Talk to Claw' sends one dictated turn through the paired iPhone with no separate Watch pairing. Realtime Talk (OpenAI realtime over WebRTC) and standalone Watch calls are an optional second step that needs a realtime voice credential on the Gateway.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "OCL-01",
+      "F004 local text-to-speech choice",
+      "Decision: stay on the native speech loop or allow a realtime voice provider"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The phone already dictates into iMessage and can read replies aloud; the gain is a continuous conversation while hands are busy.",
+      "iOS may suspend background audio, and the shortcut still needs the phone unlocked and the app in front.",
+      "The docs note that Apple speech recognition may use Apple's network services.",
+      "Standalone Watch calls are experimental for this house: they need a publicly trusted HTTPS endpoint the Watch reaches without the phone and UDP WebRTC, a tailnet-only Gateway does not qualify, and the docs say wrist-down use, network handoff and battery behaviour still need device validation.",
+      "The Watch waits 90 seconds for a spoken reply, so long tool runs have to be read on the phone.",
+      "Adults only: realtime voice is a cloud speech model, which the never-list rules out for kids' content."
+    ],
+    "safety": "Voice is only another input to the same <p>-main agent, so tool policy, hooks and the family-only recipient pin are unchanged. Staying on the native loop avoids a second OpenAI surface whose retention settings are separate from the store:false custom provider. There is no speaker verification: whoever holds the unlocked phone speaks as its owner, so approval-gated actions should still need a tap.",
+    "unverified": [
+      "Whether realtime Talk can use the per-person custom provider ids with store:false or needs the catalog OpenAI provider",
+      "Whether talk.speak with the system or mlx provider plays in the iOS app without any cloud text-to-speech",
+      "Which agent a Talk session binds to when gateway.roles restricts the profile"
+    ],
+    "overlaps_existing": ["F003", "F004"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/nodes/talk.md:12", "title": "Talk mode", "anchor": "native speech recognition", "supports": "Native Talk on iOS combines on-device speech recognition, a Gateway chat turn and talk.speak, and Apple recognition may use network services." },
+      { "kind": "installed", "ref": "docs/nodes/talk.md:13", "title": "Talk mode", "anchor": "client-owned WebRTC", "supports": "Realtime Talk on iOS is a separate path that uses OpenAI realtime over WebRTC." },
+      { "kind": "installed", "ref": "docs/nodes/talk.md:93", "title": "Talk mode: config", "anchor": "system: {}", "supports": "The documented Talk provider list includes a system voice entry next to a local mlx model and a cloud voice." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:655", "title": "iOS app: start live voice with Siri or Shortcuts", "anchor": "Start Live Voice", "supports": "An App Shortcut opens the current chat and starts Talk, and can be invoked by Siri." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:263", "title": "iOS app: Apple Watch voice and chat", "anchor": "Talk to Claw", "supports": "The Watch companion dictates one turn, relays it through the paired iPhone and reads the reply aloud." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:436", "title": "iOS app: standalone voice", "anchor": "still need device validation", "supports": "The docs say real-Watch audio routing, handoff, battery use and long-call reliability are not yet validated." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:651", "title": "iOS app: voice wake and talk mode", "anchor": "best-effort", "supports": "iOS may suspend background audio, so voice is best-effort when the app is not active." },
+      { "kind": "web", "ref": "https://docs.openclaw.ai/platforms/ios", "title": "iOS app (public OpenClaw docs)", "anchor": "Talk to Claw", "supports": "The public documentation describes the same Watch companion flow and App Store availability." }
+    ]
+  },
+  {
+    "id": "OCL-03",
+    "name": "Family week board in the Control UI (pinned native report)",
+    "tier": 2,
+    "cluster": "Dashboards",
+    "description": "One always-current page, reachable from the parents' devices on the tailnet, showing this week's events and drivers, bins night, chores and open reminders. A scheduled job refreshes it, so nobody has to ask.",
+    "example": "Tony opens the Happy board from a Home Screen icon on Sunday evening; the 18:00 job has already replaced the 'This week' table and the 'Due soon' list.",
+    "how": "show_widget with a structured report and pin: true writes a native dashboard report (text, metrics, tables, simple charts, links) onto a session's dashboard in the Control UI. Keep one persistent 'Family board' session per parent on <p>-main; a recurring automation bound to that session with an explicit tool cap (home_weather, <p>-calendar__*, home-store__*, show_widget) re-sends the same widget name with fresh data. The scheduled surface is pinned-only, which is what is wanted. On demand, /dashboard <request> in a Control UI chat does the same. View it at the Tailscale Serve URL or as a Home Screen web app.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F009 calendar read",
+      "F031 home-store",
+      "G003 jobs registry",
+      "Control UI access for each viewer (the identity decision in OCL-01)"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "show_widget is not offered in iMessage runs, so the board cannot be requested or shown by text; the evening brief (F014) remains the pushed version.",
+      "A native report is limited to 24 blocks and 8 KB, and a table to 40 rows.",
+      "Anyone who can open that session in the Control UI sees the board; a tablet the kids can see would need its own restricted role and a first-names-only board.",
+      "The shared calendar already shows in the phones' own calendar widgets; the board is only worth it once it merges calendar, chores, bins and reminders in one place.",
+      "Interactive HTML widgets look better but are the wrong choice on an agent that holds private data."
+    ],
+    "safety": "Native reports accept no HTML, CSS, scripts, network reads or Gateway calls, so the board has no way to send data anywhere; it is pulled by a family device over Tailscale. HTML widgets are different: allowed CDN libraries run inside the widget and can see its content, so they stay off memory-holding agents. The job carries no web tools, so no untrusted content enters the run, and it sends no message.",
+    "unverified": [
+      "Whether a job created by the config generator (rather than from a Control UI chat) can be bound to a persistent Control UI session with show_widget in its tool cap; the docs describe the surface but not the CLI flags",
+      "Whether the native iOS app shows session dashboards or only inline widgets"
+    ],
+    "overlaps_existing": ["F013", "F014", "F015", "F038", "F039", "F075"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/tools/show-widget.md:229", "title": "Show widget: native dashboard reports", "anchor": "Reports accept no HTML", "supports": "A native report is limited in size and block count and cannot contain HTML, scripts, network reads or Gateway calls." },
+      { "kind": "installed", "ref": "docs/tools/show-widget.md:44", "title": "Show widget: how widgets work", "anchor": "pinned-only", "supports": "A scheduled agent-turn job bound to a persistent session may be allowed show_widget, and on that surface every call must pin to the session dashboard." },
+      { "kind": "installed", "ref": "docs/tools/show-widget.md:42", "title": "Show widget: how widgets work", "anchor": "inline-widgets", "supports": "Ordinary channel runs without an inline-capable client do not receive the tool, which excludes iMessage." },
+      { "kind": "installed", "ref": "docs/tools/show-widget.md:142", "title": "Show widget: libraries and fonts", "anchor": "reveal the client's IP", "supports": "External library code runs inside an HTML widget and can see its content, and CDN requests disclose the client address." },
+      { "kind": "installed", "ref": "docs/web/dashboards.md:22", "title": "Session dashboards", "anchor": "the board stays", "supports": "Dashboards are a core feature stored with the agent and survive a session reset." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:303", "title": "Slash commands: discovery and status", "anchor": "/dashboard [request]", "supports": "A built-in command creates or updates the current session's dashboard from the Control UI." }
+    ]
+  },
+  {
+    "id": "OCL-04",
+    "name": "iMessage tapbacks, typing bubble, polls and tap-to-approve (Private API mode)",
+    "tier": 1,
+    "cluster": "Channels and surfaces",
+    "description": "What Happy's iMessage thread would gain if System Integrity Protection were turned off: a typing bubble and read receipts, a thumbs-up instead of a text reply, threaded replies, message effects, native polls, approving a request by tapback, and answering a multiple-choice question with a numbered reaction. All of it is unavailable in the current Basic mode.",
+    "example": "Happy acknowledges 'add milk to the list' with a thumbs-up instead of a sentence, or asks the parents' group 'Pizza or tacos on Friday?' as a native poll.",
+    "how": "channels.imessage in Private API mode: imsg injects a helper into Messages.app, which needs SIP disabled and library validation relaxed on the Mac mini; after that channels.imessage.actions.* and reactionNotifications apply. In Basic mode the plugin hides react, edit, unsend, reply, sendWithEffect and the group actions, and sends no typing or read signals.",
+    "who": "both",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": [
+      "SIP disabled on the Gateway Mac (the roadmap keeps SIP on)"
+    ],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "This is blocked by a deliberate rule rather than a defect: with SIP on, the channel is text and media send and receive only.",
+      "The docs warn that disabling SIP is a system-wide security trade-off and, on Apple Silicon, also stops iOS apps from being installed and run on that Mac.",
+      "The injected helper can drop out after a Messages restart or a macOS update and has to be relaunched.",
+      "The documented workaround is a second, dedicated Mac with SIP off just for iMessage, which means new hardware and a second machine to trust.",
+      "In Basic mode approvals stay as typed /approve; the tap-to-approve alternative is the iOS app or Control UI (OCL-01)."
+    ],
+    "safety": "Turning SIP off weakens the one machine that holds every family secret in order to gain convenience and polish, so it is not worth it. Tap-to-approve would also let any allowlisted handle resolve an approval with a reaction, which widens the approval surface the roadmap deliberately keeps narrow.",
+    "unverified": [
+      "Whether tapbacks sent by family members reach the agent as events in Basic mode; the docs list inbound tapbacks on the Private API page but describe Basic mode only as inbound watch",
+      "Whether audio replies arrive as a voice bubble or a file in Basic mode (already flagged in the roadmap)"
+    ],
+    "overlaps_existing": ["F006", "F010", "F082", "G010"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/channels/imessage/private-api.md:17", "title": "Enabling the imsg private API", "anchor": "Basic mode", "supports": "Without SIP changes, imsg offers outbound text and media, inbound watch and history, and chat listing only." },
+      { "kind": "installed", "ref": "docs/channels/imessage/private-api.md:18", "title": "Enabling the imsg private API", "anchor": "typing indicators and read receipts", "supports": "Reactions, edits, threaded replies, effects, polls, group management, typing indicators and read receipts all require Private API mode." },
+      { "kind": "installed", "ref": "docs/channels/imessage/private-api.md:85", "title": "Enabling the imsg private API: when SIP stays enabled", "anchor": "hides `react`", "supports": "With SIP on, the OpenClaw plugin removes the rich actions from the agent's action surface." },
+      { "kind": "installed", "ref": "docs/channels/imessage/private-api.md:27", "title": "Enabling the imsg private API: warning", "anchor": "Disabling SIP", "supports": "The docs call disabling SIP a real security trade-off that also stops iOS apps running on an Apple Silicon Mac." },
+      { "kind": "installed", "ref": "docs/channels/imessage/rich-messages.md:103", "title": "iMessage private API actions: approval polls and reactions", "anchor": "allow-once", "supports": "Approval prompts on a private-API bridge can be answered by a like or dislike tapback or a native poll." },
+      { "kind": "installed", "ref": "docs/channels/imessage/rich-messages.md:120", "title": "iMessage private API actions: question reactions", "anchor": "numbered emoji choices", "supports": "Single-select ask_user prompts can be answered with a numbered reaction." },
+      { "kind": "installed", "ref": "docs/tools/reactions.md:88", "title": "Reactions", "anchor": "iMessage tapbacks", "supports": "Outbound reactions on iMessage map to the six tapback kinds." },
+      { "kind": "web", "ref": "https://support.apple.com/en-us/102149", "title": "About System Integrity Protection on your Mac (Apple Support)", "anchor": "System Integrity Protection", "supports": "Apple describes SIP as the protection that stops malicious software, even with root access, from modifying protected system files and preinstalled apps." }
+    ]
+  },
+  {
+    "id": "OCL-05",
+    "name": "Texting or calling Happy from any phone (SMS/MMS, phone calls, FaceTime audio)",
+    "tier": 1,
+    "cluster": "Channels and surfaces",
+    "description": "A real phone number for Happy, so that a grandparent, a sitter or an Android phone could text it, or a parent could simply call it. OpenClaw ships plugins for all three, and none fits this house today.",
+    "example": "Grandma, on Android, texts Happy's number: 'what time is the recital on Saturday?'",
+    "how": "SMS and MMS: the @openclaw/sms plugin with a Twilio number, channels.sms with dmPolicy pairing or allowlist, and a public HTTPS webhook at /webhooks/sms. Phone calls: @openclaw/voice-call with Twilio, Telnyx or Plivo, again behind a public webhook. FaceTime audio: @openclaw/facetime plus a signed native helper, a realtime voice provider, full Xcode and reduced SIP protections on the Gateway Mac.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "A public HTTPS endpoint for the Gateway (Tailscale Funnel or a reverse proxy)",
+      "A paid Twilio account with A2P 10DLC registration",
+      "SIP changes on the Mac for FaceTime"
+    ],
+    "value": 2,
+    "effort": "L",
+    "caveats": [
+      "SMS and voice calls both need a webhook reachable from the public internet; the Gateway is reachable only over Tailscale Serve today, and Funnel would put a Gateway path on the open internet, the same kind of exposure the never-list rejects for Gmail Pub/Sub.",
+      "US carriers require brand and campaign registration (A2P 10DLC) for application texts from a local number, including for individuals; trial accounts cannot register.",
+      "SMS is carried in the clear by carriers, and school or health details would travel over it.",
+      "The FaceTime plugin is experimental and disabled by default, uses private Apple APIs, and gives every listed handle owner authority with no guest tier, which breaks one agent per person.",
+      "A sitter or grandparent is not family for the outbound rule; at best they would land in the tool-less inbox agent, which is already how unbound iMessage senders are handled."
+    ],
+    "safety": "This conflicts with three rules at once: no public endpoints, outbound only to the family, and SIP stays on. Twilio signature validation and sender pairing limit who can talk to the webhook but do not remove the public listener or the carrier's view of the content.",
+    "unverified": [
+      "Current Twilio pricing and approval times for sole-proprietor registration",
+      "Whether the FaceTime native helper is published for macOS 27"
+    ],
+    "overlaps_existing": ["F006", "F037", "G018"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/channels/sms.md:32", "title": "SMS: before you begin", "anchor": "public HTTPS URL", "supports": "The SMS channel requires a public HTTPS address that reaches the Gateway." },
+      { "kind": "installed", "ref": "docs/channels/sms.md:39", "title": "SMS: US A2P / 10DLC delivery", "anchor": "A2P 10DLC", "supports": "Application texts from a US local number to US recipients need A2P 10DLC registration, separate from OpenClaw setup." },
+      { "kind": "installed", "ref": "docs/channels/sms.md:115", "title": "SMS: expose the webhook path", "anchor": "Tailscale Funnel", "supports": "The documented way to reach the webhook from a tailnet host is Tailscale Funnel on the SMS path." },
+      { "kind": "installed", "ref": "docs/plugins/voice-call.md:89", "title": "Voice call plugin", "anchor": "public webhook URL", "supports": "Twilio, Telnyx and Plivo calling require a publicly reachable webhook and setup fails on private addresses." },
+      { "kind": "installed", "ref": "docs/plugins/facetime.md:16", "title": "FaceTime plugin", "anchor": "experimental, disabled by default", "supports": "FaceTime voice is an experimental plugin that is off by default." },
+      { "kind": "installed", "ref": "docs/plugins/facetime.md:22", "title": "FaceTime plugin: warning", "anchor": "reduced SIP debugging protections", "supports": "The FaceTime integration uses private Apple APIs and needs reduced SIP protections." },
+      { "kind": "installed", "ref": "docs/plugins/facetime.md:62", "title": "FaceTime plugin: owner identities", "anchor": "no guest tier", "supports": "Every configured FaceTime handle has owner authority." },
+      { "kind": "web", "ref": "https://www.twilio.com/docs/messaging/compliance/a2p-10dlc", "title": "A2P 10DLC (Twilio Docs)", "anchor": "A2P 10DLC", "supports": "Twilio states that anyone sending application SMS or MMS over a US 10-digit number must register, with a sole-proprietor tier for individuals." },
+      { "kind": "web", "ref": "https://tailscale.com/kb/1223/funnel", "title": "Tailscale Funnel (Tailscale Docs)", "anchor": "Funnel", "supports": "Funnel routes traffic from the public internet to a local service, whereas Serve shares only inside the tailnet." }
+    ]
+  },
+  {
+    "id": "OCL-06",
+    "name": "Built-in chat commands for parents (/stop, /new, /btw, /status, /usage, /tools, /loop)",
+    "tier": 1,
+    "cluster": "Everyday controls",
+    "description": "A handful of typed commands that already work in the iMessage thread without any model call: stop an answer that is going wrong, start a clean conversation, ask a side question that is not remembered, see what Happy can do right now, and check health and cost. Tony, as owner, can also start a repeating check inside a thread.",
+    "example": "Jordan texts '/stop' when a long answer is heading the wrong way, then '/new'. Tony texts '/loop 30m tell me when the winter storm warning ends'.",
+    "how": "Text commands are core: command-only messages from allowlisted senders are handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /btw answers from the current session without writing history; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary; /loop is owner-only and creates a cron job in the conversation, at a fixed interval or self-paced. Put the five everyday ones in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and Tony should decide whether /restart, which is on by default for owners, stays available from chat.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "F007 if Jordan should be able to use /loop (owner list)",
+      "G005 kill switch for the stop-everything case"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+      "/loop needs owner status, which only Tony has today, and a loop runs with the creating agent's tools.",
+      "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+      "/usage figures are local estimates, like G004.",
+      "In a plain iMessage bubble the /status and /tools output may be long."
+    ],
+    "safety": "No new capability. Commands are read from the sender's own message, authorised by the sender allowlist and the owner list, and handled before the model runs. /loop schedules work on <p>-main only, which cannot browse, and the job is visible in the automations list (G003, G020).",
+    "unverified": [
+      "Whether /btw works over the iMessage channel in 2026.9.7",
+      "How /status and /tools render in iMessage"
+    ],
+    "overlaps_existing": ["G005", "G004", "F007", "G014", "G020"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:623", "title": "Slash commands: fast path", "anchor": "bypass queue + model", "supports": "Command-only messages from allowlisted senders are handled immediately without a model call." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:613", "title": "Slash commands: session scoping", "anchor": "abort the current run", "supports": "/stop targets the active chat session and aborts its run." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:326", "title": "Slash commands: core commands", "anchor": "/btw <question>", "supports": "/btw asks a side question without changing session context." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:299", "title": "Slash commands: discovery and status", "anchor": "/tools", "supports": "/tools shows what the current agent can use right now." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:308", "title": "Slash commands: discovery and status", "anchor": "/usage", "supports": "/usage controls a per-response usage footer or prints a local cost summary." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:424", "title": "Slash commands: /loop", "anchor": "owner-only", "supports": "/loop creates a recurring job in the current conversation, fixed-interval or self-paced, and is restricted to owners." },
+      { "kind": "installed", "ref": "docs/tools/slash-commands.md:345", "title": "Slash commands: owner-only writes and admin", "anchor": "/restart", "supports": "A restart command is enabled by default for owners." },
+      { "kind": "installed", "ref": "docs/tools/btw.md:9", "title": "BTW side questions", "anchor": "/btw", "supports": "A side question uses the current session as context and is never written to history." }
+    ]
+  },
+  {
+    "id": "OCL-07",
+    "name": "Cross-conversation recall and Dreaming for the two private agents",
+    "tier": 1,
+    "cluster": "Memory",
+    "description": "Two built-in memory automations that the catalog's memory plan does not use. 'Remember across conversations' lets a parent's agent look up its own earlier private chats before answering a question about the past. Dreaming consolidates recent conversations into MEMORY.md overnight and keeps a readable diary of what it promoted.",
+    "example": "Tony, in a new conversation: 'what did we decide about the piano teacher?' and Happy recalls the thread from two weeks ago without having been told to remember it.",
+    "how": "Recall: agents.entries.<p>-main.memory.search.rememberAcrossConversations: true. It defaults off here because session.dmScope is set; when on, the bundled active-memory plugin runs a bounded recall pass over that agent's own private transcripts before eligible replies. Dreaming: plugins.entries.memory-core.config.dreaming (enabled, frequency with default 0 3 * * *, timezone, model). It is one gateway-wide sweep and is currently off by roadmap decision; /dreaming status shows the state from chat. Keep both off on research, inbox and the mail readers.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "F041 memory write path and tainted-run tracking",
+      "Decision: keep Dreaming off (current) or turn it on once only the <p>-main agents hold memory",
+      "OCL-01 (recall matters more once a parent uses two surfaces)"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Recall adds a blocking model call to replies that ask about the past.",
+      "Dreaming has only a global switch in the documented config; the roadmap turned it off in M0 because it promotes conversation snippets into MEMORY.md without anyone asking, and that write does not pass through F041's hook.",
+      "A Dreaming sweep sends redacted transcripts through the agent's model at 03:00 and, in a multi-agent fleet, needs a system agent to own the job.",
+      "Groups and channels are never recall sources or destinations, so a future parents' group chat (F006) is excluded by design.",
+      "F041 sets the memory search provider to none; recall quality on keyword-only search is untested."
+    ],
+    "safety": "OpenClaw fences recall to the same agent's private conversations and never lets another agent's transcripts qualify, so the two parents' histories stay apart as long as they stay on separate agents. Dreaming drops candidates whose provenance is untrusted or system and ingests only interactive sessions, which matches the tainted-run rule, but it is still an unsupervised writer to MEMORY.md: if it is ever enabled, DREAMS.md belongs in the F085 weekly review. Neither feature adds a way to send data out.",
+    "unverified": [
+      "Whether transcript recall works with memory.search.provider set to none; the docs say the built-in provider supports it and that doctor reports unsupported providers",
+      "Whether Dreaming can be limited to named agents",
+      "Token cost of a nightly sweep on the current model"
+    ],
+    "overlaps_existing": ["F041", "F085", "F046", "F043"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/concepts/active-memory/enabling.md:21", "title": "Enabling active memory", "anchor": "rememberAcrossConversations", "supports": "One per-agent setting turns on bounded recall across that agent's other private conversations." },
+      { "kind": "installed", "ref": "docs/concepts/active-memory/enabling.md:32", "title": "Enabling active memory", "anchor": "DM isolation defaults it off", "supports": "The setting is on by default only for installs without DM isolation, and an explicit value always wins." },
+      { "kind": "installed", "ref": "docs/concepts/active-memory/enabling.md:42", "title": "Enabling active memory: privacy boundary", "anchor": "another agent's transcripts", "supports": "Recall never reads another agent's transcripts, and groups are excluded." },
+      { "kind": "installed", "ref": "docs/concepts/active-memory/enabling.md:49", "title": "Enabling active memory", "anchor": "bounded blocking step", "supports": "Recall adds a bounded blocking step to eligible replies." },
+      { "kind": "installed", "ref": "docs/concepts/dreaming.md:14", "title": "Dreaming", "anchor": "enabled by default", "supports": "Dreaming is on by default and is disabled with one memory-core config key." },
+      { "kind": "installed", "ref": "docs/concepts/dreaming.md:88", "title": "Dreaming: session transcript ingestion", "anchor": "Only interactive sessions", "supports": "Dreaming ingests redacted transcripts from interactive sessions only, not cron, heartbeat or sub-agent sessions." },
+      { "kind": "installed", "ref": "docs/concepts/dreaming.md:98", "title": "Dreaming: consolidation safety", "anchor": "untrusted", "supports": "Candidates with untrusted or system provenance are removed before consolidation." },
+      { "kind": "installed", "ref": "docs/concepts/dreaming.md:214", "title": "Dreaming: scheduling", "anchor": "0 3 * * *", "supports": "The default sweep runs nightly at 03:00 as one managed cron job." },
+      { "kind": "installed", "ref": "docs/reference/memory-config.md:741", "title": "Memory configuration reference: dreaming", "anchor": "Enable or disable dreaming entirely", "supports": "The documented dreaming switch is a single plugin-level enable flag." }
+    ]
+  },
+  {
+    "id": "OCL-08",
+    "name": "Notes and task apps as a filing target (Apple Notes, Obsidian, Things, Bear, Notion, Trello)",
+    "tier": 1,
+    "cluster": "Lists and notes",
+    "description": "Six bundled skills teach an agent to file things into a notes or task app the parents already open on their phones. On this stack only two are worth building, and only as host-side wrappers: appending to a shared Apple Note, and opening the household vault in Obsidian as a reader.",
+    "example": "'Add the plumber's quote to the House note' or 'put the packing list in Notes so I can tick it off at the store'.",
+    "how": "The bundled skills are instruction packs for command-line tools (memo, obsidian, things, grizzly, ntn, curl) and assume exec, which no Happy agent has; an eligible skill grants no tool. Follow the F030 pattern instead: a small in-house plugin on <p>-main that runs a fixed command host-side. Apple Notes: the memo CLI from its Homebrew tap, with Automation permission for Notes granted in happy's session, exposing only append-to-named-note and read-named-note. Obsidian: the bundled memory-wiki plugin is described as an Obsidian-friendly vault, so the F043 folder can be opened in Obsidian with no agent tool at all. Things and Bear only if a parent already lives in them. Notion and Trello are API-token cloud services and are skipped.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F030 Reminders bridge (same wrapper pattern)",
+      "F043 household knowledge vault",
+      "A shared Apple Note or folder that happy's Apple Account is invited to"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "memo adds and edits notes through an interactive editor and its skill warns that prompts may need a terminal, so a non-interactive append may have to use AppleScript directly.",
+      "The skill says notes that contain images or attachments cannot be edited.",
+      "The official obsidian CLI needs Obsidian 1.12.7 or later running in happy's desktop session.",
+      "Things database reads need Full Disk Access, updates need a Things auth token, and its CLI cannot delete.",
+      "Bear needs the app installed and running.",
+      "Shared Reminders (F030) already gives both phones a tick-off list; Notes adds free-form pages only.",
+      "Notion and Trello would be two more stores of family details outside the house."
+    ],
+    "safety": "A notes target is a write path for private data, so it belongs only on <p>-main, with the note or folder name fixed in plugin code, no delete, and the F041 rule that tainted runs cannot write. A note shared through iCloud is visible only to invited family members. Notion and Trello would send household content to third-party clouds under a token the Gateway holds, so they stay out.",
+    "unverified": [
+      "Whether memo can append to an existing note without an interactive editor",
+      "Whether Automation permission for Notes can be granted to the launchd-run node process the same way as for Reminders",
+      "Which sync method for an Obsidian vault the family would accept on their phones"
+    ],
+    "overlaps_existing": ["F030", "F043", "F044", "F034"],
+    "sources": [
+      { "kind": "installed", "ref": "skills/apple-notes/SKILL.md:71", "title": "apple-notes skill: limitations", "anchor": "Interactive prompts", "supports": "The Apple Notes skill warns that the memo CLI's interactive prompts may need terminal access." },
+      { "kind": "installed", "ref": "skills/apple-notes/SKILL.md:70", "title": "apple-notes skill: limitations", "anchor": "Cannot edit notes containing images", "supports": "Notes with images or attachments cannot be edited through memo." },
+      { "kind": "installed", "ref": "skills/obsidian/SKILL.md:17", "title": "obsidian skill: requirements", "anchor": "Obsidian app running", "supports": "The official Obsidian CLI connects to a running desktop app and needs a recent Obsidian version." },
+      { "kind": "installed", "ref": "skills/things-mac/SKILL.md:33", "title": "things-mac skill: setup", "anchor": "Full Disk Access", "supports": "Reading the Things database needs Full Disk Access for the calling process." },
+      { "kind": "installed", "ref": "skills/bear-notes/SKILL.md:32", "title": "bear-notes skill: requirements", "anchor": "Bear app installed and running", "supports": "The Bear skill needs the Bear app running on the Mac." },
+      { "kind": "installed", "ref": "skills/notion/SKILL.md:41", "title": "notion skill: setup", "anchor": "NOTION_API_TOKEN", "supports": "The Notion skill authenticates to Notion's cloud API with a token." },
+      { "kind": "installed", "ref": "skills/trello/SKILL.md:10", "title": "trello skill: metadata", "anchor": "TRELLO_API_KEY", "supports": "The Trello skill needs curl, jq and Trello API credentials in the environment." },
+      { "kind": "installed", "ref": "docs/tools/skills.md:270", "title": "Skills: plugins and skills", "anchor": "does not grant tool access", "supports": "A skill being eligible gives an agent instructions only, never the tools to carry them out." },
+      { "kind": "installed", "ref": "docs/plugins/plugin-inventory.md:127", "title": "Plugin inventory: memory-wiki", "anchor": "Obsidian-friendly knowledge vault", "supports": "The bundled memory-wiki plugin produces a vault meant to be readable in Obsidian." },
+      { "kind": "web", "ref": "https://github.com/antoniorodr/memo", "title": "memo: CLI for Apple Notes and Apple Reminders (GitHub)", "anchor": "Apple Notes", "supports": "memo is a macOS command-line tool that manages Apple Notes and Reminders through AppleScript and edits notes in the user's editor." }
+    ]
+  },
+  {
+    "id": "OCL-09",
+    "name": "1Password as the secrets backend and as a curated household-secrets tool",
+    "tier": 1,
+    "cluster": "Secrets",
+    "description": "The bundled 1Password plugin can do two separate jobs: resolve the Gateway's own API keys from a 1Password vault, and let an agent fetch a short list of named items (for example the guest Wi-Fi password) with per-item approval and an audit trail. The first is an optional swap for the Keychain script the roadmap already chose; the second is not a good fit while the model is in the cloud.",
+    "example": "'What's the guest Wi-Fi password? The sitter is asking.'",
+    "how": "openclaw plugins enable onepassword, the op CLI on the host, and a 1Password service-account token in a private file under the OpenClaw credentials directory. Secrets backend: openclaw onepassword secretref setup writes a plan that maps provider keys to op:// references. Agent tool: plugins.entries.onepassword.config.items registers up to 32 named items, each with policy auto, approve or deny, and the onepassword tool then offers list and get to the agent that is granted it.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "A 1Password account that can create service accounts, with a dedicated vault for Happy",
+      "Roadmap decision already taken: Keychain through an exec SecretRef"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "The roadmap already picked the free Keychain path and listed this plugin as an optional paid alternative; nothing is broken that it would fix.",
+      "For the agent tool the docs state that the fetched value is visible to the model during that call; with the current model that means the secret goes to OpenAI and then into an iMessage.",
+      "A service account cannot read the built-in Personal, Private, Employee or default Shared vaults, and its vault access cannot be changed after creation.",
+      "Door, alarm, garage and gate codes are on the never-list for actuation; keeping them where an agent can read them invites the same risk by another route."
+    ],
+    "safety": "The secrets-backend mode is safe: token file only, no desktop-app integration, reads limited to registered references. The agent-tool mode puts a secret, a cloud model and a message tool in the same run, which is the trifecta in miniature; the only acceptable version is a local model with policy approve on every item, so it waits for local models.",
+    "unverified": [
+      "Which 1Password plans include service accounts and what they cost today",
+      "Whether op runs cleanly under the non-admin happy user started by launchd",
+      "Whether Apple's Passwords app shared groups would already cover the guest Wi-Fi case for both parents"
+    ],
+    "overlaps_existing": ["G009", "F036"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/plugins/onepassword.md:13", "title": "1Password plugin", "anchor": "two independent, opt-in surfaces", "supports": "The plugin offers a SecretRef resolver and a separate policy-controlled agent tool, each enabled on its own." },
+      { "kind": "installed", "ref": "docs/plugins/onepassword.md:25", "title": "1Password plugin: security model", "anchor": "Service-account authentication only", "supports": "The plugin authenticates only with a service-account token kept in a local file." },
+      { "kind": "installed", "ref": "docs/plugins/onepassword.md:30", "title": "1Password plugin: security model", "anchor": "Per-slug", "supports": "Each registered item carries its own auto, approve or deny policy." },
+      { "kind": "installed", "ref": "docs/plugins/onepassword.md:37", "title": "1Password plugin: security model", "anchor": "model-visible", "supports": "A fetched secret is visible to the model for that tool execution." },
+      { "kind": "installed", "ref": "docs/plugins/plugin-inventory.md:145", "title": "Plugin inventory: onepassword", "anchor": "onepassword", "supports": "The 1Password plugin ships inside the core OpenClaw package." },
+      { "kind": "web", "ref": "https://www.1password.dev/service-accounts/get-started/", "title": "Get started with 1Password Service Accounts (1Password Developer)", "anchor": "read_items", "supports": "Service accounts get per-vault permissions that cannot be edited later and cannot reach the built-in personal or default shared vaults." }
+    ]
+  },
+  {
+    "id": "OCL-10",
+    "name": "Feed watch for school, PTA, town and library sites (RSS/Atom)",
+    "tier": 2,
+    "cluster": "Monitors",
+    "description": "A watcher with no model in it that checks a short list of feeds a few times a day and passes on only new post titles, for the sources that never email: the school blog, the PTA site, town notices, library events, the sports league.",
+    "example": "Trigger: the 16:00 job finds one new item on the PTA feed and adds 'PTA: book fair volunteers needed (new today)' to the school digest.",
+    "how": "Install the blogwatcher CLI for the happy user; the bundled skill documents add, blogs, scan, articles and read-all. Tony registers the feeds by hand. A cron command payload (--command-argv, no model call) runs a wrapper script that scans, prints unread titles with their source name (length-capped, links dropped unless the host matches the registered feed), marks them read, and prints NO_REPLY when nothing is new. Delivery is announce to the parents under the G001 notification policy, or the titles are handed to the F056 school digest as quoted data.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "G003 jobs registry",
+      "G001 notification policy",
+      "A Go toolchain or prebuilt blogwatcher binary for the happy user",
+      "Each site actually publishing a feed"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Many school portals and social pages publish no feed; blogwatcher's HTML fallback needs a CSS selector per site and breaks on redesigns.",
+      "A feed reader app or search alerts already do this for a parent who will open them; the gain is one combined digest.",
+      "blogwatcher keeps its state in its own SQLite file in the happy user's home, one more item for the G007 backup list.",
+      "Titles only; reading a post's body is a research-agent task (F019)."
+    ],
+    "safety": "It runs as an operator-authored command payload inside the scheduler with no model and no agent tools, so untrusted feed text cannot steer anything; it is only relayed, shortened and stripped of foreign links. If titles are ever given to a model for the digest, that model must be the tool-less school-mail reader, never <p>-main. Requests go only to the feed addresses Tony registered. The bundled skill itself is not loaded into any agent.",
+    "unverified": [
+      "Whether blogwatcher offers machine-readable output or the wrapper must parse its text output",
+      "Which of this family's school and town sites expose feeds"
+    ],
+    "overlaps_existing": ["F029", "F056", "F018", "G012"],
+    "sources": [
+      { "kind": "installed", "ref": "skills/blogwatcher/SKILL.md:27", "title": "blogwatcher skill", "anchor": "RSS/Atom", "supports": "The bundled skill wraps a CLI that tracks blog and feed updates." },
+      { "kind": "installed", "ref": "skills/blogwatcher/SKILL.md:41", "title": "blogwatcher skill: common commands", "anchor": "blogwatcher scan", "supports": "The CLI has commands to add feeds, scan for new items, list articles and mark them read." },
+      { "kind": "installed", "ref": "skills/blogwatcher/SKILL.md:31", "title": "blogwatcher skill: install", "anchor": "go install", "supports": "The skill installs the tool with go install." },
+      { "kind": "installed", "ref": "docs/automation/cron-jobs/payloads.md:22", "title": "Automation payloads", "anchor": "--command-argv", "supports": "A scheduled job can run a process on the Gateway host with no model call." },
+      { "kind": "installed", "ref": "docs/automation/cron-jobs/payloads.md:171", "title": "Automation payloads: command payloads", "anchor": "without starting a model-backed turn", "supports": "Command payloads run deterministic scripts in the scheduler and reuse the normal delivery modes." },
+      { "kind": "installed", "ref": "docs/automation/cron-jobs/payloads.md:191", "title": "Automation payloads: command payloads", "anchor": "non-empty stdout wins", "supports": "The delivered text of a command job is its process output." },
+      { "kind": "web", "ref": "https://github.com/Hyaxia/blogwatcher", "title": "blogwatcher (GitHub)", "anchor": "BLOGWATCHER_DB", "supports": "blogwatcher is a Go CLI that tries RSS or Atom first, can fall back to HTML scraping with a selector, and stores state in a local SQLite database." }
+    ]
+  },
+  {
+    "id": "OCL-11",
+    "name": "YouTube and podcast link summaries",
+    "tier": 2,
+    "cluster": "Research and summaries",
+    "description": "Text a video or podcast link and get the five-line version: what it covers, the dates and to-dos, and whether it is worth the 40 minutes. It extends 'Explain this' (F023) from pages and PDFs to recordings.",
+    "example": "'Summarize the superintendent's budget town hall: <YouTube link>. Did they say anything about bus routes?'",
+    "how": "The bundled summarize skill wraps the summarize CLI, which pulls published captions for YouTube and podcast pages. As in F020, expose it to the stateless research agent as a host-side stdio MCP with one tool, and call it with --extract so it returns the transcript without making its own model call; the research agent's model then writes the summary and <p>-main relays it under the F022 citation rules. The wrapper restricts hosts to a short allowlist (YouTube, the district's video host, common podcast hosts) and caps the extracted length.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F019 research agent",
+      "F020 summarize MCP",
+      "F022 citation and freshness rules"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "In its own summarising mode the CLI wants its own provider key, which would bypass the per-person custom provider and the store:false setting; use --extract only and give the wrapper no model key.",
+      "Videos without published captions fall back to transcription; allow only a local fallback or return 'no captions'.",
+      "A two-hour meeting transcript is long: summarise in sections and count the cost under G004.",
+      "A transcript is untrusted text like any web page.",
+      "The skill calls YouTube transcript extraction best-effort."
+    ],
+    "safety": "It lives on research only: no memory, no accounts, no message tool. The MCP fetches remote media pages, so it needs the same address checks as web_fetch and must not be given Firecrawl or Apify keys (the catalog's never-list rejects Firecrawl as a default fetch path). Nothing private crosses to research beyond the link and the question.",
+    "unverified": [
+      "Whether --extract works for podcast pages as well as YouTube in the version Homebrew installs",
+      "Which transcription fallback applies on this Mac when no captions exist"
+    ],
+    "overlaps_existing": ["F020", "F023", "F019", "F022"],
+    "sources": [
+      { "kind": "installed", "ref": "skills/summarize/SKILL.md:36", "title": "summarize skill: when to use", "anchor": "best-effort transcript extraction", "supports": "The skill covers transcribing YouTube and other video links on a best-effort basis." },
+      { "kind": "installed", "ref": "skills/summarize/SKILL.md:71", "title": "summarize skill: useful flags", "anchor": "--extract", "supports": "A flag prints the extracted content without an LLM summary." },
+      { "kind": "installed", "ref": "skills/summarize/SKILL.md:60", "title": "summarize skill: model and keys", "anchor": "OPENAI_API_KEY", "supports": "The CLI's summarising mode uses its own provider API key from the environment." },
+      { "kind": "installed", "ref": "skills/summarize/SKILL.md:86", "title": "summarize skill: optional services", "anchor": "FIRECRAWL_API_KEY", "supports": "Third-party extraction services are optional add-ons enabled by their own keys." },
+      { "kind": "web", "ref": "https://summarize.sh", "title": "summarize (product site)", "anchor": "--extract", "supports": "summarize handles web pages, files, YouTube and podcasts, prefers published transcripts, and can skip the LLM step." }
+    ]
+  },
+  {
+    "id": "OCL-12",
+    "name": "Generated songs, video clips, memes and GIFs (and why nano-pdf is not a form filler)",
+    "tier": 1,
+    "cluster": "Media generation",
+    "description": "OpenClaw can generate a short song or video clip, caption a meme or find a GIF. That is fun for a birthday text, but each needs a new cloud provider or command-line tool, and none of it solves a household problem.",
+    "example": "'Make a 20-second happy-birthday jingle for Grandpa, upbeat, no names.'",
+    "how": "music_generate and video_generate are core tools that appear only when a provider is configured (agents.defaults.mediaModels.music or .video plus that provider's key); generation runs in the background and the result is posted back to the same chat. meme-maker is a bundled script over a curated template registry and gifgrep is a GIF search CLI; both need exec or a wrapper plugin. nano-pdf edits a PDF page from a written instruction.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F005 image generation decision (the same provider side effects apply)",
+      "A second cloud provider key with its own spend cap",
+      "A wrapper plugin for meme-maker or gifgrep, since no agent has exec"
+    ],
+    "value": 1,
+    "effort": "M",
+    "caveats": [
+      "The music provider table lists ComfyUI, fal, Google, MiniMax and OpenRouter but not OpenAI, so this adds a new data processor.",
+      "Video jobs take from half a minute to several minutes and are billed per clip by the provider.",
+      "Kids' names, voices or photos must not go into prompts or reference images; generic, adult-requested prompts only.",
+      "nano-pdf is a slide editor that sends rendered page images to Google's image model and needs a paid Gemini key; it will not fill in a permission slip or keep a form's text exact. Printing (F080) and a pen remain the answer.",
+      "This is a later-or-never item: low value, real cost, and one more vendor."
+    ],
+    "safety": "Prompts go to another cloud vendor outside the store:false arrangement, so keep it away from memory-holding agents or restrict it to generic prompts, and never give it to a kids agent (cloud generation for kids' content is on the never-list). Generated files return only to the requesting family chat.",
+    "unverified": [
+      "Per-clip prices of the listed providers",
+      "Whether a local ComfyUI workflow on this Mac could produce acceptable music with no cloud call"
+    ],
+    "overlaps_existing": ["F005", "F080", "F067"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/tools/music-generation.md:11", "title": "Music generation", "anchor": "music_generate", "supports": "A core tool generates music through a shared provider-backed capability." },
+      { "kind": "installed", "ref": "docs/tools/music-generation.md:16", "title": "Music generation: note", "anchor": "only appears when", "supports": "The music tool is only offered once a music provider is configured or authenticated." },
+      { "kind": "installed", "ref": "docs/tools/music-generation.md:115", "title": "Music generation: supported providers", "anchor": "lyria-3-clip-preview", "supports": "The provider table lists ComfyUI, fal, Google, MiniMax and OpenRouter as music backends." },
+      { "kind": "installed", "ref": "docs/tools/video-generation.md:12", "title": "Video generation", "anchor": "Eighteen provider backends", "supports": "Video generation is a core tool with many third-party provider backends." },
+      { "kind": "installed", "ref": "docs/tools/video-generation.md:18", "title": "Video generation: note", "anchor": "only appears when", "supports": "The video tool is only offered once a video provider is available." },
+      { "kind": "installed", "ref": "skills/meme-maker/SKILL.md:9", "title": "meme-maker skill", "anchor": "curated template registry", "supports": "A bundled skill renders memes from a curated set of templates with a local script." },
+      { "kind": "installed", "ref": "skills/gifgrep/SKILL.md:34", "title": "gifgrep skill", "anchor": "Tenor/Giphy", "supports": "A bundled skill searches public GIF providers through a CLI." },
+      { "kind": "installed", "ref": "skills/nano-pdf/SKILL.md:27", "title": "nano-pdf skill", "anchor": "nano-pdf", "supports": "A bundled skill edits a chosen PDF page from a natural-language instruction." },
+      { "kind": "web", "ref": "https://pypi.org/project/nano-pdf/", "title": "nano-pdf (PyPI)", "anchor": "GEMINI_API_KEY", "supports": "nano-pdf edits PDF slides by sending page images and prompts to Google's Gemini image model and needs a paid Gemini API key." }
+    ]
+  },
+  {
+    "id": "OCL-13",
+    "name": "Security audit after every update and monthly (healthcheck checklist, security audit --deep)",
+    "tier": 2,
+    "cluster": "Operator",
+    "description": "A scheduled, read-only posture check of the Gateway and the Mac that texts Tony only when something changed: a new audit finding, the firewall off, FileVault off, a new listening port, updates pending.",
+    "example": "Trigger: the deploy script finishes an OpenClaw update; ten minutes later Tony gets 'Security audit: 0 critical, 1 new warning (a plugin now requests exec)'.",
+    "how": "The bundled healthcheck skill is a checklist: openclaw security audit --deep, gateway status --deep and doctor --lint, then macOS checks for listening ports, firewall state, FileVault, Time Machine and the software-update schedule. Run it host-side, not inside an agent: a script in happy-deploy calls the audit with --json, compares findings with the previous run and prints NO_REPLY when nothing changed. Schedule it monthly as a command payload and call it from the update runbook. Accepted findings go into security.audit.suppressions so the diff stays quiet.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "G003 jobs registry",
+      "G008 integration health watch (same delivery path)",
+      "G006 audit digest"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "The roadmap already says to re-run the audit after each update; this only makes it automatic and change-based.",
+      "The skill warns that plain doctor can migrate state, so scheduled checks must use the lint form.",
+      "The deep audit probes the live Gateway and loads plugin security collectors, so it should run while the Gateway is up.",
+      "The neighbouring model-usage skill is not useful here: it summarises CodexBar cost logs for Codex or Claude Code, not this Gateway's OpenAI spend, so G004 stays the spend view."
+    ],
+    "safety": "Read-only and host-side; no agent gains exec, and the result goes only to Tony. The fix flag is never used in a scheduled job.",
+    "unverified": [
+      "Whether the deep audit can run from the scheduler as the happy user without passing the Gateway token on the command line",
+      "How long a deep audit takes on this install"
+    ],
+    "overlaps_existing": ["G008", "G006", "G007"],
+    "sources": [
+      { "kind": "installed", "ref": "skills/healthcheck/SKILL.md:41", "title": "healthcheck skill: read-only checks", "anchor": "openclaw security audit --deep", "supports": "The bundled checklist starts with the deep security audit, a deep gateway status and a lint-only doctor run." },
+      { "kind": "installed", "ref": "skills/healthcheck/SKILL.md:46", "title": "healthcheck skill: read-only checks", "anchor": "doctor --lint", "supports": "Only the lint form of doctor is read-only; other forms can migrate state." },
+      { "kind": "installed", "ref": "skills/healthcheck/SKILL.md:105", "title": "healthcheck skill: hardening menu", "anchor": "Add scheduled", "supports": "The skill itself recommends scheduling the deep security audit." },
+      { "kind": "installed", "ref": "docs/cli/security.md:20", "title": "CLI reference: openclaw security", "anchor": "openclaw security audit --json", "supports": "The audit has machine-readable output." },
+      { "kind": "installed", "ref": "docs/cli/security.md:25", "title": "CLI reference: audit modes", "anchor": "live Gateway probes", "supports": "The deep mode adds live Gateway probes and plugin-owned security collectors to the cold config and filesystem checks." },
+      { "kind": "installed", "ref": "docs/cli/security.md:94", "title": "CLI reference: suppressions", "anchor": "security.audit.suppressions", "supports": "Intentional standing findings can be accepted so they no longer appear as active." },
+      { "kind": "installed", "ref": "skills/model-usage/SKILL.md:29", "title": "model-usage skill", "anchor": "CodexBar's local cost logs", "supports": "The model-usage skill reads CodexBar logs for Codex or Claude, not Gateway usage." }
+    ]
+  },
+  {
+    "id": "OCL-14",
+    "name": "Local classifier calls (decision_evaluate with an on-device ONNX model)",
+    "tier": 1,
+    "cluster": "Operator platform",
+    "description": "A way to ask a small on-device model a yes/no, pick-one or score question (is this email urgent, does this text look like a bank statement, is this reply fine for an eight-year-old) and get a typed answer with a probability, with no cloud call. It is the missing piece behind the catalog's privacy gate, urgent-mail gate and kids classifier, and it does not depend on the skipped local-LLM milestone.",
+    "example": "Trigger: the school-mail reader's hook asks one Boolean question about a new email's subject and first lines; only a probability above the threshold reaches the URGENT path.",
+    "how": "Release 2026.9.7 adds the decisionModel role and the core decision_evaluate tool, and plugins can call the same runtime from a hook through api.runtime.decisions.evaluate. The local provider is the @openclaw/onnx plugin: zero-shot classifier presets on CPU in a separate worker process, with models fetched only by an explicit download command. Config is agents.defaults.decisionModel (or per agent) plus plugins.entries.onnx. Call it from the in-house hooks (F084 gate, F055 reader, later the F072 kids filters) rather than granting the tool to <p>-main.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "blocked",
+    "depends_on": [
+      "OpenClaw upgraded to 2026.10.1 or later (the published plugin declares that as its minimum)",
+      "A small labelled test set per question, so false positives and misses are measured before a gate relies on it"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "The installed 2026.9.7 docs call the ONNX and TypeSafe plugins unpublished candidates; the npm registry shows @openclaw/onnx published at version 2026.10.1 with openclaw 2026.10.1 or later as a peer requirement, so it cannot be relied on with today's pinned Gateway.",
+      "These are generic zero-shot classifiers, not child-safety models; they can score and shortlist, but a kids deployment still needs its own evaluation and a second gate.",
+      "There is no fallback to the chat model when the decision provider is unavailable, and an unavailable result is not a 'no', so every gate has to fail closed.",
+      "The other provider, TypeSafe's hosted model, is a cloud service and out of scope.",
+      "Apple Foundation Models (F086) remain the alternative free on-device classifier."
+    ],
+    "safety": "This strengthens the architecture: the decision runs locally and returns a typed value rather than prose, and the hook, not the model, applies the threshold; the docs say results do not grant permission to act. Hostile text can still shift a score, so a classifier is a filter in front of a hard rule, never the rule itself. No data leaves the Mac.",
+    "unverified": [
+      "Whether @openclaw/onnx 2026.10.1 loads on a 2026.9.7 host; its metadata lists a minimum host of 2026.9.6 but a plugin API of 2026.10.1",
+      "Classifier accuracy on this family's school mail and on kids' questions",
+      "Memory and CPU use of the worker process"
+    ],
+    "overlaps_existing": ["F084", "F055", "F072", "F086", "G016"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/concepts/decision-models.md:12", "title": "Decision models", "anchor": "decision model", "supports": "A decision model evaluates evidence against a rubric and returns a choice, a score or a Boolean probability." },
+      { "kind": "installed", "ref": "docs/concepts/decision-models.md:114", "title": "Decision models: agent evaluation tool", "anchor": "decision_evaluate", "supports": "A core tool exposes typed decisions to agents that have a decision model configured." },
+      { "kind": "installed", "ref": "docs/concepts/decision-models.md:180", "title": "Decision models: call from a plugin", "anchor": "api.runtime.decisions.evaluate", "supports": "Plugin hooks can call the same decision runtime without a provider SDK." },
+      { "kind": "installed", "ref": "docs/concepts/decision-models.md:68", "title": "Decision models: choose a provider and model", "anchor": "unpublished candidates", "supports": "The installed documentation says both decision-provider plugins were not yet published." },
+      { "kind": "installed", "ref": "docs/concepts/decision-models.md:89", "title": "Decision models: configuration", "anchor": "no automatic fallback", "supports": "An unset or unavailable decision model does not fall back to a conversational model." },
+      { "kind": "installed", "ref": "docs/plugins/onnx.md:14", "title": "Local ONNX decision models", "anchor": "Inference does not send", "supports": "The ONNX plugin runs classifiers locally and downloads models only on an explicit command." },
+      { "kind": "installed", "ref": "docs/plugins/onnx.md:23", "title": "Local ONNX decision models: setup", "anchor": "2026.9.6", "supports": "Packaged ONNX installs need a recent host and plugin API version." },
+      { "kind": "installed", "ref": "CHANGELOG.md:50", "title": "OpenClaw 2026.9.7 changelog, changes", "anchor": "decision_evaluate", "supports": "The decision tool for Boolean, choice and score questions was added in this release." },
+      { "kind": "web", "ref": "https://registry.npmjs.org/@openclaw/onnx/latest", "title": "@openclaw/onnx package metadata (npm registry)", "anchor": "2026.10.1", "supports": "The published plugin is version 2026.10.1 and declares openclaw 2026.10.1 or later as its peer dependency and plugin API floor." }
+    ]
+  },
+  {
+    "id": "OCL-15",
+    "name": "iPhone node as a read-only bridge to Apple Calendar, Reminders and Contacts",
+    "tier": 1,
+    "cluster": "Calendar and reminders",
+    "description": "A paired iPhone running the OpenClaw app can answer 'what is on the calendar' and 'what is on the shared list' straight from Apple's own Calendar and Reminders, with no Google sign-in project and no Reminders permission for a background process on the Mac. It is a third route for the catalog's open calendar decision.",
+    "example": "'What's on the Family calendar on Saturday?' answered from the iCloud calendar the phone already syncs.",
+    "how": "iOS nodes advertise calendar.events, reminders.list and contacts.search as read-only commands that the Gateway allows by default; calendar.add and reminders.add exist but need an explicit gateway.nodes.commands.allow entry. Pair one iPhone as a node: the spare phone, signed in to the happy Apple Account and invited to the Family calendar and the shared lists, left on a charger with the app in front and keep-awake on. Wrap node invocation in a small in-house plugin on <p>-main that exposes only a calendar read and a reminders read for that node id, instead of granting the general nodes tool. Remove everything else with gateway.nodes.commands.deny (location.get, photos.latest, contacts.search, the motion commands, camera.list).",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "A spare iPhone (not yet confirmed to exist) with the OpenClaw iOS app",
+      "Catalog decision 4: Google or iCloud for the family calendar",
+      "The happy Apple Account invited to the Family calendar and shared Reminders lists",
+      "OCL-01 pairing work"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "Reliability is the open question: node calls follow iOS foreground and background limits, and a phone that locks, updates or restarts overnight may stop answering until someone opens the app.",
+      "A node answers for the one Apple Account signed in on it, so a shared phone gives one shared view, not per-person calendars.",
+      "A parent's own everyday phone would answer only while the app is open, which defeats scheduled briefs.",
+      "The headless routes in the catalog (gog for Google in F009, remindctl on the Mac in F030) are the more boring choice; this is the fallback if publishing a Google sign-in app or granting Mac permissions to a background process proves painful.",
+      "The write commands are classed as dangerous and should stay off until the F010 approval flow exists."
+    ],
+    "safety": "Read-only by platform default, and the write commands need a deliberate allowlist entry. The data is private, so the wrapper lives only on <p>-main, which does not browse, and returns bounded fields. Denying the unrelated default commands keeps an injected run from pulling photos, contacts or location through the same node. The phone becomes part of the trusted base, since it holds an Apple Account and a Gateway credential: passcode on, and it stays at home.",
+    "unverified": [
+      "Whether calendar.events and reminders.list answer while the iOS app is backgrounded or the phone is locked; only camera and screen commands are explicitly documented as foreground-only",
+      "The parameters and result shape of calendar.events on iOS (date range, calendar filter)",
+      "Whether the Gateway can bind a node to one agent, beyond simply not granting other agents the tool"
+    ],
+    "overlaps_existing": ["F009", "F030", "F010", "G013", "F013", "F014"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/nodes/command-policy.md:31", "title": "Node command policy: default allowlists", "anchor": "calendar.events", "supports": "The iOS default allowlist includes calendar, reminders, contacts, photos, motion and location read commands." },
+      { "kind": "installed", "ref": "docs/nodes/command-policy.md:55", "title": "Node command policy", "anchor": "reminders.add", "supports": "Write commands for calendar and reminders are dangerous and need a persistent explicit opt-in." },
+      { "kind": "installed", "ref": "docs/nodes/command-policy.md:112", "title": "Node command policy", "anchor": "commands.deny", "supports": "A deny entry removes a node command even when the platform default would allow it." },
+      { "kind": "installed", "ref": "docs/nodes/device-commands.md:133", "title": "Device and personal data commands", "anchor": "read-only default", "supports": "calendar.events is available on iOS as a read-only command, with a separate gated add command." },
+      { "kind": "installed", "ref": "docs/nodes/device-commands.md:134", "title": "Device and personal data commands", "anchor": "reminders.list", "supports": "reminders.list is available on iOS as a read-only command." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:643", "title": "iOS app: computer use relationship", "anchor": "foreground/background limits", "supports": "Agent-invoked node commands on iOS are subject to the platform's foreground and background limits." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:674", "title": "iOS app: common errors", "anchor": "NODE_BACKGROUND_UNAVAILABLE", "supports": "Camera and screen commands fail unless the app is in the foreground." },
+      { "kind": "installed", "ref": "docs/platforms/ios.md:69", "title": "iOS app: settings", "anchor": "keep-awake behavior", "supports": "The app has a device setting for keeping the phone awake." }
+    ]
+  },
+  {
+    "id": "OCL-16",
+    "name": "A parent's iPhone location and daily Health summary on request",
+    "tier": 1,
+    "cluster": "Personal device data",
+    "description": "With the iOS app paired as a node, Happy could answer 'where is Tony right now?' or 'how did I sleep and how many steps today?' from that parent's own phone. Both work in principle, and neither is worth switching on.",
+    "example": "'Is Tony close to home?' or 'Did I hit my steps today?'",
+    "how": "location.get is in the iOS default command list but stays off on the device until the parent chooses a sharing mode in the app, with precise location as a separate grant; the agent path is the nodes tool's location_get action. health.summary returns one aggregate computed on the phone for the current day (steps, sleep, resting heart rate, workouts) and needs both an in-app opt-in and gateway.nodes.commands.allow: ['health.summary'].",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "OCL-01 (the app paired on each parent's phone)",
+      "Granting the nodes tool or a wrapper to <p>-main"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "Apple's Family Sharing already shows each parent's location to the other in Find My and Messages, continuously and with no cloud model involved.",
+      "Background location is best-effort, and with while-using permission a request fails whenever the app is closed.",
+      "The Health summary covers only the current day and four aggregates; the phone's own Health app shows far more.",
+      "Each answer would send a coordinate or health figures to the cloud model and store them in the transcript.",
+      "A location that one parent can query through an agent needs explicit consent from the other; that is a family decision before it is a technical one."
+    ],
+    "safety": "Precise location and health data are the most sensitive items in the house and would sit in the one agent that also has a message tool. Keep location.get and health.summary denied in gateway.nodes.commands.deny, and never expose one parent's node to the other parent's agent or to research. Children's devices are out of scope entirely.",
+    "unverified": [
+      "Whether a node can be bound to a single agent at the Gateway",
+      "How often background location requests succeed on current iOS with always-on permission"
+    ],
+    "overlaps_existing": ["G017", "G018"],
+    "sources": [
+      { "kind": "installed", "ref": "docs/nodes/location-command.md:12", "title": "Location command", "anchor": "Off by default", "supports": "Location sharing from a node is off until the user enables it on the device." },
+      { "kind": "installed", "ref": "docs/nodes/location-command.md:119", "title": "Location command: model and tooling integration", "anchor": "location_get", "supports": "Agents reach node location through the nodes tool's location action." },
+      { "kind": "installed", "ref": "docs/nodes/location-command.md:81", "title": "Location command: errors", "anchor": "LOCATION_BACKGROUND_UNAVAILABLE", "supports": "A request fails when the app is backgrounded and only while-using permission is granted." },
+      { "kind": "installed", "ref": "docs/nodes/device-commands.md:87", "title": "Device commands: location", "anchor": "background fetch is best-effort", "supports": "Even with always-on permission, background location is best-effort." },
+      { "kind": "installed", "ref": "docs/platforms/ios-healthkit.md:14", "title": "HealthKit summaries", "anchor": "steps, sleep duration", "supports": "The Health summary is an on-device aggregate of steps, sleep, resting heart rate and workouts only." },
+      { "kind": "installed", "ref": "docs/platforms/ios-healthkit.md:48", "title": "HealthKit summaries: authorize the Gateway command", "anchor": "privacy-heavy", "supports": "The health command is never allowed by default and needs an explicit Gateway allow entry as well as device consent." },
+      { "kind": "installed", "ref": "docs/platforms/ios-healthkit.md:82", "title": "HealthKit summaries: request today's summary", "anchor": "Only `today` is supported", "supports": "Only the current calendar day can be requested." },
+      { "kind": "web", "ref": "https://support.apple.com/en-us/105107", "title": "Share your location with your Family Sharing group (Apple Support)", "anchor": "Family Sharing", "supports": "Apple's Family Sharing lets members share their location with the family group, visible in Find My and Messages." }
+    ]
+  }
+]

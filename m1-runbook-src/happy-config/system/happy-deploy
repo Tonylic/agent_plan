@@ -1,0 +1,137 @@
+#!/bin/zsh -f
+# happy-deploy: apply the staged, committed config as the happy user.
+# Installed root:wheel 755 at /usr/local/libexec/happy-deploy; tonyli runs it through /etc/sudoers.d/happy:
+#   sudo -u happy /usr/local/libexec/happy-deploy [--restart] [--restart-o1] [--flat]
+#   sudo -u happy /usr/local/libexec/happy-deploy --run-eval     (only start the eval job; deploys nothing)
+# --flat deploys openclaw.flat.json5 (the same config with its include merged in) as openclaw.json,
+# because OpenClaw refuses `plugins install/update` while openclaw.json has a root $include. Use it
+# only around a plugin change; the next normal deploy puts the include back (drift says DRIFT meanwhile).
+# Order: folders and the resolver first (config validation checks the resolver's path and owner),
+# then the config pair (openclaw.json + its generated include), which is all-or-nothing, then
+# everything else. A rejected config stops the deploy before step 3.
+# The gateway watches openclaw.json and its include and hot-applies them, restarting itself when a
+# change needs it (gateway.reload.mode "hybrid"). After a normal deploy it starts the eval job, which
+# runs only if the critical path (agents, prompts, models, routing, versions) changed.
+set -euo pipefail
+umask 077
+[[ "$(/usr/bin/id -un)" == happy ]] || { print -u2 "happy-deploy: must run as happy"; exit 1; }
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+cd "$HOME"
+
+restart=0; restart_o1=0; flat=0; run_eval=0
+for arg in "$@"; do
+  case $arg in
+    --restart) restart=1 ;; --restart-o1) restart_o1=1 ;; --flat) flat=1 ;; --run-eval) run_eval=1 ;;
+    *) print -u2 "happy-deploy: unknown option $arg"; exit 2 ;;
+  esac
+done
+evaljob="gui/$(/usr/bin/id -u)/local.happy.eval"
+if (( run_eval )); then   # on demand: start the eval job with its force flag; nothing is deployed
+  (( $# == 1 )) || { print -u2 "happy-deploy: --run-eval can't be combined with other options"; exit 2; }
+  job=$(/bin/launchctl print "$evaljob" 2>/dev/null) || { print -u2 "happy-deploy: the eval job isn't loaded (runbook G3)"; exit 1; }
+  if [[ $job == *'state = running'* ]]; then   # a string test, not grep -q: pipefail + SIGPIPE would misread it
+    print "happy-deploy: an eval is already running; its result arrives through ntfy. Start another after that."
+    exit 0
+  fi
+  /usr/bin/touch "$HOME/.config/happy/eval-force"
+  /bin/launchctl kickstart "$evaljob" \
+    || { /bin/rm -f "$HOME/.config/happy/eval-force"; print -u2 "happy-deploy: could not start the eval job"; exit 1; }
+  print "happy-deploy: eval started; the result arrives through ntfy in 10-20 minutes"
+  exit 0
+fi
+
+stage=/usr/local/var/happy-stage/current
+[[ -r "$stage/REVISION" ]] || { print -u2 "happy-deploy: nothing staged at $stage"; exit 1; }
+rev=$(<"$stage/REVISION")
+state=$HOME/.openclaw
+cfg=$HOME/.config/happy
+meta="$HOME/Library/Application Support/happy-deploy"
+
+/usr/bin/install -d -m 700 "$state" "$state/bin" "$state/sandboxes" "$HOME/bin" "$cfg" \
+  "$HOME/Library/Logs/openclaw" "$HOME/Library/Logs/happy" "$HOME/Library/Logs/happy/eval" \
+  "$HOME/Library/Logs/happy/grafana" "$HOME/Backups/openclaw" "$HOME/.local/share/victoriametrics" \
+  "$HOME/.local/share/grafana" "$meta"
+/usr/bin/install -d -m 755 "$HOME/Library/LaunchAgents"
+
+# 0. Per-agent folders listed by the generator (workspaces, agent dirs, sandbox roots).
+if [[ -r "$stage/openclaw/dirs.txt" ]]; then
+  while IFS= read -r d; do
+    [[ -z $d ]] && continue
+    [[ $d == $state/* && $d != *..* ]] || { print -u2 "happy-deploy: refusing folder outside $state: $d"; exit 1; }
+    /usr/bin/install -d -m 700 "$d"
+  done < "$stage/openclaw/dirs.txt"
+fi
+
+# 1. The exec SecretRef provider: OpenClaw requires it to be owned by happy and not group/world-writable.
+/usr/bin/install -m 700 "$stage/openclaw/bin/keychain-resolver" "$state/bin/keychain-resolver"
+
+# 1b. Our own plugins (repo plugins/), loaded through plugins.load.paths. They go in before the config
+#     that names them is validated. OpenClaw refuses plugin paths that others can write, hence go-rwx.
+#     A running gateway keeps the old code until it restarts: deploy plugin changes with --restart.
+if [[ -d "$stage/plugins" ]]; then
+  /bin/rm -rf "$cfg/plugins.new"; /bin/cp -R "$stage/plugins" "$cfg/plugins.new"; /bin/chmod -R go-rwx "$cfg/plugins.new"
+  /bin/rm -rf "$cfg/plugins"; /bin/mv "$cfg/plugins.new" "$cfg/plugins"
+fi
+
+# 2. Config. Validate a candidate copy of the pair first (the include must sit beside the file that
+#    names it); the live files are replaced only if it passes. The include goes in first, so the
+#    watcher's last event is openclaw.json.
+cand="$meta/candidate"
+/bin/rm -rf "$cand"; /usr/bin/install -d -m 700 "$cand"
+if (( flat )); then
+  /usr/bin/install -m 600 "$stage/openclaw/openclaw.flat.json5" "$cand/openclaw.json"
+else
+  for f in openclaw.json family.generated.json5; do
+    [[ -r "$stage/openclaw/$f" ]] && /usr/bin/install -m 600 "$stage/openclaw/$f" "$cand/$f"
+  done
+fi
+if ! OPENCLAW_CONFIG_PATH="$cand/openclaw.json" openclaw config validate; then
+  print -u2 "happy-deploy: candidate config is invalid; live config left unchanged"
+  exit 1
+fi
+[[ -f "$cand/family.generated.json5" ]] && /bin/mv -f "$cand/family.generated.json5" "$state/family.generated.json5"
+/bin/mv -f "$cand/openclaw.json" "$state/openclaw.json"   # same volume, so this is an atomic rename
+
+# 3. Bootstrap files the repo owns (hard rules, persona): openclaw/people/** and openclaw/shared/**.
+#    Agents can't write them (no file tools); MEMORY.md and memory/ are never touched.
+for f in "$stage"/openclaw/{people,shared}/**/*.md(N.); do
+  rel=${f#$stage/openclaw/}
+  [[ ${rel:t} == MEMORY.md || $rel == */memory/* ]] && continue
+  /usr/bin/install -d -m 700 "$state/${rel:h}"
+  /usr/bin/install -m 600 "$f" "$state/$rel"
+done
+
+# 4. Helper scripts, runtime values, observability and eval files, LaunchAgents (copied only; the
+#    first load is by hand as happy).
+for f in "$stage"/bin/*(N); do /usr/bin/install -m 700 "$f" "$HOME/bin/${f:t}"; done
+for f in "$stage"/runtime/*(N); do /usr/bin/install -m 600 "$f" "$cfg/${f:t}"; done
+for d in observability evals; do
+  if [[ -d "$stage/$d" ]]; then
+    /bin/rm -rf "$cfg/$d.new"; /bin/cp -R "$stage/$d" "$cfg/$d.new"; /bin/chmod -R go-rwx "$cfg/$d.new"
+    /bin/rm -rf "$cfg/$d"; /bin/mv "$cfg/$d.new" "$cfg/$d"
+  fi
+done
+for p in "$stage"/launchd/*.plist(N); do
+  /usr/bin/plutil -lint -s "$p"
+  /usr/bin/install -m 644 "$p" "$HOME/Library/LaunchAgents/${p:t}"
+done
+
+print -r -- "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) $rev" >> "$meta/history.log"
+print "happy-deploy: applied $rev (the gateway hot-reloads openclaw.json and its include)"
+
+# 5. Optional restarts.
+(( flat )) && print "happy-deploy: FLAT config deployed for plugin maintenance; deploy normally when done"
+(( restart )) && openclaw gateway restart
+if (( ! flat )) && /bin/launchctl print "$evaljob" >/dev/null 2>&1; then
+  /bin/launchctl kickstart "$evaljob" >/dev/null 2>&1 \
+    && print "happy-deploy: eval job started; it runs the suite only if the critical path changed" \
+    || print "happy-deploy: eval job already running"
+fi
+if (( restart_o1 )); then   # Grafana reads provisioning, and VictoriaMetrics its scrape file, only at start
+  for l in victoriametrics grafana macmon node-exporter sandbox-check; do
+    /bin/launchctl print "gui/$(/usr/bin/id -u)/local.happy.$l" >/dev/null 2>&1 \
+      && /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/local.happy.$l" && print "restarted local.happy.$l"
+  done
+fi
+exit 0

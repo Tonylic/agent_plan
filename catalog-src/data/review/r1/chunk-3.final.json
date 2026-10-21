@@ -1,0 +1,561 @@
+[
+ {
+  "id": "F048",
+  "verdict": "edit",
+  "reason": "Kept, at a lower value. Gmail now drafts replies for free inside the thread, so this ranks below the school mailbox, but nothing opened in this review advises against it and the roadmap itself names this drafts server. The entry now says where Happy's version still helps, stops claiming Happy 'has no way to send' (the Google permission could send; two switches block it) and takes in the 'draft a reply' example from F053.",
+  "who_trigger_result": "A parent / texts 'reply to the plumber: Tuesday after 3 works', or asks for a note to the teacher / finds a draft, threaded under the mail it answers, in their own Gmail Drafts and sends it themselves.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+   "title": "gogcli docs: MCP server",
+   "anchor": "gmail_create_draft",
+   "supports": "The Google tool's own guide describes a no-send setup in which an assistant composes and updates Gmail drafts while sending stays blocked."
+  },
+  "edits": {
+   "name": "Drafts in the owner's Gmail Drafts (Happy drafts, the owner sends)",
+   "description": "A parent asks by text for a reply or a note, and Happy leaves it as a draft in that parent's own Gmail Drafts, threaded under the mail it answers. The parent reviews and sends from Gmail; sending is switched off for Happy.",
+   "example": "Tony texts: 'Reply to the plumber: Tuesday after 3 works.' A threaded draft is waiting in his Gmail Drafts.",
+   "how": "One drafts server per adult with its own token: `gog --gmail-no-send mcp --allow-write --allow-tool gmail_create_draft,gmail_update_draft`, callable only by that adult's own agents. gog registers its send tools only with a separate `--allow-gmail-send` flag, which is never passed; a fail-closed `before_tool_call` hook that blocks any send tool is the second layer. For threading the CLI has `gog gmail drafts reply <messageId>` and `--reply-to-message-id` on `drafts create`.",
+   "caveats": [
+    "Gmail itself now drafts replies for free (Help Me Write and Suggested Replies), inside the thread a parent has to open anyway to press send. Happy's version helps when the request starts in iMessage or needs family facts Happy already holds, so it ranks below the school mailbox.",
+    "Google offers no drafts-only permission: the sign-in that can write drafts could also send. What stops sending is gog's no-send switch and the hook, not Google."
+   ],
+   "value": 3
+  },
+  "merge_hints": [
+   "F053",
+   "F016",
+   "G015",
+   "F049"
+  ],
+  "overturned": true,
+  "challenge_note": "Overturned from remove: the evidence (Google's January 2026 Gmail post, re-opened at blog.google/products-and-platforms/products/gmail/gmail-gemini, and the Gmail scopes page) shows a free alternative and an ordinary limit with a documented mitigation, not advice against; the item's own record concedes nothing, the earlier catalog note only ranked these drafts lower, and the chunk-6 review folds F053 into this item."
+ },
+ {
+  "id": "F049",
+  "verdict": "edit",
+  "reason": "Kept: it is the roadmap's own 'Email out' rule (send tool only, recipient always the owner of the sending agent, fail closed), and Google's assistant ships a similar 'put this answer in my Gmail' step. The build note is corrected to block any other recipient instead of rewriting it, because rewriting is only documented for host-owned tools.",
+  "who_trigger_result": "A parent / texts 'email me this' after a long answer, table or plan / the text arrives in that parent's own inbox from Happy's family sender; no other recipient is possible.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/14184041",
+   "title": "Export responses from Gemini Apps (Gemini Apps Help)",
+   "anchor": "Draft in Gmail",
+   "supports": "Google's assistant has a standard export step that puts a finished answer into the user's own Gmail as a draft, the same 'get this long answer into my mail' convenience this item gives the asker."
+  },
+  "edits": {
+   "how": "A send-only mail tool on a dedicated family sender account: the gog MCP server with the write flag plus its separate `--allow-gmail-send` flag and only the send tool allowed, granted to `<p>-main` only. A `before_tool_call` hook blocks the call unless the recipient equals the owner address of the calling agent and cc and bcc are empty; a block is terminal and the hook fails closed. Do not rely on rewriting the recipient: the docs describe rewrites for host-owned tool parameters only. An in-house daily send cap.",
+   "unverified": [
+    "That the hook sees every recipient field (to, cc, bcc) of the gog MCP send tool in its parameters; prove it with a seeded send to a non-owner address, which must be blocked.",
+    "A daily send cap is in-house code; no built-in cap was found in the pages read.",
+    "Creating the dedicated family sender account and granting its send scope is a manual step outside OpenClaw."
+   ]
+  },
+  "merge_hints": [
+   "F028",
+   "F026",
+   "F048"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands; the demand source was re-opened and its paraphrase corrected, because Gemini's export creates a Gmail draft and does not send a message."
+ },
+ {
+  "id": "CRT-02",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "Locking one person out is a second phrase on the same stop plugin as the kill switch (G005): same hooks, same wave, and this item already lists G005 as what it extends. One combined item covers both; nothing is lost.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Plugin hooks: message hooks",
+    "anchor": "handled: true",
+    "supports": "Both the stop phrase and the lock-out phrase are claimed by the same plugin hook before the model sees the message, so they are one piece of code."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/operator-incident-response.md:17",
+    "title": "Operator incident response: contain",
+    "anchor": "Freeze access",
+    "supports": "OpenClaw's incident guide treats stopping the gateway and freezing who may message it as one containment step list."
+   }
+  ],
+  "fold_into": "G005",
+  "fold_note": "Carry over: an exact lock-out phrase from the other adult suspends one person's handles (no replies, no agent runs or tool calls, no scheduled texts to them) until Tony lifts it at the Mac; the suspension must be enforced in before_agent_run and before_tool_call, which fail closed, because the phrase matcher and message_sending fail open. Also carry the stolen-phone steps: removing the handle from family.json5 and redeploying is the only thing that ends that handle's approver rights, `openclaw devices revoke` if the phone ran the app, and Find My Lost Mode on the phone side.",
+  "merge_hints": [
+   "G005",
+   "G002"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "CRT-03",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "A sitter or visiting grandparent would be a lower-trust user on the parents' gateway: OpenClaw's security guidance says mixed-trust use belongs on a separate gateway, and on iMessage everyone admitted to chat is also on the list that may answer approval prompts. The record itself says most sitters will just text the parents, and a sitter is outside the 'messages go only to the family' rule; the sitter sheet (F036), translated when needed (G011) and forwarded by a parent, gives the same card. No other item depends on this one.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/index.md:23",
+    "title": "Gateway security: one trust boundary per gateway",
+    "anchor": "mixed-trust or adversarial-user operation",
+    "supports": "OpenClaw's guidance for people of different trust levels is to split them onto a separate gateway and credentials, not to share one."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage rich messages: approvals",
+    "anchor": "approver list",
+    "supports": "On iMessage the admission list is also the approver list, so a guest who is let in to chat is also authorised to answer approval prompts."
+   }
+  ],
+  "merge_hints": [
+   "F036",
+   "G011"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F072",
+  "verdict": "edit",
+  "reason": "Kept as blocked, not advised against: it waits for a local model and local safety checks, which is the family's own rule. Risk is raised from low to medium because the risk here is what a child reads, and no classifier has been tested on this family's questions yet.",
+  "who_trigger_result": "Each child, later / texts Happy from their own Apple account / gets a helper with no tools and no memory, on a local model, with safety checks on what goes in and what comes out.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/16109150?hl=en",
+   "title": "Guide your child's Gemini Apps experience (Gemini Apps Help)",
+   "anchor": "Family Link",
+   "supports": "Google ships a supervised chat assistant for children under 13 that parents switch on and manage, for schoolwork help and stories."
+  },
+  "edits": {
+   "risk": "medium",
+   "caveats": [
+    "Blocked until a local model and local classifiers exist and the kid-safety evals pass; kids' content never goes to a cloud model. The roadmap calls the safety layer (classifiers, evals, parent review) the product here.",
+    "Even Google's supervised version for under-13s tells parents its filters are not perfect, so the parents' review of flagged chats (G019) and the parent alerts (MKT-13) are part of this base, not extras."
+   ]
+  },
+  "merge_hints": [
+   "MKT-13",
+   "G019",
+   "F073",
+   "F074",
+   "F075",
+   "G018"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands (Google's page was re-opened and does say its filters are not perfect); the caveat that only listed which other catalog items wait on this one was moved to merge hints."
+ },
+ {
+  "id": "G003",
+  "verdict": "edit",
+  "reason": "AUT-04 (a written charter per job) and AUT-08 (failure guardrails) are folded in: all three come out of the same generator from the same family.json5 entries in wave A, so they are one piece of work. The registry itself implements the roadmap rule that agents, bindings and delivery targets are generated from one family.json5 and never edited by hand. A stray open question about healthchecks.io was dropped; it belongs to the watchdog, not here.",
+  "who_trigger_result": "Tony / changes one line in family.json5 and deploys / that scheduled job exists (or not) for that person, with a charter the parents can read, a time limit, a tool cap, and failure alerts that go to Tony.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/standing-orders.md:10",
+   "title": "Standing orders",
+   "anchor": "permanent operating authority",
+   "supports": "OpenClaw's own guide describes giving each recurring program a written scope, trigger, approval gate and escalation rule, fired by scheduled automations."
+  },
+  "edits": {
+   "name": "Scheduled-jobs registry in family.json5: per-person switches, a charter per job, failure guardrails",
+   "description": "Every scheduled feature becomes a named switch per person in one reviewed file. From that entry the generator creates the job with a time limit and a tool cap and writes a short charter the parents can read: what Happy may do without asking, what needs a yes first, when to stop and ask, what it must never do. Failures alert Tony, not the family; a job that keeps failing stops itself; runs missed during a power cut are skipped.",
+   "example": "Turning Jordan's school digest off is a one-line change Tony reviews. The 19:30 brief fails twice in a row: Tony gets one text, and one more when it recovers. After a power cut the 07:00 brief does not turn up at 11:40.",
+   "how": "gen-family reads the family.json5 flags and emits `openclaw automations add/edit/remove`, keyed on the stable `--name`, with `--agent`, `--to`, `--tz`, `--announce`, `--timeout-seconds` and an explicit `--tools` cap on every job; it diffs against `automations list --all --json`, because the default list hides disabled jobs. The same entries render one `## Program: <name>` section per job (Authority, Trigger, Approval gate, Escalation, What NOT to do, plus an execute-verify-report rule) into templates/person/AGENTS.md, and each job message points at its program instead of repeating it; isolated jobs must not use `--light-context`, which drops the bootstrap files. Gateway config: a global `cron.failureAlert` object routed to the operator's handle; `cron.skipMissedJobs: true`; `cron.triggers.enabled: false`. These three switches are plain config and can go in before the generator exists; triggers must be off before timed reminders (F007) or any other item gives an agent the `automations` tool. happy-inspect reads `automations list --all` to catch auto-disabled jobs. The healthchecks dead-man switch stays the only signal for a Mac that is off.",
+   "caveats": [
+    "A charter is prompt text, not enforcement; the hard limits stay in tool policy and hooks.",
+    "AGENTS.md shares a bootstrap budget (20,000 characters per file by default); keep each program to about ten lines. Scheduled runs do not get MEMORY.md, so anything a program needs must be in AGENTS.md, the job message or a tool result.",
+    "A chat instruction does not change a charter; it waits for a reviewed deploy.",
+    "By default a failure alert goes to the failing job's own announce target, so Jordan would get 'job failed' texts for her jobs unless they are rerouted to Tony.",
+    "Alerts start after 2 failures in a row with a 1-hour cooldown. A recurring job is switched off after 10 failures in a row and then disappears from the default job list.",
+    "Without a per-job timeout an isolated agent job is bounded only by a 60-minute watchdog.",
+    "After a reboot with FileVault locked nothing fires and nothing alerts. One-shot reminders still catch up after an outage even with skipMissedJobs set.",
+    "Jobs an agent creates in chat, once <p>-main holds the automations tool, are outside the registry, so the diff must tolerate or report them.",
+    "With triggers on, trigger scripts and script payloads run with the owning agent's full tool policy, exec included. Switching triggers off also switches off the trigger-script design of F029 until that is deliberately turned back on."
+   ],
+   "safety": "Purely restrictive. Charters narrow behaviour and grant nothing; never-list items are written under What NOT to do and are also unreachable by tool policy. Alert text shown in chat is a normalized cause, and routing alerts to the operator keeps one person's job details out of another person's thread.",
+   "unverified": [
+    "Whether gen-family, run from Tony's admin account, can reach the happy user's Gateway with the admin operator scope the docs require.",
+    "Whether scheduler-sent failure alerts pass through the G009 recipient-pin hook or bypass it.",
+    "Where the auto-disable notice lands: the docs say the owning agent receives it even when failure alerts are off, so it may reach the family member's thread instead of Tony's."
+   ]
+  },
+  "merge_hints": [
+   "AUT-04",
+   "AUT-08",
+   "F007",
+   "G008",
+   "G002"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands; one sentence added so the 'triggers off before any agent gets the automations tool' rule, which F007, AUT-01 and AUT-03 rely on, is not hidden behind the generator build."
+ },
+ {
+  "id": "AUT-04",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "The charter for each job is rendered by the same generator, from the same family.json5 entries, as the jobs registry (G003), which this item names as its dependency. It is one piece of wave-A work, so it becomes part of G003. No item outside this group depends on it.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:31",
+    "title": "Standing orders: how they work",
+    "anchor": "time-based enforcement",
+    "supports": "OpenClaw describes the written program and the scheduled automation that fires it as one arrangement, which is what the registry generates."
+   }
+  ],
+  "fold_into": "G003",
+  "fold_note": "Carry over: one `## Program: <name>` section per job in AGENTS.md (authority, trigger, approval gate, escalation, what not to do), each job message pointing at its program, no `--light-context` on those jobs, the roughly ten-line budget per program, and the caveat that a charter is prompt text and the hard limits stay in tool policy and hooks.",
+  "merge_hints": [
+   "G003"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "AUT-08",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "By its own description this is the set of scheduler settings the jobs registry (G003) should be built on: a time limit and tool cap on every job the registry emits, plus three gateway switches. It is the same piece of wave-A work, so it becomes part of G003. AUT-01 and AUT-03 refer to it for the 'triggers off before any agent gets the automations tool' rule, which moves with it.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:42",
+    "title": "openclaw automations: timeouts",
+    "anchor": "--timeout-seconds",
+    "supports": "The per-job time limit is a flag on the same add and edit command the registry generator emits, so the guardrail is part of generating the job."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:105",
+    "title": "Automation delivery: failure notifications",
+    "anchor": "2 consecutive failures",
+    "supports": "Failure alerts are a built-in scheduler policy that only needs routing to the operator, a config line set once alongside the registry."
+   }
+  ],
+  "fold_into": "G003",
+  "fold_note": "Carry over: the global `cron.failureAlert` routed to Tony, `--timeout-seconds` and a `--tools` cap on every job, `cron.skipMissedJobs: true`, `cron.triggers.enabled: false` before any agent is given the automations tool, happy-inspect watching for auto-disabled jobs, and the caveats on alert thresholds, the 60-minute watchdog and one-shot catch-up. The three gateway switches can be set today, ahead of the generator, and triggers must be off before F007 hands any agent the automations tool.",
+  "merge_hints": [
+   "G003",
+   "G008",
+   "F007"
+  ],
+  "overturned": false,
+  "challenge_note": "Fold stands; the note now says the gateway switches do not wait for the generator."
+ },
+ {
+  "id": "G005",
+  "verdict": "edit",
+  "reason": "CRT-02 (lock one person out after a lost or stolen phone) is folded in as a second phrase on the same plugin. The build note now puts the stop in the hooks that fail closed; the earlier wording relied on hooks that let things through when they break. The Shortcut and ntfy-button triggers are moved to open questions because neither was confirmed.",
+  "who_trigger_result": "Either parent / texts the exact stop phrase, or the lock-out phrase naming a person / Happy stops acting and texting (or stops answering that one person) until Tony switches it back on at the Mac.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/gateway/security/operator-incident-response.md:15",
+   "title": "Operator incident response: contain",
+   "anchor": "Stop it",
+   "supports": "OpenClaw's incident guide makes stopping the gateway and freezing who may message it the first containment steps, which this puts one text away for both parents."
+  },
+  "edits": {
+   "name": "Stop by text: 'Happy, stop everything', and lock one person out",
+   "description": "Either parent can text one exact phrase and Happy stops: no agent runs, no tool calls and no scheduled texts until Tony switches it back on at the Mac. A second phrase stops Happy answering one person's handle, for a lost or stolen phone.",
+   "example": "Jordan texts 'Happy, stop everything' when briefs start arriving twice. Tony texts 'Happy, lock out Jordan' after her phone is left in a taxi.",
+   "how": "In-house plugin. before_dispatch claims the exact phrase from an adult's handle and writes a kill file (everything) or a suspended file (one person's handles). The stop is enforced where hooks fail closed: before_agent_run blocks agent runs before the model reads the prompt, and before_tool_call blocks tools; message_sending cancels scheduled announce texts as a best-effort extra. Levels that need no plugin code, done by Tony: `cron.enabled: false`, then `openclaw gateway stop`. Lifting a stop or a lock-out is CLI-only. For a stolen phone the operator step still has to follow: remove the handle from family.json5 and redeploy, which is the only thing that ends that handle's approver rights; `openclaw devices revoke` if the phone ran the OpenClaw app; Find My Lost Mode on the phone side.",
+   "depends_on": [
+    "family.json5 registry and gen-family (handles, and the operator path that removes one)"
+   ],
+   "caveats": [
+    "The phrase matcher is a claim hook and message_sending is a delivery hook: both log and continue when their handler throws or times out, so the stop must not live only there.",
+    "Command jobs make no agent run, so their announce texts can only be caught by message_sending (as read from the bundled code, not yet tested); the dependable stop for those is the scheduler switch.",
+    "/stop (OCL-06) ends one answer in one chat; this stops everything.",
+    "For a stolen phone, 'stop everything' already works as the blunt version; the lock-out phrase only keeps Happy answering the other parent in the meantime.",
+    "A locked phone already stops most misuse. The lock-out covers a phone taken while unlocked or a passcode seen over a shoulder.",
+    "Either adult can lock the other out, and Tony undoes it at the Mac. If whoever holds the phone sends the phrase first, the real owner needs the CLI.",
+    "A lock-out stops replies and texts to that person, not their scheduled jobs; pause those too (G002).",
+    "Keep both phrases out of Happy's own help text and replies."
+   ],
+   "safety": "Both phrases can only narrow what Happy does; nothing in the chat path can add a sender or switch anything back on. A chat lock-out leaves the handle on channels.imessage.allowFrom, which is also the approver list, so that person's agent runs and tool calls must be blocked by the fail-closed hooks until Tony removes the handle and redeploys.",
+   "unverified": [
+    "That before_agent_run fires for scheduled agent-turn jobs on this build; test with a throwaway job.",
+    "Whether switching the scheduler off stops a job already running, and whether switching it back needs a restart (the hot-reload table says no; the automation troubleshooting page says restart).",
+    "How plugin code running as the happy user would change the scheduler setting, given the config repo is read-only to it; the kill file may be the only chat-triggered level.",
+    "What the sender sees when before_agent_run blocks a run and no replacement message is set.",
+    "Whether a tapback from a suspended handle can still resolve a pending approval, and whether owner-only slash commands from that handle are parsed before the plugin's hooks run.",
+    "The Shortcut and ntfy-button triggers from the 9 Oct entry: where an ntfy action request originates, and whether it can reach the Gateway over Tailscale, was not confirmed, so the text phrase is the only confirmed trigger."
+   ]
+  },
+  "merge_hints": [
+   "CRT-02",
+   "G002",
+   "OCL-06",
+   "CRT-05"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands; one caveat added so the second phrase is not oversold next to the stop phrase."
+ },
+ {
+  "id": "CRT-04",
+  "verdict": "keep",
+  "who_trigger_result": "Both parents / the cloud model fails or is rate-limited / a smaller model from the same vendor answers with a one-line notice, or each parent gets one plain 'the model is down' text and later a 'back' text, while model-free alerts keep working.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/model-failover.md:456",
+   "title": "Model failover: user-visible fallback notices",
+   "anchor": "User-visible fallback notices",
+   "supports": "OpenClaw supports falling back to another model for one turn and tells the person in the chat when that happens."
+  },
+  "merge_hints": [
+   "G008",
+   "F007",
+   "G003"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "G001",
+  "verdict": "edit",
+  "reason": "Kept, but the description now says what Happy adds beyond the phone: the record's own source notes each iPhone can already silence notifications on a schedule, so the gain is the daily cap, the urgent or not-urgent split and the label. It also says plainly that the gate for scheduled texts is best effort. It shares a plugin and a wave with the mute and vacation item (G002).",
+  "who_trigger_result": "Both parents / any unprompted text from a scheduled job or an agent / non-urgent ones are held outside allowed hours and capped per day, and each one carries a tag naming the job that sent it.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/reference/templates/AGENTS.md:119",
+   "title": "OpenClaw AGENTS.md template: be proactive",
+   "anchor": "overrides quiet hours",
+   "supports": "OpenClaw's own agent template tells a proactive agent to stay quiet at night and lets only urgent items through."
+  },
+  "edits": {
+   "description": "Caps how many unprompted texts each parent gets in a day, holds non-urgent ones outside allowed hours, and labels each one so you know which job sent it. Each iPhone can already silence the night on a schedule; what Happy adds is the cap, the urgent or not-urgent split and the label.",
+   "caveats": [
+    "Not a hard gate for scheduled texts: the message_sending hook that sees `--announce` deliveries lets the message through if the plugin throws or times out. Only the agent's own message tool is gated fail-closed.",
+    "The first line of defence is simply generating schedules inside the allowed windows (G003).",
+    "No doc lists a job id on message_sending, so each job may have to write its own tag into the text."
+   ]
+  },
+  "merge_hints": [
+   "G002",
+   "G005"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "G004",
+  "verdict": "remove",
+  "category": "vague",
+  "reason": "The caps and the alert already exist: every OpenAI project has a hard monthly limit and a Grafana rule alerts Tony when an agent passes its daily budget (happy-config baseline/caps-m1.md, confirmed 9 Oct). What is left is a rule, 'every new agent or key gets its own cap and budget line before it goes live', which is a line on the operator's checklist (OCL-13), not a feature. VOX-02 lists this item as a dependency and OCL-06, OCL-13 and CRT-04 mention it; they should point at that checklist line.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/spend-limits",
+    "title": "OpenAI API guide: Spend limits",
+    "anchor": "project_spend_limit_exceeded",
+    "supports": "The hard stop is a setting on each OpenAI project, made once in the provider's dashboard; there is nothing for Happy to build."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/prometheus.md:118",
+    "title": "Prometheus metrics",
+    "anchor": "openclaw_model_cost_usd_total",
+    "supports": "The per-agent cost counter that the existing daily-budget alert reads is exported by the Gateway already."
+   }
+  ],
+  "fold_into": "OCL-13",
+  "fold_note": "Carry one checklist line: before a new agent or key (mail, voice) goes live it gets its own OpenAI project with a hard monthly limit, a row in the caps file and a budget term in the 'Daily model cost over budget' alert, and the monthly check compares the registry's agents against both. Also carry the known gap that eval-clone spend is labelled 'unknown', so the daily alert does not see it; /usage (OCL-06) already prints a cost summary on request.",
+  "merge_hints": [
+   "OCL-13",
+   "G008",
+   "OCL-06",
+   "VOX-02"
+  ],
+  "overturned": true,
+  "challenge_note": "Overturned from edit: the first reviewer's own corrected text says what remains is a rule and that it could be a line in the operator checks; the caps file and the daily-budget alert it describes were confirmed in happy-config, so by the third test it is folded instead of kept as a value-2 card."
+ },
+ {
+  "id": "G007",
+  "verdict": "remove",
+  "category": "vague",
+  "reason": "Already running since M0: a verified archive of Happy's state every night at 03:15, 14 days kept, on the encrypted disk and in the encrypted Time Machine backup, and one restore drill passed. What is left is the roadmap's standing rule to repeat the drill each quarter and to add new stores to the backup set, which are lines on the operator's checklist (OCL-13), not a feature. CRT-05 lists 'G007 backups' as a dependency, which is already met; OCL-10 and OCL-13 only mention it.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/backup.md:20",
+    "title": "Backup CLI",
+    "anchor": "openclaw backup create --verify",
+    "supports": "The archive-and-verify step is one built-in command, which the existing nightly script already runs; nothing further has to be built."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/104984",
+    "title": "Apple Support: Back up your Mac with Time Machine",
+    "anchor": "Encrypt Backup",
+    "supports": "The encrypted off-disk copy is a macOS feature that is already switched on for this Mac."
+   }
+  ],
+  "fold_into": "OCL-13",
+  "fold_note": "Carry two checklist lines: a quarterly restore drill with a reminder to Tony (`openclaw backup restore --target` into a scratch folder), and a check that each new store (the household database from F031, the wiki vault from F043, plugin state files) is inside the nightly archive or has its own tar step. Keep the warning that the archive holds sign-ins and keys and is not encrypted by OpenClaw, so it must never be copied to iCloud or any unencrypted place.",
+  "merge_hints": [
+   "OCL-13",
+   "G008",
+   "CRT-05",
+   "F031",
+   "F043"
+  ],
+  "overturned": true,
+  "challenge_note": "Overturned from edit: the nightly script and its 03:15 schedule were confirmed in happy-config, the remainder is the roadmap's 'quarterly restore drill' rule plus a completeness check, and the first reviewer's own reason says it could be one line in the operator checks."
+ },
+ {
+  "id": "F084",
+  "verdict": "edit",
+  "reason": "Kept, but the description overclaimed: the gate reads only PDFs with extractable text, so scanned PDFs and photos, which is how most paper documents arrive, are not covered. The description and name now say so and value drops from 4 to 3.",
+  "who_trigger_result": "Either parent / sends a PDF whose text looks like a bank statement or tax form / Happy refuses before the cloud model sees it and says why.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+   "title": "LLM02:2025 Sensitive Information Disclosure (OWASP Gen AI Security Project)",
+   "anchor": "Sensitive Information Disclosure",
+   "supports": "OWASP's guidance for applications built on language models recommends filtering sensitive inputs before they reach the model and steering users away from entering them."
+  },
+  "edits": {
+   "name": "Local privacy gate for documents: refuse bank statements and tax forms (text PDFs only)",
+   "description": "Before a PDF with readable text goes to the cloud model, Happy refuses it if it looks like a bank statement or tax form and says why. Scanned PDFs and photos cannot be checked on the Mac yet, so they are not covered.",
+   "value": 3,
+   "caveats": [
+    "A regex gate reads only extracted text: a scanned statement or a phone photo of one reaches the vision model unread.",
+    "Whether the extracted file text is inside the prompt the hook receives is untested; prove it with a seeded PDF before inbound attachments are switched on (F001).",
+    "A local classifier (OCL-14) could replace the regex later; it accepts at most 512 tokens per input, so the gate would send the first lines of each page."
+   ]
+  },
+  "merge_hints": [
+   "F001",
+   "OCL-14",
+   "F002"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands; OWASP's page was re-opened and does recommend filtering sensitive inputs and pattern matching before processing."
+ },
+ {
+  "id": "OCL-14",
+  "verdict": "edit",
+  "reason": "The record still listed a Gateway upgrade to 2026.10.1 as a prerequisite, with a caveat saying the plugin cannot be used today; the npm registry carries a 2026.9.7 build that accepts today's Gateway (re-checked in this run), so those stale lines are removed. The Apple on-device model entry (F086) is folded in as one caveat line. This is an enabling piece for the privacy gate, the urgent-mail gate and later the kids filters, not something the family sees.",
+  "who_trigger_result": "Tony's in-house hooks (privacy gate, urgent school mail, later the kids filters) / a hook needs a yes/no, pick-one or score on a short text / a typed answer with a probability, computed on the Mac with no cloud call.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/decision-models.md:14",
+   "title": "Decision models",
+   "anchor": "scoring its urgency",
+   "supports": "OpenClaw describes a model role for bounded judgments such as routing a request, scoring urgency or checking a condition, returning a typed answer."
+  },
+  "edits": {
+   "depends_on": [
+    "The co-versioned plugin release pinned at install (npm:@openclaw/onnx@2026.9.7), proven to load and pass its probe command on a test profile before any gate relies on it",
+    "A small labelled test set per question, so false positives and misses are measured before a gate relies on it"
+   ],
+   "caveats": [
+    "The installed 2026.9.7 docs still call the ONNX and TypeSafe plugins unpublished candidates, but the npm registry lists an @openclaw/onnx 2026.9.7 build whose requirement is openclaw 2026.9.7 or later. The latest tag (2026.10.1) needs a newer Gateway, so the version must be pinned at install. The plugin is weeks old; treat it as experimental.",
+    "These are generic zero-shot classifiers, not child-safety models; they can score and shortlist, but a kids deployment still needs its own evaluation and a second gate.",
+    "There is no fallback to the chat model when the decision provider is unavailable, and an unavailable result is not a 'no', so every gate has to fail closed.",
+    "The other provider, TypeSafe's hosted model, is a cloud service and out of scope.",
+    "Apple's on-device model (the bundled apple-fm plugin) is not a substitute today: it is documented only as a setup and utility model for short internal tasks such as session titles, and none of the installed pages that mention it describe a classification use.",
+    "Each encoded input, rubric included, must fit 512 tokens and longer input is rejected rather than truncated, so a gate has to send a subject and first lines, or chunk a document itself.",
+    "Returned probabilities are model estimates, not calibrated; thresholds have to come from the labelled test set."
+   ],
+   "unverified": [
+    "Whether @openclaw/onnx 2026.9.7 installs and loads cleanly on this 2026.9.7 host; the installed docs predate its publication and describe only a source-checkout route",
+    "Classifier accuracy on this family's school mail and on kids' questions",
+    "Memory and CPU use of the worker process",
+    "Which host the model download command fetches weights from and which egress rule it needs"
+   ]
+  },
+  "merge_hints": [
+   "F084",
+   "F055",
+   "F072",
+   "G016",
+   "F086"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands; the npm registry entry for @openclaw/onnx 2026.9.7 was re-opened and requires openclaw 2026.9.7 or later, so dropping the upgrade prerequisite is correct."
+ },
+ {
+  "id": "F086",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "Its own description says the family sees no difference: the Apple on-device model only writes session titles and progress notes on screens Happy does not use. The one use the catalog kept it for, a free local classifier behind the privacy gate, is not documented for it, and OCL-14 now covers local classification by a documented route. No other item depends on it.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/models.md:65",
+    "title": "Agent model configuration",
+    "anchor": "utilityModel",
+    "supports": "The utility model powers Control UI session titles, activity recaps and progress narration, none of which appear in an iMessage thread."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/decision-models.md:30",
+    "title": "Decision models: roles",
+    "anchor": "Classification, rubric scoring",
+    "supports": "Classification is the documented job of the decision-model role, which OCL-14 fills with a local provider."
+   }
+  ],
+  "fold_into": "OCL-14",
+  "fold_note": "Carry one caveat line only: Apple's on-device model is documented as a setup and utility model, not as a classifier, so it is not an alternative to the ONNX route today.",
+  "merge_hints": [
+   "OCL-14"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F082",
+  "verdict": "edit",
+  "reason": "Kept as a small enabling switch that F011, WEB-11, MKT-01 and others lean on. Renamed in plain words, and the limits the docs state for iMessage and for the OpenAI route are added.",
+  "who_trigger_result": "Either parent / sends an ambiguous request, or a flyer or newsletter to be turned into dates and items / gets one short numbered question to answer with a digit, and the features downstream get clean event and item lists.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/ask-user.md:10",
+   "title": "Ask user",
+   "anchor": "one to three structured questions",
+   "supports": "OpenClaw ships a tool that pauses a turn to ask the person a structured question and waits for the answer, usable by plain-text reply on any channel."
+  },
+  "edits": {
+   "name": "Clarifying questions and clean extraction (ask_user, llm-task)",
+   "caveats": [
+    "On iMessage the question arrives as plain text and is answered by a plain reply with a number or a label; buttons exist only on other channels and in the apps.",
+    "ask_user is meant for decisions that really belong to the person, not routine confirmations; approvals stay with the approval hook.",
+    "On the runtime the doc calls 'Agents API', llm-task cannot guarantee a call with literally no tools, because that service may keep built-in helpers; whether Happy's OpenAI provider route is affected is still to be checked."
+   ]
+  },
+  "merge_hints": [
+   "F011",
+   "F056"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F083",
+  "verdict": "edit",
+  "reason": "Kept. Apple's Weather app can already notify a parent when rain or snow is about to start and about government severe-weather alerts, so this tool's weight is as the weather feed for the briefs and the weather watch, and for questions asked inside a Happy conversation. It would be built together with the weather watch (F018).",
+  "who_trigger_result": "Either parent, and the briefs and the weather watch / a question about rain at a given hour or active alerts for home / an hour-by-hour answer, snowfall and alert lines straight from the National Weather Service.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.weather.gov/documentation/services-web-api",
+   "title": "National Weather Service: API Web Service documentation",
+   "anchor": "forecastHourly",
+   "supports": "The National Weather Service offers hourly forecasts and active alerts through a free public service meant for others to build on."
+  },
+  "edits": {
+   "caveats": [
+    "Apple's Weather app can already send a notification when rain or snow is about to start or stop, and for government-issued severe-weather alerts at a saved location; Apple notes this is not offered in every country or region. This tool earns its place as the weather feed for the briefs (F013 to F015) and the weather watch (F018), and for questions asked inside a Happy conversation."
+   ],
+   "unverified": [
+    "The snowfall field name and units were seen only in the OpenAPI description of the raw gridpoint endpoint, not in a live response.",
+    "NWS publishes no numeric rate limit, so the 10-minute cache is a design choice rather than an NWS rule.",
+    "Whether those Weather notifications are offered and switched on for the home location on each parent's iPhone: the Apple page read was the Mac Weather guide, and the iPhone guide did not render."
+   ]
+  },
+  "merge_hints": [
+   "F018",
+   "F013",
+   "F014",
+   "F015"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict stands, but the first reviewer closed the Apple Weather question with no source and added 'in the US'; the caveat now follows Apple's page (support.apple.com/en-us/guide/weather-mac/apdw91a682e7/3.0/mac/13.0) and the iPhone and regional part stays an open question."
+ }
+]

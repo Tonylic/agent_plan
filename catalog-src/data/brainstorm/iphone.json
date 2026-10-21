@@ -1,0 +1,1680 @@
+[
+  {
+    "id": "IPH-01",
+    "name": "Pair an iPhone as an OpenClaw node (official iOS app)",
+    "tier": 3,
+    "cluster": "iOS node (route a)",
+    "description": "The foundation for everything else on an iPhone: the App Store OpenClaw app connects a phone to the gateway and exposes a fixed list of device commands. New versus the 9 Oct catalog: the exact iOS command surface and what a phone left on a charger can and cannot answer.",
+    "example": "Operator trigger: Tony scans a pairing QR code on the phone, approves the device, then separately approves the commands it declares.",
+    "how": "Install the App Store app and pair with a setup code created with limited access (Tony's own phone may keep full). Two approvals follow: the device, then its declared command surface. Allowed for iOS by default: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify, plus talk.ptt.* for a Talk-capable node. Opt-in only through gateway.nodes.commands.allow: camera.snap, camera.clip, screen.record, health.summary, contacts.add, calendar.add, reminders.add. Give the nodes tool only to the agent that owns the phone and pin node id and command ids in the existing in-house before_tool_call hook. Idle on a charger: the full surface answers only while the app is open in the foreground (keep-awake setting on, Guided Access holding the app on screen). Once the phone locks or the app is backgrounded, iOS may suspend the connection and the gateway gets only best-effort presence beacons and relay push wakes.",
+    "who": "operator",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "hardware: the parents' own iPhones, or a spare iPhone (unknown whether one exists)",
+      "Tailscale on each phone to reach the gateway's Tailscale Serve address",
+      "decision: full or limited operator access per phone",
+      "in-house hook: pin node id and command ids per agent"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "iOS has no notifications, SMS, call-log, installed-apps, mobile UI or computer-control commands; those exist only for Android or desktop nodes.",
+      "Camera and screen commands work only while the app is in the foreground.",
+      "Background is best-effort: Apple treats silent pushes as low priority (about two or three an hour, no delivery guarantee, 30 seconds of runtime) and decides when background refresh runs.",
+      "Pairing also gives the phone an operator session; the default setup code includes admin scope, so use the limited or voice-node profile for any phone that is not Tony's.",
+      "The docs table is the gateway's ceiling, not proof of what the App Store build declares."
+    ],
+    "safety": "A node is a peripheral that adds sensors and personal data to whichever agent holds the nodes tool, so keep it off the research and mail-reader agents. Each <p>-main may reach only that person's phone, enforced by the hook (node id and command allowlist) rather than by prompt. Dangerous commands stay out of gateway.nodes.commands.allow until a specific feature needs one, and camera.clip, screen.record, contacts.add, calendar.add and reminders.add go into gateway.nodes.commands.deny.",
+    "unverified": [
+      "The exact command list the current App Store build declares at connect time (the app is not part of the installed package).",
+      "What 'Screen snapshot' means on iOS: the iOS page lists it as a capability, but screen.snapshot is not in the iOS default allowlist in the docs table or the source. I expect it cannot show other apps.",
+      "What the app's keep-awake setting does exactly; the docs only name it.",
+      "Whether OpenClaw can natively restrict which node a given agent may invoke; I found no such setting, hence the hook."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:20",
+        "title": "iOS app",
+        "anchor": "Screen snapshot, Camera capture",
+        "supports": "Lists the device capabilities the official iPhone app exposes as a node: screen snapshot, camera, location, Talk, voice wake and opt-in Health summaries."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "health.summary",
+        "supports": "camera.snap, camera.clip, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search need a persistent opt-in in gateway.nodes.commands.allow, and deny always wins."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:51",
+        "title": "Node command policy",
+        "anchor": "talk.ptt.start",
+        "supports": "Push-to-talk commands are allowed by default for any node that advertises Talk."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/pairing-and-status.md:13",
+        "title": "Node pairing and status",
+        "anchor": "separate approval",
+        "supports": "Approving the device only admits the connection; the declared command surface needs its own approval."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/troubleshooting.md:111",
+        "title": "Node troubleshooting",
+        "anchor": "foreground-only on iOS/Android",
+        "supports": "Camera and screen commands are foreground-only on phone nodes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:206",
+        "title": "iOS app",
+        "anchor": "iOS may suspend",
+        "supports": "The phone's gateway connections can be suspended by iOS once the app goes to the background."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:566",
+        "title": "iOS app",
+        "anchor": "node.presence.alive",
+        "supports": "On a silent push, background refresh or significant-location wake the app briefly reconnects and reports a last-seen beacon to the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:570",
+        "title": "iOS app",
+        "anchor": "BackgroundTasks scheduler",
+        "supports": "Background refresh wakes are only requested; iOS decides when they run, and they stop if Background App Refresh is off."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:527",
+        "title": "iOS app",
+        "anchor": "ios-push-relay.openclaw.ai",
+        "supports": "App Store builds get push through OpenClaw's hosted relay rather than handing an APNs token to the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:69",
+        "title": "iOS app",
+        "anchor": "keep-awake behavior",
+        "supports": "The per-device settings page of the iPhone app includes a keep-awake setting next to camera access and Health summaries."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:54",
+        "title": "QR",
+        "anchor": "operator.approvals",
+        "supports": "The default mobile setup code hands the phone admin, approvals, read, talk-secrets and write operator scopes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:41",
+        "title": "QR",
+        "anchor": "--limited",
+        "supports": "A limited setup code omits administrative gateway access from the phone's operator token."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/node-command-policy-B8V85z2C.mjs:94",
+        "title": "Gateway source: node command policy",
+        "anchor": "PLATFORM_DEFAULTS",
+        "supports": "In the installed code the iOS default list contains no screen, SMS, notification or mobile UI commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks.md:164",
+        "title": "Plugin hooks",
+        "anchor": "before_tool_call",
+        "supports": "A before_tool_call plugin hook can block a tool call or request an approval."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "title": "Pushing background updates to your App (Apple Developer Documentation, page data)",
+        "anchor": "two or three per hour",
+        "supports": "Apple treats background pushes as low priority, does not guarantee delivery, may throttle them, and gives the app 30 seconds per wake."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad (Apple Support)",
+        "anchor": "Guided Access",
+        "supports": "Guided Access holds the device in a single app until someone authenticates to end the session, and has its own auto-lock setting."
+      }
+    ]
+  },
+  {
+    "id": "IPH-02",
+    "name": "Spare iPhone as a fixed camera",
+    "tier": 3,
+    "cluster": "Camera",
+    "description": "A spare iPhone on a stand answers 'what does the porch look like right now' with one still photo on request. Extends F079, which was parked because the house has no network camera.",
+    "example": "Tony texts: \"Is there a package on the porch?\"",
+    "how": "Spare iPhone on a stand and charger with the OpenClaw app open: Allow Camera on, keep-awake on, Guided Access holding the app in the foreground. Add camera.snap to gateway.nodes.commands.allow and approve the widened surface; keep camera.clip in commands.deny. The asking parent's agent (or a small stateless 'look' agent it hands off to) calls the nodes tool's camera_snap action; the photo goes to the vision model and the answer comes back as text. Alternative without the iOS app: Apple's Continuity Camera turns the iPhone into a camera of the Mac, which the OpenClaw Mac app could capture, but that needs the Mac app installed and the phone signed in to happy's Apple Account.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "IPH-01",
+      "hardware: spare iPhone, stand, charger, a window or shelf with the right view",
+      "decision 3 of the 9 Oct catalog: photos to the cloud vision model under store:false",
+      "decision: where a camera is acceptable in the house"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "iOS prohibits camera use in the background, so the app must stay on screen around the clock. After a crash, an iOS update or a reboot the phone sits at its lock screen and the camera silently stops answering.",
+      "One still per request, or a clip of at most 60 seconds. No motion detection, no stream, no history.",
+      "A screen that never sleeps on a phone that never leaves the charger wears the battery; set the charge limit to 80 percent.",
+      "A cheap network camera with the camsnap skill (F079), or a doorbell's own app, does this job better. The spare phone only wins on price.",
+      "Pictures of the home, and of the kids if they walk past, go to the cloud vision model."
+    ],
+    "safety": "The agent that looks at the picture reads untrusted content (a note held up to the lens is a prompt injection), so it must not also hold memory or mail; it returns text to the caller. Entry or outdoor views only, never bedrooms or bathrooms. Clips stay denied so no audio is recorded. Pictures are not written to memory or the wiki.",
+    "unverified": [
+      "Whether the app's keep-awake setting alone keeps a phone awake and connected for weeks.",
+      "Whether a Continuity Camera iPhone shows up in the Mac node's camera list (the camera page only says such formats are left unchanged)."
+    ],
+    "overlaps_existing": [
+      "F079",
+      "F002"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:22",
+        "title": "Camera capture",
+        "anchor": "Allow Camera",
+        "supports": "The iPhone app has an Allow Camera setting; camera commands return an error when it is off."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:53",
+        "title": "Camera capture",
+        "anchor": "NODE_BACKGROUND_UNAVAILABLE",
+        "supports": "The iOS node allows camera commands only in the foreground."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:45",
+        "title": "Camera capture",
+        "anchor": "durationMs",
+        "supports": "An iPhone clip defaults to 3 seconds and is clamped to at most 60 seconds."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "health.summary",
+        "supports": "camera.snap, camera.clip, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search need a persistent opt-in in gateway.nodes.commands.allow, and deny always wins."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "title": "Gateway source: nodes tool",
+        "anchor": "camera_snap",
+        "supports": "The agent-facing nodes tool has named actions such as camera_snap, location_get and photos_latest."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:135",
+        "title": "Camera capture",
+        "anchor": "Continuity Camera",
+        "supports": "The macOS capture path mentions Continuity Camera formats, i.e. the Mac app can meet an iPhone used as a Mac camera."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/avfoundation/avcapturesession/interruptionreason/videodevicenotavailableinbackground.json",
+        "title": "AVCaptureSession.InterruptionReason.videoDeviceNotAvailableInBackground (Apple Developer Documentation, page data)",
+        "anchor": "prohibited while in the background",
+        "supports": "iOS does not let an app use the camera while it is in the background."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad (Apple Support)",
+        "anchor": "Guided Access",
+        "supports": "Guided Access holds the device in a single app until someone authenticates to end the session, and has its own auto-lock setting."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/108055",
+        "title": "About Charge Limit and Optimized Battery Charging on iPhone (Apple Support)",
+        "anchor": "Charge Limit",
+        "supports": "iPhone offers a charge limit from 80 to 100 percent meant to reduce battery wear."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102546",
+        "title": "Continuity Camera: Use iPhone as a webcam for Mac (Apple Support)",
+        "anchor": "Continuity Camera",
+        "supports": "A locked, mounted iPhone on the same Apple Account can act as a camera for the Mac, wired or wireless."
+      }
+    ]
+  },
+  {
+    "id": "IPH-03",
+    "name": "A parent's phone location on request",
+    "tier": 3,
+    "cluster": "Location",
+    "description": "A parent can ask Happy whether the other parent is on the way, answered from that phone's GPS. A spare phone on a charger never moves, so it is no use as a beacon; this is about the parents' own phones.",
+    "example": "Jordan texts: \"Is Tony on his way back yet?\"",
+    "how": "OpenClaw app on each parent's phone with location mode Always and Precise granted (location is off by default and Always asks for a native confirmation). location.get is in the iOS default allowlist and the nodes tool's location_get action returns coordinates, accuracy and a timestamp. A small in-house plugin should turn that into a coarse phrase (at home, at school, about N minutes away) so raw coordinates never enter a transcript. When the app is backgrounded the gateway can try a relay push wake; with only While Using granted the node refuses with LOCATION_BACKGROUND_UNAVAILABLE.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "IPH-01 on both parents' phones",
+      "consent of both adults to cross-person lookups",
+      "in-house plugin that returns a coarse phrase, plus the node-pinning hook",
+      "a places or routing lookup (F021) for travel time"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Background fixes are best-effort: iOS suspends apps shortly after they leave the foreground and throttles the pushes that would wake them.",
+      "Find My live location, arrival alerts and Check In already do this, reliably and with Apple's own privacy controls. Happy only adds the ability to ask in a sentence.",
+      "Always-on location costs battery on a phone someone carries all day.",
+      "Not for the kids: they are not users and have no paired phones."
+    ],
+    "safety": "Location is private data. Cross-person lookups need both adults' explicit consent and a hook that allows exactly location.get on the two parents' nodes. The plugin returns a coarse phrase, never coordinates, and nothing is written to memory, the wiki or logs. Location never appears in kid-facing output.",
+    "unverified": [
+      "How often a relay push actually wakes the app in time to answer location.get on a locked phone."
+    ],
+    "overlaps_existing": [
+      "G017",
+      "F021",
+      "F027"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:24",
+        "title": "Location command",
+        "anchor": "location.enabledMode",
+        "supports": "Each node has a location mode of off, while using or always, plus a separate precise toggle."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:81",
+        "title": "Location command",
+        "anchor": "LOCATION_BACKGROUND_UNAVAILABLE",
+        "supports": "A backgrounded app with only While Using permission refuses location requests with this error."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:86",
+        "title": "Node device commands",
+        "anchor": "off by default",
+        "supports": "Location sharing on a node is off until the user turns it on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/troubleshooting.md:129",
+        "title": "Node troubleshooting",
+        "anchor": "While Using or Always",
+        "supports": "On iOS location.get depends on the While Using or Always permission level."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:75",
+        "title": "iOS app",
+        "anchor": "Always location",
+        "supports": "Turning on Always location, like Voice Wake, camera access or Health summaries, first asks for a native confirmation on the phone."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:122",
+        "title": "Location command",
+        "anchor": "understands the scope",
+        "supports": "OpenClaw's own guidance is to call location only when the user enabled it and understands what is shared."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "title": "Gateway source: nodes tool",
+        "anchor": "camera_snap",
+        "supports": "The agent-facing nodes tool has named actions such as camera_snap, location_get and photos_latest."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/corelocation/handling-location-updates-in-the-background.json",
+        "title": "Handling location updates in the background (Apple Developer Documentation, page data)",
+        "anchor": "suspends the execution",
+        "supports": "iOS suspends most apps shortly after they leave the foreground and may terminate them at any time."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "title": "Pushing background updates to your App (Apple Developer Documentation, page data)",
+        "anchor": "two or three per hour",
+        "supports": "Apple treats background pushes as low priority, does not guarantee delivery, may throttle them, and gives the app 30 seconds per wake."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105104",
+        "title": "Share your location with iPhone (Apple Support)",
+        "anchor": "Find My",
+        "supports": "iPhone already shares live location, ETA and Check In with chosen people through Find My, Messages and Maps."
+      }
+    ]
+  },
+  {
+    "id": "IPH-04",
+    "name": "Read a parent's calendar, reminders, contacts and step count from their phone",
+    "tier": 1,
+    "cluster": "Phone data",
+    "description": "Happy can read a parent's calendar, reminders, contacts, latest photos and step count straight from that parent's iPhone. That covers every account the phone already syncs (iCloud, Google, school subscriptions) without setting up any OAuth app.",
+    "example": "Tony texts: \"What do I have tomorrow afternoon?\"",
+    "how": "calendar.events, reminders.list, contacts.search, photos.latest, motion.activity and motion.pedometer are in the iOS default allowlist, so pairing plus the in-app permission grants (one native iOS prompt per category) is all it takes. tony-main gets the nodes tool with a hook that allows only these command ids on Tony's node; jordan-main likewise on hers.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "IPH-01 on the parent's own phone",
+      "per-category iOS permissions granted in the app",
+      "node-pinning hook"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "It answers only while the phone's connection to the gateway is alive. A locked phone in a pocket may not respond, so do not hang the 07:00 brief on it; a Mac-side calendar source (F009) is the dependable one.",
+      "The write commands (calendar.add, reminders.add, contacts.add) are separate dangerous opt-ins. Leave them off and keep writes on the approval path (F010, F030).",
+      "photos.latest sends a personal photo to the cloud model; consider adding it to the deny list.",
+      "The phone's own Calendar and Reminders apps and Siri already answer these questions. The gain is Happy combining them with what else it knows."
+    ],
+    "safety": "This adds private data to an agent that already holds private data and does not browse, so no new trifecta leg opens. Calendar invitations and contact notes can contain text written by strangers: treat them as data, the same rule as F009. Isolation per person is by hook: tony-main can never query Jordan's phone.",
+    "unverified": [
+      "Whether these read commands answer while the app is in the background. The docs name only camera and screen as foreground-only, but also say iOS may suspend the connection."
+    ],
+    "overlaps_existing": [
+      "F009",
+      "F030",
+      "G013"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:133",
+        "title": "Node device commands",
+        "anchor": "calendar.events",
+        "supports": "Calendar read is a default command on iOS and Android, while calendar.add is dangerous and needs an explicit allow."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:71",
+        "title": "iOS app",
+        "anchor": "contacts, calendars, reminders",
+        "supports": "The app's permissions page covers contacts, calendars, reminders and photos, each behind a native iOS prompt."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:206",
+        "title": "iOS app",
+        "anchor": "iOS may suspend",
+        "supports": "The phone's gateway connections can be suspended by iOS once the app goes to the background."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "health.summary",
+        "supports": "camera.snap, camera.clip, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search need a persistent opt-in in gateway.nodes.commands.allow, and deny always wins."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "title": "Gateway source: nodes tool",
+        "anchor": "camera_snap",
+        "supports": "The agent-facing nodes tool has named actions such as camera_snap, location_get and photos_latest."
+      }
+    ]
+  },
+  {
+    "id": "IPH-05",
+    "name": "Today's Health summary from a parent's iPhone",
+    "tier": 1,
+    "cluster": "Phone data",
+    "description": "A parent can ask for today's steps, sleep minutes, resting heart rate and workouts, computed on their own iPhone from Apple Health.",
+    "example": "Jordan texts: \"How much did I sleep and how many steps so far today?\"",
+    "how": "Add health.summary to gateway.nodes.commands.allow, switch on Apple Health Summaries in the app (Apple's permission sheet, category by category), approve the widened node surface, then the nodes tool invokes health.summary with period today. Only that parent's own <p>-main may call it.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "IPH-01 on the parent's own phone",
+      "decision: health aggregates to the cloud model"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "Today only: no history, no weekly view, no trends.",
+      "The numbers are sent to the cloud model and can stay in chat history.",
+      "HealthKit hides whether access was denied, so a missing number is ambiguous.",
+      "The Health and Fitness apps already show all of this with history. It is a novelty unless a morning brief wants one line of it.",
+      "Adults only, and never a child's data."
+    ],
+    "safety": "Two independent gates (iOS consent and the gateway allow entry) plus the per-person hook. Read-only, and raw samples never leave the phone. Do not store results in memory or the wiki, and do not present them as medical advice.",
+    "unverified": [],
+    "overlaps_existing": [
+      "F013"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:14",
+        "title": "HealthKit summaries",
+        "anchor": "steps, sleep duration",
+        "supports": "The summary is computed on the device and contains only steps, sleep minutes, average resting heart rate and workout count and duration."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:48",
+        "title": "HealthKit summaries",
+        "anchor": "privacy-heavy",
+        "supports": "health.summary is never allowed by default and a deny entry overrides an allow."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:82",
+        "title": "HealthKit summaries",
+        "anchor": "today",
+        "supports": "Only the current calendar day can be requested."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:126",
+        "title": "HealthKit summaries",
+        "anchor": "configured AI provider",
+        "supports": "When an agent requests the summary, the aggregate reaches the configured model provider and may stay in chat history."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "health.summary",
+        "supports": "camera.snap, camera.clip, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search need a persistent opt-in in gateway.nodes.commands.allow, and deny always wins."
+      }
+    ]
+  },
+  {
+    "id": "IPH-06",
+    "name": "Spare iPhone as a kitchen talk device",
+    "tier": 3,
+    "cluster": "Voice",
+    "description": "A spare iPhone on a stand in the kitchen lets a parent talk to Happy hands-free: add to the grocery list, ask the weather, set a reminder.",
+    "example": "A parent says the wake word, then: \"add olive oil to the grocery list, and what's the weather at four?\"",
+    "how": "Pair the spare phone with a voice-node setup code: node credentials plus only the read and talk operator scopes, so the phone cannot send messages or change configuration. Talk mode runs the listen, think, speak loop; Voice Wake is a per-device switch, and the gateway's wake-word routing can send a phrase to a named agent. Route it to a new shared 'kitchen' agent with no memory, no accounts and a short tool list (home_weather, add-to-list through the household store). Keep the app on screen with keep-awake and Guided Access. The app's Start Live Voice shortcut can start Talk by Siri.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "IPH-01",
+      "hardware: spare iPhone and stand",
+      "decision: Talk provider (Apple speech plus a TTS provider, or OpenAI realtime with a Platform key)",
+      "new shared kitchen agent",
+      "household list store (F032)",
+      "local model and local TTS before any use by the kids"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "iOS may suspend background audio, so the app has to stay open on screen. A HomePod or Siri handles timers and music more reliably.",
+      "The microphone cannot tell who is speaking, and the kids and guests will use it. Cloud speech and a cloud model for kids are on the never list, so this stays an adult convenience until a local model and local voice exist; the roadmap's kitchen speaker for the kids goes through Home Assistant for that reason.",
+      "Apple's speech recognition may use Apple's servers; realtime voice sends audio to OpenAI.",
+      "OpenClaw lists iOS realtime Talk on GPT-Live as not yet verified on a real device.",
+      "Wake words are one list for the whole gateway."
+    ],
+    "safety": "Because anyone in the room can speak to it, the kitchen agent must be safe for anyone: no private data, no memory, no web, no outbound messages. The voice-node credential cannot send messages or change settings. Nothing said in the kitchen reaches a parent's private agent.",
+    "unverified": [
+      "How well iOS Voice Wake hears across a kitchen, and how long it keeps listening without someone reopening the app.",
+      "Whether a Talk session started on the phone can be forced to the kitchen agent whatever is selected in the app (talk.agentId is described only as the owner of sessions without an explicit agent key)."
+    ],
+    "overlaps_existing": [
+      "F003",
+      "F004",
+      "F032",
+      "F072"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:58",
+        "title": "QR",
+        "anchor": "room voice client",
+        "supports": "A voice-node setup code gives node credentials plus only read and talk scopes; it cannot send messages or change configuration."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk.md:12",
+        "title": "Talk mode",
+        "anchor": "may use network services",
+        "supports": "Native Talk on iOS uses Apple speech recognition, which may use Apple's network services."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:651",
+        "title": "iOS app",
+        "anchor": "iOS may suspend background audio",
+        "supports": "Voice features on the iPhone are best-effort whenever the app is not active on screen."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:74",
+        "title": "iOS app",
+        "anchor": "background listening",
+        "supports": "The device's Talk settings include Voice Wake, Talk and a background listening setting; enabling Voice Wake, camera, Health or Always location asks for a native confirmation."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:648",
+        "title": "iOS app",
+        "anchor": "active session",
+        "supports": "Voice wake hands recognised commands to the active session; Talk mode is what speaks replies."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/voicewake.md:9",
+        "title": "Voice wake",
+        "anchor": "one global list owned",
+        "supports": "Wake words are a single gateway-wide list shared by every device."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/voicewake.md:49",
+        "title": "Voice wake",
+        "anchor": "agentId",
+        "supports": "A wake-word route can target a specific agent id."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk.md:190",
+        "title": "Talk mode",
+        "anchor": "agentId",
+        "supports": "A talk.agentId setting names the agent that owns Talk sessions created without an explicit agent key."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk.md:156",
+        "title": "Talk mode",
+        "anchor": "device live verification pending",
+        "supports": "OpenClaw lists iOS client-owned GPT-Live Talk as implemented but not yet verified on a real device."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk.md:181",
+        "title": "Talk mode",
+        "anchor": "Platform-key-only",
+        "supports": "Realtime Talk on iOS needs an OpenAI Platform API key."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:655",
+        "title": "iOS app",
+        "anchor": "Start Live Voice",
+        "supports": "The app ships a Siri and Shortcuts action that opens it and starts Talk."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:51",
+        "title": "Node command policy",
+        "anchor": "talk.ptt.start",
+        "supports": "Push-to-talk commands are allowed by default for any node that advertises Talk."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad (Apple Support)",
+        "anchor": "Guided Access",
+        "supports": "Guided Access holds the device in a single app until someone authenticates to end the session, and has its own auto-lock setting."
+      }
+    ]
+  },
+  {
+    "id": "IPH-07",
+    "name": "A parent's iPhone as Happy's approval and alert surface",
+    "tier": 1,
+    "cluster": "Approvals and alerts",
+    "description": "The OpenClaw app on a parent's iPhone (and Apple Watch) becomes the place where Happy asks 'may I?': native approval cards, multiple-choice questions and push alerts instead of approval by text message.",
+    "example": "Trigger: Happy wants to add a camp date to the calendar; Tony gets an approval card on his phone and taps Allow once.",
+    "how": "Pair each parent's phone with a limited setup code. The app shows pending exec and plugin approvals in a native inbox and agent questions as cards; a paired Apple Watch mirrors approval prompts with allow once or deny. system.notify is in the iOS default allowlist, and App Store builds are woken through OpenClaw's hosted push relay. The approvals themselves originate in the in-house before_tool_call hooks.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "IPH-01 on the parents' own phones",
+      "decision: limited access for Jordan's phone",
+      "approval-gated features (F010, F082, F087)"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "iMessage already delivers alerts with no setup. The app earns its place only for approvals and structured questions.",
+      "The app is a second chat surface with an agent picker. Whether a limited operator session can be confined to one agent is not documented, so Jordan's phone might be able to open a thread with tony-main.",
+      "Push goes through OpenClaw's relay and Apple, so it is neither instant nor guaranteed.",
+      "The first answer wins across phone, watch and web."
+    ],
+    "safety": "Approvals are a limit the model cannot talk its way past, which is what the tier-3 actions in this list need. Only the owning adult should be able to approve their own agent's requests. An operator session is powerful: Tony's phone may hold full access, every other phone gets the limited profile.",
+    "unverified": [
+      "Whether a limited setup code includes the questions scope (the docs list the scopes of the full profile only).",
+      "Whether operator sessions can be restricted to specific agents.",
+      "What text a relay-backed push carries."
+    ],
+    "overlaps_existing": [
+      "F082",
+      "F087",
+      "F010",
+      "G001",
+      "G020"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:50",
+        "title": "iOS app",
+        "anchor": "native approval inbox",
+        "supports": "The iPhone app has a native inbox for pending approvals with a count."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:60",
+        "title": "iOS app",
+        "anchor": "native exec and plugin approvals",
+        "supports": "Exec and plugin approvals are handled natively in the iPhone app."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:445",
+        "title": "iOS app",
+        "anchor": "operator.approvals",
+        "supports": "A phone paired with admin or a targeted approvals scope can review pending exec requests."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:450",
+        "title": "iOS app",
+        "anchor": "allow-once/deny",
+        "supports": "A paired Apple Watch receives the approval prompt through the iPhone and offers allow once or deny."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:469",
+        "title": "iOS app",
+        "anchor": "operator.questions",
+        "supports": "Agent questions appear as native cards for operator connections holding the questions scope."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:41",
+        "title": "QR",
+        "anchor": "--limited",
+        "supports": "A limited setup code omits administrative gateway access from the phone's operator token."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:54",
+        "title": "QR",
+        "anchor": "operator.approvals",
+        "supports": "The default mobile setup code hands the phone admin, approvals, read, talk-secrets and write operator scopes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/nodes.md:100",
+        "title": "openclaw nodes",
+        "anchor": "system.notify",
+        "supports": "A local notification can be sent to any node that declares system.notify, including iOS."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:527",
+        "title": "iOS app",
+        "anchor": "ios-push-relay.openclaw.ai",
+        "supports": "App Store builds get push through OpenClaw's hosted relay rather than handing an APNs token to the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks.md:164",
+        "title": "Plugin hooks",
+        "anchor": "before_tool_call",
+        "supports": "A before_tool_call plugin hook can block a tool call or request an approval."
+      }
+    ]
+  },
+  {
+    "id": "IPH-08",
+    "name": "Drive the spare iPhone through iPhone Mirroring and the computer tool",
+    "tier": 3,
+    "cluster": "iPhone UI control (route b)",
+    "description": "The only way Happy could tap around inside an arbitrary iPhone app: Apple's iPhone Mirroring shows the phone in a Mac window, and OpenClaw's computer tool can see and click Mac windows. It works in principle and is fragile in practice.",
+    "example": "Jordan texts: \"Open the swim team app and tell me what was posted today.\"",
+    "how": "This is not an OpenClaw feature; it is two features stacked. Apple side: the spare iPhone must be signed in to the same Apple Account as the Mac user, which is happy's account, so Tony's and Jordan's own phones cannot be used; two-factor on; phone locked and near the Mac; Bluetooth and Wi-Fi on. OpenClaw side: the OpenClaw Mac app installed for the happy user (today only the npm gateway exists) with Accessibility and Screen Recording, happy's desktop logged in and unlocked, a vision-capable model, and the computer tool allowed for one dedicated agent (tools.alsoAllow plus tools.sandbox.tools.alsoAllow). The agent takes a screenshot, clicks inside the mirroring window and reads the result.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "hardware: spare iPhone on iOS 18 or later, dedicated to happy's Apple Account",
+      "OpenClaw Mac app installed for the happy user, with its macOS permissions",
+      "happy's desktop session logged in and unlocked (a manual login after every restart, since FileVault is on)",
+      "a dedicated stateless phone agent",
+      "parent approval hook for any action that submits something (IPH-07)"
+    ],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "One Mac and one iPhone at a time, and the session ends as soon as someone unlocks the phone.",
+      "Mirroring pauses after inactivity and asks for Mac authentication unless set to authenticate automatically. A Mac mini has no built-in Touch ID, so an unattended agent can stall at that prompt.",
+      "No camera or microphone through mirroring, including Face ID, so any app step that wants a face scan or a camera scan is a dead end.",
+      "Control is by pixels: a screenshot per step, slow, and broken by every app redesign. The computer tool has no per-action confirmation.",
+      "Neither Apple nor OpenClaw documents this combination, and OpenClaw's iOS page says the iPhone app is not a computer-use backend.",
+      "It also turns the Mac's display into a working surface, which changes the current headless posture."
+    ],
+    "safety": "This agent would touch all three trifecta legs at once: the phone's logged-in apps (private data), whatever those apps show (untrusted content) and a screen that can post or message (a way out). Tool policy cannot separate them, so the limits have to sit on the phone and around the agent: only the one or two target apps installed, no Mail, Messages, Wallet or payment method, purchases blocked, the agent stateless with no memory, no message tool and no web, results returned as text to the parent who asked, and a parent approval before any tap that submits something. Screenshots stay model-only.",
+    "unverified": [
+      "That Peekaboo or the CUA driver can reliably click and type inside the iPhone Mirroring window.",
+      "How long the inactivity pause is, and whether 'authenticate automatically' survives a Mac restart.",
+      "Whether Screen Time restrictions can lock down a spare phone on an adult Apple Account the way they can a child's device (the Apple page I fetched covers child devices)."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "same Apple Account",
+        "supports": "iPhone Mirroring requires the iPhone and the Mac to be signed in to one Apple Account with two-factor authentication."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "locked and near your Mac",
+        "supports": "The iPhone has to be locked and physically near the Mac, with Bluetooth and Wi-Fi on."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "only one Mac and one iPhone",
+        "supports": "Mirroring pairs a single Mac with a single iPhone at a time."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "camera and mic",
+        "supports": "The iPhone's camera and microphone, including Face ID, are not available through mirroring."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "automatically pauses the connection",
+        "supports": "The session pauses on its own after inactivity and ends when the iPhone is unlocked."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "Mac login password",
+        "supports": "Starting a session asks for Mac authentication unless the user chose to authenticate automatically."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:19",
+        "title": "Computer use",
+        "anchor": "OpenClaw.app",
+        "supports": "On macOS the computer tool is fulfilled by Peekaboo or a CUA driver that live inside the OpenClaw Mac app."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:49",
+        "title": "Computer use",
+        "anchor": "app-owned endpoint",
+        "supports": "Even for the gateway's own desktop, the macOS provider requires the endpoint owned by the Mac app."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:285",
+        "title": "Computer use",
+        "anchor": "verified unlocked desktop",
+        "supports": "On macOS capture and input require an unlocked desktop session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:31",
+        "title": "Computer use",
+        "anchor": "vision-capable agent model",
+        "supports": "Computer use needs a model that can read screenshots."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:32",
+        "title": "Computer use",
+        "anchor": "tools.sandbox.tools.alsoAllow",
+        "supports": "The computer tool must be exposed by tool policy, and sandboxed agents need a second allow entry."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:277",
+        "title": "Computer use",
+        "anchor": "no per-action confirmation",
+        "supports": "Once enabled and paired, pointer and keyboard actions run without any per-action confirmation."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:288",
+        "title": "Computer use",
+        "anchor": "Treat screen content as untrusted",
+        "supports": "OpenClaw warns that what is on screen can carry prompt injection."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:641",
+        "title": "iOS app",
+        "anchor": "not a Codex Computer Use backend",
+        "supports": "OpenClaw states the iPhone app is a node surface with its own commands and is not a computer-use backend."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "title": "Node troubleshooting",
+        "anchor": "computer.act",
+        "supports": "The permissions matrix marks computer.act as not applicable on iOS and Android."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105121",
+        "title": "Set up parental controls to manage your child's iPhone or iPad (Apple Support)",
+        "anchor": "Content & Privacy Restrictions",
+        "supports": "Apple's restrictions can block app installs and route purchases through an approval on a managed child device."
+      }
+    ]
+  },
+  {
+    "id": "IPH-09",
+    "name": "Check a school or sports app that has no website",
+    "tier": 2,
+    "cluster": "School and activities",
+    "description": "For a school or team app with no web version and no useful email, Happy opens the app on a dedicated phone on request or once a day and relays what is new.",
+    "example": "Automation at 16:00 on school days, or Jordan texts: \"Anything new in the team app?\"",
+    "how": "Try in this order. 1) Turn on the app's own email notifications and let the planned school mailbox and reader handle them (F051, F056). 2) A parent screenshots or shares the post to Happy and snap-to-action reads it (F001, F011). 3) Only if neither works: a dedicated stateless phone agent drives the app, through iPhone Mirroring and the computer tool (IPH-08) or on an idle Android phone through the mobile_ui tool (IPH-14), reads the feed and hands a text summary to the asking parent's agent.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "IPH-08 or IPH-14",
+      "the app's login on the dedicated phone",
+      "decision: the parents accept automated reading of this particular app"
+    ],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "App logins expire and screens get redesigned. Expect breakage every few weeks, and add a check that reports 'could not open the app' instead of failing silently.",
+      "Posts are written by other parents, coaches and the school, so everything read is untrusted text.",
+      "The app's terms may not allow automated access.",
+      "A parent glancing at their own phone's notification is faster. This is worth it only for an app both parents keep missing."
+    ],
+    "safety": "Same exposure as IPH-08. Never RSVP, pay, message or upload. 'Read-only' has to be enforced by approvals and by what is installed on the phone, not by the prompt. On Android the mobile_ui tool answers confirmation required before any state-changing action, but that is the model confirming to itself, not a parent approving.",
+    "unverified": [
+      "Which of this family's actual school and sports apps lack email or web access (not checked).",
+      "Each app's terms on automated access."
+    ],
+    "overlaps_existing": [
+      "F055",
+      "F056",
+      "F051",
+      "F011",
+      "F001"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "locked and near your Mac",
+        "supports": "The iPhone has to be locked and physically near the Mac, with Bluetooth and Wi-Fi on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:288",
+        "title": "Computer use",
+        "anchor": "Treat screen content as untrusted",
+        "supports": "OpenClaw warns that what is on screen can carry prompt injection."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+        "title": "Gateway source: mobile UI tool",
+        "anchor": "mobile_ui",
+        "supports": "The installed gateway ships a built-in mobile_ui agent tool for a paired Android app."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8787",
+        "title": "Gateway source: mobile UI tool",
+        "anchor": "confirmation_required",
+        "supports": "State-changing mobile UI actions are returned as confirmation required until the call is repeated with confirmed set."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:38",
+        "title": "Node command policy",
+        "anchor": "Accessibility Control",
+        "supports": "Android advertises the mobile UI commands only while Accessibility Control is enabled in the app; the table is a policy ceiling, not what every app implements."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:27",
+        "title": "iOS app",
+        "anchor": "iOS share sheet",
+        "supports": "The app's chat accepts images from the camera, Files, paste and the iOS share sheet."
+      }
+    ]
+  },
+  {
+    "id": "IPH-10",
+    "name": "iPhone Shortcuts automations as triggers for Happy",
+    "tier": 3,
+    "cluster": "Shortcuts (route c)",
+    "description": "Events on a parent's iPhone (arriving, CarPlay, plugging in, an NFC tag, a Focus) can nudge Happy without anyone typing, using Apple's own automation engine. The reverse direction, Happy making a phone run a shortcut, is possible only by sending the phone a keyword message.",
+    "example": "Trigger: Jordan's phone connects to CarPlay on a weekday afternoon, and Happy texts her today's pickup notes.",
+    "how": "Phone to Happy: a personal automation in Shortcuts on the parent's phone, set to run without asking, whose action is Get Contents of URL with a POST to a gateway hook over the tailnet. On the gateway: hooks.enabled, a dedicated hooks.token, hooks.allowedAgentIds limited to that parent's jobs agent, and a hooks.mappings entry that turns an event id into a fixed wake or agent action. Happy to phone: a Message-trigger automation on the phone (sender is Happy, message contains a keyword) that runs a shortcut such as 'open the OpenClaw app' or 'set a Focus'; Happy sends the keyword through an in-house tool that only knows a fixed keyword list. The Mac's own shortcuts command stays under F078.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "Tailscale on the phone",
+      "gateway hooks (off by default) with a mapping per event",
+      "for the reverse direction: the phone's handle on the pinned recipient list and an in-house keyword tool"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "Automations belong to one device and sync to other devices switched off, so each parent builds their own.",
+      "Apple lists the triggers that may run without asking (time of day, arrive, leave, CarPlay, email, message, Wi-Fi, Bluetooth, NFC, charger, sound recognition and others). A Notification trigger exists but is not on that list, so it cannot be an unattended notification relay.",
+      "The hook token sits inside a shortcut on the phone, readable by anyone holding the unlocked phone.",
+      "Find My and Focus schedules already cover arrive and leave alerts. Use this where Happy adds something.",
+      "The only Shortcuts action the OpenClaw app documents is Start Live Voice, so 'tell Happy' has to go through a web request or a message.",
+      "The reverse direction is experimental. I found no Apple-documented way for a Mac to run a shortcut on another device; the keyword message is a workaround, and a phone that shares happy's Apple Account may not treat Happy's own message as incoming."
+    ],
+    "safety": "A wake is treated as a trusted system event, so the mapping must emit fixed strings chosen by event id and never pass free text from the request. Hooks stay tailnet-only with their own token and a single allowed agent. For the reverse direction the keyword list is fixed in code, the sender filter is pinned, and the shortcut does only harmless things: no unlocking, no purchases, no Home scenes that touch locks or the garage.",
+    "unverified": [
+      "That Get Contents of URL can send the Authorization header the hook requires. Tokens in the query string are rejected, and the Apple page I fetched documents methods and request body but not headers.",
+      "Which shortcut actions (opening an app, sending a message) really run while the phone is locked.",
+      "Whether a Message trigger fires for a message sent from the same Apple Account.",
+      "The list of Shortcuts actions for Messages, location, Focus and Home: the Apple pages I fetched cover triggers and the web-request action only."
+    ],
+    "overlaps_existing": [
+      "F078",
+      "G017",
+      "F081",
+      "F007"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/intro-to-personal-automation-apd690170742/ios",
+        "title": "Intro to shortcuts with automations on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "specific to a device",
+        "supports": "Shortcuts automations fire on events such as time, arrival or opening an app, belong to one device, and sync to other devices switched off."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+        "title": "Add automations to Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Allow Running When Locked",
+        "supports": "Some automations can run without asking, including when the phone is locked; the listed triggers include time of day, arrive, leave, CarPlay, email, message, Wi-Fi, NFC and charger, and the list does not include the Notification trigger."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/communication-triggers-apdd711f9dff/ios",
+        "title": "Communication triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Message Contains",
+        "supports": "A Message trigger can be filtered by sender and by a phrase the message contains, and all criteria must match."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+        "title": "Event triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Notification trigger",
+        "supports": "Shortcuts has a Notification trigger that can be filtered by app and by text."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios",
+        "title": "Setting triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "connect a charger",
+        "supports": "Automations can fire on Wi-Fi, Bluetooth, Focus, battery level, charger, NFC tag and app events."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios",
+        "title": "Request your first API in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Get Contents of URL",
+        "supports": "A shortcut can make an HTTP request, including POST with a JSON body, with the Get Contents of URL action."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+        "title": "Run shortcuts from the command line (Shortcuts User Guide for Mac)",
+        "anchor": "shortcuts run",
+        "supports": "The Mac has a shortcuts command that runs and lists the Mac's own shortcuts; the page describes nothing for running a shortcut on another device."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:655",
+        "title": "iOS app",
+        "anchor": "Start Live Voice",
+        "supports": "The app ships a Siri and Shortcuts action that opens it and starts Talk."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:33",
+        "title": "Inbound webhooks",
+        "anchor": "allowedAgentIds",
+        "supports": "Gateway HTTP hooks are configured with a dedicated token and a list of agents they may reach."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:139",
+        "title": "Inbound webhooks",
+        "anchor": "Query-string",
+        "supports": "The hook token must be sent in a header; a token in the query string is rejected."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:159",
+        "title": "Inbound webhooks",
+        "anchor": "Wake text is a system event",
+        "supports": "Text posted to the wake endpoint is treated as a trusted system event, so only short text you control should be sent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:173",
+        "title": "Inbound webhooks",
+        "anchor": "hooks.mappings",
+        "supports": "Custom hook paths are resolved through mappings that turn a payload into a wake or agent action."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:209",
+        "title": "Inbound webhooks",
+        "anchor": "a tailnet",
+        "supports": "Hook endpoints should stay behind loopback, a tailnet or a trusted proxy."
+      }
+    ]
+  },
+  {
+    "id": "IPH-11",
+    "name": "Green-bubble SMS through the spare iPhone",
+    "tier": 3,
+    "cluster": "Messaging",
+    "description": "With a SIM in the spare iPhone, Happy's Mac can send and receive ordinary SMS, so a relative on Android or a school's text-alert line can reach the family.",
+    "example": "Trigger: the district's snow-day text arrives on Happy's number and both parents get a one-line iMessage.",
+    "how": "Apple's Text Message Forwarding lets a Mac signed in to the same Apple Account send and receive SMS through the iPhone. The spare phone needs its own mobile plan and happy's Apple Account. The existing iMessage channel can then address a recipient with the sms: service prefix, and outbound still passes the recipient-pin hook. An SMS sender would have to be added to the sender allowlist to be seen at all, and would then fall to the tool-less inbox agent because it is bound to no person. Alternatives OpenClaw documents: the Twilio SMS channel plugin (public HTTPS webhook plus US carrier registration) and sms.send on an Android node.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "hardware: spare iPhone with a paid line, signed in to happy's Apple Account",
+      "each SMS recipient added to the pinned recipient list",
+      "rules for SMS senders in the inbox agent"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Everyone who uses Happy today is on iMessage, so this buys nothing for the two adults. It is only for an Android relative or an SMS-only alert service.",
+      "It costs a monthly line, and the phone must stay powered and online.",
+      "The Twilio route conflicts with the Tailscale-only posture because Twilio has to reach a public address.",
+      "The OpenClaw iOS app has no SMS commands at all; the relay happens in Apple's Messages on the Mac, not in the node."
+    ],
+    "safety": "SMS sender ids can be spoofed, so an SMS number must never be bound to a private agent; treat SMS as input for the tool-less inbox agent only. Never register this number as the second factor for any account: the codes would arrive in a channel an agent reads. Outbound SMS goes only to pinned family numbers.",
+    "unverified": [
+      "That the iMessage channel in Basic mode surfaces inbound carrier SMS the same way as iMessage. The docs I read show the sms: prefix for sending and an imsg SMS send example, not inbound handling.",
+      "Group MMS behaviour."
+    ],
+    "overlaps_existing": [
+      "G009",
+      "G011",
+      "F055",
+      "F037"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102545",
+        "title": "Forward text messages from your iPhone to other devices (Apple Support)",
+        "anchor": "Text Message Forwarding",
+        "supports": "An iPhone can let a Mac signed in to the same Apple Account send and receive its text messages, as long as the iPhone is on and connected."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:58",
+        "title": "iMessage media and targets",
+        "anchor": "requires SMS",
+        "supports": "The iMessage channel accepts a service-qualified target that forces delivery by SMS."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/sms.md:387",
+        "title": "SMS",
+        "anchor": "--service sms",
+        "supports": "OpenClaw's own test recipe sends a carrier SMS from a Mac through Messages with the imsg tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/sms.md:32",
+        "title": "SMS",
+        "anchor": "public HTTPS URL",
+        "supports": "The Twilio SMS channel needs a public HTTPS URL that reaches the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/sms.md:39",
+        "title": "SMS",
+        "anchor": "A2P 10DLC registration",
+        "supports": "Application-sent SMS from a US local number to US recipients requires carrier registration."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:93",
+        "title": "Node device commands",
+        "anchor": "sms.send",
+        "supports": "SMS send and search are Android node commands, need the phone's SMS permission and telephony, and are dangerous by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "web",
+        "ref": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+        "title": "NIST SP 800-63B Digital Identity Guidelines: Authentication and Lifecycle Management",
+        "anchor": "RESTRICTED",
+        "supports": "NIST classes codes sent over the phone network (SMS or voice) as a restricted authenticator."
+      }
+    ]
+  },
+  {
+    "id": "IPH-12",
+    "name": "Developer automation over USB (XCUITest, WebDriverAgent, Appium)",
+    "tier": 3,
+    "cluster": "iPhone UI control (route d)",
+    "description": "The engineering route to full control of an iPhone: Apple's UI-test framework driven over a cable by WebDriverAgent and Appium. It is the most precise way to tap and read any app, and the wrong tool for a family assistant.",
+    "example": "Operator trigger: Tony runs an Appium session that opens the school app and dumps the screen's element tree.",
+    "how": "Xcode on the Mac; the phone trusted and paired; Developer Mode and Enable UI Automation switched on; WebDriverAgent signed with a provisioning profile and installed; an Appium server on the Mac; and an in-house MCP server exposing a handful of fixed actions to a stateless agent.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "Xcode and Apple developer signing",
+      "Appium server on the gateway host",
+      "in-house MCP server",
+      "spare iPhone with Developer Mode on"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Apple's own Developer Mode prompt warns that it reduces the device's security.",
+      "With a free Apple Account the signing profile expires after 7 days, so Tony would re-sign WebDriverAgent every week; a paid developer membership avoids that.",
+      "Apple presents the framework as a way to test your own app, not as a remote control for other companies' apps.",
+      "It adds Xcode, an Appium server and a custom MCP server to a host designed to have a small attack surface, and Happy has no exec tool to run any of it.",
+      "Technically it is the steadiest of the iPhone routes (elements, not pixels). The cost is upkeep, not capability."
+    ],
+    "safety": "An Appium server is a general remote control for the phone running on the gateway host. It would have to listen on loopback only, sit behind an MCP server with a fixed action list, and be given to a stateless agent only. The trifecta problem is the same as IPH-08 with more moving parts. Recommendation: do not build.",
+    "unverified": [
+      "The current price of the Apple Developer Program (not on the page I fetched).",
+      "Whether particular apps refuse to run with Developer Mode on."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://appium.github.io/appium-xcuitest-driver/latest/getting-started/device-setup/",
+        "title": "Device Preparation (Appium XCUITest Driver docs)",
+        "anchor": "Enable UI Automation",
+        "supports": "A real iPhone must be trusted by the Mac and have Developer Mode and Enable UI Automation switched on before Appium can drive it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://appium.github.io/appium-xcuitest-driver/latest/getting-started/provisioning-profile/",
+        "title": "Provisioning Profile (Appium XCUITest Driver docs)",
+        "anchor": "valid provisioning profile",
+        "supports": "WebDriverAgent has to be signed with a development team and a valid provisioning profile before it installs on a real device."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/xcode/enabling-developer-mode-on-a-device.json",
+        "title": "Enabling Developer Mode on a device (Apple Developer Documentation, page data)",
+        "anchor": "reduces the security of your device",
+        "supports": "Turning on Developer Mode shows an alert that it lowers the device's security and requires a restart and passcode."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/support/compare-memberships/",
+        "title": "Developer account overview (Apple Developer)",
+        "anchor": "expire after 7 days",
+        "supports": "With a free Apple Account, registered devices and provisioning profiles for on-device installs expire after 7 days."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/xcuiautomation.json",
+        "title": "XCUIAutomation (Apple Developer Documentation, page data)",
+        "anchor": "behaves as intended",
+        "supports": "Apple presents its UI automation framework as a way to test that your own app's interface works."
+      }
+    ]
+  },
+  {
+    "id": "IPH-13",
+    "name": "Accessibility routes: Switch Control and Voice Control",
+    "tier": 3,
+    "cluster": "iPhone UI control (route e)",
+    "description": "Apple's accessibility features can operate an iPhone without touching it, but they are built for a person with a switch or a voice, not for a program. Neither gives Happy a usable control channel.",
+    "example": "A parent asks: \"Can't Happy just use Voice Control on the old phone?\"",
+    "how": "Switch Control: a Mac running Switch Control can take over another Apple device on the same Wi-Fi network and Apple Account, but a person operates it by stepping through an on-screen scanner. The only way for Happy to use it would be the computer tool clicking the Mac's Switch Control panel, which is slower and weaker than iPhone Mirroring. Voice Control: the phone obeys spoken commands, so Happy would have to play synthesized speech at it from a speaker.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": [
+      "no programmatic interface exists to build on"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Neither Apple page describes a scripting or automation interface for these features.",
+      "Voice Control does not check who is speaking: the TV, a guest or a child can issue the same commands, and so can any audio Happy plays by mistake.",
+      "Both are only useful with the phone awake and, in practice, unlocked."
+    ],
+    "safety": "A phone that obeys any voice in the room while sitting unlocked on a charger fails the rule that limits must be ones the model cannot talk past: here anyone could talk past them. Reject.",
+    "unverified": [
+      "Whether Switch Control from a Mac can operate a locked iPhone (the page does not say).",
+      "Whether Voice Control accepts commands on the Lock Screen."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/118667",
+        "title": "Use Switch Control on your device to control another Apple device (Apple Support)",
+        "anchor": "same Wi-Fi network",
+        "supports": "Switch Control on a Mac can take over another Apple device on the same Wi-Fi network and Apple Account, operated by a person with a switch; the page describes no scripting interface."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111778",
+        "title": "Use Voice Control on your iPhone, iPad, or iPod touch (Apple Support)",
+        "anchor": "Voice Control",
+        "supports": "Voice Control lets a person tap, swipe and type on the iPhone by speaking commands to its microphone."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "title": "Node troubleshooting",
+        "anchor": "computer.act",
+        "supports": "The permissions matrix marks computer.act as not applicable on iOS and Android."
+      }
+    ]
+  },
+  {
+    "id": "IPH-14",
+    "name": "An idle Android phone that Happy can actually operate",
+    "tier": 3,
+    "cluster": "Android alternative (route f)",
+    "description": "If the goal is an idle phone Happy can operate, OpenClaw documents that for Android, not iPhone: the Android app can expose the screen as a structured element list and perform taps, text entry and swipes.",
+    "example": "Jordan texts: \"Check the team app for tomorrow's game time.\"",
+    "how": "A cheap Android phone on a charger with the OpenClaw Android app, whose foreground service keeps the gateway connection alive. Turning on Accessibility Control in the app makes the node advertise mobile.ui.observe and mobile.ui.act (in the Android default allowlist; enabled on the phone, then approved as a pairing update). The built-in mobile_ui tool reads a semantic snapshot (text, roles, bounds) and performs one action per call; state-changing actions come back as confirmation_required until the model repeats the call with confirmed set. Give the tool to one stateless phone agent. scrcpy lets Tony watch or drive the same phone from the Mac.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "hardware: an Android phone and a Google account for it",
+      "the school or team app must exist on Android",
+      "a dedicated stateless phone agent",
+      "parent approval hook for state-changing actions (IPH-07)"
+    ],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "A second ecosystem to patch and babysit in an all-Apple house.",
+      "The docs pages mention mobile UI control only in the command-policy table. The tool is present in the installed code but has no guide page, so treat it as early.",
+      "The confirmed flag is the model confirming to itself; a real parent approval has to be added by hook.",
+      "It reads element text instead of pixels, so it is faster and steadier than iPhone Mirroring, but apps that draw custom views or mark content as secure will not be readable."
+    ],
+    "safety": "Same trifecta exposure as IPH-08. On the phone: only the target apps, no payment method, no wallet. On the gateway: keep sms.send and sms.search out of commands.allow and add them and callLog.search to commands.deny; mobile_ui only on the stateless agent; a before_tool_call hook requires a parent approval for any act other than scroll, wait or observe.",
+    "unverified": [
+      "Whether the Google Play build offers Accessibility Control and SMS or only the sideloaded APK does. Google restricts SMS permissions to default handler apps, and the docs say Play builds lack background location.",
+      "How Android battery optimisation treats the foreground service over weeks."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:33",
+        "title": "Node command policy",
+        "anchor": "mobile.ui.observe",
+        "supports": "The Android default allowlist additionally contains notifications, call log, installed apps and the mobile UI observe and act commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:38",
+        "title": "Node command policy",
+        "anchor": "Accessibility Control",
+        "supports": "Android advertises the mobile UI commands only while Accessibility Control is enabled in the app; the table is a policy ceiling, not what every app implements."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-gateway.md:220",
+        "title": "Gateway configuration reference",
+        "anchor": "mobile UI control",
+        "supports": "Mobile UI control is granted by enabling it on the node and approving the pairing update, not by an allow entry."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+        "title": "Gateway source: mobile UI tool",
+        "anchor": "mobile_ui",
+        "supports": "The installed gateway ships a built-in mobile_ui agent tool for a paired Android app."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8585",
+        "title": "Gateway source: mobile UI tool",
+        "anchor": "enable Android Accessibility Control",
+        "supports": "The mobile UI tool only accepts Android nodes with Accessibility Control enabled and the pairing update approved."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8787",
+        "title": "Gateway source: mobile UI tool",
+        "anchor": "confirmation_required",
+        "supports": "State-changing mobile UI actions are returned as confirmation required until the call is repeated with confirmed set."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:357",
+        "title": "Android app",
+        "anchor": "foreground service",
+        "supports": "The Android app keeps its gateway connection alive with a foreground service and a persistent notification."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:167",
+        "title": "Android app",
+        "anchor": "scrcpy",
+        "supports": "OpenClaw documents mirroring and controlling an Android phone from a Mac with scrcpy over ADB as an operator workflow."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:93",
+        "title": "Node device commands",
+        "anchor": "sms.send",
+        "supports": "SMS send and search are Android node commands, need the phone's SMS permission and telephony, and are dangerous by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks.md:164",
+        "title": "Plugin hooks",
+        "anchor": "before_tool_call",
+        "supports": "A before_tool_call plugin hook can block a tool call or request an approval."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.android.com/guide/topics/ui/accessibility/service",
+        "title": "Create an accessibility service (Android Developers)",
+        "anchor": "performGlobalAction",
+        "supports": "An Android accessibility service can inspect screen content and perform clicks, gestures and global actions for the user."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/googleplay/android-developer/answer/10208820",
+        "title": "Use of SMS or Call Log permission groups (Play Console Help)",
+        "anchor": "Call Log or SMS permissions",
+        "supports": "Google Play limits SMS and call-log permissions to default handler apps and approved exceptions."
+      }
+    ]
+  },
+  {
+    "id": "IPH-15",
+    "name": "Relay notifications from chosen apps (Android only)",
+    "tier": 2,
+    "cluster": "School and activities",
+    "description": "The realistic version of 'tell me when the school app pings': an Android phone forwards notifications from an allowlist of apps to the gateway, and a tool-less reader turns each into one line for the parents. The OpenClaw iPhone app has no equivalent.",
+    "example": "Trigger: the team app notifies \"Practice moved to 5:30\" and both parents get that line by iMessage.",
+    "how": "On the Android phone: Forward Notification Events on (off by default, needs Notification Listener access), Package Filter set to Allowlist with only the school and sports app ids, the per-minute cap left at 20, and Route Session Key pointing at a dedicated session. On the gateway: that session belongs to a reader agent with no tools; the reader emits a short structured summary and code (the family delivery primitive, G009) sends it to the pinned parents.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "hardware: an Android phone logged in to the apps (shared with IPH-14)",
+      "reader-agent pattern from the mail plan (G015)",
+      "family delivery primitive (G009) and notification policy (G001)"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "A notification carries a title and a short preview, not the full post or its attachments.",
+      "Never use the default Blocklist mode: it forwards everything except the listed apps, including one-time codes and bank alerts.",
+      "On iPhone this cannot run unattended: the OpenClaw iOS node has no notification commands, and Apple's Notification trigger in Shortcuts is not among the triggers allowed to run without asking.",
+      "If the app offers email notifications, the school mailbox path (F051) is simpler and needs no extra phone."
+    ],
+    "safety": "Notification text is untrusted content, so it goes to a reader with no tools and no memory, exactly like the mail readers, and delivery is done by code to pinned recipients. The package allowlist is the hard limit that keeps 2FA codes and financial alerts out. The phone holds no personal accounts beyond the school and team logins.",
+    "unverified": [
+      "How the gateway turns a forwarded notification event into an agent turn (the docs describe the phone's settings, not the gateway side).",
+      "How much text each app puts in its notifications."
+    ],
+    "overlaps_existing": [
+      "F055",
+      "F056",
+      "G015",
+      "G009",
+      "G001"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:623",
+        "title": "Android app",
+        "anchor": "Forward Notification Events",
+        "supports": "Android can forward device notifications to the gateway; the switch is off by default and needs Notification Listener access."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:624",
+        "title": "Android app",
+        "anchor": "Package Filter",
+        "supports": "Forwarding can be limited to an allowlist of package ids; the default is a blocklist that forwards everything else."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:626",
+        "title": "Android app",
+        "anchor": "Max Events / Minute",
+        "supports": "Forwarded notifications are rate limited per device, 20 a minute by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:627",
+        "title": "Android app",
+        "anchor": "Route Session Key",
+        "supports": "Forwarded notification events can be pinned into one specific session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:633",
+        "title": "Android app",
+        "anchor": "always excluded",
+        "supports": "Notifications from the major chat apps are never forwarded."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:130",
+        "title": "Node device commands",
+        "anchor": "notifications.list",
+        "supports": "Reading and acting on device notifications is listed as Android only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+        "title": "Event triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Notification trigger",
+        "supports": "Shortcuts has a Notification trigger that can be filtered by app and by text."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+        "title": "Add automations to Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+        "anchor": "Allow Running When Locked",
+        "supports": "Some automations can run without asking, including when the phone is locked; the listed triggers include time of day, arrive, leave, CarPlay, email, message, Wi-Fi, NFC and charger, and the list does not include the Notification trigger."
+      }
+    ]
+  },
+  {
+    "id": "IPH-16",
+    "name": "Rejected: reading 2FA codes, banking apps, an unlocked unattended phone",
+    "tier": 3,
+    "cluster": "Rejections",
+    "description": "Three uses that a connected phone invites and this family should rule out in writing, together with what iOS itself blocks.",
+    "example": "A parent asks: \"Can Happy read the login code texted to the old phone and finish signing in for me?\"",
+    "how": "Nothing to build. Record these on the never list and enforce what can be enforced: keep sms.search, sms.send and any notification forwarding without an allowlist out of config and in gateway.nodes.commands.deny; never install banking, brokerage, payment, wallet or email apps on a phone an agent can drive; never remove the passcode or disable auto-lock except inside Guided Access on a single harmless app; never register Happy's number or Apple Account as a recovery or second-factor channel for a parent's account.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "What iOS and OpenClaw rule out today: the iOS node has no command to read SMS, read other apps' notifications or control other apps, and computer control is marked not applicable on iOS.",
+      "iOS prohibits camera capture in the background, suspends apps shortly after they leave the foreground, and throttles background pushes without guaranteeing delivery.",
+      "An iOS app can only present a message composer for a person to approve; it cannot send an SMS on its own.",
+      "iPhone Mirroring needs the phone locked, offers no camera or microphone (so no Face ID), ends when the phone is unlocked and works with one Mac and one iPhone.",
+      "Where control does exist (the computer tool on the Mac), it acts without per-action confirmation, which is exactly why these three uses are excluded."
+    ],
+    "safety": "2FA codes: an agent that can read a second factor can finish an account takeover it was tricked into starting, and NIST already classes codes sent over the phone network as a restricted authenticator because the channel is weak. Banking: payments and bank writes are on the never list, and a banking app on an agent-driven phone puts them one tap away. Unlocked unattended phone: every iOS protection assumes the lock; a phone left unlocked on a counter is open to anyone in the house and to any injected instruction.",
+    "unverified": [
+      "I could not fetch an Apple page that states outright that third-party apps cannot read the SMS inbox or other apps' notifications. I rely on the absence of such commands in OpenClaw's iOS surface and on general platform knowledge."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "motion.pedometer",
+        "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:130",
+        "title": "Node device commands",
+        "anchor": "notifications.list",
+        "supports": "Reading and acting on device notifications is listed as Android only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "title": "Node troubleshooting",
+        "anchor": "computer.act",
+        "supports": "The permissions matrix marks computer.act as not applicable on iOS and Android."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/avfoundation/avcapturesession/interruptionreason/videodevicenotavailableinbackground.json",
+        "title": "AVCaptureSession.InterruptionReason.videoDeviceNotAvailableInBackground (Apple Developer Documentation, page data)",
+        "anchor": "prohibited while in the background",
+        "supports": "iOS does not let an app use the camera while it is in the background."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/corelocation/handling-location-updates-in-the-background.json",
+        "title": "Handling location updates in the background (Apple Developer Documentation, page data)",
+        "anchor": "suspends the execution",
+        "supports": "iOS suspends most apps shortly after they leave the foreground and may terminate them at any time."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "title": "Pushing background updates to your App (Apple Developer Documentation, page data)",
+        "anchor": "two or three per hour",
+        "supports": "Apple treats background pushes as low priority, does not guarantee delivery, may throttle them, and gives the app 30 seconds per wake."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/messageui/mfmessagecomposeviewcontroller.json",
+        "title": "MFMessageComposeViewController (Apple Developer Documentation, page data)",
+        "anchor": "compose and send SMS",
+        "supports": "An iOS app can only present a message composer for a person to approve and send; the app does not send the SMS itself."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "camera and mic",
+        "supports": "The iPhone's camera and microphone, including Face ID, are not available through mirroring."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "locked and near your Mac",
+        "supports": "The iPhone has to be locked and physically near the Mac, with Bluetooth and Wi-Fi on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:277",
+        "title": "Computer use",
+        "anchor": "no per-action confirmation",
+        "supports": "Once enabled and paired, pointer and keyboard actions run without any per-action confirmation."
+      },
+      {
+        "kind": "web",
+        "ref": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+        "title": "NIST SP 800-63B Digital Identity Guidelines: Authentication and Lifecycle Management",
+        "anchor": "RESTRICTED",
+        "supports": "NIST classes codes sent over the phone network (SMS or voice) as a restricted authenticator."
+      }
+    ]
+  }
+]

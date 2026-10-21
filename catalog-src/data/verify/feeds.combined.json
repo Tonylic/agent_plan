@@ -1,0 +1,412 @@
+[
+  {
+    "id": "SRC-01",
+    "verdict": "revise",
+    "reason": "All eight sources hold, but the 'existing' alert script it leans on (scripts/nws-alerts.mjs) is not in the config repo yet, the iPhone Weather app already shows an air-quality figure in the United States, and the announced line does reach an agent's session transcript. Value lowered to 2: build the free NWS alert leg with F018 first and add the AirNow key only if smoke or ozone days recur where the family lives.",
+    "source_checks": [
+      { "ref": "https://docs.airnowapi.org/webservices", "ok": true, "note": "Lists Current Forecasts 'By Reporting Area, Lat/Long, or Zip Code' and Current Observations 'By Zip Code or Lat/Long'; anchor present." },
+      { "ref": "https://docs.airnowapi.org/faq", "ok": true, "note": "Anchor present. Says calls are limited per API key and a service that hits its hourly limit returns no data until the next hour; no number is given." },
+      { "ref": "https://docs.airnowapi.org/", "ok": true, "note": "Says access is open to the public and that the data are preliminary and subject to change." },
+      { "ref": "https://docs.airnowapi.org/docs/AirNowAPIUpdates2026June.pdf", "ok": true, "note": "The fetch tool could not decode the PDF text, so the downloaded PDF was read page by page: six services retired on 30 Sep 2026 (including Forecast by ZIP Code and Current Observations by ZIP Code); the replacement 'Current Forecasts by Reporting Area' is at /aq/forecast/current/ and accepts a ZIP code." },
+      { "ref": "https://docs.airnowapi.org/docs/AirNowAPIFactSheet.pdf", "ok": true, "note": "PDF read directly: an account is required for the web services and feeds; output is CSV, JSON or XML; it also notes the September 2026 retirement." },
+      { "ref": "https://api.weather.gov/alerts/types", "ok": true, "note": "'Air Quality Alert' is in the event type list." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:171", "ok": true, "note": "Line 171 says command payloads run without starting a model-backed turn and reuse announce delivery." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:189", "ok": true, "note": "Line 189 documents --command-argv and repeatable --command-env KEY=VALUE." }
+    ],
+    "corrections": {
+      "description": "A morning line only on days when the official air-quality forecast for the home ZIP crosses a level the parents choose (smoke, ozone), so outdoor practice and recess questions have a number behind them. New versus the 9 Oct catalog: a real feed for air quality, plus the finding that the NWS alert API carries an 'Air Quality Alert' event type. Happy's home_weather tool already lists any active NWS alert when asked, and the planned F018 alert watch can relay that event with no new key. The iPhone Weather app already shows an air-quality figure in the United States, so the added value is the push on threshold days, not the number.",
+      "how": "Operator-created command job with no model call, same shape as F018: `openclaw automations add --cron '30 6 * * *' --tz <IANA zone> --command-argv '[\"node\",\"scripts/airnow.mjs\"]' --announce --to <parent>`, one job per parent, each with its own state file. The script calls AirNow's 'Current Forecasts by Reporting Area' service (path /aq/forecast/current/, by ZIP), takes the key from `--command-env` or from a file only the happy user can read, compares today's and tomorrow's category with a threshold kept in family.json5, stores the last sent date and category, and prints one fixed-template line or `NO_REPLY`. No agent holds the key or the raw response. Zero-cost first step: scripts/nws-alerts.mjs does not exist yet (F018 is planned, not built), so when it is written, include the 'Air Quality Alert' event in what it relays; today the home_weather tool already shows any active NWS alert when a parent asks.",
+      "value": 2,
+      "caveats": [
+        "AirNow needs an account; each call is tied to a key, and a service that hits its hourly cap returns nothing until the next hour. The per-service cap is on documentation pages behind the login and was not read.",
+        "AirNow retired six older web services on 30 Sep 2026 (including the old forecast-by-ZIP and current-observation-by-ZIP paths). Sample code and model memory from before that date point at dead endpoints.",
+        "AirNow states its data are preliminary and not fully verified.",
+        "Value depends on where the family lives; in a region with few smoke or ozone days this job stays silent all year.",
+        "The iPhone Weather app already shows air quality in the United States, from a different data provider, so its number can differ from AirNow's. Happy adds only the push on threshold days."
+      ],
+      "safety": "No model runs in the job, so there is nothing for injected text to steer at run time. The only outbound request carries a ZIP code and the operator's key to an EPA service; the only message goes to a pinned parent handle through the job's announce target. The installed source mirrors a delivered announce line into the session transcript of the agent that owns the job, so the line is kept to a fixed template with one category word and one number. No private data is read.",
+      "unverified": [
+        "The exact hourly request cap for the forecast service.",
+        "Whether the iPhone Weather app sends a notification on poor-air days (the Apple page read lists air quality for the United States and mentions no such notification).",
+        "The numeric AQI category boundaries were not fetched; the threshold is left to the parents.",
+        "Whether a value passed with `--command-env` is stored in clear text in the job definition; reading the key from a happy-only file avoids the question."
+      ]
+    },
+    "added_sources": [
+      { "kind": "web", "ref": "https://support.apple.com/en-us/105038", "title": "Apple Support: Feature availability and data sources in the Weather app", "anchor": "BreezoMeter", "supports": "Apple's Weather app shows air-quality information in the United States using a commercial provider, so the phone already displays an AQI figure; the page mentions no air-quality notification." },
+      { "kind": "installed", "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518", "title": "Installed source: transcript mirror for direct cron delivery", "anchor": "appendDirectCronDeliveryTranscriptMirror", "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, so announced text is later visible to the agent that owns that session." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-02",
+    "verdict": "revise",
+    "reason": "The four sources hold, but the stated ground for rejection is wrong: Google's price list gives the Pollen API 5,000 free calls a month, so a daily call costs nothing once a billing-enabled project exists (the roadmap already expects a Google key for places lookup). It becomes an optional low-value build, worth doing only if someone in the family has seasonal allergies.",
+    "source_checks": [
+      { "ref": "https://developers.google.com/maps/documentation/pollen/overview", "ok": true, "note": "Anchor present: covers over 65 countries at about one-kilometre resolution; a separate bullet gives a forecast of up to five days." },
+      { "ref": "https://developers.google.com/maps/documentation/pollen/coverage", "ok": true, "note": "United States is listed with supported types 'grass, trees, weeds' (a table cell value)." },
+      { "ref": "https://developers.google.com/maps/documentation/pollen/usage-and-billing", "ok": true, "note": "Anchor present twice: billing must be enabled and every request needs a key or OAuth token. No price on this page; it links to the price list." },
+      { "ref": "https://open-meteo.com/en/docs/air-quality-api", "ok": true, "note": "Anchor present twice: pollen variables are only available in Europe." }
+    ],
+    "corrections": {
+      "name": "Pollen forecast line (Google Pollen API; optional, only if someone has allergies)",
+      "description": "A daily pollen level next to the weather. The only documented pollen API found that covers the United States is Google's Pollen API. It needs a Google Cloud project with billing enabled, but Google's price list gives it 5,000 free calls a month, so one call a day costs nothing in practice. The free Open-Meteo pollen variables cover Europe only. Worth building only if someone in the family has seasonal allergies.",
+      "example": "Morning brief line on days when an index is high: 'Tree pollen is high today.' Silent otherwise.",
+      "how": "Operator creates a Google Cloud project (or reuses the one made for F021 places lookup), enables billing and the Pollen API, restricts the key to that one API and sets a budget alert. A command job (no model) calls the forecast endpoint once a day for a location rounded to about one kilometre, with the key read from `--command-env` or a happy-only file, and prints the grass, tree and weed index for today through a fixed template, or `NO_REPLY` below a level the parents choose. No agent holds the key.",
+      "readiness": "build",
+      "value": 2,
+      "depends_on": [
+        "Google Cloud project with billing enabled (the free monthly allowance covers a daily call)",
+        "F018 command-job pattern",
+        "someone in the family having seasonal allergies"
+      ],
+      "caveats": [
+        "Needs a billing-enabled Google Cloud project (a card on file) even though a daily call sits far inside the free monthly allowance; restrict the key to this API and set a budget alert.",
+        "Sends the home location to Google on every call; round it to about one kilometre, which is the API's own resolution.",
+        "Open-Meteo is keyless for non-commercial use but its pollen data are only available in Europe.",
+        "The allergist-run National Allergy Bureau station counts were looked for and no public feed or terms page could be read.",
+        "Weather apps on the phone may already show pollen; ask before building."
+      ],
+      "safety": "The billing account is an operator set-up step, not an agent action, so the never-list is not breached. As a command job it adds no model exposure; the printed line is three index words or numbers in a fixed template.",
+      "unverified": [
+        "The Pollen API's attribution and caching terms.",
+        "Whether the National Allergy Bureau offers any machine-readable feed.",
+        "Whether the family's phone weather app shows pollen for their area.",
+        "Whether anyone in the family has seasonal allergies."
+      ]
+    },
+    "added_sources": [
+      { "kind": "web", "ref": "https://developers.google.com/maps/billing-and-pricing/pricing", "title": "Google Maps Platform: core services pricing list", "anchor": "Pollen Usage", "supports": "Pollen API calls are priced in the Pro category with 5,000 free billable events a month and about ten dollars per thousand after that." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-03",
+    "verdict": "revise",
+    "reason": "Sources and the live feed hold. One open question is now answered from the installed source: an announced command-job line is mirrored into a session transcript, so the safety text and the unverified list change, and the per-parent state file needs saying.",
+    "source_checks": [
+      { "ref": "https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information", "ok": true, "note": "Anchor present in the example URLs; XML by default, JSON with format=json; no key, registration, terms or rate limit mentioned. The page shows Title, RecallDescription and ProductName examples and points to a programmer's guide; RecallDateStart is not on this page." },
+      { "ref": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2026-09-20", "ok": true, "note": "Keyless call returned 31 records dated 24 Sep to 8 Oct 2026 with RecallID, RecallNumber, Title, Products, Manufacturers, Retailers, ProductUPCs, Hazards and Remedies; the date filter behaves as claimed." },
+      { "ref": "https://www.cpsc.gov/Recalls", "ok": true, "note": "'Recall RSS' link text present; the page also offers recall email subscriptions and a 'Recall App' link." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:191", "ok": true, "note": "Line 191: a command that prints only NO_REPLY posts nothing to chat." }
+    ],
+    "corrections": {
+      "caveats": [
+        "The match is only as good as the owned-items list; substring matching on brand names will produce some false positives and miss unlisted items.",
+        "CPSC already offers its own recall emails, an RSS feed and an app. Happy adds the match against the family's own list, not earlier notice.",
+        "No key or rate limit is documented on the API page; poll once a day, not more.",
+        "Vehicles and car seats are handled by NHTSA, food and medicine by FDA and USDA; see SRC-04 and SRC-05.",
+        "Run one job per parent with its own seen-id state file; with a shared file the second parent's job finds nothing new and stays silent."
+      ],
+      "safety": "No model runs in the job. Recall titles are published by CPSC but name companies and products, so the script prints them through a fixed template, stripped to plain letters, digits and spaces, capped in length, with only the cpsc.gov link. The request reveals nothing about the household. Delivery is the job's pinned parent target. The installed source mirrors a delivered announce line into the session transcript of the agent that owns the job, so that agent can read the line on a later turn: own these jobs with a memory-less, tool-less agent, or accept the sanitised line in the parent agent's transcript.",
+      "unverified": [
+        "Formal terms of use or rate limit for the recall web service (the page read gives none).",
+        "Documentation for the RecallDateStart parameter (it is not on the API information page read; it is confirmed only by the live response).",
+        "Which agent's session receives the mirrored line for a command job, to be checked by reading the transcript after the first run."
+      ]
+    },
+    "added_sources": [
+      { "kind": "installed", "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518", "title": "Installed source: transcript mirror for direct cron delivery", "anchor": "appendDirectCronDeliveryTranscriptMirror", "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript." },
+      { "kind": "installed", "ref": "dist/server-cron-JBzIvkak.mjs:377", "title": "Installed source: cron announce sender", "anchor": "completion announcement mirror", "supports": "The function that sends a cron announce payload resolves a route session for an explicit target and mirrors the completion text into it." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-04",
+    "verdict": "revise",
+    "reason": "All six sources hold and the feed is live. The safety text needs tightening: recall titles are written by the recalling company, and the installed source shows the announced line is mirrored into an agent's session transcript, so the script should relay the matched keyword and the official link rather than free company text.",
+    "source_checks": [
+      { "ref": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml", "ok": true, "note": "Channel title contains 'Recalls/Safety Alerts'; 20 items dated 24 Sep to 9 Oct 2026 covering foods, drugs and supplements." },
+      { "ref": "https://open.fda.gov/apis/food/enforcement/", "ok": true, "note": "Says the data are updated weekly and should not be used to issue alerts to the public or to track a recall's lifecycle; anchor present." },
+      { "ref": "https://open.fda.gov/apis/drug/enforcement/", "ok": true, "note": "'updated weekly' present, with the same warnings and a warning against relying on it for medical decisions." },
+      { "ref": "https://open.fda.gov/apis/authentication/", "ok": true, "note": "Without a key: 240 requests per minute and 1,000 per day per IP address." },
+      { "ref": "https://api.fda.gov/food/enforcement.json?limit=1", "ok": true, "note": "Keyless call returned a record with classification, distribution_pattern, recalling_firm, product_description and reason_for_recall; meta.last_updated 2026-09-30." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:171", "ok": true, "note": "Line 171 confirms command payloads run with no model turn." }
+    ],
+    "corrections": {
+      "caveats": [
+        "openFDA enforcement data is updated weekly and FDA says it must not be used to issue alerts to the public or to make medical decisions; use the RSS notices for timeliness and openFDA only as a detail lookup for the family's own use.",
+        "Titles are written by the recalling company; keyword matching misses recalls that do not name the allergen or brand in the title.",
+        "Meat, poultry and egg-product recalls come from USDA FSIS, whose developer page refused the fetch (HTTP 403), so that leg is not included.",
+        "Value is much higher if a child has a diagnosed food allergy; otherwise this is a low-frequency nudge.",
+        "Run one job per parent with its own seen-id state file; with a shared file the second parent's job finds nothing new."
+      ],
+      "safety": "No model runs in the job. Titles are written by the recalling company and are untrusted, and the installed source mirrors a delivered announce line into the session transcript of the agent that owns the job. So the script prints the matched keyword and the fda.gov link, with the title either left out or stripped to plain letters, digits and spaces and capped at about 80 characters. Nothing about the family leaves the house: the feed is pulled whole and filtered locally. Not medical advice; the message points to the official notice."
+    },
+    "added_sources": [
+      { "kind": "installed", "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518", "title": "Installed source: transcript mirror for direct cron delivery", "anchor": "appendDirectCronDeliveryTranscriptMirror", "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, which is why company-written titles must be sanitised or left out." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-05",
+    "verdict": "keep",
+    "reason": "All three sources hold; the make, model and year limit, the silent first-run baseline and the low value are stated honestly. NHTSA's own website still refuses plain fetches (HTTP 403 again in this review), so the VIN lookup stays with the parent as written.",
+    "source_checks": [
+      { "ref": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=honda&model=odyssey&modelYear=2018", "ok": true, "note": "Keyless call returned Count 16; each result has NHTSACampaignNumber, parkIt, parkOutSide, Component, Summary, Consequence and Remedy." },
+      { "ref": "https://vpic.nhtsa.dot.gov/api/", "ok": true, "note": "DecodeVinValues is listed; XML, CSV and JSON output; the page says an automated traffic rate control applies; no key mentioned." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:189", "ok": true, "note": "Line 189: --command-argv gives exact argv execution without shell parsing." }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-06",
+    "verdict": "keep",
+    "reason": "Confirmed as a not-recommended entry: USPS already delivers the digest to the phone, the useful content is envelope images, and the IMAP doc describes only a capped body-text path.",
+    "source_checks": [
+      { "ref": "https://www.usps.com/manage/informed-delivery.htm", "ok": true, "note": "'Daily Digest' present; free; grayscale images of the address side of letter-size mail; package alerts by text or email; dashboard and mobile app. No consumer API described." },
+      { "ref": "docs/automation/imap.md:160", "ok": true, "note": "Line 160: email bodies are capped by maxBytes with a truncation marker; images are not mentioned anywhere in the file." },
+      { "ref": "docs/automation/imap.md:86", "ok": true, "note": "Line 86: the parsed From address is checked against allowedSenders before any message reaches a model." }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-07",
+    "verdict": "revise",
+    "reason": "The Classroom help article supports the feature, but the cited URL with the language parameter returned only navigation text, so the working address replaces it. One claim (no summary when there is nothing to report) is not on the page and moves to unverified; the dependence on a teacher inviting a non-parent address and on a Google Account for settings is made explicit.",
+    "source_checks": [
+      { "ref": "https://support.google.com/edu/classroom/answer/6388136?hl=en", "ok": false, "note": "Two attempts returned only navigation text. The same article at the address without the language parameter rendered: missing work, upcoming work and class activity; no grades; Daily (Monday to Friday) or Weekly; teacher or admin invitation; 120 days to accept; any email address can receive summaries; a Google Account is needed to view or change settings; the student must use a Google Workspace account. It does not say summaries are skipped when there is nothing to report." },
+      { "ref": "https://developers.google.com/workspace/classroom/guides/manage-guardians", "ok": true, "note": "Lists three guardianlinks scopes including classroom.guardianlinks.me.readonly; describes invitations and removal; nothing about a guardian reading coursework through the API." },
+      { "ref": "docs/automation/imap.md:11", "ok": true, "note": "Line 11: separate isolated session per allowed message; no sending, no flag changes, no public webhook, no backfill." },
+      { "ref": "docs/automation/imap.md:103", "ok": true, "note": "Line 103: the default minimum is verified." }
+    ],
+    "corrections": {
+      "caveats": [
+        "Summaries contain no grades, the daily setting runs Monday to Friday, and they are only available when the student uses Classroom with a school Google Workspace account.",
+        "The invitation expires if not accepted within 120 days. Summaries can go to any email address, but viewing or changing the frequency needs a Google Account for that address, so make the school mailbox a Google Account or accept the default frequency.",
+        "A teacher or admin has to invite the school mailbox address. A school that only invites the guardian addresses already on file may refuse; the fallback is a parent staying the guardian and forwarding, with the DMARC risk noted on 9 Oct.",
+        "The Classroom API page read names guardian scopes for a user's own guardian links and for teachers and admins; it does not describe a guardian reading coursework, so there is no API path for a parent.",
+        "Elementary classes often do not use Classroom at all; confirm before building."
+      ],
+      "unverified": [
+        "The sender address and DKIM/DMARC alignment of guardian summary emails.",
+        "Whether a guardian account can read coursework through any Classroom API method (the page read does not describe one).",
+        "Whether an invitation can be accepted without a Google Account (the help page says summaries can go to any email address and that a Google Account is needed to view or change settings).",
+        "That no summary is sent when there is nothing to report (not stated on the page read).",
+        "The default summary frequency when the settings are never changed."
+      ]
+    },
+    "added_sources": [
+      { "kind": "web", "ref": "https://support.google.com/edu/classroom/answer/6388136", "title": "Google Classroom Help: Get Classroom email summaries (for guardians)", "anchor": "Missing work", "supports": "Guardian summaries list missing work, upcoming work and class activity without grades, daily on weekdays or weekly, go to any email address after a teacher or admin invitation that lapses after 120 days, and need a Google Account only for viewing or changing settings." }
+    ],
+    "removed_sources": [
+      "https://support.google.com/edu/classroom/answer/6388136?hl=en"
+    ]
+  },
+  {
+    "id": "SRC-08",
+    "verdict": "revise",
+    "reason": "All five sources hold. Two corrections: the PowerSchool page read does show an 'Additional Notification Emails' field, so that item moves from unverified into the recipe; and the description promises a Canvas calendar path that could not be verified (the observer guide did not open and the API needs a personal token).",
+    "source_checks": [
+      { "ref": "https://www.parentsquare.com/blog/2020-7-15-help-please-frequently-asked-parent-questions/", "ok": true, "note": "Instant or Digest for posts, the digest being one summary each evening; settings are per school; email, text or app; urgent alerts and attendance notices always come through." },
+      { "ref": "https://www.parentsquare.com/school-services/calendar-rsvp/", "ok": true, "note": "Anchor present. It is a product page for districts and gives no parent-side steps or calendar formats." },
+      { "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications", "ok": true, "note": "Lists the five report types including 'Balance Alert'; frequencies Never, Weekly, Every Two Weeks, Monthly, Daily; and an 'Additional Notification Emails' field taking comma-separated addresses." },
+      { "ref": "https://canvas.instructure.com/doc/api/calendar_events.html", "ok": true, "note": "Anchor present: listing another user's calendar events requires being an observer of that user or an administrator; examples use a bearer token." },
+      { "ref": "docs/automation/imap.md:86", "ok": true, "note": "Line 86: allowlist checked against the parsed From address before any model; an empty allowlist disables the account." }
+    ],
+    "corrections": {
+      "description": "A per-platform setup recipe so the school mailbox receives one predictable email per platform per day: ParentSquare in Digest mode, and PowerSchool's scheduled grade, attendance and balance emails, which can be sent straight to the school mailbox through PowerSchool's 'Additional Notification Emails' field. Canvas has no verified path here: its API needs a personal token and its observer calendar feed could not be read. It also records what has no feed: urgent ParentSquare alerts bypass the digest and reach phones first, and closings arrive through those alerts, not through any public closings feed.",
+      "how": "Per platform, the parent sets notification preferences once: ParentSquare posts to Digest (one evening summary) with email on; PowerSchool Email Notifications to Weekly or Daily with 'Summary of Current Grades and Attendance' and 'Balance Alert' ticked, and the school mailbox address from F051 typed into PowerSchool's 'Additional Notification Emails' field so the report arrives there directly with no forward. For ParentSquare, register the school mailbox as the contact address where the school allows it. Those senders go on the mailbox's `allowedSenders` (through G016), the `school-mail` reader handles each message, and the F056 digest prints the lines. A ParentSquare calendar subscription, or a Canvas calendar feed link if the parent's observer account shows one, is subscribed in the family calendar (G012) rather than parsed. Urgent alerts stay on the parents' phones; F055 is a backup, not the primary path.",
+      "unverified": [
+        "ClassDojo notification behaviour (page returned 403).",
+        "Canvas's iCal calendar feed for observers (the guide page could not be opened in either run; only the REST API page was read).",
+        "How a parent subscribes to the ParentSquare calendar (the page read is a product page for districts and gives no steps).",
+        "Exact sender addresses and authentication results for each platform's email."
+      ]
+    },
+    "added_sources": [
+      { "kind": "web", "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications", "title": "PowerSchool SIS student and parent help: Email Notifications", "anchor": "Additional Notification Emails", "supports": "A parent can enter extra recipient addresses, separated by commas, for the scheduled PowerSchool emails, so the school mailbox can receive them without forwarding." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-09",
+    "verdict": "revise",
+    "reason": "All five sources hold, and the installed docs indeed contain no calendar-feed handling. The safety text must change: event titles and locations are typed by coaches, and the installed source mirrors the announced line into an agent's session transcript, so the script has to sanitise them. The per-parent state file also needs saying.",
+    "source_checks": [
+      { "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule", "ok": true, "note": "'Sync Calendar / Export' present under Schedule, Settings on the web; copy the calendar link; Google can take up to 24 hours to populate subscribed calendars." },
+      { "ref": "https://help.sportsengine.com/en/articles/6311504-how-to-sync-your-team-schedule-to-a-calendar-application", "ok": true, "note": "'Sync Schedule' button, then 'Other Calendar' and Copy; nothing about refresh delay." },
+      { "ref": "https://gc.com/app-features/team-management", "ok": true, "note": "Anchor present: schedule syncs to a personal iOS or Google calendar; the team is notified automatically." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:171", "ok": true, "note": "Line 171 confirms command payloads run with no model turn." },
+      { "ref": "docs/automation/cron-jobs/delivery.md:101", "ok": true, "note": "Line 101: set delivery.to or the channel allowFrom entry when a scheduled job should proactively send to a DM." }
+    ],
+    "corrections": {
+      "caveats": [
+        "TeamSnap says Google can take up to 24 hours to populate or refresh a subscribed calendar; a rainout the same morning will not reach a calendar-only path in time.",
+        "The team app's own push notification is still the fastest signal for same-day changes; the script is a backstop that also reaches the parent who does not have the app.",
+        "The subscription link is a bearer secret: anyone with it can read the schedule. Keep it out of family.json5 if that file is committed.",
+        "GameChanger lets followers sync only the game schedule according to a search summary; its help article refused the fetch, so only the marketing page was read.",
+        "The installed OpenClaw docs and skills contain no calendar-feed parser (a search for .ics, iCalendar and webcal found nothing), so this is a script the operator owns.",
+        "Run one job per parent with its own state file, or one job delivering to the parents' group chat once F006 exists; with a shared state file the second parent's job finds no change and stays silent."
+      ],
+      "safety": "No model runs in the job; the feed is parsed by code. Event titles and locations are typed by coaches and team managers, so they are untrusted text, and the installed source mirrors a delivered announce line into the session transcript of the agent that owns the job. The script therefore prints a fixed template built from dates and times, with the title and location stripped to plain letters, digits and spaces and capped in length, and no links. Schedules contain where the kids will be and when, so the feed stays on the host and is delivered only to pinned parent handles. No RSVP or availability is ever set on the family's behalf."
+    },
+    "added_sources": [
+      { "kind": "installed", "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518", "title": "Installed source: transcript mirror for direct cron delivery", "anchor": "appendDirectCronDeliveryTranscriptMirror", "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, which is why coach-typed titles must be sanitised." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-10",
+    "verdict": "keep",
+    "reason": "Sources hold and the entry is honest that it only applies if the town uses ReCollect and that ReCollect's own reminders already cover the basic need. The Home Assistant page is third-party documentation about ReCollect, used only for the 'not an official API' warning.",
+    "source_checks": [
+      { "ref": "https://policy.recollect.net/terms.en-US.html", "ok": true, "note": "Anchor present: residents can sign up for reminders by email, text message, phone call or app notification; nothing about automated access." },
+      { "ref": "https://www.home-assistant.io/integrations/recollect_waste", "ok": true, "note": "'not an official API' present; says municipalities on ReCollect give a calendar subscription whose URL embeds the place and service ids. Third-party project documentation, not a ReCollect commitment." },
+      { "ref": "docs/automation/cron-jobs/schedules.md:26", "ok": true, "note": "Line 26: --tz evaluates a cron expression in an IANA timezone." }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-11",
+    "verdict": "revise",
+    "reason": "Every cited page says what the feature claims, but the CDC pages are not a stable rule source in 2026: the federal childhood schedule was revised on 5 January 2026 (influenza among the vaccines moved to shared decision-making), the revision was withdrawn on 16 March 2026 after a court stay, and the AAP issued its own schedule. Keep the AAP well-visit nudge, drop the hard-coded vaccine rows, and lower value to 2 because practices already send these reminders.",
+    "source_checks": [
+      { "ref": "https://downloads.aap.org/AAP/PDF/periodicity_schedule.pdf", "ok": true, "note": "PDF read directly: 'updated February 2025'; visit columns for every year from 3 y to 21 y; states it is updated annually." },
+      { "ref": "https://www.healthychildren.org/English/family-life/health-management/Pages/Well-Child-Care-A-Check-Up-for-Success.aspx", "ok": true, "note": "Lists a visit at each age from 3 years old to 21 years old, including '8 years old'." },
+      { "ref": "https://www.aap.org/periodicityschedule", "ok": true, "note": "Describes the schedule as the screenings and assessments recommended at each well-child visit; page last updated in February 2025." },
+      { "ref": "https://www.cdc.gov/vaccines/imz-schedules/adolescent-easyread.html", "ok": true, "note": "Anchor present and dated 2 July 2025. The page carries no notice of the 2026 revision or the court stay, so it cannot be treated as settled." },
+      { "ref": "https://www.cdc.gov/vaccines/hcp/imz-schedules/child-adolescent-age.html", "ok": true, "note": "Title carries 'Addendum updated July 2, 2025'; 2025 edition; no 2026 notice." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:57", "ok": true, "note": "Line 57: --tools \"\" is an empty allowlist that disables all agent tools." }
+    ],
+    "corrections": {
+      "name": "Well-visit reminders from the AAP table (vaccine specifics left to the pediatrician)",
+      "description": "A small table of when a check-up is due, taken from the AAP Bright Futures periodicity schedule (a well visit every year from age 3 to 21), joined to each child's birth month. Happy nudges a parent to book the yearly check-up and flags the 11 to 12 visit a year ahead for the older child. Vaccine rows are not encoded: the federal childhood schedule was revised in January 2026, the revision was withdrawn in March 2026 after a court stay, and the AAP publishes its own schedule, so what is due is a question for the pediatrician. This adds a sourced rule table to the renewals program (F063).",
+      "example": "Monthly trigger: 'Your 10-year-old's birthday is in 8 weeks: time to book the yearly well visit. Next year's visit is the 11 to 12 one; ask the pediatrician which vaccines are due then.'",
+      "how": "Config and prompt only. gen-family renders rows (child label, birth month, rule text, source date) into the F063 monthly isolated job on `<p>-main`: `--cron '0 9 1 * *' --session isolated --tools \"\"` with the table inside `--message`, because an isolated run with an empty tool list cannot read files. The model only phrases the reminder; it fetches nothing. Only the AAP visit rows are rendered, and the message tells the parent to ask the practice about vaccines. The rows are reviewed by a parent once a year against the AAP page and carry the date they were checked. A model-free command job that works out 'birthday within N weeks' and prints a fixed line is an equally valid shape and removes both the date arithmetic by the model and the cloud call.",
+      "value": 2,
+      "caveats": [
+        "Not medical advice: the pediatrician's own recall letters and portal are authoritative, and the reminder should say so.",
+        "Vaccine rows are deliberately left out. The federal schedule was revised on 5 January 2026, the revision was taken off the CDC site on 16 March 2026 after a court stay, and the AAP issued its own schedule. The CDC pages read show the 2025 edition dated 2 July 2025 with no notice of any of this.",
+        "The AAP periodicity schedule says it is updated annually (copy read: February 2025); the table must show its check date and be re-read yearly rather than trusted.",
+        "Most practices already send their own reminders; this is a backstop for the family calendar."
+      ],
+      "unverified": [
+        "The outcome of the appeal against the March 2026 court stay, and so which federal schedule will be in force next year.",
+        "The age cells for HPV and MenACWY in the CDC table (not encoded)."
+      ]
+    },
+    "added_sources": [
+      { "kind": "web", "ref": "https://www.aafp.org/afp/2026/0800/editorials-practice-alert-child-adolescent-immunization-schedule", "title": "American Family Physician, August 2026: practice alert on the child and adolescent immunization schedule", "anchor": "No vaccine was removed", "supports": "The federal schedule was revised on 5 January 2026, moving influenza and several other vaccines to shared decision-making; the revision was removed from the CDC site on 16 March 2026 after a court stay; the AAP issued its own schedule, which other medical bodies endorsed." }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-12",
+    "verdict": "keep",
+    "reason": "The under-16 rules are confirmed on USA.gov and the State Department page again returned HTTP 403 in this review, as the entry says. It is a rule row inside F063 rather than a separate build, which the entry already states.",
+    "source_checks": [
+      { "ref": "https://www.usa.gov/child-passport", "ok": true, "note": "Anchor present: under-16 passports are valid for 5 years, cannot be renewed, need an in-person application, and a parent (preferably both) must be present and sign." },
+      { "ref": "docs/tools/web-fetch.md:11", "ok": true, "note": "Line 11: web_fetch does a plain HTTP GET; line 70 adds that it sends a Chrome-like User-Agent." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:57", "ok": true, "note": "Line 57: --tools \"\" disables all agent tools for the job." }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-13",
+    "verdict": "revise",
+    "reason": "All five sources hold. One inconsistency: readiness is 'now' but F061, listed as a dependency, is gated on the personal-inbox milestone; the rows only need the F063 job. The estimated-tax rows should be rendered only if the family actually makes estimated payments.",
+    "source_checks": [
+      { "ref": "https://www.irs.gov/faqs/estimated-tax/individuals/individuals-2", "ok": true, "note": "Lists April 15, June 15, Sept. 15 and Jan. 15 of the following year, with next-business-day treatment for weekends and legal holidays." },
+      { "ref": "https://www.irs.gov/publications/p969", "ok": true, "note": "Long page; the anchor is in the second part (read with an offset): FSAs are generally use-it-or-lose-it; grace period of up to two and a half months; carryover up to 660 dollars; a plan with a carryover may not also have a grace period. 2025 edition, health FSA limit 3,300 dollars." },
+      { "ref": "https://www.irs.gov/publications/p503", "ok": true, "note": "2025 edition: qualifying child under 13; day camp may count; overnight camp does not; exclusion up to 5,000 dollars for 2025." },
+      { "ref": "https://www.irs.gov/businesses/small-businesses-self-employed/online-tax-calendar", "ok": true, "note": "Four quarter links ('First Quarter' and so on), share icons and Print; no subscription or download." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:57", "ok": true, "note": "Line 57: --tools \"\" disables all agent tools for the job." }
+    ],
+    "corrections": {
+      "how": "Config and prompt only. Rows live in the registry (G003) and render into the F063 monthly isolated job on `<p>-main` with `--tools \"\"` and the table in `--message`; F061's checklist job can carry the same rows later if the personal-inbox milestone is built. Fixed IRS rows, rendered only if the family makes estimated payments: due 15 Apr, 15 Jun, 15 Sep and 15 Jan (next business day if on a weekend or holiday). Plan-specific rows are typed by the parent from the employer's plan document: plan-year end, grace period or carryover, claim run-out date, and whether a dependent-care account exists. One reminder per row at a lead time set per row.",
+      "depends_on": [
+        "F063 renewals program",
+        "G003 jobs registry",
+        "the parents entering their own plan dates"
+      ],
+      "caveats": [
+        "The IRS figures read are for 2025 returns (health FSA limit 3,300 dollars, carryover up to 660 dollars, dependent-care exclusion 5,000 dollars); 2026 and 2027 numbers must be re-read each January, and dollar limits should not be hard-coded in the reminder text.",
+        "Grace period, carryover and run-out dates are set by the employer's plan, not by the IRS; without the parent's plan dates the reminder is generic.",
+        "The estimated-tax rows matter only if the family makes estimated payments, and the dependent-care rows only if an employer offers that account; leave a row out rather than send a reminder that does not apply.",
+        "The IRS online tax calendar pages read are quarterly web pages with a print link and no subscription; a tax.gov calendar address refused the connection.",
+        "Not tax advice; the message should point to the plan administrator or preparer."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-14",
+    "verdict": "revise",
+    "reason": "Sources hold, but two statements go further than they do: one product page mentioning no feed is not proof that none exists, and nothing read shows the menu site is script-rendered. The recommended path (parent sends the monthly menu, Happy stores rows after a yes) is an ordinary build on F001, F002 and F031, so readiness is 'build'; only the unpublished-endpoint path is experimental and stays not recommended.",
+    "source_checks": [
+      { "ref": "https://nutrislice.com/solutions/k12/", "ok": true, "note": "'digital menus' present; the page describes menus for parents, students and staff on any device and mentions no API, feed or calendar subscription. It is a product page, so this is absence on one page." },
+      { "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications", "ok": true, "note": "'Balance Alert' is one of the scheduled email options." },
+      { "ref": "docs/tools/web-fetch.md:12", "ok": true, "note": "Line 12: web_fetch does not execute JavaScript." }
+    ],
+    "corrections": {
+      "description": "'What is for lunch tomorrow?' sounds like an easy monitor, but the product page read for the common menu platform, Nutrislice, describes a website and app for parents and mentions no public API, feed or calendar subscription. The realistic version has no feed at all: the parent sends the month's menu once (PDF or photo), Happy proposes the rows and stores them after a yes, and the evening brief reads tomorrow's row. The lunch-money line comes from PowerSchool's balance email where the district uses it.",
+      "how": "Recommended path: the parent forwards the monthly menu PDF or a photo (F001/F002); `<p>-main` extracts date and entree rows, shows them back for a yes (F011 snap-to-action) and stores them through `home-store__schedule_upsert` (F031); F014 reads tomorrow's row. Balance line: PowerSchool 'Balance Alert' email through the F051 mailbox into F056. Not recommended: a host script calling the menu site's unpublished JSON endpoint. `web_fetch` does not execute JavaScript, so if the district's menu page is script-rendered the research agent cannot read it either.",
+      "readiness": "build",
+      "caveats": [
+        "The vendor's own app already shows the menu on the parent's phone (its allergen filtering was seen only in search results, not on the page fetched); Happy must never be the allergy authority.",
+        "Menus change during the month; a once-a-month import will sometimes be wrong.",
+        "Calendar-grid menu PDFs and photos are easy to misread; the proposed rows must be confirmed by the parent before they are stored.",
+        "An unpublished endpoint can change or be blocked without notice and using it may breach the vendor's terms.",
+        "Districts on other platforms (several exist) need their own check."
+      ],
+      "unverified": [
+        "The unpublished Nutrislice JSON endpoint and its URL pattern (reported by community projects found in search; no vendor documentation was found, so it is not cited).",
+        "Whether the family's district uses Nutrislice at all.",
+        "Nutrislice's terms on automated access.",
+        "That the district's menu site is rendered by script (assumed; if it is plain HTML the research agent could read it).",
+        "That Nutrislice offers no feed anywhere (only one product page was read)."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-15",
+    "verdict": "revise",
+    "reason": "All five sources hold and live keyless calls to the USNO and EPA services worked in this review. One caveat is strengthened: the EPA daily UV call returned an index of 0 for the current date, not only at night, so the UV line needs a 'treat 0 as no data' rule or should be dropped.",
+    "source_checks": [
+      { "ref": "https://aa.usno.navy.mil/data/api", "ok": true, "note": "'rstt/oneday' present with date, coords, tz and dst parameters; optional ID that institutions are asked to register; no key or usage limit stated. A live keyless call returned sunrise, sunset and twilight times." },
+      { "ref": "https://www.epa.gov/enviro/web-services", "ok": true, "note": "getEnvirofactsUVDAILY and UVHOURLY by ZIP or city and state; XML, JSON, Excel or CSV; a UV_ALERT field on the daily service; no key. A live keyless call answered, with UV_INDEX 0 for the current date." },
+      { "ref": "https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/", "ok": true, "note": "Link text 'Download iCalendar (.ICS) file for displayed years'; 2026 and 2027 are listed." },
+      { "ref": "https://www.nist.gov/pml/time-and-frequency-division/popular-links/daylight-saving-time-dst", "ok": true, "note": "Rule text present; 2026 dates are 8 March and 1 November." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:171", "ok": true, "note": "Line 171 confirms command payloads run with no model turn." }
+    ],
+    "corrections": {
+      "caveats": [
+        "Phones already change their clocks and show sunset; the value is one consistent line in the brief and correct holiday logic for bins and mail, not new information.",
+        "The EPA daily UV call can return 0: the author's night-time test did, and a test call in the review also returned an index of 0 with no alert for the current date. Treat 0 as 'no data' and print no UV line, or use the hourly service.",
+        "The USNO API asks institutions to register an identifier and gives no usage terms beyond that; one call a day is polite.",
+        "School holidays differ from federal holidays; the district calendar feed (G012) is the source for days off."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "SRC-16",
+    "verdict": "reject",
+    "reason": "The feed is real and the sources hold, but it gives regional and state averages only, map apps already show station prices, and the entry itself expects the family to mute it within a month. Tony's request does not mention fuel prices, so the line saying he asked is removed. List under considered and not recommended; revisit only if the home is heated with delivered oil or propane.",
+    "source_checks": [
+      { "ref": "https://www.eia.gov/opendata/", "ok": true, "note": "'free of charge' present; registration and an API key are implied by the Register and key-recovery links; petroleum prices include retail gasoline, diesel, heating oil and propane." },
+      { "ref": "https://www.eia.gov/petroleum/gasdiesel/", "ok": true, "note": "Released 6 Oct 2026, next release 14 Oct 2026; gasoline table covers the US, regions, nine states and ten cities." },
+      { "ref": "docs/automation/cron-jobs/payloads.md:191", "ok": true, "note": "Line 191: a command that prints only NO_REPLY posts nothing." }
+    ],
+    "corrections": {
+      "name": "Weekly fuel price line (EIA): real feed, not recommended",
+      "description": "A real, free federal feed exists for fuel prices: the Energy Information Administration publishes retail gasoline and diesel averages every week and offers an API. Checked and not recommended: the data are regional and state averages, not station prices, so it answers 'are prices rising' and not 'where should I fill up', and map apps on the phone already show station prices. Revisit only if the home is heated with delivered oil or propane.",
+      "readiness": "not-recommended"
+    },
+    "added_sources": [],
+    "removed_sources": []
+  }
+]

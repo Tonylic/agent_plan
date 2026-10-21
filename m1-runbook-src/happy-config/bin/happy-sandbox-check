@@ -1,0 +1,22 @@
+#!/bin/zsh -f
+# happy-sandbox-check: run every minute by local.happy.sandbox-check (O1). Asks the Docker engine inside
+# Colima whether it answers and whether the sandbox image is still there, and pushes the answer to
+# VictoriaMetrics as happy_sandbox_ready (1 or 0) for Grafana's "Sandbox runtime down" rule.
+# Why: /readyz doesn't cover the sandbox. With Colima down the gateway stays ready, but every
+# sandboxed tool call fails (M0 sign-off). If this job stops pushing, the rule fires too.
+set -u
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+image=openclaw-sandbox:bookworm-slim                 # agents.defaults.sandbox.docker.image
+limit() { /usr/bin/perl -e 'alarm shift; exec @ARGV' "$@"; }   # macOS has no timeout(1); a hung VM must not hang this
+ready=0
+if limit 20 docker info --format '{{.ServerVersion}}' >/dev/null 2>&1; then
+  if limit 20 docker image inspect "$image" >/dev/null 2>&1; then ready=1
+  else print "happy-sandbox-check: $(/bin/date -u +%FT%TZ) engine answers but $image is missing"; fi
+else
+  print "happy-sandbox-check: $(/bin/date -u +%FT%TZ) the Docker engine in Colima doesn't answer"
+fi
+print -r -- "happy_sandbox_ready $ready" \
+  | /usr/bin/curl -fsS -m 5 --data-binary @- http://127.0.0.1:8428/api/v1/import/prometheus >/dev/null \
+  || print "happy-sandbox-check: $(/bin/date -u +%FT%TZ) could not push to VictoriaMetrics"
+exit 0

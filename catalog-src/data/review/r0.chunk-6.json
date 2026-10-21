@@ -1,0 +1,1461 @@
+[
+ {
+  "id": "F028",
+  "origin": "9 Oct",
+  "name": "Trip and outing planner (day trip, weekend, multi-day)",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "'Plan Saturday for us, kids 8 and 10, rain likely' returns two options with hours, cost, weather and links; a longer plan can be emailed; parents book.",
+  "example": "",
+  "how": "One research sub-agent run via `sessions_spawn` with `runTimeoutSeconds`, composing `web_fetch`, the Places MCP and `home_weather`; calendar free time crosses as date ranges only; the Friday 16:00 job reuses it.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 4,
+  "effort": "L",
+  "caveats": [],
+  "corrections": [
+   "Drive time was dropped from the 9 Oct wording because goplaces was thought to lack it; upstream goplaces `directions` or Grounding Lite `compute_routes` can supply it."
+  ],
+  "unverified": [
+   "Hotel and train price snapshots: no opened source shows these sites are readable logged-out; expect links instead of prices.",
+   "The weather plugin returns 12-hour periods today (read in ~/src/happy-config, not citable), so an hourly rain window needs the plugin change in F083.",
+   "The emailed long version depends on the mailout server (F049), not built."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "A long planning run can be given its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:301",
+    "title": "Web fetch: limits and safety",
+    "anchor": "best-effort",
+    "supports": "Booking and transport sites often need a browser, so price snapshots are best effort.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service API Web Service documentation",
+    "anchor": "A User Agent is required",
+    "supports": "The government weather API also offers an hourly forecast endpoint, the basis for a rain window once the weather plugin exposes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Google Maps Platform: Grounding Lite",
+    "anchor": "compute_routes",
+    "supports": "Google's Maps MCP includes a route tool, one of two sourced ways to add drive time.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+    "title": "Places API (New): Text Search",
+    "anchor": "openNow",
+    "supports": "Opening hours and ratings for each stop come from the Places API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "CLI reference: automations (cron)",
+    "anchor": "--agent <id>",
+    "supports": "A job must be pinned to an agent at creation, otherwise it falls back to the default agent rather than research.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/brave-search.md:86",
+    "title": "Brave search",
+    "anchor": "`day` is 24 hours",
+    "supports": "The search tool has a freshness filter, which the topic-brief variant would have used.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/websearch/answer/4815696",
+    "title": "Google Search Help: Create an alert",
+    "anchor": "Google Alerts",
+    "supports": "Google already emails new search results for saved topics, which is why the Sunday topic brief was judged redundant.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/mozilla/readability",
+    "title": "mozilla/readability README",
+    "anchor": "Firefox Reader View",
+    "supports": "The extractor behind page fetching is the Firefox Reader View library, built for article-style HTML rather than feeds or calendars.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F017"
+  ],
+  "adds": [],
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F029",
+  "origin": "9 Oct",
+  "name": "Public page watcher: registration opens, district site changes, price drops",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "'Tell me when camp registration opens' or 'when the district page changes': Happy checks a public page a few times a day and texts once when it happens.",
+  "example": "",
+  "how": "Operator-created job owned by research: `--every 6h --trigger-script watch-page.js --trigger-once --session isolated --announce`; the script calls `web_fetch` and keeps a hash in `trigger.state` (16 KB cap).",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog's needs used `--once` and the verifier said no CLI flag exists (JSON or Control UI only); the installed CLI source defines `--trigger-once`."
+  ],
+  "unverified": [
+   "That trigger scripts run while `tools.codeMode` is false: the docs say they are on by default and gated by `cron.triggers.enabled`; not tested because the CLI was not run.",
+   "Registration portals that render with JavaScript need the F020 browser, and five tool calls in 30 seconds may not be enough for it.",
+   "The five-watchers-per-person cap is a convention; nothing enforces it.",
+   "Price-drop watching was dropped; no opened source shows retail pages are reliably readable."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:109",
+    "title": "Automation schedules: event triggers",
+    "anchor": "once: true",
+    "supports": "A condition script returns fire, message and state; state is capped at 16 KB and a one-shot watcher disables itself after firing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-cli-BE7bR0yR.mjs:30",
+    "title": "Installed CLI source: automations options",
+    "anchor": "--trigger-once",
+    "supports": "The installed CLI has a flag that disables the watcher after its first successful triggered run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads",
+    "anchor": "capped to the tools available",
+    "supports": "A job created by an agent in chat is limited to that agent's tools, so a watcher made from <p>-main could not fetch pages.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc9309.html",
+    "title": "RFC 9309: Robots Exclusion Protocol",
+    "anchor": "Robots Exclusion Protocol",
+    "supports": "The robots standard is the published etiquette for automated page reads, and it states its rules are not access control.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://williamsburgva.gov/598/Recycle",
+    "title": "City of Williamsburg, VA: Recycle (example municipal collection page)",
+    "anchor": "iCal, Google Calendar, Microsoft Outlook",
+    "supports": "Example of a municipal collection-schedule tool that exports the pickup calendar to standard calendar formats and sends its own reminders by email, phone or text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:12",
+    "title": "Web fetch",
+    "anchor": "execute JavaScript",
+    "supports": "web_fetch is a plain HTTP GET with readable-content extraction and runs no page scripts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/blogwatcher/SKILL.md:3",
+    "title": "Bundled skill: blogwatcher",
+    "anchor": "RSS/Atom feeds",
+    "supports": "The bundled blogwatcher skill wraps a CLI that tracks feed updates.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "openclaw automations CLI",
+    "anchor": "--agent <id>",
+    "supports": "The owning agent of a job is pinned at creation with the agent flag; without it the default agent is used.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-10"
+  ],
+  "adds": [
+   "An order of preference for every watcher: the town's own feed or reminder first, plain fetch second, a browser last; and the rule that a watcher never runs on a logged-in profile."
+  ],
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-10",
+  "name": "Feed watch for school, PTA, town and library sites (RSS/Atom)",
+  "tier": 2,
+  "cluster": "Monitors",
+  "description": "A watcher with no model in it that checks a short list of feeds a few times a day and passes on only new post titles, for the sources that never email: the school blog, the PTA site, town notices, library events, the sports league.",
+  "example": "Trigger: the 16:00 job finds one new item on the PTA feed and adds 'PTA: book fair volunteers needed (new today)' to the school digest.",
+  "how": "Build the blogwatcher CLI in the admin account from a pinned, reviewed commit and install the binary for the happy user; the bundled skill documents add, blogs, scan, articles and read-all. Tony registers the feeds by hand. A cron command payload (--command-argv, no model call, created by the operator) runs a wrapper script that scans, parses the tool's plain text output, prints unread titles with their source name (length-capped, links dropped unless the host matches the registered feed), marks them read, and prints NO_REPLY when nothing is new. Delivery is announce to the parents under the G001 notification policy, or the titles are handed to the F056 school digest as quoted data.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "G003 jobs registry",
+   "G001 notification policy",
+   "A Go toolchain or prebuilt blogwatcher binary for the happy user",
+   "Each site actually publishing a feed",
+   "A blogwatcher binary built in the admin account from a pinned, reviewed commit and installed for the happy user",
+   "First check which of the family's school, PTA, town, library and league sites publish a feed; if fewer than three do, drop this"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Many school portals and social pages publish no feed; blogwatcher's HTML fallback needs a CSS selector per site and breaks on redesigns.",
+   "A feed reader app or search alerts already do this for a parent who will open them; the gain is one combined digest.",
+   "blogwatcher keeps its state in its own SQLite file in the happy user's home, one more item for the G007 backup list.",
+   "Titles only; reading a post's body is a research-agent task (F019).",
+   "Command payloads run on the Gateway host as the happy user, outside the Colima sandbox and outside agent tool policy, so the blogwatcher binary and the wrapper are trusted code next to every family secret. The project is a small personal repository with no tagged releases: build a reviewed, pinned commit rather than installing @latest, and give the job a minimal environment.",
+   "blogwatcher documents only coloured terminal output, with no JSON mode, so the wrapper has to parse text and needs a fixture test."
+  ],
+  "safety": "It runs as an operator-authored command payload inside the scheduler with no model and no agent tools, so untrusted feed text cannot steer anything; it is only relayed, shortened and stripped of foreign links. The price is that the command runs on the host as the happy user with no sandbox, so the binary is pinned and reviewed and the wrapper gets a minimal environment. If titles are ever given to a model for the digest, that model must be the tool-less school-mail reader, never <p>-main. Requests go only to the feed addresses Tony registered. The bundled skill itself is not loaded into any agent.",
+  "unverified": [
+   "Whether blogwatcher offers machine-readable output or the wrapper must parse its text output",
+   "Which of this family's school and town sites expose feeds",
+   "How stable blogwatcher's text output is across versions (its README documents no machine-readable mode)"
+  ],
+  "overlaps_existing": [
+   "F029",
+   "F056",
+   "F018",
+   "G012"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/blogwatcher/SKILL.md:27",
+    "title": "blogwatcher skill",
+    "anchor": "RSS/Atom",
+    "supports": "The bundled skill wraps a CLI that tracks blog and feed updates.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:22",
+    "title": "Automation payloads",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run a process on the Gateway host with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/Hyaxia/blogwatcher",
+    "title": "blogwatcher (GitHub)",
+    "anchor": "BLOGWATCHER_DB",
+    "supports": "blogwatcher is a Go CLI that tries RSS or Atom first, can fall back to HTML scraping with a selector, and stores state in a local SQLite database.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The model-free command-payload design is sourced and sound, but risk and effort are understated: it runs an unreleased third-party Go binary on the host as the happy user, outside the sandbox, and its README shows no machine-readable output. Raise risk to medium and effort to M, pin a reviewed build, and check that the family's sites publish feeds before building."
+  ],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F032",
+  "origin": "9 Oct",
+  "name": "Grocery and errand capture by text or voice, plus Saturday shop list",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "Parents text 'add oat milk' any time; on Saturday morning each parent gets the open shopping list in one message.",
+  "example": "",
+  "how": "F030 reminders tools for capture; one isolated automation per parent (--cron, --tools, --announce on imessage); voice capture needs channels.imessage.includeAttachments plus transcription.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Flagging staples not bought in three weeks needs completion history; no opened source shows remindctl or Reminders exposing it, so it would need its own log in the F031 store.",
+   "Local voice transcription was not tested; by default the installed stack would send a voice memo to the configured cloud provider."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:77",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "openclaw automations add",
+    "supports": "A scheduled job is created with a cron expression, a timezone and an announce target on the iMessage channel, which is the shape of the Saturday list message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:56",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "--tools",
+    "supports": "A scheduled job can be limited to a named list of tools, so the Saturday run can hold only the list-reading tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments (OpenClaw docs)",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Voice memos and photos are dropped before the agent sees them unless inbound attachments are switched on, which is off on this install.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105086",
+    "title": "Create grocery lists in Reminders on your iPhone - Apple Support",
+    "anchor": "Create grocery lists in Reminders",
+    "supports": "The iPhone already sorts a Groceries-type list into store sections by itself (iOS 17 or later with iCloud Reminders), so Happy adds little to capture and sorting.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "WEB-11",
+  "name": "Recipe link to ingredients and steps",
+  "tier": 2,
+  "cluster": "public pages",
+  "description": "Text a recipe link and get the ingredient list and the steps without the life story and the ads, scaled to the number of people, with an offer to add what is missing to the grocery list.",
+  "example": "\"<recipe link> What do I need for this for six people?\"",
+  "how": "Mechanism choice: plain `web_fetch`, which reduces a page to its main content; schema.org also defines a Recipe vocabulary (`recipeIngredient`, `recipeInstructions`, `recipeYield`) that recipe sites can embed. <p>-main hands the URL to research with `sessions_spawn` and `completionTarget: \"parent\"`; research fetches, makes one `llm-task` call with a small schema (title, yield, ingredients[], steps[], source URL, fetched-at) and returns that JSON as its result; <p>-main scales quantities and proposes list items (F032), written only after a yes. The schema shapes the answer but is not an enforced gate: the result reaches <p>-main as ordinary sub-agent text. Fallbacks in order: WEB-02 `text` action for script-rendered pages; a host-side `summarize --extract` wrapper for video recipes (the CLI is not installed; pin `--firecrawl off` in the wrapper).",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F019 research agent",
+   "F082 llm-task",
+   "F030/F032 for the grocery list"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "The fetch returns the readable article text. It is not documented to return the page's embedded Recipe data, so the model parses ingredients from prose and can drop a line. Always include the source link.",
+   "Some recipe sites sit behind bot walls or paywalls and return nothing; say so instead of guessing.",
+   "The phone's reader view and recipe-keeper apps already do the clean-up; the added value is the hand-off to the shared grocery list.",
+   "Scaling quantities is arithmetic done by a language model: fine for a stew, worth a second look for baking.",
+   "'Add what is missing' assumes Happy knows what is in the kitchen. It does not; in practice it offers the whole ingredient list and the parent strikes what they have.",
+   "The summarize CLI named as the video fallback takes any address and has its own third-party extraction fallbacks. A wrapper must pass `--firecrawl off`, hold no third-party keys, and check the address itself (https, public host), because OpenClaw's SSRF policy does not cover a host-side CLI.",
+   "The reading half works the day the research agent exists; the grocery hand-off, which is the part the phone does not already do, waits on the Reminders bridge.",
+   "On today's config no agent has `web_fetch` or `sessions_spawn` and the `llm-task` plugin is not enabled; all three are config changes that arrive with F019 and F082."
+  ],
+  "safety": "The untrusted page is read by research only, and nothing private goes to research: an address and a serving count. What comes back to <p>-main is text written by a model that has just read an untrusted page. Running it through `llm-task` with a schema fixes its shape, not its content: a step string can still carry instructions, and nothing in the platform forces the check to run. The limits that hold are that <p>-main has no browser or fetch and its recipients are pinned to the family. List writes wait for the parent's yes, a prompt rule that is acceptable at grocery-list stakes.",
+  "unverified": [
+   "Whether web_fetch output ever includes a page's JSON-LD blocks: a search of the installed code found no JSON-LD handling in the fetch extractor, but no live recipe page was fetched.",
+   "How many of the recipe sites this family uses embed schema.org Recipe data.",
+   "Whether a plugin hook can enforce a schema on a sub-agent's result before <p>-main reads it.",
+   "Whether llm-task's isolated completion works through the family's per-person custom provider ids; its allowed-model list has to name them."
+  ],
+  "overlaps_existing": [
+   "F023",
+   "F032",
+   "F033"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:74",
+    "title": "Web fetch: How it works",
+    "anchor": "Runs Readability",
+    "supports": "web_fetch extracts the main content of an HTML page.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://schema.org/Recipe",
+    "title": "schema.org: Recipe",
+    "anchor": "recipeIngredient",
+    "supports": "The standard vocabulary recipe sites use to publish ingredients, instructions, times and yield in machine-readable form.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:84",
+    "title": "llm-task",
+    "anchor": "JSON Schema",
+    "supports": "llm-task can validate a model's JSON output against a supplied schema.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:71",
+    "title": "Bundled skill: summarize",
+    "anchor": "--extract",
+    "supports": "The summarize CLI can return extracted content from a URL or video without a model summary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/announce.md:12",
+    "title": "Sub-agent announce",
+    "anchor": "announce step",
+    "supports": "A sub-agent's result reaches the requester as an announce message written inside the sub-agent session.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "A good low-risk workflow with a safe holder. Two claims need fixing: the schema check is something the model chooses to run, not a platform gate on what research hands back; and the version worth having is 'build', because the grocery hand-off needs the Reminders bridge and neither research nor web_fetch exists yet.",
+   "Mechanism and sources are sound and it is config-only once the research agent exists. The safety claim is too strong: llm-task validates one completion inside research, but what research hands back to <p>-main is ordinary sub-agent text that nothing schema-checks, and a string field can hold any text anyway. Also, the `summarize` fallback is not installed and has its own Firecrawl switch."
+  ],
+  "reviewed_by": 2,
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F033",
+  "origin": "9 Oct",
+  "name": "Sunday meal plan to grocery list (with recipe box)",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "On Sunday afternoon the cook gets five dinner ideas fitted to the week's calendar and allergies; a reply swaps a night or adds missing ingredients to the list.",
+  "example": "",
+  "how": "Isolated automation reads recipes and calendar, saves the plan (store row or wiki synthesis) for the main session to use on reply; ask_user is main-session only; no ordering.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "It depends on the calendar connection (F009) and the Reminders bridge (F030), neither of which exists yet.",
+   "The 9 Oct statement that AI meal-plan features have poor retention has no source opened in this run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:267",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "A new transcript/session id",
+    "supports": "Each isolated run starts a fresh session with no earlier conversation, so the Sunday job has to save the plan somewhere the parent's main session can read when they reply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:15",
+    "title": "Ask user (OpenClaw docs)",
+    "anchor": "only in the main session",
+    "supports": "The structured question tool is not given to scheduled or other non-primary runs, so the plan message can only invite a normal reply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/wiki.md:195",
+    "title": "openclaw wiki CLI reference (OpenClaw docs)",
+    "anchor": "apply synthesis",
+    "supports": "The wiki write path creates or refreshes a synthesis page with a managed body, which is how a recipe or the week's plan could be stored without free-form page edits.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.nutrition.gov/topics/shopping-cooking-and-meal-planning/food-shopping-and-meal-planning",
+    "title": "Food Shopping and Meal Planning | Nutrition.gov (USDA)",
+    "anchor": "Food Shopping and Meal Planning",
+    "supports": "Planning the week's meals first and deriving the grocery list from the plan is the standard household method that USDA's nutrition portal points families to.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F034",
+  "origin": "9 Oct",
+  "name": "Home systems and service-provider registry with lookup",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "Send a photo of an appliance's data plate once; later ask what filter the furnace takes or who fixed the boiler and get the stored answer.",
+  "example": "",
+  "how": "includeAttachments on; the vision model reads the plate; the agent saves a wiki synthesis page (wiki_apply) or a store fact; manual PDFs by URL go through the research agent.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That gpt-6-sol accepts images on Tony's custom provider ids was not checked in this run.",
+   "The memory-wiki route needs that bundled plugin enabled (F043 step 2); with only the shared Markdown folder, the operator types the plate details in by hand."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments (OpenClaw docs)",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Photos sent over iMessage reach the agent only after inbound attachments are enabled; today they are dropped.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding (OpenClaw docs)",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, the original photo is passed to it directly, so reading a data plate needs no extra tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/wiki.md:195",
+    "title": "openclaw wiki CLI reference (OpenClaw docs)",
+    "anchor": "apply synthesis",
+    "supports": "The agent's only wiki write is creating or refreshing a synthesis page or editing metadata, so one synthesis page per appliance is the write shape; entity pages are seeded by the operator.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:68",
+    "title": "PDF tool (OpenClaw docs)",
+    "anchor": "rejected when the tool runs sandboxed",
+    "supports": "A sandboxed agent cannot hand the pdf tool a remote URL, so fetching a manual from the web is a job for the separate research agent, not the parent's main agent.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F036",
+  "origin": "9 Oct",
+  "name": "Babysitter / grandparent sheet",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "'Make the sitter sheet for Friday' returns one message with bedtimes, allergies, medicines and emergency contacts for the parent to forward.",
+  "example": "",
+  "how": "Prompt template referenced from AGENTS.md over F043 facts (plus calendar once connected); mains hold no message tool, so nothing is sent; the Wi-Fi password is never stored.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "'Tonight's plan' needs the calendar connection (F009), which is not built yet."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/safety-prevention/at-home/Pages/babysitting-reminders.aspx",
+    "title": "Babysitting Reminders: Checklist for Parents & Sitters - HealthyChildren.org (American Academy of Pediatrics)",
+    "anchor": "Babysitting Reminders",
+    "supports": "The paediatricians' own checklist lists what parents should always leave with a sitter (parent, neighbour, doctor and emergency contacts, address), which is the content of the sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "Only the top-level bootstrap files are loaded each session, so a sitter template kept in a subfolder must be pointed to from AGENTS.md.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "group:messaging",
+    "supports": "Sending is a separate tool (message) that an agent only has if granted; without it the sheet can only come back as the reply to the asking parent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "The tool-call hook sees tool names and parameters, not reply text, so it cannot scrub a password from an answer; the control is never storing the password.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F037",
+  "origin": "9 Oct",
+  "name": "Draft-only outreach texts (vendors, coaches, carpool parents)",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "Ask for a text to the plumber, the coach or the carpool parents and get ready-to-paste wording; the parent sends it from their own phone.",
+  "example": "",
+  "how": "Prompt-only on <p>-main: no message tool is granted and iMessage Basic mode is plain send/receive to the allowlisted family; vendor names come from F034.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Using tomorrow's calendar in a draft needs the calendar connection (F009), which is not built yet."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "group:messaging",
+    "supports": "Outbound sending is one named tool; an agent that is not granted it can only answer the person who asked, which is what keeps this drafts-only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:84",
+    "title": "iMessage private API (OpenClaw docs)",
+    "anchor": "falls back to basic mode",
+    "supports": "With SIP left on, the channel offers text and media send plus receive only, so there is no richer action surface to worry about.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F038",
+  "origin": "9 Oct",
+  "name": "Home upkeep calendar: maintenance, car care, bins, seasonal nudges",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "Nudges for filter changes, car inspection, seasonal jobs and bins the night before pickup; 'did the furnace filter' updates the record.",
+  "example": "",
+  "how": "Per-parent isolated automations (--cron, --tz, --tools) over the F031 schedule tools; the run answers NO_REPLY when nothing is due; holiday shifts come from a table entered once.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "The catalog writes this job's tools as home-store__schedule_*. docs/tools/multi-agent-sandbox-tools.md:242 gives that double-underscore form to MCP servers; if F031 ships as a defineToolPlugin, the job must list the plugin's own tool names instead."
+  ],
+  "unverified": [
+   "The opened scheduler docs show no holiday calendar; the holiday bin shift relies on the agent reading a table, which was not tested.",
+   "The 90-day filter interval in the catalog is a household choice; the ENERGY STAR page opened here says to check monthly."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:89",
+    "title": "openclaw automations CLI reference (OpenClaw docs)",
+    "anchor": "--cron <expression>",
+    "supports": "Jobs take a standard cron expression with a named timezone, enough for 'first of the month' and 'night before pickup' schedules.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:270",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "NO_REPLY",
+    "supports": "An unattended run that finds nothing to do returns the silent token and no message is delivered, so a daily check stays quiet until something is due.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+    "title": "Maintenance Checklist | ENERGY STAR",
+    "anchor": "Maintenance Checklist",
+    "supports": "The US government efficiency programme advises checking the HVAC filter monthly and a yearly pre-season service, so recurring upkeep reminders reflect real maintenance guidance.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://dmv.ny.gov/inspection/inspection-requirements",
+    "title": "About New York State Inspections - NY DMV",
+    "anchor": "every 12 months",
+    "supports": "A registered vehicle needs a safety inspection once a year, which makes the per-car inspection month a real recurring date worth tracking.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://policy.recollect.net/terms.en-US.html",
+    "title": "ReCollect terms of service",
+    "anchor": "phone call or mobile app notification",
+    "supports": "ReCollect lets residents sign up for collection reminders by email, text message, phone call or app notification.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/recollect_waste",
+    "title": "Home Assistant: ReCollect Waste integration",
+    "anchor": "not an official API",
+    "supports": "Municipalities on ReCollect usually offer a calendar subscription whose URL carries place and service ids, and the JSON endpoint the integration uses is not an official ReCollect API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "--tz",
+    "supports": "Cron schedules can be pinned to an IANA timezone, which the night-before bins line needs.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "SRC-10"
+  ],
+  "adds": [
+   "If the town or hauler uses ReCollect, its address-specific pickup calendar replaces the hand-typed bins table; ReCollect already sends its own reminders, so Happy only folds the line into the evening brief."
+  ],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F039",
+  "origin": "9 Oct",
+  "name": "Kids' chore rota and after-school routine board (parent-run)",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "A parent-run chore and after-school board: Sunday overview, weekday routine lines to the on-duty parent, a quick 'dishes done' to mark it, Saturday tally.",
+  "example": "",
+  "how": "Same automation primitives as F038 over F031 rows; school-holiday skip by returning NO_REPLY; the kids are not users, so parents do every check-off.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Picking the on-duty parent needs the calendar connection (F009), which is not built yet.",
+   "The 9 Oct market rating for chore nudges has no source opened in this run; a paper chart on the fridge may simply be less effort."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:284",
+    "title": "openclaw automations CLI reference (OpenClaw docs)",
+    "anchor": "NO_REPLY",
+    "supports": "When a scheduled run returns only the silent token nothing is posted, which is the only way to skip a weekday on a school holiday since cron itself has no holiday rule.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:56",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "--tools",
+    "supports": "Each board job can be held to the store and calendar tools it needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+    "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+    "anchor": "Age-Appropriate Chores",
+    "supports": "Paediatric guidance supports regular chores, charts or checklists and praise for school-age children, so a weekly rota for an 8 and a 10 year old is a reasonable thing to track.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F044",
+  "origin": "9 Oct",
+  "name": "Document vault: 'file this' (insurance, warranties, manuals)",
+  "tier": 2,
+  "cluster": "memory-knowledge",
+  "description": "'File this as the car insurance policy' stores the PDF, keeps a short summary of the key dates and reminds a parent 30 days before it expires.",
+  "example": "",
+  "how": "New host tool copies the inbound attachment (includeAttachments on) to a fixed folder; pdf extracts text; `openclaw wiki ingest` takes the summary only; own expiry index; nightly --command automation.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "later",
+  "value": 3,
+  "effort": "L",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "No opened page shows a plugin tool resolving an inbound media reference by itself; that step needs a spike.",
+   "A policy document would be read by the cloud model for field extraction; whether that is acceptable is Tony's call."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:66",
+    "title": "PDF tool (OpenClaw docs)",
+    "anchor": "media://inbound/<id>",
+    "supports": "The built-in PDF tool can read an attachment that arrived in chat by its managed inbound reference.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/wiki.md:104",
+    "title": "openclaw wiki CLI reference (OpenClaw docs)",
+    "anchor": "Rejects binary files",
+    "supports": "Wiki ingest takes local Markdown or text only, so the PDF itself cannot go into the vault; only an extracted summary can.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/memory-wiki.md:134",
+    "title": "Memory wiki (OpenClaw docs)",
+    "anchor": "evidence[]",
+    "supports": "The listed claim fields contain no expiry date, so renewal dates need a separate index kept by the filing tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:58",
+    "title": "openclaw automations CLI reference (OpenClaw docs)",
+    "anchor": "--command",
+    "supports": "The scheduler can run a plain script on a schedule without starting a model turn, which suits a nightly expiry scan.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F052",
+  "origin": "9 Oct",
+  "name": "'Did I get an email about X?' lookup and thread summary",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "'Did the dentist confirm?' returns sender, date and gist, or a five-line thread timeline, from the asker's own inbox.",
+  "example": "",
+  "how": "`<p>-main` calls `sessions_spawn` with `agentId` `<p>-mail` (allowed by `subagents.allowAgents`); the child searches with the read-only Gmail MCP and returns a bounded answer.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That `<p>-main` currently lacks `sessions_spawn` in its allow list is taken from the 9 Oct notes; I did not re-read the live config.",
+   "'Quote only what was asked' is a prompt rule in AGENTS.md, not an enforced limit; the summary text does cross into the memory-holding agent.",
+   "Depends on F047 and G015, which are not built."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+    "title": "Sub-agents: thread-bound sessions",
+    "anchor": "subagents.allowAgents",
+    "supports": "A per-agent allowlist names which other configured agents may be targeted by an explicit agent id; the default is only the requester itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:155",
+    "title": "Sub-agents: tool reference",
+    "anchor": "another configured agent id",
+    "supports": "The spawn tool takes an agent id so the child runs as the mail agent with that agent's own tool policy.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "A spawned child can never use the message or scheduling tools, so the mail child cannot send anything itself and can only hand its answer back to the parent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:131",
+    "title": "Bundled gog skill",
+    "anchor": "gog gmail messages search",
+    "supports": "gog has a per-thread search and a per-message search, which cover both 'find the email' and 'walk the thread' lookups.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Inbox workflows",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F053",
+  "origin": "9 Oct",
+  "name": "Draft a reply or note (lands in Gmail Drafts)",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "'Reply to the plumber: Tuesday after 3 works' becomes a threaded draft in the owner's Gmail Drafts; the owner edits and sends.",
+  "example": "",
+  "how": "F048 drafts tool; `gog gmail drafts reply <messageId>` or `--reply-to-message-id` keeps the thread; absence and pickup templates in `AGENTS.md`; send stays blocked by hook.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct caveat that reply drafts may land unthreaded is resolved upstream: gogcli documents `gog gmail drafts reply <messageId>` and `--reply-to-message-id` on `drafts create`."
+  ],
+  "unverified": [
+   "Whether gog's MCP draft tool exposes reply threading; if not, a thin wrapper around the CLI command is needed.",
+   "A reply draft inherits recipients from the thread, so an injected email could steer the To line; the owner must check it before sending. Design caveat, no source.",
+   "Per-adult voice and sign-off quality is model-dependent; not measured."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-gmail-drafts-reply.md",
+    "title": "gogcli command reference: gog gmail drafts reply",
+    "anchor": "Save a reply as a draft",
+    "supports": "gog has a dedicated command that stages a reply to a given message as a draft, with an option to leave out the quoted original.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:15",
+    "title": "Ask user",
+    "anchor": "only in the main session",
+    "supports": "The structured question tool exists only in the main session, so a tone question must be asked by the person's main agent before the hand-off, not by the mail child.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:20",
+    "title": "Standing orders",
+    "anchor": "AGENTS.md",
+    "supports": "Standing instructions such as reply templates belong in the agent's workspace file that is injected into every session.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:67",
+    "title": "Tool call policy hooks",
+    "anchor": "block: true",
+    "supports": "A plugin's before_tool_call handler that returns a block is terminal, so a send tool can be denied in code the model cannot argue with.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Inbox workflows",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F060",
+  "origin": "9 Oct",
+  "name": "Appointment, refill, results and travel-change emails to .ics, reminders and alerts",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "Appointment confirmations become a calendar file plus an evening-before reminder; pharmacy, results and flight-change emails become one-line pings; rebooking stays with a human.",
+  "example": "",
+  "how": "F050 watch for clinic, pharmacy and airline senders, `includeBody: false` for health senders; in-house .ics maker; `--at` reminder; file sent from `channels.imessage.attachmentRoots`.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 3,
+  "effort": "L",
+  "caveats": [],
+  "corrections": [
+   "'Keep PHI senders subject-only (small maxBytes)': the plugin has an exact switch for this, `includeBody: false` per account entry (dist/extensions/imap/openclaw.plugin.json:232; index.js:55727), which drops body and snippet. `maxBytes` has a floor of 256, so a small value alone still passes the start of the body.",
+   "The 9 Oct note that the plugin 'already de-dups' needs a caveat: the doc says this path does not promise exactly-once processing after a crash (docs/automation/imap.md:158), so an occasional repeat or miss is possible."
+  ],
+  "unverified": [
+   "That a .ics file sent through imsg Basic mode arrives as a tap-to-add calendar attachment; the installed docs describe outbound files in general and have no .ics handling.",
+   "Whether two IMAP account entries with different settings can watch the same mailbox (needed to treat health senders differently in one inbox).",
+   "Airline, pharmacy and clinic apps already push most of these alerts; not checked on vendor pages.",
+   "The .ics maker (F010) is in-house and not built."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:21",
+    "title": "iMessage: media and delivery targets",
+    "anchor": "channels.imessage.attachmentRoots",
+    "supports": "Outbound files are sent through the iMessage channel only from allowed attachment roots, which is where a generated calendar file must be written.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:160",
+    "title": "IMAP email trigger",
+    "anchor": "maxBytes",
+    "supports": "Email bodies handed to the reader are capped by a per-account byte limit, and new messages are de-duplicated across gateway restarts.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "The open iCalendar standard defines the event and alarm components a generated calendar file must contain.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/calendar/use-siri-suggestions-iclc121e66ee/mac",
+    "title": "Apple Support: Use Siri Suggestions in Calendar on Mac",
+    "anchor": "Siri Suggestions calendar",
+    "supports": "Apple's own Calendar already picks up events it recognizes in Mail and offers them as suggestions, so part of this feature duplicates the phone and Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:9",
+    "title": "LLM task",
+    "anchor": "llm-task",
+    "supports": "A bundled optional plugin tool runs one JSON-only model call and can validate the result against a schema, which suits pulling amount and due date out of a statement email.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:270",
+    "title": "Automation payloads",
+    "anchor": "no one is present",
+    "supports": "Scheduled isolated runs are unattended, so a step such as 'owner confirms this is a subscription' cannot happen inside the job and belongs in the chat session.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:18",
+    "title": "Automation schedules",
+    "anchor": "--at",
+    "supports": "A one-shot schedule at a timestamp or relative delay is available for the two-day-before nudge.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/mail/answer/7190",
+    "title": "Gmail Help: Refine searches in Gmail",
+    "anchor": "newer_than:",
+    "supports": "Gmail's documented search operators (sender, subject, label, age such as newer_than) are what the read tool's queries are written in.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:15",
+    "title": "Ask user",
+    "anchor": "only in the main session",
+    "supports": "The structured question tool exists only in the main session, which is where a parent's private agent runs; the same page says plain-text replies work on any channel.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "A configured cloud provider key is tried before any local transcriber, so keeping voice memos on the Mac needs an explicit local entry.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work",
+    "anchor": "auto-delete after successful completion",
+    "supports": "Evening-before and morning-of reminders are one-shot jobs that clean themselves up after firing.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/ggml-org/whisper.cpp",
+    "title": "ggml-org/whisper.cpp",
+    "anchor": "whisper-cli",
+    "supports": "whisper.cpp is a C/C++ port of Whisper that runs on Apple Silicon with Metal, and its command-line program is the one the audio doc names.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F059",
+   "F066"
+  ],
+  "adds": [],
+  "wave": "C",
+  "section": "Inbox workflows",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F061",
+  "origin": "9 Oct",
+  "name": "Tax document checklist (January to April)",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "January to April, a Saturday digest of which expected tax forms have arrived by email and which are still missing; form contents are never opened.",
+  "example": "",
+  "how": "F050 watch on payroll, broker and bank senders; `automations create '0 9 * 1-4 6'` with `--tools \"\"`, checklist text injected into the job prompt.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "The family's own expected-forms list (Form 1098, 529 and childcare statements) is theirs to write; the IRS page fetched does not name Form 1098.",
+   "Where the reader records 'form X available' between runs; needs an in-house store.",
+   "Sender domains for payroll, brokerage and the 529 plan, and whether their mail passes aligned DMARC.",
+   "Cron has no end date; the job must be disabled by hand after filing (from the 9 Oct notes)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools \"\"",
+    "supports": "An empty tool list disables every agent tool for the job, so the digest run cannot read files or fetch anything and its checklist must be in the prompt.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:20",
+    "title": "Automation schedules",
+    "anchor": "5-field or 6-field cron expression",
+    "supports": "Recurring jobs accept standard cron expressions with an optional time zone flag.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:86",
+    "title": "IMAP email trigger",
+    "anchor": "allowedSenders",
+    "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/filing/gather-your-documents",
+    "title": "IRS: Gather your documents",
+    "anchor": "Form 1095-A",
+    "supports": "The IRS lists the records a household collects before filing (W-2, 1099 variants, 1095-A, childcare, mortgage, property tax and donation records) and says information returns arrive in January or February.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Inbox workflows",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F018",
+  "origin": "9 Oct",
+  "name": "Severe-weather, snow-day and weather-chore watch",
+  "tier": 2,
+  "cluster": "digests-briefs",
+  "description": "Both parents get a three-line heads-up once per new winter storm, wind, flood or freeze alert for home, with a school-night closure reminder and a chore checklist.",
+  "example": "",
+  "how": "Host command job, `--command-argv '[\"node\",\"scripts/nws-alerts.mjs\"]'` every 30 minutes, polls api.weather.gov `/alerts/active?point=`, dedups on alert `id`, prints `NO_REPLY` otherwise; zero model calls.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That an NWS update to an existing alert arrives under a new id pointing back through `references`: the fields were seen, their semantics were not read, so the dedup rule needs a test.",
+   "The current weather plugin returns alerts without an id (read in ~/src/happy-config, not a citable source kind), which is why the script calls the API directly.",
+   "The Apple Weather app's own severe-weather notification switch: Apple's page loaded only its table of contents in this run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:22",
+    "title": "Automation payloads",
+    "anchor": "--command-argv <json>",
+    "supports": "A command payload runs a process on the Gateway host with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-alerts",
+    "title": "NWS Alerts Web Service documentation",
+    "anchor": "point=39,-90",
+    "supports": "Active alerts can be requested for a single latitude and longitude, and the service asks clients not to poll more often than every 30 seconds.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service API Web Service documentation",
+    "anchor": "A User Agent is required",
+    "supports": "The alert API is free and open, needing only an identifying User-Agent header.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/alerts?limit=1",
+    "title": "api.weather.gov /alerts response (live sample)",
+    "anchor": "messageType",
+    "supports": "Each alert record carries an id plus references, message type, event, severity, headline and end time, enough for once-only delivery and a three-line text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102516",
+    "title": "Apple Support: Government, Emergency, and Enhanced Safety Alerts on iPhone",
+    "anchor": "AMBER alerts",
+    "supports": "iPhones already receive government extreme-weather alerts, so the added value is the school-night and chore framing, not the alert itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/webservices",
+    "title": "AirNow API: Web Services",
+    "anchor": "Zip Code",
+    "supports": "AirNow lists current forecast and current observation services that can be queried by ZIP code or latitude and longitude.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/faq",
+    "title": "AirNow API: FAQ",
+    "anchor": "until the next hour",
+    "supports": "Calls are tied to an API key and a web service that reaches its hourly maximum stops returning data until the next hour.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/",
+    "title": "AirNow API: Home",
+    "anchor": "preliminary",
+    "supports": "The API is open to the public and its data are described as preliminary and subject to change.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/docs/AirNowAPIUpdates2026June.pdf",
+    "title": "AirNow API updates notice, June 2026 (PDF)",
+    "anchor": "retired on September 30th, 2026",
+    "supports": "Six existing web services were retired on 30 Sep 2026 and replaced by new ones such as Current Forecasts by Reporting Area at /aq/forecast/current/.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/docs/AirNowAPIFactSheet.pdf",
+    "title": "AirNow API fact sheet (PDF)",
+    "anchor": "An AirNow API account is required",
+    "supports": "An account is required for the web services and feeds, and output is available as CSV, JSON or XML.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/alerts/types",
+    "title": "NWS API: alert event types",
+    "anchor": "Air Quality Alert",
+    "supports": "The NWS alert API that Happy already polls includes an Air Quality Alert event type among its event types.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105038",
+    "title": "Apple Support: Feature availability and data sources in the Weather app",
+    "anchor": "BreezoMeter",
+    "supports": "Apple's Weather app shows air-quality information in the United States using a commercial provider, so the phone already displays an AQI figure; the page mentions no air-quality notification.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, so announced text is later visible to the agent that owns that session.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "SRC-01"
+  ],
+  "adds": [
+   "The weather-alert feed Happy will poll already carries an Air Quality Alert type, so the same watch can cover smoke and ozone days; an AirNow forecast key is optional and only worth adding if such days recur."
+  ],
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "SRC-03",
+  "name": "Product recall watch matched to what the family owns (CPSC)",
+  "tier": 2,
+  "cluster": "Recalls and safety",
+  "description": "Happy checks the Consumer Product Safety Commission's recall list each day and texts only when a recall matches something the family owns or a kid-product keyword, instead of the parents skimming every recall email. A query for recalls since 20 Sep 2026 returned 31 in under three weeks, so the filter is the feature.",
+  "example": "Trigger: a new recall whose product name contains a brand on the family's owned-items list. Text: 'CPSC recall 26-xxx: <product title>. Hazard: burn. Remedy: refund. Link: cpsc.gov/...'",
+  "how": "Operator-created command job (no model): `--cron '15 7 * * *' --command-argv '[\"node\",\"scripts/cpsc-recalls.mjs\"]' --announce --to <parent>`. The script requests `https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=<last run>` (date filter only, nothing about the family in the URL), keeps seen RecallID values in a state file, and matches Title, Products, Manufacturers, Retailers and ProductUPCs locally against (a) owned-item keywords exported from family.json5 or the F034 registry and (b) a short kid-category list. Owned match: one text now. Category match: held for a Sunday digest of at most five. Otherwise `NO_REPLY`.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F018 command-job pattern",
+   "F034 home systems registry or a hand-kept owned-items list",
+   "G003 jobs registry",
+   "G001 notification policy"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "The match is only as good as the owned-items list; substring matching on brand names will produce some false positives and miss unlisted items.",
+   "CPSC already offers its own recall emails, an RSS feed and an app. Happy adds the match against the family's own list, not earlier notice.",
+   "No key or rate limit is documented on the API page; poll once a day, not more.",
+   "Vehicles and car seats are handled by NHTSA, food and medicine by FDA and USDA; see SRC-04 and SRC-05.",
+   "Run one job per parent with its own seen-id state file; with a shared file the second parent's job finds nothing new and stays silent."
+  ],
+  "safety": "No model runs in the job. Recall titles are published by CPSC but name companies and products, so the script prints them through a fixed template, stripped to plain letters, digits and spaces, capped in length, with only the cpsc.gov link. The request reveals nothing about the household. Delivery is the job's pinned parent target. The installed source mirrors a delivered announce line into the session transcript of the agent that owns the job, so that agent can read the line on a later turn: own these jobs with a memory-less, tool-less agent, or accept the sanitised line in the parent agent's transcript.",
+  "unverified": [
+   "Formal terms of use or rate limit for the recall web service (the page read gives none).",
+   "Whether text announced by a command job is also written into the receiving agent's session transcript; the script keeps output short and templated in case it is.",
+   "Documentation for the RecallDateStart parameter (it is not on the API information page read; it is confirmed only by the live response).",
+   "Which agent's session receives the mirrored line for a command job, to be checked by reading the transcript after the first run."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information",
+    "title": "CPSC Recalls API information",
+    "anchor": "RestWebServices/Recall",
+    "supports": "CPSC publishes a recall retrieval web service at saferproducts.gov that returns XML by default or JSON with format=json and shows no access key.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2026-09-20",
+    "title": "CPSC recall web service, live response",
+    "anchor": "RecallNumber",
+    "supports": "A keyless request filtered by RecallDateStart returned 31 recall records dated 24 Sep to 8 Oct 2026 with fields such as RecallID, Title, Products, Retailers, ProductUPCs, Hazards and Remedies.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cpsc.gov/Recalls",
+    "title": "CPSC Recalls",
+    "anchor": "Recall RSS",
+    "supports": "CPSC itself offers recall email subscriptions, an RSS feed and a recall app, which is the baseline this feature has to beat.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:191",
+    "title": "Automation payloads: command output",
+    "anchor": "NO_REPLY",
+    "supports": "A command job that prints only NO_REPLY posts nothing to chat, which keeps a daily poll silent when nothing matches.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/server-cron-JBzIvkak.mjs:377",
+    "title": "Installed source: cron announce sender",
+    "anchor": "completion announcement mirror",
+    "supports": "The function that sends a cron announce payload resolves a route session for an explicit target and mirrors the completion text into it.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources and the live feed hold. One open question is now answered from the installed source: an announced command-job line is mirrored into a session transcript, so the safety text and the unverified list change, and the per-parent state file needs saying."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ }
+]

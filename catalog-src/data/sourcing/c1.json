@@ -1,0 +1,770 @@
+[
+ {
+  "id": "F001",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "Photos, PDFs and voice memos sent to Happy actually reach the agent; today a message that is only an attachment is dropped without a reply.",
+  "how_short": "Set channels.imessage.includeAttachments: true; Basic mode already carries media; default attachment root covers the happy user; inbound caps are 10 MB image, 20 MB audio.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "includeAttachments",
+    "supports": "Inbound attachments are off by default and attachment-only messages are dropped before the agent until this key is set to true."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:84",
+    "title": "Enabling the imsg private API",
+    "anchor": "falls back to basic mode",
+    "supports": "With SIP left on, imsg still sends and receives text and media, so attachments do not need the Private API."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:63",
+    "title": "Media understanding",
+    "anchor": "10MB image, 20MB audio",
+    "supports": "Inbound media understanding has default size limits of 10 MB for images and 20 MB for audio, separate from the outbound media cap."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "Data controls in the OpenAI platform",
+    "anchor": "abuse monitoring logs",
+    "supports": "OpenAI keeps abuse-monitoring logs, which can include prompt and response content, for up to 30 days by default on all API usage unless Zero Data Retention is approved."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' asks for an attachmentRoots entry and treats mediaMaxMb 16 as the limit for incoming files. media.md:23-25 says the default root pattern already covers every user's Messages folder (configured roots are merged, not replaced) and mediaMaxMb is the outbound cap. The Markdown wording already reflects this.",
+   "'Under store:false' covers less than it reads. OpenAI's data-controls page says store only governs application state; abuse-monitoring logs with prompt and response content are still kept up to 30 days by default. Family photos sent to the model fall under that unless the OpenAI organisation has Zero Data Retention."
+  ],
+  "unverified": [
+   "That the gateway process under the happy account already has Full Disk Access to the Messages attachments folder comes from the 9 Oct notes and was not re-checked.",
+   "Whether OpenClaw treats the per-person custom provider ids exactly like the stock OpenAI provider for image input was not tested live (the config repo does declare image input for both models)."
+  ]
+ },
+ {
+  "id": "F002",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it.",
+  "how_short": "Images pass natively to gpt-6-sol; attached PDFs arrive as extracted text blocks; the optional pdf tool (group:media) adds page selection via local PDFium, 10 MB and 20 pages by default.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:92",
+    "title": "PDF tool",
+    "anchor": "document-extract",
+    "supports": "For providers other than Anthropic and Google the pdf tool extracts text and page images locally with the bundled document-extract plugin (clawpdf, PDFium)."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, OpenClaw hands it the original image instead of a text summary."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:92",
+    "title": "Configuration — tool policy",
+    "anchor": "group:media",
+    "supports": "The pdf tool belongs to group:media, so under the minimal profile it must be allowed explicitly and any group deny removes it."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "title": "GPT-6 Sol model reference (OpenAI API docs)",
+    "anchor": "gpt-6-sol",
+    "supports": "OpenAI lists text and image as this model's input modalities and text as its only output; audio input is not listed."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' says view_image is already granted and sets agents.defaults.pdfModel to luna. The minimal profile contains only session_status and gateway (tool-policy.md:36), and pdfModel is an agents.defaults key that is unset by default (pdf.md:124). The Markdown already drops both."
+  ],
+  "unverified": [
+   "Reading accuracy on blurry phone photos and scanned image-only PDFs was not measured; pages with under 200 characters of text are rendered to images for the vision model (pdf.md:93).",
+   "Whether PDF links, as opposed to attachments, should be readable is left open; the pdf tool rejects remote URLs when it runs sandboxed (pdf.md:68)."
+  ]
+ },
+ {
+  "id": "F003",
+  "tier": 1,
+  "readiness": "build",
+  "one_line": "A parent sends a voice memo instead of typing; the Mac mini transcribes it locally, echoes the text back and answers. Only the transcript reaches the cloud model.",
+  "how_short": "Explicit tools.media.models CLI entry (whisper-cli, capabilities audio, {{AttachmentPath}}) plus echoTranscript; needs brew whisper.cpp, ffmpeg and a GGML model file; OpenClaw converts to WAV itself.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "In auto-detection a configured provider API key is tried before any local speech binary, which is why the local CLI has to be listed explicitly to keep audio on the Mac."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:243",
+    "title": "Audio and voice notes",
+    "anchor": "echoTranscript: true",
+    "supports": "One audio setting makes the gateway echo the transcript to the chat before the agent answers."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/runner.entries-Du3EDemB.mjs:338",
+    "title": "OpenClaw media-understanding CLI runner (bundled source)",
+    "anchor": "whisper-cli",
+    "supports": "For whisper-cli the runner first converts any non-WAV attachment to 16 kHz mono WAV with ffmpeg, so ffmpeg must be present on the host."
+   },
+   {
+    "kind": "web",
+    "ref": "https://formulae.brew.sh/formula/whisper.cpp",
+    "title": "Homebrew Formulae: whisper.cpp",
+    "anchor": "GGML model files",
+    "supports": "The Homebrew formula (formerly whisper-cpp) installs whisper-cli but ships no model files and does not list ffmpeg as a dependency; both must be added separately."
+   }
+  ],
+  "corrections": [
+   "Markdown pairs a whisper-cpp install with audio.preferredModel: \"cli:whisper\". The matcher compares that value with cli: plus the entry's exact command string (dist/resolve-KJuMET3H.mjs:148), so for whisper-cpp it must be cli:whisper-cli, or cli: plus the full path used in the entry; cli:whisper only matches the Python whisper CLI.",
+   "The Homebrew formula is now named whisper.cpp (formerly whisper-cpp) and its page says GGML model files are not downloaded by default. The 9 Oct note about a model that downloads automatically describes the Python whisper CLI (media-understanding.md:168), not whisper-cli.",
+   "ffmpeg is a hard requirement the Markdown leaves out: upstream whisper-cli reads only 16-bit WAV (github.com/ggml-org/whisper.cpp README), OpenClaw shells out to ffmpeg for that conversion (dist/ffmpeg-exec-VIr-PIWC.mjs:25 prints the brew install hint), and the formula does not pull ffmpeg in."
+  ],
+  "unverified": [
+   "The container format of iMessage voice memos, and whether ffmpeg decodes it cleanly, were not tested.",
+   "Transcription speed on the M5 Pro and accuracy for Chinese or mixed-language speech were not measured.",
+   "Whether the per-person custom provider ids count as OpenAI audio auth in auto-detection is undocumented; the explicit CLI entry sidesteps the question."
+  ]
+ },
+ {
+  "id": "F004",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "On request, or after a voice memo, Happy's reply also arrives as an audio file to tap and play. The phone can already read texts aloud in the car.",
+  "how_short": "tts provider tts-local-cli running macOS say (WAV file, offline); tts.auto \"inbound\" per agent or /tts audio on demand; iMessage gets a plain attachment, not a voice bubble.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:27",
+    "title": "Text-to-speech field reference",
+    "anchor": "inbound",
+    "supports": "Auto-TTS has an inbound mode that sends audio only after the user has sent a voice message."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:141",
+    "title": "Text-to-speech configuration",
+    "anchor": "command: \"say\"",
+    "supports": "The documented Local CLI preset runs the macOS say command with a WAV output format and needs no API key."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:46",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "Local CLI",
+    "supports": "A Local CLI provider delivers audio in its configured output format, so the say preset yields WAV rather than MP3."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "With iOS 15 or later Siri can read incoming messages aloud in the car, so the phone already covers hands-free listening to Happy's text replies."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON description says the reply returns 'as an MP3 attachment'. With the free say path the file is WAV (tts/output.md:46, configuration.md:143); MP3 comes only from cloud speech providers. The Markdown already says WAV."
+  ],
+  "unverified": [
+   "That the documented say preset writes a valid WAV on macOS 27 without extra data-format flags was not run.",
+   "How Messages on iPhone presents a WAV attachment (inline player or plain file) was not tested.",
+   "The 1,500-character summarise-or-truncate threshold is documented (tts/commands.md:104) but its effect on long replies here was not tried."
+  ]
+ },
+ {
+  "id": "F005",
+  "tier": 1,
+  "readiness": "not-recommended",
+  "one_line": "A parent asks for a coloring page or card picture and gets an image back on iMessage; it works, but it drags in a provider route this setup avoids.",
+  "how_short": "image_generate with openai/gpt-image-2 needs the bundled openai provider (API key or models.providers.openai); that auth then leads audio and PDF auto-selection unless pinned.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/providers/openai/image-and-video.md:12",
+    "title": "OpenAI image generation",
+    "anchor": "plugin registers image generation",
+    "supports": "Image generation comes from the bundled openai plugin under the openai/gpt-image-2 model ref with an OpenAI API key or Codex OAuth, not from a custom chat provider id."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/providers/openai/advanced.md:228",
+    "title": "OpenAI advanced configuration",
+    "anchor": "store: true",
+    "supports": "Direct OpenAI Responses models on the stock openai provider have store forced on, which is the chat route this household deliberately avoids."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "Once OpenAI provider auth exists it is chosen for transcription ahead of local binaries in auto-detection, so local speech-to-text must be pinned first."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "Data controls in the OpenAI platform",
+    "anchor": "/v1/images/generations",
+    "supports": "The Images endpoint keeps no application state, so there is no store switch to turn off, but its abuse-monitoring logs are retained for 30 days by default."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' says 'on the existing key (custom provider id, store:false)'. The image route is the bundled openai plugin (image-and-video.md:12), and the Images endpoint has no application-state storage to disable (OpenAI data-controls table). The Markdown already says this.",
+   "Catalog JSON 'needs' puts a per-day cap 'in AGENTS.md or plugin config'. A search of image-generation.md in this run found no per-day or quota setting, so a cap can only be a prompt rule plus the OpenAI project budget."
+  ],
+  "unverified": [
+   "Price per image for gpt-image-2 and whether the family's OpenAI project has access to it were not checked.",
+   "Whether a parent-requested picture for a child counts as kids' content under the family's never list is a policy call, not a sourced fact.",
+   "The reviewers' remark that the ChatGPT app already does this was not sourced."
+  ]
+ },
+ {
+  "id": "F006",
+  "tier": 2,
+  "readiness": "now",
+  "one_line": "Happy joins a three-way iMessage group with both parents, answers when addressed by name, and that chat becomes the place shared announcements land.",
+  "how_short": "groupPolicy allowlist with groupAllowFrom and a groups[chat_id] entry; bindings[] with peer kind group routes it to a stateless family-group agent; mention gating uses the agent name.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:45",
+    "title": "iMessage access control and routing",
+    "anchor": "gates back-to-back",
+    "supports": "Group messages must pass a sender allowlist and then a per-chat registry keyed by chat_id before they reach an agent."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:77",
+    "title": "iMessage access control and routing",
+    "anchor": "identity.name",
+    "supports": "iMessage has no native mentions, so the bot is addressed through patterns derived from the routed agent's name."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-bindings.md:98",
+    "title": "Agent bindings",
+    "anchor": "peer.kind",
+    "supports": "A binding can match one specific group conversation and route it to a dedicated agent."
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/imsg",
+    "title": "steipete/imsg README (GitHub)",
+    "anchor": "imsg chats",
+    "supports": "Without disabling SIP, imsg can list chats with their ids, watch a chat and send text and files; only rich actions and chat management need the injected helper."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON description includes a 'tell everyone dinner is at 6:30' relay and gives the group agent calendar and list tools. Neither exists on the installed stack; the Markdown already moves the relay to G009 and limits version 1 to weather and search."
+  ],
+  "unverified": [
+   "Receiving and replying in a three-person group in Basic mode has not been tried live on this Mac; the docs warn that some multi-person threads arrive flagged as non-group unless the chat id is registered (access-control.md:152-153).",
+   "Whether a voice memo in the group can satisfy the mention gate on iMessage is not documented (audio.md:286 defers to channel docs).",
+   "The numeric chat id is unknown until the group is created and read with imsg chats."
+  ]
+ },
+ {
+  "id": "G009",
+  "tier": 1,
+  "readiness": "build",
+  "one_line": "Happy can pass a short text from one parent to the other or to the parents' group, and can never message anyone outside the family.",
+  "how_short": "message tool on <p>-main with a before_tool_call plugin hook that blocks any target not in family.json5 (fails closed); host jobs use openclaw agent --deliver or openclaw message send.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Configuration — tool policy",
+    "anchor": "group:messaging",
+    "supports": "The message tool is the single member of group:messaging, so it is granted or denied as one unit."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/tool-permissions.md:39",
+    "title": "Tool and agent permissions",
+    "anchor": "allowWithinProvider",
+    "supports": "The documented built-in limits on where the message tool may send are switches for other conversations, open by default; nothing on the page pins recipients, so a hook is needed."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Hook reference",
+    "anchor": "Fail closed",
+    "supports": "A before_tool_call handler that throws or times out blocks the tool call, so a recipient check placed there cannot be skipped by an error."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/agent-send.md:80",
+    "title": "Agent send",
+    "anchor": "--deliver",
+    "supports": "A host-side script can run one agent turn and deliver the reply to a chat target from the command line."
+   }
+  ],
+  "corrections": [
+   "Markdown adds message_sending 'as a second gate'. That hook can cancel a send, but when its handler throws or times out it is logged and skipped (hooks/reference.md:94), so it fails open; only the before_tool_call check is fail-closed.",
+   "The 9 Oct 'needs' implies that enabling the tool plus the hook is enough. The live config turns both crossContext switches off, and tool-permissions.md:39 says that confines sends to the current conversation, so the same-provider switch must be re-opened and the hook then becomes the only recipient limit."
+  ],
+  "unverified": [
+   "The exact parameter that carries the recipient in a message tool call, which the hook must match, was not read from source.",
+   "openclaw message send takes no agent flag and runs as the configured System Agent (cli/message.md:35-50); whether that suits per-person jobs was not tested.",
+   "The hook plugin and its family-only test case do not exist yet, so blocking an unknown recipient is unproven on this install."
+  ]
+ },
+ {
+  "id": "G011",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "Happy replies in the language each person writes in and, on request, turns a school note into short Chinese text a parent can forward to a grandparent.",
+  "how_short": "Per-person language directive rendered into USER.md (4,000-character cap); scheduled jobs need the language written into the job message; no new tool and no send path.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:367",
+    "title": "User model",
+    "anchor": "4,000-character",
+    "supports": "USER.md is the always-injected per-person directive file with a small fixed size cap, which is where a language preference belongs."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:140",
+    "title": "Automation delivery",
+    "anchor": "do not infer a reply language",
+    "supports": "Scheduled jobs do not pick up a language from the chat, so each digest or reminder must state its language in the job text."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:56",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "zh-CN-XiaoxiaoNeural",
+    "supports": "Only the online Microsoft speech provider switches to a Chinese voice automatically for mostly-Chinese text."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/123720",
+    "title": "Use Live Translation on iPhone - Apple Support",
+    "anchor": "Live Translation",
+    "supports": "On supported iPhones Messages can translate a conversation automatically and on device, which overlaps with the grandparent-translation use."
+   }
+  ],
+  "corrections": [
+   "A 9 Oct verifier note says there is no per-language voice switch. tts/output.md:56 documents one for the bundled Microsoft provider, which is an online service; it does not help the offline say path."
+  ],
+  "unverified": [
+   "Translation quality into Chinese by gpt-6-sol for school notices was not evaluated.",
+   "Which iPhone models and languages Apple's Live Translation covers for this family was not confirmed; the Apple page defers to an availability list.",
+   "Whether the macOS say default voice pronounces Chinese text was not tested."
+  ]
+ },
+ {
+  "id": "F007",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "\"Remind me at 4:30 to pick up the kids\" or \"every Sunday 7 pm: bins out\" becomes a scheduled text to the asker, and reminders can be listed and cancelled.",
+  "how_short": "automations tool (cron alias) allowed on <p>-main; --at one-shots auto-delete; recurring --cron with --tz; jobs capped with --tools \"\"; only senders in commands.ownerAllowFrom may use it.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:73",
+    "title": "Configuration — tool policy",
+    "anchor": "automations",
+    "supports": "The scheduler is exposed to agents as the automations tool, with cron kept as an alias, inside group:automation."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work",
+    "anchor": "auto-delete after successful completion",
+    "supports": "One-shot reminders remove themselves once delivery is confirmed, so no clean-up flag is needed."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:99",
+    "title": "Automation delivery",
+    "anchor": "preserved live delivery target",
+    "supports": "A reminder an agent creates from a live chat keeps that chat as its delivery target, so it texts the person who asked."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baselines",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Only owner senders may use the scheduling tool from chat, so each parent has to be listed as an owner before they can set reminders."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' lists --delete-after-run. One-shot --at jobs already delete themselves after confirmed delivery (how-it-works.md:19). The Markdown already says so."
+  ],
+  "unverified": [
+   "Creating a reminder from an iMessage owner turn has not been tried live on this install; managing-jobs.md:81 describes chat creation for Control UI administrators, and the owner-only /loop command is the documented chat shortcut for recurring jobs.",
+   "The comparison with Siri and Apple Reminders for one-off personal timers was not sourced."
+  ]
+ },
+ {
+  "id": "F008",
+  "tier": 1,
+  "readiness": "now",
+  "one_line": "\"Next time Costco comes up, remind me about the vitamins\" is stored and surfaces as a hint when those exact words appear in a later chat.",
+  "how_short": "intent tool from memory-core, owner senders only; deterministic keyword match with no model call; defaults 24-hour cooldown, 3 fires, 90-day expiry; folded into F007 as a footnote.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:27",
+    "title": "Standing intents",
+    "anchor": "commands.ownerAllowFrom",
+    "supports": "Only channel owners receive the intent tool to create, list or cancel standing intents."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:56",
+    "title": "Standing intents",
+    "anchor": "deterministic FTS keyword prefilter",
+    "supports": "Matching is a keyword filter that fires only when every term of a trigger appears in the turn, so paraphrases miss."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:48",
+    "title": "Standing intents",
+    "anchor": "cooldown: 24 hours",
+    "supports": "Defaults are conservative: a 24-hour cooldown, at most three fires and a 90-day expiry."
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2606.23459",
+    "title": "TriggerBench: Investigating Prospective Memory for Large Language Models (arXiv 2606.23459)",
+    "anchor": "TriggerBench",
+    "supports": "A 2026 benchmark paper finds language models get much worse at acting on a remembered future trigger as context grows, the reason a structural matcher is used here."
+   }
+  ],
+  "corrections": [],
+  "unverified": [
+   "How often the all-terms keyword match fires on natural family phrasing was not measured; expect misses.",
+   "That memory-core is the active memory plugin on the person agents comes from the 9 Oct notes."
+  ]
+ },
+ {
+  "id": "F009",
+  "tier": 1,
+  "readiness": "build",
+  "one_line": "\"What's on Saturday?\" or \"is anyone free Friday at 1?\" is answered from the family Google Calendar, read-only; it also feeds the daily briefs.",
+  "how_short": "Host-side stdio MCP per person: gog mcp with --readonly exposes calendar_events; freebusy and conflicts need a thin wrapper; allow bundle-mcp in the sandbox gate; publish the OAuth app.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Configuration — tool policy",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers are plugin-owned tools that sandboxed sessions only see when the sandbox tool allowlist includes bundle-mcp or the server's tool names."
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp.html",
+    "title": "gogcli docs: MCP server",
+    "anchor": "calendar_events",
+    "supports": "gog ships its own stdio MCP server whose only Calendar tool is a read tool that lists events; write tools stay hidden unless explicitly allowed."
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/gog-auth-add.html",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--readonly",
+    "supports": "Adding an account with the read-only flag requests read-only OAuth scopes and blocks mutating requests at runtime."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Using OAuth 2.0 to Access Google APIs (Google for Developers)",
+    "anchor": "expiring in 7 days",
+    "supports": "An external OAuth app left in Testing status gets refresh tokens that expire after seven days, so the app must be published for an always-on agent."
+   }
+  ],
+  "corrections": [
+   "The 9 Oct wording has Tony hand-write the calendar MCP server. gogcli.sh/mcp.html documents a built-in stdio server (gog --account <account> mcp) with a read-only calendar_events tool and an --allow-tool filter, so listing events needs no custom code. Freebusy and conflicts exist only as CLI commands (gogcli.sh/commands) and still need a wrapper.",
+   "Catalog JSON 'needs' expects a calendar.readonly scope from --services calendar. The documented switch is --readonly on gog auth add; Google's scope list does include calendar.readonly (developers.google.com/workspace/calendar/api/auth). The Markdown asked to verify the flag; gog's command page confirms it."
+  ],
+  "unverified": [
+   "gog is not installed on this Mac, so its flags were read from gogcli.sh and not from the binary; the bundled skill names the brew formula gogcli while the site shows a tap-qualified name.",
+   "Whether gog's calendar_events MCP tool can be pinned to a single calendar id was not confirmed.",
+   "Google or iCloud is still Tony's open decision; the iCloud route needs the OpenClaw macOS app paired as a node, which is not installed."
+  ]
+ },
+ {
+  "id": "F010",
+  "tier": 2,
+  "readiness": "build",
+  "one_line": "Happy drafts an event from a message or flyer: first as a calendar file the parent taps to add, later a direct calendar write after an explicit approve.",
+  "how_short": "Step 1: small plugin emits an .ics attachment. Step 2: write MCP wrapping gog calendar create with a separate write token; before_tool_call returns requireApproval (10-minute cap), rejects attendees.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:63",
+    "title": "gog skill (bundled with OpenClaw)",
+    "anchor": "gog calendar create",
+    "supports": "The bundled gog skill documents creating a calendar event from the command line."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:88",
+    "title": "Plugin permission requests",
+    "anchor": "capped at 600000",
+    "supports": "A plugin approval waits two minutes by default and ten at most, after which the call is blocked, so the parent must approve promptly or Happy must propose again."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/calendar/api/v3/reference/events/insert",
+    "title": "Events: insert (Google Calendar API reference)",
+    "anchor": "sendUpdates",
+    "supports": "Creating an event needs a write scope such as calendar.events, and guests are only notified when sendUpdates asks for it, so an event without attendees contacts nobody."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "The .ics file is the standard iCalendar format whose event component carries title, start and end, which a small generator can emit."
+   }
+  ],
+  "corrections": [
+   "A 9 Oct note says gog has no delete command. That holds only for the bundled skill text; the gog command index (gogcli.sh/commands) lists gog calendar delete, and gog calendar create accepts --attendees and --send-updates, so the write wrapper must leave delete out and strip those flags itself."
+  ],
+  "unverified": [
+   "That Messages on iPhone offers to add an event when an .ics attachment is tapped: Apple's guide documents .ics import from Mail and by link, and the page body could not be read by the fetch tool.",
+   "That an .ics file passes OpenClaw's outbound media checks on iMessage (reference/rich-output-protocol.md:22) was not tested.",
+   "The in-house .ics generator plugin and the write wrapper do not exist yet.",
+   "Typing /approve in iMessage Basic mode to resolve a plugin approval was not tested end to end; the docs say channels without interactive controls fall back to plain-text /approve (exec-approvals-advanced.md:299)."
+  ]
+ },
+ {
+  "id": "F011",
+  "tier": 2,
+  "readiness": "now",
+  "one_line": "After reading a flyer, slip or schedule, Happy lists the dates it found and offers reminders or calendar entries; nothing is written until the parent says yes.",
+  "how_short": "Prompt-level standing order on top of F002 and F007 (F010 for calendar); plain conversational proposal rather than ask_user, whose wait is 900 seconds by default; llm-task optional.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:181",
+    "title": "Ask user",
+    "anchor": "ask whether it may proceed",
+    "supports": "The ask_user tool is not meant for confirming the agent's own plan, so the yes-or-no step should be an ordinary chat proposal."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:116",
+    "title": "Ask user",
+    "anchor": "900 seconds",
+    "supports": "A structured question times out after 15 minutes by default and one hour at most, too short for parents who answer hours later."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:267",
+    "title": "Media understanding",
+    "anchor": "EXTERNAL_UNTRUSTED_CONTENT",
+    "supports": "Text extracted from an attached file reaches the model wrapped in untrusted-content markers, which supports treating flyer text as data and confirming before any write."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:9",
+    "title": "LLM task",
+    "anchor": "optional plugin tool",
+    "supports": "Schema-validated JSON extraction exists as an optional bundled plugin tool that must be enabled and allowed; this feature does not require it."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' relies on ask_user for the confirmation. ask-user.md:181 says not to use it to confirm a plan, and its wait is clamped to one hour at most (ask-user.md:116-117). The Markdown already switches to a plain proposal."
+  ],
+  "unverified": [
+   "Date extraction accuracy on real flyers (missing years, two children, blurry photos) has not been measured.",
+   "The remark that iPhone Live Text already offers add-to-calendar for a single date was not sourced.",
+   "End-to-end behaviour of the calendar half was not assessed because it waits on F010; the reminder half needs only F001, F002 and F007."
+  ]
+ },
+ {
+  "id": "F012",
+  "tier": 2,
+  "readiness": "build",
+  "one_line": "A week before a birthday, anniversary, teacher-gift date or dentist recall each parent gets one line, with last year's gift note when one was recorded.",
+  "how_short": "Dates table rendered into each parent's memory folder; daily isolated automation announces to the owner; or a command payload script that computes the window with no model call.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads",
+    "anchor": "without starting a model-backed turn",
+    "supports": "A scheduled command payload runs a script on the gateway host and delivers its output with no model call, which is enough for a date-window check."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "omit root memory",
+    "supports": "Cron sessions do not get MEMORY.md injected, so the dates must be searchable or embedded in the job itself."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/memory-wiki.md:23",
+    "title": "Memory wiki",
+    "anchor": "openclaw plugins enable memory-wiki",
+    "supports": "The wiki tools the original idea used belong to a bundled plugin that has to be enabled first."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:28",
+    "title": "Automation schedules",
+    "anchor": "staggered by up to 5 minutes",
+    "supports": "A top-of-hour cron job is staggered by up to five minutes unless exact timing is requested, which is fine for a morning heads-up."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON promises 'zero new tools' using wiki_search and wiki_apply on a weekly Monday job. memory-wiki has to be enabled first (memory-wiki.md:20-23), and a weekly run with a seven-day lead gives 7 to 13 days of notice. The Markdown already uses a dates file and a daily job."
+  ],
+  "unverified": [
+   "The family dates table does not exist yet; someone has to enter the dates.",
+   "That phone contacts and calendars already surface birthdays was not sourced.",
+   "That memory-wiki is not enabled today comes from the 9 Oct plugin list, not from a live check."
+  ]
+ },
+ {
+  "id": "G012",
+  "tier": 1,
+  "readiness": "build",
+  "one_line": "School district days off, team schedules and library events appear in Happy's calendar answers by subscribing the family Google Calendar to their public feed links.",
+  "how_short": "No .ics handling in OpenClaw; add each feed in Google Calendar (web, From URL) and read it through F009; a host fetch-and-parse job only if day-old data hurts.",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/calendar/answer/37100",
+    "title": "Subscribe to someone else's calendar (Google Calendar Help)",
+    "anchor": "From URL",
+    "supports": "A public calendar link can be added to Google Calendar from a computer browser only; the phone apps cannot create the subscription."
+   },
+   {
+    "kind": "web",
+    "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule",
+    "title": "Subscribe to a Team Schedule - TeamSnap Playbook",
+    "anchor": "up to 24 hours",
+    "supports": "TeamSnap publishes a team schedule as a calendar link and says Google can take up to a day to show changes, so a cancelled practice may arrive late."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "Public calendar feeds use the standard iCalendar format, so a fallback parser would read a documented open format."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:18",
+    "title": "Automations (cron)",
+    "anchor": "Command-payload runs execute directly",
+    "supports": "A scheduled command payload runs in the gateway process on the host, which is where a fallback feed fetcher would live."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON describes a host job refreshing every 6 hours into home-store; both reviewers replaced it with a Google Calendar subscription. Two details the 9 Oct notes lack: the subscription can only be created in a desktop browser (Google Help 37100), and Google's page gives no refresh interval; the 'up to 24 hours' figure is TeamSnap's.",
+   "gog cannot script the subscription: its calendar subscribe command takes a calendar id, not a feed URL (gogcli.sh/commands/gog-calendar-subscribe.html)."
+  ],
+  "unverified": [
+   "That events from a URL-subscribed calendar are returned through the Google Calendar API, and so through gog, was not confirmed.",
+   "Whether this family's district, club and library actually publish feed links was not checked.",
+   "A search of the installed docs and skills in this run found no .ics, webcal or iCalendar handling; an absence cannot be tied to a line."
+  ]
+ },
+ {
+  "id": "G017",
+  "tier": 2,
+  "readiness": "not-recommended",
+  "one_line": "The parent tagged as driver would get a 'leave by 3:42' text with live traffic; Apple Calendar already sends time-to-leave alerts, so this mostly duplicates the phone.",
+  "how_short": "Host job reads F009 events with a location, calls Google Routes computeRoutes (TRAFFIC_AWARE, API key), texts via G009; nothing in OpenClaw computes drive time.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/goplaces/SKILL.md:3",
+    "title": "goplaces skill (bundled with OpenClaw)",
+    "anchor": "text search, place details, resolve",
+    "supports": "The only bundled Google Maps skill covers place search and details; it has no routing or drive-time command."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/routes/compute_route_directions",
+    "title": "Get a route (Routes API, Google for Developers)",
+    "anchor": "TRAFFIC_AWARE",
+    "supports": "Traffic-aware drive time comes from the Routes API computeRoutes call, which requires a Google Maps Platform API key."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Maps Grounding Lite (Google Maps Platform)",
+    "anchor": "real-time traffic",
+    "supports": "Google's Maps MCP server returns distance and duration only and states it gives no real-time traffic, so it cannot back a with-traffic leave-by time."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/calendar/change-alerts-settings-in-calendar-on-mac-icl40727/mac",
+    "title": "Change Alerts settings in Calendar on Mac - Apple Support",
+    "anchor": "time to leave for events",
+    "supports": "Apple Calendar has a built-in option to notify when it is time to leave for events that have a mapped location."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' offers the Maps Grounding Lite MCP as a source of drive time 'with traffic'. Google's page says that server gives no real-time traffic, and it is a Streamable HTTP endpoint rather than the stdio server a 9 Oct note assumed. Only the Routes API returns traffic-aware duration."
+  ],
+  "unverified": [
+   "Routes API pricing and free-tier limits were not checked.",
+   "Apple's iPhone page for the Time to Leave setting could not be read by the fetch tool; the cited Apple page describes the same alert in Calendar on Mac.",
+   "The driver-tag convention on calendar events that this feature relies on does not exist yet."
+  ]
+ },
+ {
+  "id": "G020",
+  "tier": 2,
+  "readiness": "build",
+  "one_line": "\"What is pending?\" lists upcoming reminders, proposals awaiting a yes, watchers and open requests in one reply, so nothing Happy is holding gets forgotten.",
+  "how_short": "One host-side MCP aggregating openclaw approvals pending --json, automations list and home-store tables; plugin approvals lapse within 10 minutes, so longer-lived proposals need their own table.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:50",
+    "title": "Approvals",
+    "anchor": "openclaw approvals pending --json",
+    "supports": "Pending exec and plugin approvals can be listed from the gateway as JSON with an operator CLI call."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:53",
+    "title": "Approvals",
+    "anchor": "operator.admin",
+    "supports": "Listing every pending approval needs the admin operator scope, so the aggregator has to run host-side with operator credentials rather than inside an agent."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:88",
+    "title": "Plugin permission requests",
+    "anchor": "capped at 600000",
+    "supports": "Plugin approval requests expire after ten minutes at most, so there is no day-long approval queue to display."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:165",
+    "title": "Manage automations",
+    "anchor": "nextRunAt",
+    "supports": "The automations tool's list action returns each job's name and next run time, which covers the reminders-due part of the view."
+   }
+  ],
+  "corrections": [
+   "Catalog JSON says approvals auto-expire after 24 hours. Plugin approvals default to 2 minutes and are capped at 10 (plugin-permission-requests.md:88), and a timed-out call is simply blocked (line 160). A day-long 'awaiting yes' list has to be Happy's own proposals table, not the gateway approval queue.",
+   "Markdown says the JSON output 'carries expiresAtMs'. The installed CLI page only says the human output shows time until expiry (cli/approvals.md:55); the field name appears in bundled source (dist/plugin-approvals-D0Cu8ZZm.mjs:55), not in the docs."
+  ],
+  "unverified": [
+   "The home-store tables for watchers and open requests do not exist yet.",
+   "Whether a host MCP should hold admin operator credentials on behalf of a person agent was not assessed.",
+   "The unsent-drafts count was not assessed; it depends on the later mail milestone."
+  ]
+ }
+]

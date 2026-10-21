@@ -1,0 +1,22 @@
+#!/bin/zsh -f
+# keychain-resolver: OpenClaw exec SecretRef provider backed by happy's login Keychain.
+# Installed by happy-deploy as /Users/happy/.openclaw/bin/keychain-resolver (owner happy, mode 700).
+# Protocol: stdin  {"protocolVersion":1,"provider":"keychain","ids":["..."]}
+#           stdout {"protocolVersion":1,"values":{id:secret},"errors":{id:{"code":"NOT_FOUND"}}}
+# Secrets travel only through pipes, never through argv.
+set -u
+service=happy-agent
+ids=("${(@f)$(/usr/bin/jq -r '.ids[]')}")
+for id in "${ids[@]}"; do
+  [[ -z $id ]] && continue
+  if v="$(/usr/bin/security find-generic-password -s "$service" -a "$id" -w 2>/dev/null)"; then
+    printf '%s' "$v" | /usr/bin/jq -Rs --arg k "$id" '{k:$k, v:.}'
+  else
+    rc=$?   # 44 = item not found; anything else (e.g. a locked keychain) is a different error
+    print -u2 "keychain-resolver: $id: security exited $rc"
+    if (( rc == 44 )); then code=NOT_FOUND; else code=KEYCHAIN_UNAVAILABLE; fi
+    /usr/bin/jq -n --arg k "$id" --arg c "$code" '{k:$k, e:$c}'
+  fi
+done | /usr/bin/jq -s '{protocolVersion:1,
+  values:(map(select(.v!=null)|{(.k):.v})|add // {}),
+  errors:(map(select(.e!=null)|{(.k):{code:.e}})|add // {})}'

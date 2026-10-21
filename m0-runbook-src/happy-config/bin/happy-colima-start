@@ -1,0 +1,20 @@
+#!/bin/zsh -f
+# happy-colima-start: start Colima in the foreground for the local.happy.colima LaunchAgent.
+# After an abrupt shutdown (power cut, `shutdown -r now`) Lima leaves vz.pid behind. Its PID then
+# belongs to an unrelated process, and every start fails with
+# "vz driver is running but host agent is not". Remove vz.pid only when that PID is neither limactl
+# nor the VM process, so a live VM's pid file is never touched.
+set -u
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+pidfile=$HOME/.colima/_lima/colima/vz.pid
+if [[ -f $pidfile ]]; then
+  pid=$(<"$pidfile")
+  exe=$(/bin/ps -p "$pid" -o comm= 2>/dev/null)
+  if [[ ${exe:t} != limactl && ${exe:t} != com.apple.Virtualization.VirtualMachine ]]; then
+    print "happy-colima-start: $(/bin/date -u +%FT%TZ) removing stale vz.pid ($pid is not limactl or the VM)"
+    /bin/rm -f -- "$pidfile"
+  fi
+fi
+exec /opt/homebrew/bin/colima start --foreground --vm-type vz --mount-type virtiofs \
+  --cpus 4 --memory 6 --disk 60 --mount /Users/happy/.openclaw/sandboxes:w

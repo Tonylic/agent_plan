@@ -1,0 +1,140 @@
+[
+ {
+  "id": "F002",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw documents reading inbound photos and documents as a built-in step, and other entries build on this one. Three small fixes. One caveat still pointed at the local-classifier card (OCL-14) that round 4 folded into this entry, so it now names the route itself. The build note called 10 MB and 20 MB inbound caps, while OpenClaw's page gives them as the default input limits of the media-reading step. And the safety note now records that OpenClaw's own advice for outside content is a separate reader agent, which this entry does not use.",
+  "who_trigger_result": "Either parent / sends a photo or a PDF in their own thread, with or without a question / Happy reads it and answers, and a text PDF that looks like a bank statement or tax form is refused on the Mac with a fixed line",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/media-understanding.md:10",
+   "title": "Media understanding",
+   "anchor": "summarize inbound media",
+   "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step before the reply, and says the original media is still handed to the reply model."
+  },
+  "edits": {
+   "how": "Gate first (F084): an in-house plugin whose `before_agent_run` hook returns `outcome: \"block\"` on pattern hits in the extracted file text; it needs `plugins.entries.<id>.hooks.allowConversationAccess: true` and is proven with a seeded statement PDF before the switch goes on. Switch (F002): set `channels.imessage.includeAttachments: true`; Basic mode already carries media; the media-reading step's default input limits (`maxBytes`) are 10 MB for an image and 20 MB for audio. Images then pass natively to the reply model and attached PDFs arrive as extracted text blocks; the optional `pdf` tool (`group:media`) adds page selection through local PDFium, 10 MB and 20 pages by default. Set `tools.media.audio.enabled: false` until local transcription (F003) exists, and add one eval case: a PDF carrying hidden instructions must cause no tool call.",
+   "caveats": [
+    "The gate reads only extracted text, so a scanned statement or a phone photo of one reaches the vision model unscreened; no local vision model exists to check photos.",
+    "Whether the extracted file text is inside the prompt the hook receives is untested, so the seeded-PDF test decides whether the gate works at all.",
+    "The same switch also lets voice memos and video in, and audio auto-detection tries a configured provider key before any local program, so audio understanding stays off until local transcription (F003) is in place and one live turn shows what a voice memo turns into.",
+    "Happy cannot watch video on this provider set, so an AGENTS.md line has it say so and ask for a photo or a few screenshots.",
+    "store:false covers less than it reads: OpenAI can keep abuse-monitoring logs, content included, for up to 30 days unless the organisation has Zero Data Retention, and family photos fall under that.",
+    "Whether medical bills and Explanation of Benefits statements are let through the gate is still to settle (from the folded 'explain this' entry).",
+    "A local classifier could later replace the pattern match: OpenClaw's `decision_evaluate` tool with the installable on-device ONNX plugin, untried on this Mac. It takes at most 512 tokens per input, so the gate would send the first lines of each page; its threshold would have to be set on a small labelled set of the family's own documents; and the gate must keep blocking when the classifier is unavailable, because OpenClaw's page says a failure is not a 'no'."
+   ],
+   "safety": "A photo or PDF is outside content read by the agent that holds a parent's memory. OpenClaw's own advice for outside content is a read-only or tool-less reader agent that summarises it for the main agent (prompt-injection.md:34); here the parent's own agent reads the attachment directly, so the limits on that agent carry the weight. That agent cannot browse, and its texts and the scheduled jobs it can create are pinned to the family by the hook in G009 (F007 waits for that hook). The roadmap names one way out that is neither closed nor pinned: the hand-off to the research helper (F019), which can fetch any public address and is guarded only by a prompt rule and an eval case. So the eval case listed here (a PDF carrying hidden instructions must cause no tool call) has to count a hand-off to research as a tool call. The gate runs on the Mac before any cloud call, can only block, and blocks if it fails. It is a tripwire for text PDFs, not a guarantee."
+  },
+  "merge_hints": []
+ },
+ {
+  "id": "F003",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / sends a voice memo instead of typing, or types /tts latest after an answer / the Mac mini transcribes the memo, Happy echoes the text and answers, and the answer also arrives as an audio file made on the Mac",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/audio.md:2",
+   "title": "Audio and voice notes",
+   "anchor": "downloaded, transcribed, and injected into replies",
+   "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply, with local command-line transcribers among the options."
+  },
+  "merge_hints": [
+   "F072"
+  ]
+ },
+ {
+  "id": "G009",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent, and Happy's own notices / a parent asks Happy to pass a note or a yes-or-no question to the other parent, or a feature has a notice for both / the text reaches the other parent or the parents' group and nobody else, and for a question the answer comes back, with one reminder before the ask expires",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/gateway/security/tool-permissions.md:35",
+   "title": "Tool and agent permissions",
+   "anchor": "send across conversations",
+   "supports": "OpenClaw documents that an agent holding the message tool can send to other conversations by default and gives the switches that confine it; this entry opens the same-channel switch and pins recipients to the family with a hook that blocks when it fails, the mechanism the roadmap's own code check uses to pin email to its owner."
+  },
+  "merge_hints": [
+   "F007",
+   "F006"
+  ]
+ },
+ {
+  "id": "OCL-06",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / types /stop, /new, /status, /usage or /tools in their own thread / the answer in progress stops, a clean conversation starts, or a status, cost or tool list comes back, with no model call",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/slash-commands.md:212",
+   "title": "Slash commands",
+   "anchor": "Abort the current run",
+   "supports": "OpenClaw's command table documents the typed commands a chat user gets, including stopping the current run and starting a fresh session."
+  },
+  "merge_hints": [
+   "G005",
+   "CRT-05"
+  ]
+ },
+ {
+  "id": "F007",
+  "verdict": "keep",
+  "who_trigger_result": "A parent who is a command owner / texts 'remind me at 4:30 to ...' or 'every Sunday 7 pm: ...' / a text from Happy at that time, to the asker only, and a list or a cancel on request",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/index.md:35",
+   "title": "Automation",
+   "anchor": "Remind me in 20 minutes",
+   "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, as a one-shot job with exact timing."
+  },
+  "merge_hints": [
+   "G009"
+  ]
+ },
+ {
+  "id": "F009",
+  "verdict": "edit",
+  "reason": "Kept: read-only calendar access is the lowest-risk tier in OpenClaw's own guide, and many entries read the calendar through this one. The name and the description still offered 'is anyone free Friday at 1?', which round 4's own caveat says this entry cannot answer: it reads the family calendar and the asker's own, not the other parent's. The wording now promises only 'is Friday at 1 clear?'; telling whether both parents are busy stays with the conflict watch (MKT-06).",
+  "who_trigger_result": "Either parent, and the daily briefs / asks what is on a day or whether a time is clear / the events on the family calendar for that time, with nothing changed",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/delegate-architecture.md:48",
+   "title": "Delegate architecture",
+   "anchor": "read events, surface conflicts",
+   "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+  },
+  "edits": {
+   "name": "Family calendar, read-only: 'what's on Saturday?' and 'is Friday at 1 clear?'",
+   "description": "\"What's on Saturday?\" or \"is Friday at 1 clear?\" is answered from the family Google Calendar, read-only. 'Clear' means nothing shows on the calendars the asking parent's sign-in can see; the other parent's work or personal calendar is not read, so Happy cannot say whether both parents are free. It also feeds the daily briefs.",
+   "example": "Jordan texts: 'What's on Saturday?' and gets the day's events from the family calendar. Tony asks 'is Friday at 1 clear?' and gets what the family calendar shows for that hour (Jordan's work calendar is not read); nothing on the calendar is changed."
+  },
+  "merge_hints": [
+   "MKT-06"
+  ]
+ },
+ {
+  "id": "F019",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / asks a question that needs a public web page / the answer with its link and the time it was fetched, an 'on it' for a slow lookup and a way to cancel",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/web-fetch.md:11",
+   "title": "Web fetch",
+   "anchor": "extracts readable content",
+   "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+  },
+  "merge_hints": [
+   "F020"
+  ]
+ },
+ {
+  "id": "F030",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / texts 'add these to the grocery list', 'what's still on the list?' or 'tick off the milk' / the shared Reminders list changes on both phones, or its open items are read back",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/apple-reminders/SKILL.md:37",
+   "title": "Bundled apple-reminders skill",
+   "anchor": "iPhone/iPad Reminders app",
+   "supports": "OpenClaw ships a skill for listing, adding and completing Apple Reminders from the Mac, meant for people who want the tasks to appear in the Reminders app on their phones."
+  },
+  "merge_hints": []
+ }
+]

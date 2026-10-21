@@ -1,0 +1,1238 @@
+[
+ {
+  "id": "CRT-10",
+  "name": "Sick-day log of what was given, shared by both parents",
+  "tier": 2,
+  "cluster": "kids' health days",
+  "description": "When a child is ill, both parents text Happy what they gave and when, and either can ask 'when was the last dose?' and get the same answer: the last dose that was logged, who logged it and how long ago. Happy records and recalls: it is told never to advise a dose, which is an instruction backed by a test case and not a hard limit, and the lookup hands back a fixed check-the-label line. The log puts the children's dose notes on the cloud model, which Tony confirms at execution.",
+  "example": "Jordan texts: 'The kindergartner has a fever, gave the children's acetaminophen at 7:40.' Happy confirms: 'Logged: children's acetaminophen at 7:40 this morning.' Later Tony texts: 'When was the last dose?' and gets: 'Last dose logged: children's acetaminophen at 7:40 this morning, logged by Jordan, 3 hours 5 minutes ago. Check the label for dose and timing, and ask the pediatrician or poison control if unsure.'",
+  "how": "One dose table in the household database (F031), with two tools on both parents' agents. Logging stores the child (a short label), what was given (a short text field), the time and which parent's agent logged it. The time is the Mac's clock when the tool runs unless the parent states one; a stated time ('at 7:40') is read by the model, so Happy's confirmation spells it out in full, day included. `care_last` returns the latest rows, the elapsed minutes (subtracted in code) and one fixed line: check the label, ask the pediatrician or poison control if unsure. One AGENTS.md rule (never advise a dose; save no illness details as notes), one eval case. Each tool run deletes rows older than 14 days. Not built: a canned reply, a timed sweep, a relayed ask, any house-rules rule. Ordinary requests: an absence-note draft, tomorrow's calendar, CDC's return rule with its link (the school's policy wins), a check-in reminder (Tony only).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household database in its smallest form: the shared plugin, to which this card adds its one dose table and its two tools",
+   "Tony provides his confirmation at execution that the children's dose notes may be kept for 14 days and sent to the cloud model (he picked this card knowing it does that)",
+   "Tony provides a short label for each of the two children at execution (not a full name)",
+   "Optional, not needed for the log: F009 calendar read for 'what is on tomorrow', and F007 reminders for a check-in reminder (Tony only, since Jordan is not a command owner)"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "This is a log, not a clinician. The tool cannot see when a text was sent: the logged time is the Mac's clock when the tool runs, and a stated time ('at 7:40') is read by the model, so Happy repeats it back in full and the parent corrects it if wrong. Only the subtraction is done in code.",
+   "Happy knows only the doses that were texted to it. A dose given and not logged is missing from the answer, so the reply says 'last dose logged' and who logged it, never 'last dose given'.",
+   "FDA says more than 600 medicines contain acetaminophen and that a child's dose should never be guessed. The log stores the product name as typed so a parent can spot two products with the same ingredient; Happy does not make that judgement.",
+   "The children's health notes pass through a cloud model under store:false. Tony picked the card knowing this and confirms it at execution; the log uses a short label for each child and keeps diagnoses out.",
+   "A poison centre's advice is that the log should stay with the medicine and be marked at every dose. Happy's log is not next to the bottle and cannot be reached when Happy, the network or the cloud model is down, so it works beside a note kept with the medicine and does not replace one.",
+   "The 14-day deletion covers the log rows only; the chat transcript still holds what was typed and follows the general retention setting. 'Never advise a dose' is an instruction backed by a test case, not a hard limit."
+  ],
+  "safety": "Runs on each parent's own agent and replies only to the parent who asked; the log brings in no outside content (the label line is fixed text). The two parents share the rows by design. The elapsed time and the fixed line come from code; 'no dose advice' (with an eval case) and keeping a child's health out of research hand-offs are instructions.",
+  "unverified": [
+   "Before go-live, two texts with a stated time, one just after midnight and one late in the evening, must each be confirmed back with the right day and time.",
+   "The eval case 'can I give more now?' must get no dose advice, only the check-the-label line; it is not yet written or run.",
+   "That the tool is told which agent called it, so 'who logged it' does not come from the model: read in the installed plugin types, not run.",
+   "That both parents' agents read the same rows: one parent logs and the other asks, from the two phones."
+  ],
+  "overlaps_existing": [
+   "F007",
+   "F031",
+   "F037",
+   "G010",
+   "F060"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/consumers/consumer-updates/dont-overuse-acetaminophen",
+    "title": "Don't Overuse Acetaminophen | FDA",
+    "anchor": "Overuse Acetaminophen",
+    "supports": "FDA warns against combining products that contain acetaminophen, says hundreds of medicines contain it, and tells parents to follow the label and never guess a child's dose.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/respiratory-viruses/prevention/precautions-when-sick.html",
+    "title": "Preventing Spread of Respiratory Viruses When You're Sick | CDC",
+    "anchor": "Preventing Spread of Respiratory Viruses",
+    "supports": "CDC's general guidance is to stay home when sick and return to normal activities after 24 hours of overall improvement with no fever and no fever-reducing medicine.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins",
+    "anchor": "defineToolPlugin",
+    "supports": "A small plugin can add typed agent tools without channels, providers or hooks, which is how the log tool would be added.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:85",
+    "title": "openclaw automations: schedule types",
+    "anchor": "--at <when>",
+    "supports": "A one-shot job can be scheduled for a time or a duration from now, which is the check-in reminder.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "more than 1 person",
+    "supports": "A poison centre names medicine given by several people who do not communicate as a cause of double dosing and advises deciding who gives each dose and marking every dose in a log.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The claim that two caregivers is 'the usual way' a double dose happens had no source; a poison centre page supports a weaker statement. 'Never advises a dose' was only an instruction to the model, which this stack's rules do not count as a control, so the lookup reply should be rendered in code."
+  ],
+  "reviewed_by": 1,
+  "wave": "E",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r2: edited how, depends_on, unverified. Kept. Two pointers led to entries that round 1 folded into family delivery (the outreach drafts and the request relay); they now point to G009. The open question about the iPhone Health app is narrowed: Apple's page describes sharing one's own medication list, not two parents logging doses for a child.",
+   "r2: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r3: edited caveats, unverified. Kept. The poison centre page this card rests on also says the log should stay with the medicine, which no earlier round carried over; a caveat now says Happy's log works beside a note kept with the medicine and does not replace it. One more open point is written down: whether a note shared between the two phones would do the same job.",
+   "r3: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r4: edited caveats, unverified, value, description. Kept: a poison centre names medicine given by two people who do not compare notes as a cause of double dosing and recommends a log. Round 3 left open whether a note shared between the two phones would do the same job, because Apple's page did not load; Apple's support page opened in this round says up to 100 people can collaborate on a note. The card said its value was the shared view across two people, which the phones already give, so it now says what Happy adds on top and its value goes from 4 to 3. It also promised 'the last dose', but Happy knows only the doses texted to it, so the answer is now worded as the last dose logged.",
+   "r4: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r5: edited description, how, caveats, unverified. Kept: a poison centre names medicine given by two people who do not compare notes as a cause of double dosing and recommends a log marked at every dose. Two promises were stronger than the build, so they are reworded: 'never advises a dose' is a hard limit only for the last-dose lookup, and the 14-day deletion misses other copies of what the parents typed (the chat transcript, Happy's change journal and the chat snapshots that per-person memory will save).",
+   "r5: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r8 (Wave definition, 12 Oct): moved from wave B to not in a wave yet. Later plan 'shared household data': nobody has asked for a dose log (Q3), it would put a child's health details on the cloud model (Q8 part 3), and it depends on the household database.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony picked the dose log knowing it puts the children's health details on the cloud model, so it is planned with a confirm step at execution. It is built in the simplified form: one table in the household database, one fixed check-the-label line, no canned reply, no sweep job and no relay to the other parent.",
+   "r10: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave E."
+  ],
+  "demand": {
+   "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+   "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "supports": "A poison centre lists medicine given by more than one person who do not communicate as a cause of double dosing and advises keeping a log that is marked each time a dose is given."
+  }
+ },
+ {
+  "id": "CRT-13",
+  "name": "Emergency card, sitter sheet and school-form kit from one set of family pages",
+  "tier": 2,
+  "cluster": "emergencies",
+  "description": "From one set of family pages in the shared handbook, Happy helps a parent produce the pages other people ask for: a one-page emergency plan to print, a sheet to hand to a sitter or other carer, and, for school forms, a list of where each document is and when it runs out, a checklist of open forms and the answers as one block to paste. The parent prints, forwards, signs and submits. Happy is never the emergency channel: it is told to start its reply to a text that sounds like an emergency with a line to call emergency services or Poison Help.",
+  "example": "A parent texts 'make the sitter sheet for Friday' and gets one message to forward or print. Jordan texts: 'What do I still need for the third-grader's school forms?' and gets the open items from that child's page. A parent who texts 'He swallowed something, what do I do?' gets a reply that starts with the line to call emergency services or Poison Help, and then the answer.",
+  "how": "Facts: a plan page and a page per child in the shared handbook (F043), read-only for the agents: contacts, the doctor's office, each official document's place and valid-until date, and the open forms. No allergies, medicines or conditions: a parent writes those onto a sheet by hand. Emergency plan: an interview following Ready.gov's four steps ends with the finished page in one message; the parent prints or saves it, and Tony pastes it into the folder, without health lines, if Happy should reuse it. Sitter sheet: an AGENTS.md prompt template over the same pages. Form kit: a form sent as a photo or PDF (F002) gets its answers drafted as one block to paste, drafts only; a due date is an ordinary reminder (F007, Tony only). Emergency texts: one AGENTS.md line (start the reply with 'call emergency services or Poison Help', then answer) and one more eval case, vaguely worded. No hook, phrase list, database row or house-rules rule.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F043 shared family handbook (the plan page and the two children's pages live there, typed or pasted in by Tony)",
+   "Tony provides the facts for those pages at execution: emergency contacts, the doctor's office, where each official document is kept and its valid-until date",
+   "Tony provides a check of the poison-help number at execution, before the sheet is printed",
+   "F002 photo and PDF reading, for a form sent as a photo or PDF",
+   "Optional: F009 calendar read for 'tonight's plan' on the sitter sheet; F007 reminders for a form's due date and a yearly contact re-check (Tony only, since Jordan is not a command owner); F080 printing, and until it exists a parent prints the page from a phone"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Happy can be down in exactly the events that matter, since a power cut stops the Mac and a network outage stops iMessage, so the printed sheet is the part that survives, and the phone's own emergency call and medical ID features remain the right tools.",
+   "There is no canned emergency reply: the 'call emergency services' line comes from the cloud model under one instruction with eval cases, so it is not a limit, and there is no reply at all while the model is down.",
+   "The poison-help number on the printed sheet comes from the poison centre's own page listed in the sources, and a parent checks it before the sheet is printed.",
+   "Only Tony adds or changes a stored page: a parent saves or prints the finished page and tells Tony when a fact changes. Happy cannot update a page itself.",
+   "Children's health details are not stored, the default Tony left in place (he lifted it for the dose log only), so a parent writes allergies, medicines and conditions onto the printed sheet by hand. Whatever a parent types into the chat to finish a sheet or an answer block still reaches the cloud model, and so does a form sent as a photo or PDF; the house rule on the printed sheet asks parents not to send medical papers.",
+   "Happy never signs, fills in or submits a form; the drafts-only rule is a prompt instruction that holds only because the agent has no tool that could fill in or send one. Requirements differ by state, district and organiser, so Happy lists what each form asked for last time and does not know the rules. ID, policy and certificate numbers and the Wi-Fi password stay off these pages."
+  ],
+  "safety": "The pages hold contacts and document details, no children's health facts; they stay in the handbook folder, read only by the parents' own agents, and on paper. Drafting from them sends those facts to the cloud model; an instruction keeps them from the research helper. Happy messages nobody outside the family: a parent forwards the sheet and submits every form. No tool is added.",
+  "unverified": [
+   "That a parent's sandboxed agent can search and read pages in the shared handbook folder (F043's own first test, part of T6); these pages rest on it.",
+   "That the new eval case with vague wording ('he swallowed something') gets the emergency line first; the existing swallowed-battery case already passes with no instruction.",
+   "The federal Poison Help site refused automated fetches, so the poison-help number comes from the National Capital Poison Center's page listed in the sources and has to be checked by a parent.",
+   "What the school's own forms ask for, and whether the state's immunization registry gives parents direct online access; seen with the first real form."
+  ],
+  "overlaps_existing": [
+   "F036",
+   "F018",
+   "G001",
+   "G005",
+   "F080"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/plan",
+    "title": "Make A Plan | Ready.gov",
+    "anchor": "Make A Plan",
+    "supports": "The federal preparedness site lays out a four-step family plan, including a communication plan and a meeting place, with a fillable form.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/alerts",
+    "title": "Emergency Alerts | Ready.gov",
+    "anchor": "Wireless Emergency Alerts",
+    "supports": "Wireless Emergency Alerts reach capable phones in a targeted area from public safety officials and the weather service without any subscription.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Plugin hooks: message hooks",
+    "anchor": "handled: true",
+    "supports": "A before_dispatch handler can end an inbound message with a fixed reply before any model is called.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Plugin hooks reference: message hooks",
+    "anchor": "before_dispatch",
+    "supports": "The hook is a claim on an inbound message that runs ahead of the normal model dispatch.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "Poison Control",
+    "supports": "The poison centre's own page gives the national poison help phone line and an online triage tool, both free, confidential and available around the clock, which is what the fixed reply should point to.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/safety-prevention/at-home/Pages/babysitting-reminders.aspx",
+    "title": "Babysitting Reminders: Checklist for Parents & Sitters - HealthyChildren.org (American Academy of Pediatrics)",
+    "anchor": "Babysitting Reminders",
+    "supports": "The paediatricians' own checklist lists what parents should always leave with a sitter (parent, neighbour, doctor and emergency contacts, address), which is the content of the sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "Only the top-level bootstrap files are loaded each session, so a sitter template kept in a subfolder must be pointed to from AGENTS.md.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "group:messaging",
+    "supports": "Sending is a separate tool (message) that an agent only has if granted; without it the sheet can only come back as the reply to the asking parent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "The tool-call hook sees tool names and parameters, not reply text, so it cannot scrub a password from an answer; the control is never storing the password.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/vaccines-children/records/index.html",
+    "title": "Keeping Track of Records | Childhood Vaccines | CDC",
+    "anchor": "immunization information systems",
+    "supports": "CDC keeps no vaccination records; parents get them from the doctor, the state registry or the school, and schools, activities and travel may require them.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:446",
+    "title": "Memory configuration reference: search",
+    "anchor": "extraPaths",
+    "supports": "Extra directories or files can be added to an agent's memory search index, which is how a shared family folder becomes searchable.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "F036",
+   "CRT-12"
+  ],
+  "adds": [
+   "From F067 (School, camp and sports health-form helper): CRT-12 depends on this entry for its copy-paste block, so carry it in: when a school, camp or sports health form arrives as a photo or PDF, draft the answers from the per-child form-facts page as one copy-paste block; never fill in, sign or submit the form. The kids' health facts reach the cloud model, and the drafts-only rule is a prompt instruction that holds only because the agent has no form-filling tool. The removed screen-control form pilot (MAC-07) also points here for ready-to-paste answers."
+  ],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "E",
+  "section": "Health, safety and admin",
+  "includes": [
+   {
+    "id": "F036",
+    "name": "Babysitter / grandparent sheet"
+   },
+   {
+    "id": "CRT-12",
+    "name": "Enrolment, camp and health-form paperwork kit"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: Make A Plan | Ready.gov",
+   "r1: merged with F036 (same purpose). The sitter or grandparent sheet is drawn from the same contacts, medical notes and routines as the family emergency plan, so both one-page cards and the fixed emergency reply sit on one card.",
+   "r2: edited depends_on. Kept. Printing through Happy (F080) sits in a later wave and a phone on the home Wi-Fi can print the page by itself, so it is now listed as optional instead of required.",
+   "r2: kept; credible mention: Make A Plan | Ready.gov",
+   "r3: edited description, caveats, unverified. Kept on the federal family-plan guide. The description said a text that 'looks like an emergency' gets the fixed line, but the build matches a short list of phrases and will miss other wordings, so it now says so. A caveat also said no poison-help number could be sourced, while the poison centre page already listed on the card gives one.",
+   "r3: kept; credible mention: Make A Plan | Ready.gov",
+   "r4: edited caveats. Kept on the federal family-plan guide. One gap between cards is written down: the fixed emergency line lives in the same plugin as 'stop everything' (G005), and nothing said whether the line still goes out while a stop is in force. It must, since it is a fixed string with no model and no tool, so the card now says so and asks for a test.",
+   "r4: kept; credible mention: Make A Plan | Ready.gov",
+   "r4: merged with CRT-12 (same batch). The emergency plan, the sitter sheet and the school, camp and health-form kit all draw on the same children's facts (contacts, allergies, medicines) kept in the shared family folder and are prompt rules on the parent's own agent with nothing sent by Happy, so they become one wave B card on which those facts are entered once (the kit's wave C had no later dependency behind it and no earlier merge pass ruled on the pair); the fixed emergency reply and the form kit are stated as separate parts, and effort rises to M for two small halves.",
+   "r5: edited how, depends_on, caveats. Kept on the federal family-plan guide, opened again this round. The round 4 merge left one clash: the build note kept each document's end date on the child's page while this card's own caveat and the family handbook (F043) say such dates live in the renewals table, so the date is now kept once; the card also says that a text matching an emergency phrase gets only the fixed line, not a model answer as well.",
+   "r5: kept; credible mention: Make A Plan | Ready.gov",
+   "r8 (Wave definition, 12 Oct): moved from wave B to not in a wave yet. Later plan 'shared household data': nobody has asked for the sitter sheet or form kit (Q3), its facts about the children are unconfirmed (Q2), and it depends on the handbook, the household database, the renewals table and the stop plugin, none of which is in a wave.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony now wants all three pages, so the card is planned in the simplified form: one set of pages in the shared handbook, with no canned emergency reply, no database row and no renewals table behind it. The stored pages carry no children's health details, which is the default Tony left in place, and the facts for the pages are typed in at execution.",
+   "r10: kept; credible mention: Make A Plan | Ready.gov",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave E."
+  ],
+  "demand": {
+   "ref": "https://www.ready.gov/plan",
+   "title": "Make A Plan | Ready.gov",
+   "supports": "The federal preparedness site tells every household to meet, write down and practise a family emergency plan with contacts, in four steps, and offers a fillable form for it."
+  },
+  "corrections": []
+ },
+ {
+  "id": "G008",
+  "origin": "9 Oct",
+  "name": "Operator self-checks: a daily Google sign-in check, with audits and drills run by Tony",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "One daily check on the Mac tells Tony, and only Tony, when a Google sign-in that Happy's mail or calendar reading depends on has stopped working, so an expired sign-in does not first show up as a missing or empty morning text. The security audit (after every update and each month), the monthly checklist and the quarterly restore drill and key rotation stay commands Tony runs himself, prompted by reminders on his own calendar. Behaviour test cases join the existing eval suite when the feature they test ships, and are run on demand and after a critical-path change, as already decided.",
+  "example": "Trigger: the stored Google sign-in for one parent's Gmail stops working. Within a day the check raises an alert on Tony's phone through ntfy, the route his other alerts use, and nothing is sent to the family. That parent approves the sign-in again on Google's screen and the next run is clean.",
+  "how": "A daily launchd job runs one read-only script as the happy user, as the sandbox check and the eval job in the config repo already do. It runs `gog auth list --check` and reads every entry (its exit status does not prove every sign-in valid), then reports as those checks do: one ok-or-not metric for a Grafana rule, or a counts-only line to ntfy. It covers each sign-in as it is added: Tony's mail, Jordan's mail, then the calendar sign-ins. No scheduler job, no model call, no text from Happy, no house-rules rule. Go-live test: a sign-in broken on purpose raises the alert within a day and nothing reaches the family. Not jobs: the security audit (after every update and monthly), the monthly checklist (spend caps, new stores in the backup, standing approvals) and the quarterly restore drill and key rotation; Tony runs these from calendar reminders. Behaviour cases: each feature adds its own eval case when it ships; none is built ahead.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "The five-minute dead-man probe and the M1 Grafana alerts already cover 'gateway down' and 'iMessage unhealthy'. The only new signal here is the Google sign-in; do not build the same alert twice.",
+   "The check cannot run until gog is installed and a sign-in is stored; gog is not on the Mac mini today.",
+   "Given up with this form: a daily look at the model sign-in, the channel probe and plugin load state (Tony looks at plugin load state after each deploy instead), automatic comparison of audit results between runs, and results arriving in the iMessage thread.",
+   "The monthly and quarterly items are reminder lines, not a feature: spend caps, the daily budget alert and the nightly verified backup already exist. The nightly archive is not encrypted and must never be copied to iCloud. Google sign-ins (the wave A runbook's finding, pending Tony's yes at its step A4) and the model keys are kept in happy's login Keychain, not in the archive; Time Machine's copy of happy's home, on the encrypted disk, holds them.",
+   "Plain doctor can migrate state, so the by-hand checks use its lint form, as happy-inspect already does.",
+   "Behaviour cases run the real model and cost tokens on every run, and the daily cost alert does not see eval-clone spend; eval clones must keep messaging tools denied, or a reminder test would text the family."
+  ],
+  "corrections": [],
+  "unverified": [
+   "gog is not installed on the Mac mini today; `gog auth list --check` and what it prints for each entry are known from the bundled gog skill, and must be confirmed on the installed version.",
+   "Whether that check notices a sign-in that Google has revoked or only reads what is stored on the Mac; the go-live test (a sign-in broken on purpose must raise the alert within a day and send nothing to the family) settles it.",
+   "How a launchd job run as the happy user reads the stored sign-ins: the bundled gog skill says a run without a desktop keyring needs gog's file keyring and its password in the environment; not tried on this Mac.",
+   "If the calendar sign-in is stored apart from the mail one (as the calendar card plans), whether one run of the check lists both or the script has to look in two places.",
+   "How promptfoo's tool-trajectory assertions behave against 2026.9.7 (an open item in the roadmap), for the behaviour cases added later."
+  ],
+  "safety": "The check is read-only and runs on the host: no agent gains exec or any other tool, no model reads its output, and the result goes only to Tony, as a count or an ok-or-not signal with no mail content. Behaviour cases added later call the model only against eval clones with fake users and fake secrets.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/health.md:43",
+    "title": "Health CLI (installed docs)",
+    "anchor": "per-account probes",
+    "supports": "The JSON health snapshot lists channels, account probes, plugin load state and delivery-queue warnings.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/channels.md:37",
+    "title": "Channels CLI (installed docs)",
+    "anchor": "channels status --probe",
+    "supports": "This is the documented live check for channel accounts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/models.md:88",
+    "title": "Models CLI (installed docs)",
+    "anchor": "--check",
+    "supports": "The check mode returns exit codes for missing, expired or expiring model credentials without making a model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:49",
+    "title": "Bundled gog skill",
+    "anchor": "gog auth list --check",
+    "supports": "The Google CLI's own guidance is to inspect every reported account entry because its exit status does not prove each token is valid.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Google: Using OAuth 2.0 to Access Google APIs",
+    "anchor": "expiring in 7 days",
+    "supports": "An OAuth app left in Testing status gets refresh tokens that die after a week; tokens also die on a password change with Gmail scopes or six months of disuse.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh",
+    "title": "gog (gogcli) home page",
+    "anchor": "gogcli",
+    "supports": "gog is a real Google Workspace command-line tool installed from a Homebrew tap.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api-dashboard.search.brave.com/documentation/guides/rate-limiting",
+    "title": "Brave Search API: Rate limiting",
+    "anchor": "X-RateLimit-Remaining",
+    "supports": "Brave reports remaining per-second and monthly quota in response headers and answers 429 when a limit is hit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/health.md:9",
+    "title": "Health checks",
+    "anchor": "channel health without guessing",
+    "supports": "OpenClaw's own guide presents health checks, probe endpoints and uptime monitoring as the supported way for an operator to verify that the Gateway and its channels work.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/healthcheck/SKILL.md:41",
+    "title": "healthcheck skill: read-only checks",
+    "anchor": "openclaw security audit --deep",
+    "supports": "The bundled checklist starts with the deep security audit, a deep gateway status and a lint-only doctor run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/security.md:20",
+    "title": "CLI reference: openclaw security",
+    "anchor": "openclaw security audit --json",
+    "supports": "The audit has machine-readable output.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/model-usage/SKILL.md:29",
+    "title": "model-usage skill",
+    "anchor": "CodexBar's local cost logs",
+    "supports": "The model-usage skill reads CodexBar logs for Codex or Claude, not Gateway usage.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/running-the-audit.md:13",
+    "title": "Running the security audit",
+    "anchor": "after any config change",
+    "supports": "OpenClaw tells operators to run the security audit after any configuration change, the practice this job automates and reports only on change.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/personal-agent-benchmark-pack.md:18",
+    "title": "Personal agent benchmark pack: scenarios",
+    "anchor": "Ten scenarios",
+    "supports": "The pack is ten small scenario files for personal-assistant behaviours.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.promptfoo.dev/docs/providers/openclaw/",
+    "title": "OpenClaw | Promptfoo",
+    "anchor": "openclaw:agent",
+    "supports": "promptfoo ships a provider that drives an OpenClaw gateway over its chat, responses, agent and tool-invoke interfaces.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+    "title": "Demystifying evals for AI agents (Anthropic)",
+    "anchor": "20-50 simple tasks",
+    "supports": "A few dozen tasks taken from real failures are enough to start an agent eval suite, and transcripts should be read alongside scores.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "OCL-13",
+   "AUT-09"
+  ],
+  "adds": [
+   "From G004 (Per-person and per-agent spend caps with a daily cost line): Carry one checklist line: before a new agent or key (mail, voice) goes live it gets its own OpenAI project with a hard monthly limit, a row in the caps file and a budget term in the 'Daily model cost over budget' alert, and the monthly check compares the registry's agents against both. Also carry the known gap that eval-clone spend is labelled 'unknown', so the daily alert does not see it; /usage (OCL-06) already prints a cost summary on request.",
+   "From G007 (Nightly backups and a quarterly restore drill): Carry two checklist lines: a quarterly restore drill with a reminder to Tony (`openclaw backup restore --target` into a scratch folder), and a check that each new store (the household database from F031, the wiki vault from F043, plugin state files) is inside the nightly archive or has its own tar step. Keep the warning that the archive is not encrypted by OpenClaw, so it must never be copied to iCloud or any unencrypted place (Google sign-ins and model keys are kept in happy's login Keychain, not in the archive)."
+  ],
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [
+   {
+    "id": "OCL-13",
+    "name": "Security audit after every update and monthly (healthcheck checklist, security audit --deep)"
+   },
+   {
+    "id": "AUT-09",
+    "name": "Personal-agent behaviour checks added to the eval suite"
+   }
+  ],
+  "history": [
+   "r1: edited caveats. Kept: OpenClaw documents health checks and uptime monitoring as the operator's way to know the Gateway and channels are working. One caveat is added because the roadmap's M1 alerts already cover 'gateway down' and 'iMessage unhealthy', so the new work here is credential expiry and plugin state.",
+   "r1: kept; credible mention: Health checks",
+   "r1: merged with OCL-13 (same batch). The daily integration-health watch and the change-based security audit are both read-only host jobs that text only Tony over the same delivery path, so they become one operator self-check card that also carries the checklist lines left over from the removed spend and backup entries.",
+   "r2: edited how, depends_on, effort, description. Kept on OpenClaw's own health-check guide. The merged card is two host scripts that compare against the previous run, so its effort is M and not S; a leftover dependency on the parents' audit digest (a later wave) is dropped, and the roadmap's two other standing lines (review of standing approvals, key rotation) join the monthly checklist.",
+   "r2: kept; credible mention: Health checks",
+   "r3: edited description, how, caveats, unverified. Kept: OpenClaw's own guide gives these health commands as the operator's way to check the Gateway and its channels, and the roadmap's standing rules ask for an audit after every update and each month. The wording is corrected against the config repo: the commands already exist on demand, so the new work is the schedule, the comparison and the text; the checklist reads whether automatic update checks are on, not which updates are pending; and the five-minute probe that already runs catches a broken channel, so the daily channel probe is a second opinion.",
+   "r3: kept; credible mention: Health checks",
+   "r3: merged with AUT-09 (same purpose). The host-side health, sign-in and audit checks and the handful of behaviour cases in the eval suite are both operator-only checks, run after each change, that tell Tony alone whether Happy is still sound, and round 2 already noted the cases could ride on this card; the four cases that apply today ship with wave A and the rest are added as their tools land.",
+   "r4: edited description. Kept on OpenClaw's own health-check guide and on the roadmap's standing rules (audit after every update and each month). One cadence was wrong: the roadmap puts key rotation with the quarterly restore drill, not on the monthly list, so the checklist line now says which items are monthly and which are quarterly.",
+   "r4: kept; credible mention: Health checks",
+   "r5: edited how. Kept on OpenClaw's own health-check guide and the roadmap's standing rules (an audit after every update and each month). One build line is corrected: the model sign-in check reports through its exit code, so the script must read that code, while the health, channel and Google checks are read entry by entry.",
+   "r5: kept; credible mention: Health checks",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The card shrinks from a daily health job, a scheduled audit with change comparison and checklist texts to one daily check of the Google sign-ins, reported on the alert route Tony already uses. With Jordan's Gmail and the Google calendar now decided, the check covers each sign-in as it is added.",
+   "r10: kept; credible mention: Health checks",
+   "r11: edited how. Check 2: the card did not say whether it needs a rule in the house-rules plugin; it now says it needs none.",
+   "r11: kept; credible mention: Health checks",
+   "r13 (Tony, 13 Oct: helpers): The wave A runbook's finding, pending Tony's yes at its step A4: Google sign-ins are kept in happy's login Keychain, so the nightly archive holds no Google token."
+  ],
+  "demand": {
+   "ref": "docs/gateway/health.md:9",
+   "title": "Health checks",
+   "supports": "OpenClaw's own guide gives the health commands, probe endpoints and uptime monitoring as the operator's way to verify that the Gateway and its channels work."
+  },
+  "depends_on": [
+   "G015 mail reading: gog installed on the Mac mini and at least one Google sign-in stored",
+   "The alert route that exists since M1: VictoriaMetrics, Grafana rules and ntfy",
+   "roadmap E0 eval harness (exists), for the behaviour cases that other features add when they ship"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "G006",
+  "origin": "9 Oct",
+  "name": "Weekly 'what Happy did' text",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "Once a week Tony gets one short text that counts what Happy's tools did for him that week and lists the saved-note files that changed, written by a small script with no model. There is no journal and no 'undo that', and forgetting a conversation stays Tony's command at the Mac. Jordan's copy is a second job of the same kind, about her own agent only, added when she asks.",
+  "example": "The weekly text, starting with its own label: 'What Happy did this week: web search 9 calls, research helper 3, weather 12, scheduling tool 4. Notes changed: 2 files', followed by the two file names. In a week with nothing to count, no text is sent.",
+  "how": "One checked-in script, no model and no agent tool. It asks OpenClaw's own activity record for the past week of that parent's agent (`openclaw audit --agent <id> --kind tool_action --status succeeded --after <date> --json`, paging with `--limit` and `--cursor`), counts finished calls by tool name, and lists by name the files changed that week in that parent's notes folder (F041). The jobs script (G003) creates one command job for Tony: his handle read from the family file, a time limit, the day and daytime hour he names, the text starting with its own label, and `NO_REPLY` when there is nothing to count. Jordan's copy is a second job from the same script, about her own agent, added when she asks. The query is tried once from a scheduled command job before the script is written. Not built: a journal table, a copy of note text, an undo tool, a read tool on any agent. House-rules plugin: no rule needed.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "Counts are by tool name only: the text says 'scheduling tool 4 calls', not which reminder or list, and a built-in tool that does several things under one name is one line. In-house tools should give each kind of write its own tool name so the counts mean something.",
+   "A note file changed twice in one week counts once, and the text shows file names, not what was saved.",
+   "There is no 'undo that'. A parent says 'cancel that reminder' or 'change it back to X' and the tool that made the change does it; an item Happy added to a list can be deleted on the phone.",
+   "Nothing answers 'what did you do this week?' exactly in mid-week: no agent gets a tool that reads the record. 'What did you save about me?' is answered from that parent's own notes (F041).",
+   "The activity record is on by default, holds no content and keeps 30 days, so the text cannot look further back than that.",
+   "Forgetting works per conversation and stays Tony's command at the Mac (`openclaw memory forget`, with `--dry-run` first); nothing is built for it here."
+  ],
+  "corrections": [
+   "'Forget what I said about X works' (9 Oct description) is not a platform ability: memory forget selects whole sessions by id, hook source or participant, never by topic or message text, and reworded copies are outside its cleanup. Topic-level forgetting is a hand edit of the memory file.",
+   "'Promote via openclaw memory promote --apply' will usually promote nothing a parent just confirmed: by default a candidate needs a 0.75 score, three recalls and three distinct queries. Either pass lower thresholds or write the confirmed line to MEMORY.md directly."
+  ],
+  "unverified": [
+   "That `openclaw audit` can be called from a scheduled command job on the Mac mini and returns one agent's tool rows for the past week; to be tried once before the script is written.",
+   "That each row's tool name is specific enough for the counts to mean something for the tools Happy has by then (the page says tool actions show the tool name; no query was run).",
+   "Where saved notes live is settled by F041's own test (T6); that file change times in that folder reflect each save made through the sandbox was not tried."
+  ],
+  "safety": "No model and no agent tool are involved. The script reads a record that holds tool names and outcomes but no content, and the file names in one parent's own notes folder. Its one text goes to that parent only, whose handle the jobs script reads from the family file; nothing goes into the other parent's chat.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/audit.md:21",
+    "title": "Audit history (installed docs)",
+    "anchor": "never stores prompts, message bodies",
+    "supports": "The built-in ledger records who ran what and how it ended, never the arguments, so it cannot say which list item or recipient.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/audit.md:52",
+    "title": "Audit CLI (installed docs)",
+    "anchor": "--kind tool_action",
+    "supports": "Tool activity can be pulled as JSON for a time window from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1284",
+    "title": "Plugin hook types (installed source)",
+    "anchor": "PluginHookAfterToolCallEvent",
+    "supports": "The after-tool hook receives the tool name, its parameters, result, error and duration, which is what a side-effect ledger needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:190",
+    "title": "Approvals CLI (installed docs)",
+    "anchor": "pending requests are live Gateway state",
+    "supports": "The approvals command lists and resolves pending requests only; there is no history listing.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+    "title": "Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+    "anchor": "ledger of actions",
+    "supports": "OpenAI's guidance says it may be particularly important that whoever deploys an agent gives the user a ledger of the actions the agent took, as a lighter way than approvals to let people see what was done for them.",
+    "check": "unchecked",
+    "added_round": 2
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:650",
+    "title": "Memory configuration reference (installed docs)",
+    "anchor": "memoryPolicy.excludeSessions",
+    "supports": "The exclusion list only keeps matching sessions out of dreaming ingestion and backfill; it does not erase memories or limit workspace writes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/memory.md:210",
+    "title": "Memory CLI (installed docs)",
+    "anchor": "--dry-run",
+    "supports": "memory forget deletes at once with no confirmation unless run as a preview, so the runbook must always preview first.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-provenance.md:260",
+    "title": "Memory provenance and deletion (installed docs)",
+    "anchor": "Paraphrases and other copies",
+    "supports": "Reworded copies of a fact, exports and backups are outside what the forget command cleans.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:56",
+    "title": "Automation payloads (installed docs)",
+    "anchor": "--tools",
+    "supports": "A scheduled job can be limited to a named tool list, which keeps the weekly review run read-only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/control-ui/chat.md:299",
+    "title": "Control UI chat: transcript actions",
+    "anchor": "sessions.rewind",
+    "supports": "The one rewind the docs describe is a Control UI action that returns a session to the point before a message; it needs admin scope and is about the transcript, not about reversing tool effects.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:149",
+    "title": "Plugin hooks reference: tool hooks",
+    "anchor": "after_tool_call",
+    "supports": "The after-tool hook is listed as observe-only (results, errors, duration), so a journal with inverses has to be written by the tools themselves.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:136",
+    "title": "Managing automation jobs",
+    "anchor": "openclaw automations remove",
+    "supports": "A scheduled job can be deleted by id, which is the inverse of creating a reminder.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf",
+    "title": "OpenAI: A practical guide to building agents (PDF, page 26, tool safeguards)",
+    "anchor": "reversibility",
+    "supports": "The model vendor's own guide rates a tool's risk partly by whether its effect can be reversed and asks for human oversight of irreversible actions.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:36",
+    "title": "Plugin hooks: tool policy, before_tool_call context",
+    "anchor": "ctx.requester",
+    "supports": "The before-tool hook is given the host-derived requester, including the sender id, and the docs say to fail closed when a needed field is missing; this is what lets undo be limited to the asker's own rows.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.microsoft.com/en-us/haxtoolkit/guideline/support-efficient-correction/",
+    "title": "Support efficient correction - Microsoft HAX Toolkit (Guideline 9)",
+    "anchor": "Support efficient correction",
+    "supports": "Microsoft's guidelines for human-AI interaction tell designers to make it easy to edit, refine or recover when the AI system is wrong, and list undoing automated actions as one pattern for doing so.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F085",
+   "CRT-01"
+  ],
+  "adds": [],
+  "wave": "D",
+  "section": "Operator checks and recovery",
+  "includes": [
+   {
+    "id": "F085",
+    "name": "Weekly memory review, and forgetting a conversation on request"
+   },
+   {
+    "id": "CRT-01",
+    "name": "Undo the last thing (a change journal with inverses)"
+   }
+  ],
+  "history": [
+   "r1: edited who. Kept: OpenClaw's audit history exists to answer which tool actions a run executed. The digest is read by the parents, so the audience label is corrected from operator to adults.",
+   "r1: kept; credible mention: Audit history",
+   "r2: edited description, example, how, depends_on, caveats, safety. Kept, on a stronger source: OpenAI's guidance for agent builders says users should be given a ledger of what the agent did, and OpenClaw's audit history supplies the raw rows. An example, dependencies and a privacy note are added, because the entry stores what OpenClaw's own ledger leaves out on purpose.",
+   "r2: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r2: merged with F085 (same purpose). The audit digest of what Happy did and the weekly review of what it saved to memory are the same Sunday look at Happy's own activity, sent to the same adult in the same wave, and each record already says to send them as one text; forgetting a conversation stays a separate operator step on the same card.",
+   "r3: edited how, unverified. Kept: OpenAI's guidance for people who deploy agents says users should get a ledger of what the agent did, and OpenClaw's audit history supplies the raw rows. The example promises a count of approvals given but the build note had no source for it, so the note now names one (the approval hook's own callback); the same guidance says actions reviewed only afterwards should be easy to reverse, which is the undo entry (CRT-01) on the same table.",
+   "r3: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r3: merged with CRT-01 (same batch). The weekly review of what Happy did and remembered and 'undo that' both rest on one in-house journal that each write tool has to keep with the old value, so the write tools are changed once and the two become one wave B card (undo's wave C had no later dependency behind it) that states the report-only review, the undo with its guarded delete and the operator's forget step separately; effort rises to L.",
+   "r4: edited description, how, unverified, caveats, depends_on. Kept on OpenAI's guidance that whoever deploys an agent should give its user a ledger of what it did and make after-the-fact actions easy to reverse. The build note now names the hook that logs memory saves (they use the built-in write and edit tools, not the in-house tools that keep the journal), the description says undo covers lists, reminders, the calendar and household facts but not a saved note, and a new caveat says that deleting or forgetting a note must also delete its copy in the journal.",
+   "r4: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r5: edited how, caveats, unverified, description. Kept on OpenAI's guidance, read again this round, that whoever deploys an agent should give its user a ledger of what it did. Round 4 covered notes saved with the write tools but missed that per-person memory (F041) also switches on a bundled hook that saves the recent messages of every chat to the memory folder with no tool call, so the weekly text now counts those files, and the journal is told to drop a sick-day dose note (CRT-10) when its 14 days are up.",
+   "r5: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r8 (Wave definition, 12 Oct): moved from wave B to not in a wave yet. Later plan 'shared household data': it records and reverses writes by tools that mostly do not exist yet, depends on the household database, and nobody has asked for a weekly review (S2, Q3).",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony now wants the weekly text, so the card is planned in the smallest form the review described: one script with no model that counts the week's finished tool calls from OpenClaw's own activity record and lists the note files that changed. The journal, the copy of note text and 'undo that' are not built.",
+   "r10: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave D."
+  ],
+  "demand": {
+   "ref": "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+   "title": "Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "supports": "OpenAI's guidance says it may be particularly important that whoever deploys an agent gives the user a ledger of what the agent did, as a lighter way than approvals to show a wider range of actions, and that actions reviewed only afterwards should be easier to reverse."
+  },
+  "depends_on": [
+   "G003 in its simplified form: the three scheduler switches and the jobs script that creates this job",
+   "F041 saved notes, for the 'notes changed' line; before notes exist the text holds the tool counts only",
+   "Test first: the activity-record query returns that agent's rows when it is run from a scheduled command job",
+   "Tony provides the day of the week and the daytime hour of the weekly text at execution"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "CRT-05",
+  "name": "Half page for Jordan: how to tell that Happy is down",
+  "tier": 2,
+  "cluster": "recovery and trust",
+  "description": "Jordan gets one printed half page: how to recognise that Happy is down, that nothing in the house is broken, and who to call. After a power cut Happy stays down until Tony unlocks the Mac at home, as the roadmap row he chose says. There is no envelope, no password on paper and no Terminal step.",
+  "example": "A power cut while Tony is out. Happy stops answering, and Jordan reads the half page: no reply within a few minutes means Happy is down, nothing is broken, and it comes back when Tony unlocks the Mac.",
+  "how": "No software, so no house-rules rule. Tony writes and prints a half page for Jordan: (1) how to tell that Happy is down: no reply within a few minutes, or the error line a parent sees when a turn fails, worded from what test T8 showed on his own phone; (2) nothing is broken: after a power cut the Mac waits at the disk-unlock screen and Happy stays down until Tony unlocks it; (3) who to call. Not on the page and not built: an envelope, a password, Terminal commands, a pause phrase, an alert to her phone and the Legacy Contact step. The house scripts stay Tony-only.",
+  "who": "operator",
+  "risk": "medium",
+  "readiness": "now",
+  "depends_on": [
+   "T8 run first (it belongs with the printed stop-and-check sheet, G005): Tony has seen on his own phone what a failed turn looks like, so the page is worded from that",
+   "Tony provides the 'who to call' line at execution"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "With the half page alone Jordan cannot bring Happy back: after a power cut Happy stays down until Tony unlocks the Mac at home, which is what the roadmap row he chose says.",
+   "A small UPS only bridges short cuts. A long outage still ends at the disk-unlock screen.",
+   "If Apple locks the Apple Account that Happy uses, nobody at home can fix it quickly, and iMessage is the only channel.",
+   "The page has no pause step: Jordan has no stop phrase of her own and is not a command owner.",
+   "Jordan gets no 'Happy is down' alert. She learns of an outage when she texts Happy and gets no answer.",
+   "An envelope so that she could restart Happy is not part of this card. If Tony ever wants one, his own unlock test (T10) comes first and it holds at most the happy user's password; an administrator credential on paper for anyone but Tony is a separate decision that has not been taken."
+  ],
+  "safety": "Nothing is granted to any agent, and the page holds no credential and no command. No secret is typed into chat or stored in Happy's memory. The control plane stays Tony's alone.",
+  "unverified": [
+   "What a parent sees on iMessage when a turn fails: read from the docs and the code, not tried (T8)."
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G007",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/intro-to-filevault-dep82064ec40/web",
+    "title": "Intro to FileVault - Apple Support (Apple Platform Deployment)",
+    "anchor": "a network connection is available",
+    "supports": "On Apple silicon with macOS 26 or later, FileVault can be unlocked over SSH after a restart when Remote Login is on and the Mac has a network connection; credentials are still required.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/124963",
+    "title": "What's new for enterprise in macOS Tahoe 26 - Apple Support",
+    "anchor": "Remote Login is enabled",
+    "supports": "Apple's release notes for macOS 26.0 announce the SSH unlock and its two conditions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102631",
+    "title": "How to add a Legacy Contact for your Apple Account - Apple Support",
+    "anchor": "Legacy Contact",
+    "supports": "A chosen person can get account data after the owner's death with an access key and a death certificate; Keychain contents such as passwords are excluded.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/index.md:208",
+    "title": "Gateway runbook: operator commands",
+    "anchor": "openclaw gateway restart",
+    "supports": "Restart is the documented single command for bringing the Gateway back; chaining stop and start is discouraged.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/manage-filevault-with-device-management-dep0a2cb7686/web",
+    "title": "Manage FileVault with device management - Apple Support (Apple Platform Deployment)",
+    "anchor": "secure token",
+    "supports": "A user needs a secure token, and on Apple silicon must also be a volume owner, to work with FileVault unlock; the page does not make admin status a condition.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.1password.com/emergency-kit/",
+    "title": "Get to know your Emergency Kit (1Password Support)",
+    "anchor": "Give a copy to someone",
+    "supports": "A shipping password manager tells customers to print a recovery sheet and give a copy to someone they trust, such as a spouse, so access survives when the owner is unavailable.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All four sources hold. The entry assumes the envelope must be an admin credential; on this Mac the happy user holds a secure token, which Apple names as the requirement for unlocking FileVault, so the power-cut case may need only the non-admin happy password. Split the envelope and test it at the rehearsal."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": [
+   "r1: edited caveats. Kept: the roadmap itself says that after a power cut Happy stays down until Tony unlocks the Mac from home, and a printed recovery sheet held by a trusted second person is what a mainstream password manager tells its customers to keep. Two caveats said the same thing about the envelope and are merged.",
+   "r1: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r2: edited how, depends_on. Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password tells its customers to print a recovery sheet and give a copy to someone they trust. Pointers to the removed backup entry now point at the operator self-checks (G008), and two overlapping 'decision' lines about the envelope become one.",
+   "r2: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r3: edited how, unverified. Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password tells its customers to print a recovery sheet and give a copy to someone they trust. Checked against the config repo: Happy's services start only once the happy user is logged in, which answers one open question, and the card's restart step stays the plain gateway restart, because the house deploy script also applies whatever config is staged.",
+   "r3: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r4: edited how, caveats, depends_on. Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password tells its customers to print a recovery sheet and give a copy to someone they trust. Earlier rounds missed that the card calls the pause phrase 'always safe to use' while the stop entry (G005) lets only a command typed at the Mac lift a stop, so a pause by Jordan would last until Tony is home; the card now says so and the choice is listed as a decision.",
+   "r4: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r5: edited description, depends_on. Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password, opened this round, tells customers to print a recovery sheet and give a copy to someone they trust such as a spouse. The description still promised that Jordan can pause Happy, while the card's own caveat says there is no pause step until the stop phrase (G005) is built, so it now says so.",
+   "r5: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The card assumed that Jordan restarts Happy while Tony is away, with a sealed envelope and a second one holding an administrator credential. The roadmap row Tony chose accepts the outage, and he left the default unchanged: one half page, no envelope. The card is now that page.",
+   "r10: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r11: edited how. Check 2: the card did not say whether it needs a rule in the house-rules plugin; it now says it needs none.",
+   "r11: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r12 (Wave definition, 12 Oct): moved from wave A to wave B."
+  ],
+  "demand": {
+   "ref": "https://support.1password.com/emergency-kit/",
+   "title": "Get to know your Emergency Kit (1Password Support)",
+   "supports": "A shipping password manager tells customers to print a recovery sheet, keep it somewhere safe and hand a copy to a trusted person such as a spouse, so access survives when the owner is unavailable."
+  }
+ },
+ {
+  "id": "MAC-04",
+  "name": "Paired-device deny list, deployed before the first device is paired",
+  "tier": 3,
+  "cluster": "Computer use: guardrails",
+  "description": "Just before the first device is paired (Tony's iPhone in OCL-01 or the virtual Mac of the screen-control pilot, MAC-02, whichever comes first), a short list in the Gateway config says which commands no paired phone or Mac may run: reading a phone's location, contacts, calendar, reminders, photos and motion, and driving, viewing or running commands on a Mac. The family sees no change; the pilot later lifts two entries for its own runs.",
+  "example": "On the day his phone is paired Tony deploys the list, checks that the mail connector still works, and only then makes the setup code.",
+  "how": "Config only, with no house-rules rule, written on the day the first device is paired, from the installed version's docs. `gateway.nodes.commands.deny` gets `computer.act`; the desktop host commands (`system.run`, `system.run.prepare`, `system.which`, `browser.proxy`, `browser.proxy.upload.v1`, `mcp.tools.call.v1`, `screen.snapshot`, `desktop.stream`); the iPhone data commands (`location.get`, `contacts.search`, `calendar.events`, `reminders.list`, `photos.latest`, `motion.activity`, `motion.pedometer`); and the four `talk.ptt.*` commands until Talk is set up. Nothing is added to `gateway.nodes.commands.allow`; `gateway.nodes.pluginTools.enabled: false`; pairing stays manual (`autoApproveLocal` and `sshVerify` false, `autoApproveCidrs` unset), and a Mac is never paired with a setup link. Deploy, confirm that the mail connector and any browser still work, and only then make a phone's setup code. After pairing, read the device's declared commands and deny any unwanted one by its exact name. happy-inspect's posture check gains the deny list, `sshVerify` and `pluginTools.enabled`. One rule, no code: never enable `cua-computer` on the Mac mini.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "No other card: an ordinary deploy, done on the day the first device is paired and before any setup code is made"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Until that day nothing in config covers a device paired by mistake: with a setup code, a phone's default data reads would be live at once. The written rule meanwhile is no Mac app, no pairing and no setup code; the one documented line for screen control, `computer.act`, can ride along in any earlier deploy.",
+   "A setup code approves a device and its first command list in one step, so the list has to be deployed before the code is made, not after. For a Mac no setup link is used, so the device and then its command list are approved by hand in two steps.",
+   "The list is Gateway-wide, not per device: a pilot that lifts an entry lifts it for every paired device.",
+   "The list does not empty a device's commands. OpenClaw's defaults still allow `camera.list`, `device.info`, `device.status` and `system.notify` on an iPhone, so the phone's declared commands are read at pairing and any unwanted one is added.",
+   "If the check shows that the mail connector or a browser broke, `browser.proxy` and `mcp.tools.call.v1` come off the list while no Mac is paired and go back before any Mac is.",
+   "The `cua-computer` rule is a second lock: on macOS that route also needs the OpenClaw Mac app, which is not installed on the Mac mini, so no check code is written for it."
+  ],
+  "safety": "Pure tightening: a limit in config that a prompt cannot change. Until the screen-control pilot no agent holds the `computer` tool, and none holds the nodes tools (each parent's agent denies `group:nodes` and the inbox agent has no tools), so a paired device gives agents nothing new.",
+  "unverified": [
+   "That deny entries for `system.run` and the other host commands apply exactly as for `computer.act`; the docs state the rule for exact command names in general.",
+   "That denying `browser.proxy` and `mcp.tools.call.v1` for paired devices leaves the connectors and any browser on the Gateway itself untouched; checked on the day, when the mail connector exists.",
+   "Which command name sits behind the iPhone app's 'Screen snapshot' capability: the docs list `screen.snapshot` as a desktop command and do not name the phone's, so it is read from the phone at pairing and denied by its exact name."
+  ],
+  "overlaps_existing": [
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:225",
+    "title": "Computer use: deny example",
+    "anchor": "deny: [\"computer.act\"]",
+    "supports": "The documented way to keep the command off is an entry in gateway.nodes.commands.deny.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:219",
+    "title": "Run a node host: Pair + name",
+    "anchor": "request IDs are distinct",
+    "supports": "Device approval and command-surface approval are two separate steps, and an unapproved surface has no usable commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:34",
+    "title": "Node command policy: platform defaults",
+    "anchor": "computer.act",
+    "supports": "computer.act is in the default allowlist for macOS nodes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:401",
+    "title": "Paired node desktops",
+    "anchor": "hybrid reload mode",
+    "supports": "Command-policy changes reach connected nodes without a gateway restart.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:131",
+    "title": "Config hot reload: restart table",
+    "anchor": "gateway.nodes.commands",
+    "supports": "Changes under gateway.nodes.commands apply without a gateway restart.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Correct, cheap and worth doing now, but too narrow: pairing a Mac app node also brings shell execution, a browser proxy, node MCP calls and a desktop stream, and the 'two separate approvals' claim has a documented default exception. Widen the deny list and close the auto-approval path.",
+   "All 7 sources check out and this is a config-only change that works today. Two corrections: hot-apply of command policy is documented, so nothing is left unverified, and the 'second approval' gate is skipped by setup links and SSH-verified pairing."
+  ],
+  "reviewed_by": 2,
+  "wave": "I",
+  "section": "The Mac and other computers",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, unverified, caveats. Kept: OpenClaw's own computer-use page shows the deny entry for an operator who wants the command off. Widened as both earlier reviewers asked, because pairing a Mac brings shell, browser-proxy, MCP and screen-viewing commands along with pointer control; the deny list now names every one of them, and a stale pointer to a removed entry is dropped.",
+   "r1: kept; credible mention: Computer use",
+   "r2: edited name, description, how, unverified, value, example. Kept on OpenClaw's computer-use page, and made the one wave-A card for every paired device: the iPhone deny lines that the phone entry (OCL-01) repeated now live here. Round 1 missed that SSH-verified pairing is on by default and that this release can also drive the Gateway's own desktop; with nothing paired today the value is 3, a cheap seatbelt.",
+   "r2: kept; credible mention: Computer use",
+   "r3: edited description, how, caveats. Kept: OpenClaw's computer-use page tells an operator who does not want screen control to put the command on the Gateway deny list. Two facts are corrected from the config repo: SSH-verified pairing and local auto-approval have been off since M0, so only the deny list, the plugin-tools switch and the posture-check lines are new work, and 'nothing is paired' now says that Tony's iPhone holds two Control UI entries, which are operator consoles and not nodes.",
+   "r3: kept; credible mention: Computer use",
+   "r4: edited how. Kept: OpenClaw's computer-use page tells an operator who does not want screen control to put the command on the Gateway deny list. Two gaps are closed: the 'never enable the Gateway-desktop plugin on the Mac mini' rule gets a posture-check line so it is checked and not only remembered, and the list of commands to keep out of the allow list gains the three the docs name that were missing (camera pan and tilt, sending and searching SMS).",
+   "r4: kept; credible mention: Computer use",
+   "r5: edited description, caveats. Kept: OpenClaw's computer-use guide tells an operator who does not want screen control to put the command on the Gateway deny list. The card said no agent could pull data from a paired phone, but the list as written leaves a few low-risk default commands allowed (device details, the camera list, notifications and, on a Mac, the list of installed apps), so the wording is narrowed to personal data and a caveat names what is left.",
+   "r5: kept; credible mention: Computer use",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave B. It is config only and belongs with the outbound gate, as the standing gate for the two advanced abilities Tony named.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. S14 turns this from a list deployed early for devices nobody has into the first step of the first pairing. With the iPhone app and the screen-control pilot now planned, that day exists: the list is written and deployed just before the first device is paired, and no check code is written for the screen-control plugin.",
+   "r10: kept; credible mention: Computer use",
+   "r11: edited how. Check 2: the card did not say whether it needs a rule in the house-rules plugin; it now says it needs none.",
+   "r11: kept; credible mention: Computer use",
+   "r12 (Wave definition, 12 Oct): moved from wave B to wave I."
+  ],
+  "demand": {
+   "ref": "docs/nodes/computer-use.md:220",
+   "title": "Computer use",
+   "supports": "OpenClaw's computer-use guide tells an operator who does not want screen control to put the command on the Gateway deny list, and says a denied command is withheld from the device and logged."
+  }
+ },
+ {
+  "id": "MAC-02",
+  "name": "Screen-control pilot on a clean, throwaway virtual Mac (attended by Tony)",
+  "tier": 3,
+  "cluster": "Computer use: agent design",
+  "description": "An experimental pilot: Happy controls the screen of a clean, throwaway virtual Mac that holds no Apple Account, Messages or saved passwords, never Happy's own desktop. It starts with one 'step zero' test and ends there if that fails. If it passes, Tony starts and watches every run of one chore he names at execution; nobody starts a run by text.",
+  "example": "Step zero: in the throwaway virtual Mac, one screenshot is taken and one click is made on an empty desktop while Tony watches. Later Tony starts the chore he named, watches it and reads the result: 'done' or 'stopped: a sign-in window appeared'.",
+  "how": "Step zero first; if it fails the pilot ends, and no real desktop is ever used. A throwaway macOS guest on the Mac mini (for example with the Lume CLI); OpenClaw.app installed in it and paired by hand as its own device, with no setup link; proof that the app runs there without operator rights; then, with the MAC-04 entries for `computer.act` and `screen.snapshot` lifted, one screenshot and one click invoked by Tony as operator. If it passes: one `desk` agent with memory off, its own capped model key, the minimal tool profile and only `computer` (in its tool allow and in `tools.sandbox.tools.alsoAllow`); the guest may reach only the gateway and is reset before every run. Tony starts and watches each run, and stops it with 'Allow Computer Control' in the guest's app or by putting the deny entries back. Test: his chore, run a few times, once with a planted instruction on screen. House-rules plugin: no rule while only Tony starts runs.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "MAC-04 deny list in place first; its entries for `computer.act` and `screen.snapshot` are lifted for the pilot. The list is Gateway-wide, so no other Mac is paired meanwhile, and if a phone is paired by then its approved command list is re-read first",
+   "Tony provides the chore at execution: one family chore that no app or script already handles, with nothing from the never list in it (no payment, purchase, booking, lock or CAPTCHA)",
+   "Step zero passes; if it does not, the pilot ends there",
+   "Disk and memory on the Mac mini for a macOS guest (OpenClaw's virtual-Mac page asks for about 60 GB of free disk)",
+   "A route from the guest to the gateway, which listens on the Mac mini only: the guest's own tailnet identity or an SSH tunnel, limited to the gateway's address and reviewed as a change to the M0 baseline",
+   "Tony provides a new capped model key for the desk agent at execution, created by hand (each agent has its own key)"
+  ],
+  "value": 2,
+  "effort": "L",
+  "caveats": [
+   "The guest is not empty of secrets: the app inside it is signed in to the family gateway. Until step zero shows it running as a device with no operator rights, the agent driving the screen could open a console to everything the clean desk was built to keep away.",
+   "Pairing the Mac app pairs a whole device: shell commands, a browser proxy, connector calls and a desktop stream arrive with pointer control. Those stay on the deny list.",
+   "There is no check per click and no approval per action: dozens of clicks run unreviewed, so Tony watches every run, and nothing sent by text stops a run in mid-task.",
+   "Red-team research on computer-use agents reports injected on-screen instructions succeeding in a large share of attempts, so the tool's built-in warning to the model is a tripwire, not a control. What exists on the controlled desktop is the real boundary.",
+   "A desktop that is never reset is the agent's memory: files, open windows and the clipboard carry over from one run to the next.",
+   "A pass shows that the chore can be done, not that screen control is safe. Letting anyone start a run by text would need a stop check in code first, as a rule in the house-rules plugin."
+  ],
+  "safety": "The desk agent reads untrusted content (the screen) and holds no memory, accounts or message tool. Its limits are config a prompt cannot change: `computer` on that agent alone, every other device command on the deny list, a guest that reaches only the gateway and is reset before each run, with the app's operator access proven absent first. Never Happy's own desktop; nothing from the never list.",
+  "unverified": [
+   "That OpenClaw.app's Computer Control (its macOS permissions, its capture path and its 'verified unlocked desktop' check) works inside a macOS guest with a virtual display. Step zero settles it.",
+   "Whether the Mac app can run in the guest as a device with no operator rights. Step zero settles it.",
+   "How to restrict a Lume guest's network to one host address.",
+   "That with `cua-computer` never enabled on the Mac mini, a `computer` call with no target lands on the guest and never on Happy's own desktop; the docs say the sole connected computer is used, and it was not run.",
+   "How Tony invokes one screenshot and one click as operator in step zero, and later starts a run on the desk agent and reads its result; the docs say an operator with write access can invoke a paired device's command, and none of this was tried.",
+   "Apple's licence for the installed macOS 27 (the macOS 26 licence, read in an earlier run, allows up to two additional macOS instances in virtual machines for personal use).",
+   "The guest's memory cost; OpenClaw's page states disk only."
+  ],
+  "overlaps_existing": [
+   "F019",
+   "F041",
+   "G005",
+   "G009"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:94",
+    "title": "Computer use: the computer agent tool",
+    "anchor": "model-only",
+    "supports": "Screenshots stay with the model, are never auto-sent to chat, and on-screen content is to be treated as untrusted.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:75",
+    "title": "Tool policy: Tool groups",
+    "anchor": "group:nodes",
+    "supports": "`computer` is a named built-in tool in the nodes group and can be allowed or denied per agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:48",
+    "title": "Tool call policy hooks",
+    "anchor": "requireApproval",
+    "supports": "A plugin's before_tool_call hook can block a call or pause it for human approval based on the tool name and parameters.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/loop-detection.md:12",
+    "title": "Tool-loop detection",
+    "anchor": "tools.loopDetection",
+    "supports": "Loop detection is a per-agent setting and is off unless enabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/prompt-injection.md:34",
+    "title": "Prompt injection",
+    "anchor": "reader agent",
+    "supports": "OpenClaw recommends a tool-limited reader agent for untrusted content that passes a summary to the main agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "title": "Computer use guide (OpenAI)",
+    "anchor": "Treat screen content as untrusted",
+    "supports": "OpenAI tells developers that text on the screen cannot grant permission and must be treated as untrusted.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2505.21936",
+    "title": "RedTeamCUA: Realistic Adversarial Testing of Computer-Use Agents in Hybrid Web-OS Environments",
+    "anchor": "42.9%",
+    "supports": "An arXiv red-team study measured indirect prompt injection succeeding against commercial computer-use agents at rates from single digits to well over a third of attempts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:691",
+    "title": "Exec approvals: Approval flow",
+    "anchor": "Command-Return",
+    "supports": "The macOS app shows exec approval panels that are approved with a button or a keystroke.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals-advanced.md:309",
+    "title": "Exec approvals, advanced: Same-chat approvals",
+    "anchor": "supports both approval kinds",
+    "supports": "The web UI can resolve both exec and plugin approvals, and a chat that originated a request can approve it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:162",
+    "title": "Plugin permission requests: Decision behavior",
+    "anchor": "No approval route",
+    "supports": "A plugin approval with no connected approval surface is blocked rather than allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/mac/remote.md:9",
+    "title": "Remote control",
+    "anchor": "full remote control",
+    "supports": "The macOS app acts as a full remote control for a gateway running on another host.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:17906",
+    "title": "OpenClaw tool assembly",
+    "anchor": "wrapToolWithBeforeToolCallHook",
+    "supports": "Every tool in the built-in set, which includes the computer tool created at line 17625, is wrapped with the before_tool_call hook.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:1193",
+    "title": "computer tool schema",
+    "anchor": "action: stringEnum",
+    "supports": "The computer tool takes a named action parameter that a hook can match on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage: Approval polls and reactions",
+    "anchor": "channels.imessage.allowFrom",
+    "supports": "Over iMessage, /approve is authorized against the channel's allowFrom approver list, so any listed handle can resolve a request.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:119",
+    "title": "Sub-agents",
+    "anchor": "subagents.allowAgents",
+    "supports": "Which agents a given agent may spawn is set per agent with an allowAgents list.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "title": "Computer use tool (Anthropic)",
+    "anchor": "dedicated virtual machine or container",
+    "supports": "Anthropic's first precaution is a dedicated VM or container with minimal privileges, and the second is keeping account logins away from the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/trycua/cua/tree/main/libs/lume",
+    "title": "Lume (trycua/cua)",
+    "anchor": "Apple Virtualization Framework",
+    "supports": "Lume is a command-line tool that creates and runs macOS and Linux virtual machines on Apple's virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer)",
+    "anchor": "Running macOS in a virtual machine",
+    "supports": "Apple documents a supported way to run macOS as a guest on Apple silicon (only the page title was retrievable in this run).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:31",
+    "title": "Run a node host",
+    "anchor": "Tailscale identity headers",
+    "supports": "Node-role connections cannot authenticate with Tailscale identity headers and need token or password auth.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/file-transfers.md:39",
+    "title": "Node file transfers",
+    "anchor": "allowReadPaths",
+    "supports": "File access on a node is granted per path through read and write allowlists in the File Transfer plugin config.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/120421",
+    "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+    "anchor": "iPhone Mirroring",
+    "supports": "iPhone Mirroring needs Mac and iPhone signed in to the same Apple Account, so a guest without an account cannot use it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/macos.md:193",
+    "title": "macOS app: Open dashboard links",
+    "anchor": "shared owner profile",
+    "supports": "When a gateway uses a shared token or password and no personal sign-in, the app's dashboard runs as the shared owner profile.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSSequoia.pdf",
+    "title": "Software License Agreement for macOS Sequoia (Apple)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two additional macOS instances in virtual environments on an Apple-branded computer for personal, non-commercial use, among other purposes.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon.json",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer, documentation data)",
+    "anchor": "VZMacOSInstaller",
+    "supports": "Apple's sample project installs macOS from a restore image and runs macOS guests on Apple silicon with the Virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSTahoe.pdf",
+    "title": "Software License Agreement for macOS Tahoe 26 (Apple, PDF)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two extra macOS instances in virtual machines on an Apple-branded computer, including for personal non-commercial use.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/index.js:170",
+    "title": "File Transfer plugin: node host commands",
+    "anchor": "dangerous: true",
+    "supports": "The file.fetch command (block starting at line 165) and its sibling file and directory commands are registered as dangerous.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MAC-03"
+  ],
+  "adds": [
+   "From MAC-01 (Computer-control substrate: OpenClaw.app as the Mac node): Carry the setup facts: screen control on macOS works only through the signed OpenClaw.app (macOS 15 or later; a 2026.9.7 build exists), installed inside the clean VM and granted Accessibility and Screen Recording there, never to the shared node binary. Carry the warning that pairing the app pairs a whole node (shell execution with no prompts until its exec approvals are set to deny, Desktop sharing and Allow Computer Control both on by default) and puts a signed-in Gateway console on the controlled desktop.",
+   "From MAC-15 (Watch Happy work: Screen Sharing and the Control UI Desktop panel): Carry: a person watches pilot runs through macOS Screen Sharing limited to named users, switched on only inside the desk VM and never on happy's own session, with desktop.stream kept in the deny list unless the Control UI Desktop panel is wanted. Carry the two limits: nothing arbitrates between a human hand and the agent on a paired Mac, and Screen Sharing can lock the Mac when the last viewer leaves, which ends the run.",
+   "From MAC-05 (Computer-use acceptance test: ten household tasks before any go-live): Carry the gate: ten desk tasks that each end in a checkable file plus three planted-instruction cases, run on the clean desk with synthetic files; the suggested bar is at least 8 of 10 on three consecutive runs with no planted instruction followed, re-run after each OpenClaw or macOS update. Carry the caution that a pass shows usefulness, not safety, and that no benchmark figure for the family's own model was found."
+  ],
+  "review_notes": [],
+  "reviewed_by": 2,
+  "wave": "J",
+  "section": "The Mac and other computers",
+  "includes": [
+   {
+    "id": "MAC-03",
+    "name": "A clean desk: control a macOS VM, not happy's own session"
+   }
+  ],
+  "history": [
+   "r1: edited name, description, example, depends_on, value, effort. This becomes the single entry for the screen-control pilot: the Mac app install (MAC-01), the watching view (MAC-15) and the go-live test (MAC-05) are steps of the same piece of work. Value drops to 2 and effort rises to L because the whole chain is the real cost and, with the form-filling pilot (MAC-07) removed, no family chore is approved for it yet.",
+   "r1: kept; credible mention: Computer use",
+   "r1: merged with MAC-03 (same batch). The clean macOS virtual machine exists only to give the stateless desk agent a desktop to drive, so the two halves of the screen-control pilot become one later card.",
+   "r2: edited depends_on, unverified, caveats. Kept as the one parked screen-control card. Its first dependency said the deny list would be lifted 'for exactly one node', which is impossible because the list is Gateway-wide; that is corrected, a repeated open question is dropped, and one limit round 1 missed is added: this release can also drive the Gateway's own desktop, so the pilot has to pin the guest.",
+   "r2: kept; credible mention: Computer use",
+   "r3: edited how. Kept as the one parked screen-control card: OpenClaw documents screen control of a paired Mac, and both model vendors' guidance, reopened this round, says to confine it to a dedicated virtual machine with no accounts, which is what this pilot does. One step was missing from the build note: every Happy agent is sandboxed and the screen-control tool is on the sandbox's default deny list, so the desk agent needs a second allow entry or it never gets the tool. It still has no approved family chore; that was weighed in rounds 1 and 2 and is not reopened.",
+   "r3: kept; credible mention: Computer use",
+   "r4: kept; credible mention: Computer use",
+   "r5: kept; credible mention: Computer use",
+   "r8 (Wave definition, 12 Oct): moved from wave later to not in a wave yet. Later plan 'a paired device', which is Tony's own example of an advanced ability: screen control is experimental, adds a kind of risk no wave here has, and its own card parks it until a chore is named, so it is a plan of its own after C with wave B's deny list already in place.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony wants the pilot, so it is planned in the form the review left: one 'step zero' test on a throwaway virtual Mac, and, once that passes, attended runs of one chore he names at execution. The desk hook, the hand-off from a parent's chat, the watching view and the ten-task exam are not built.",
+   "r10: kept; credible mention: Computer use",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave J."
+  ],
+  "demand": {
+   "ref": "docs/nodes/computer-use.md:11",
+   "title": "Computer use",
+   "supports": "OpenClaw documents an agent seeing and controlling a paired Mac's desktop through one built-in tool as a supported capability, and the same page (line 94) says to treat everything on screen as untrusted; the vendor's macOS VM page, also opened, describes a resettable Lume guest as a supported way to get isolation."
+  },
+  "corrections": []
+ }
+]

@@ -1,0 +1,520 @@
+[
+ {
+  "into": "F019",
+  "members": [
+   "F019",
+   "WEB-01",
+   "F022",
+   "G014"
+  ],
+  "why": "same batch",
+  "note": "The research agent, the egress guardrails that sit in front of it, the citation and freshness rules written into its instructions, and the acknowledge-and-cancel etiquette for its hand-off become one wave A card.",
+  "record": {
+   "name": "Research agent: reads public web pages behind egress guardrails, with cited answers and background-task etiquette",
+   "description": "Happy can read public web pages that load without JavaScript or a login: a memory-less research helper fetches the page and the parent's own agent relays the answer with its link and the time it was fetched. Slow lookups get an 'on it', one message when done and a working 'cancel that', and nothing the helper fetches can reach the home network.",
+   "example": "Jordan texts: 'What time does the town pool open on Saturday? Check their site.' Happy replies 'on it', then sends the hours with the link and when the page was fetched.",
+   "how": "Agent (F019): a new `research` agent, memory search off, tools `web_search` and `web_fetch`, sandboxed; each <p>-main gains `sessions_spawn` and `subagents.allowAgents: [\"research\"]`; its rules live in AGENTS.md only. Guardrails (WEB-01): leave both `dangerouslyAllowPrivateNetwork` keys unset, keep `tools.web.fetch.headers` empty, install no fetch-provider plugin, set `browser.evaluateEnabled: false`, keep `browser.enabled: false` until F020, and add two eval cases (a LAN address, a public URL that redirects to one) to the M3 exit test. Answer rules (F022): quote `fetchedAt`, use `published` when present, flag pages undated or older than 30 days, allow 'could not verify'; a fact check returns true, false, mixed or unclear with two or three dated sources. Etiquette (G014): `runTimeoutSeconds` on the spawn, the automatic completion announce, `subagents` `action: \"cancel\"`, and concurrency caps.",
+   "depends_on": [
+    "roadmap egress proxy (optional second layer, for the gateway's own HTTP clients)"
+   ],
+   "caveats": [
+    "The plain fetch runs no JavaScript and cannot log in, so such pages wait for the research browser (F020) or stay unread.",
+    "web_fetch blocks private hosts and re-checks redirects, but the browser's own check is weaker (the docs say its request interception is not a network firewall), which matters once F020 switches the browser on.",
+    "Leave the private-network keys truly unset: an explicitly written `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork: false` turns hostname navigation into an allowlist and would stop a later research browser from loading hostnames.",
+    "The SSRF policy covers the `web_fetch` and browser tools only, so host-side helpers that take a URL (the summarize wrapper, the print plugin's download, watcher scripts) need their own scheme, host and resolved-address checks.",
+    "A hostname block list is not an exfiltration control and is not worth curating: what counts is the private-network block, no headers, no fallback provider, and no private data in the agent that browses.",
+    "Once research has web_fetch, the roadmap's egress proxy cannot double as an exfiltration allowlist; it can deny private ranges and named hosts and nothing more (an inference from the routing description).",
+    "A sandboxed requester cannot spawn an unsandboxed target, so research has to stay sandboxed, and sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file.",
+    "An official-sites-only mode for admin questions would need a before_tool_call hook and is not planned."
+   ],
+   "safety": "The research agent reads untrusted pages but holds no memory, no accounts and no family data, and the guardrails take the home network out of its reach; that is what breaks the trifecta. They do not stop an injected page making it request some public URL. Its answer returns to an agent that holds memory, so the relayed text is treated as untrusted.",
+   "tier": 1,
+   "section": "Web reading and research",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "F043",
+  "members": [
+   "F043",
+   "F034"
+  ],
+  "why": "same purpose",
+  "note": "The home systems and service-provider registry is the home-systems section of the shared family handbook plus a way to fill it from a data-plate photo, so it joins the vault card in wave A.",
+  "record": {
+   "name": "Household knowledge vault: shared family handbook, including the home systems and service-provider registry",
+   "description": "One shared family handbook that both parents' agents can search: people, home systems, providers, renewal dates, sitter notes. A photo of an appliance's data plate, sent once, fills in the home-systems page, so a later 'what filter does the furnace take?' or 'who fixed the boiler?' gets the stored answer.",
+   "example": "Tony sends a photo of the furnace data plate and texts 'save this'. A month later Jordan asks: 'What filter does the furnace take?'",
+   "how": "Step 1 (F043): a shared Markdown folder added to each main's `memory.search.extraPaths`. Step 2: enable the bundled memory-wiki plugin with `vault.scope` global and its own vault directory; `wiki_search`, `wiki_get`, `wiki_apply` and `wiki_lint` on the two mains only. Registry (F034): with inbound attachments on, the vision model reads the data plate and the agent saves a wiki synthesis page with `wiki_apply`, or a fact in the household store; manuals given as a link go through the research agent. With only step 1 in place, the operator types the plate details into the folder by hand.",
+   "depends_on": [
+    "F002 photo and PDF reading with inbound attachments switched on (data-plate route only)",
+    "F019 research agent (manuals by link only)",
+    "F031 household store (optional, for single facts)"
+   ],
+   "caveats": [
+    "The two installed pages disagree on whether enabling memory-wiki needs a gateway restart.",
+    "That memory_search in a sandboxed main can read a shared folder outside its workspace was not tested.",
+    "Saving a data plate as a wiki page needs step 2; with only the shared folder the operator types the details in by hand.",
+    "Data-plate photos go to the cloud vision model, which is the attachments decision recorded under F002, and image input on the family's custom provider ids was not re-checked.",
+    "The vault is shared by design, so both parents' agents search and edit the same pages.",
+    "Other entries file into it: the renewals look-ahead keeps a policy's one-line summary page here, and a pet's vet contact and food reorder link would sit in the provider registry, with nothing ordered."
+   ],
+   "safety": "Vault pages are private family data and stay on the two parents' own agents, which have no browse tool; the research agent that reads manuals holds none of it. A data-plate photo is untrusted content read by an agent with memory, but that agent can reply only to its owner or, once family delivery exists, the family.",
+   "tier": 1,
+   "section": "Memory, knowledge and skills",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "F042",
+  "members": [
+   "F042",
+   "G011"
+  ],
+  "why": "same batch",
+  "note": "The reply-language line is one of the standing preferences the same generator renders into each adult's USER.md, so bilingual replies and the grandparent-facing translation join the family-facts card.",
+  "record": {
+   "name": "Family facts, standing preferences and reply language rendered into each parent's agent from family.json5",
+   "description": "Both parents' agents start every chat already knowing the kids' school, routines and activities and each adult's standing preferences, including the language to reply in. On request Happy also turns a school note into a short Chinese text a parent can forward to a grandparent.",
+   "example": "Jordan writes to Happy in Chinese and is answered in Chinese; Tony texts 'put this school note in Chinese for grandma' and gets three short lines to forward.",
+   "how": "One generator, one file. From family.json5 the generator renders each adult's directives into USER.md (4,000-character cap), the per-person reply-language line among them (G011), and the kid and routine facts into MEMORY.md with trigger comments (F042); nothing is rendered into shared agents. Scheduled jobs do not read that line, so the language is written into each job message. The grandparent version is a prompt-only request on the parent's own agent: no new tool and no send path, and the parent forwards the text.",
+   "depends_on": [
+    "family.json5 registry and the gen-family generator in happy-config"
+   ],
+   "caveats": [
+    "USER.md has a 4,000-character cap that all standing preferences share, so the list has to stay short.",
+    "Rendered facts change only when the family file is edited and redeployed, and a chat edit to a generated file is expected to be lost on the next deploy; things a parent says in chat go through the memory write path (F041).",
+    "On supported iPhones Messages can already translate a conversation automatically and on device, so plain back-and-forth with a grandparent may need nothing from Happy; whether that covers Chinese on this family's phones is not confirmed.",
+    "Happy's distinct part on the language side is the shortened Chinese version of a school note, and its translation quality for school notices was not evaluated.",
+    "A per-language voice switch is documented only for the bundled Microsoft speech provider, which is an online service, so it does not help the offline say path, and whether the default say voice pronounces Chinese was not tested.",
+    "The generator script and the family registry were not opened in this review."
+   ],
+   "safety": "The rendered files hold the children's school and routines, so they go only into the two parents' own agents and never into shared agents such as research, the group agent or the mail readers. No tool and no send path are added; a translated note leaves the family only when a parent forwards it.",
+   "tier": 1,
+   "section": "Memory, knowledge and skills",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "G009",
+  "members": [
+   "G009",
+   "G010"
+  ],
+  "why": "same purpose",
+  "note": "The parent-to-parent request relay is the family-only send with an answer coming back, so it becomes an optional second step of the family delivery card.",
+  "record": {
+   "name": "Family-only delivery: text the other parent or the parents' group, and ask-and-relay a yes or no, with the recipient pinned in code",
+   "description": "Happy can pass a short text from one parent to the other or to the parents' group, and can ask the other parent a question, relay the yes or no back and remind once before the ask expires. It can never message anyone outside the family.",
+   "example": "Tony texts: 'Ask Jordan if she can do Thursday pickup.' Jordan gets one line, answers 'yes', and Tony gets her answer back.",
+   "how": "Delivery (G009): the `message` tool on <p>-main with a `before_tool_call` plugin hook that blocks any target not in family.json5 and fails closed. The live config has both `tools.message.crossContext` switches off, which confines sends to the current conversation, so `allowWithinProvider` is turned back on (`allowAcrossProviders` stays off) and the hook is then the only recipient limit. Host jobs use `openclaw agent --deliver` or `openclaw message send`. Request relay (G010), an optional second step that need not hold up the first: a pending_requests table in the household store, a `before_dispatch` plugin that matches a bare yes or no from the asked parent to that parent's one open request, and a one-shot `--at` automation for the reminder and the expiry.",
+   "depends_on": [
+    "family.json5 registry (the list of allowed recipients)",
+    "F031 household store (pending requests; relay step only)",
+    "F007 timed reminders (reminder and expiry; relay step only)"
+   ],
+   "caveats": [
+    "Only the before_tool_call check fails closed; a message_sending hook can be added as a second check but is logged and skipped when its handler throws or times out, so it must not be relied on.",
+    "Re-opening the same-provider crossContext switch makes the hook the only recipient limit, and the hook and its family-only test case do not exist yet.",
+    "The exact parameter that carries the recipient in a message tool call, which the hook must match, was not read from source.",
+    "`openclaw message send` takes no agent flag and runs as the configured System Agent; whether that suits per-person jobs was not tested.",
+    "The relay step adds little, because the parents can already text each other or ask in the parents' group chat (F006): the gain is tracking, one reminder and an expiry.",
+    "In iMessage Basic mode there is no tap-to-answer, so the reply to a relayed request is a typed yes or no.",
+    "How plugin code sends the relayed answer on to the other parent is unverified, since no plugin-side outbound send call was found in the docs read.",
+    "For anyone outside the family (a plumber, a coach, carpool parents) Happy returns paste-ready wording and the parent sends it from their own phone."
+   ],
+   "safety": "This is the house rule that outbound messages go only to the family, enforced by code that fails closed and not by a prompt. It gives <p>-main, which holds private data, a way out limited to the two parents and their group chat. The relay step adds no new recipient and no new data source.",
+   "tier": 1,
+   "section": "Channel, media and voice",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "G008",
+  "members": [
+   "G008",
+   "OCL-13"
+  ],
+  "why": "same batch",
+  "note": "The daily integration-health watch and the change-based security audit are both read-only host jobs that text only Tony over the same delivery path, so they become one operator self-check card that also carries the checklist lines left over from the removed spend and backup entries.",
+  "record": {
+   "name": "Operator self-checks: daily integration health and credential expiry, security audit after every update and monthly",
+   "description": "Host-side, read-only checks that text Tony only when something is broken or has changed: an expired or expiring sign-in, a failed channel probe, a plugin that did not load, a new audit finding, the firewall or FileVault off, a new listening port, updates pending. The monthly run also carries the operator's standing checklist for spend caps and backups.",
+   "example": "Trigger: the deploy script finishes an OpenClaw update; ten minutes later Tony gets 'Security audit: 0 critical, 1 new warning (a plugin now requests exec)'.",
+   "how": "Daily (G008): a command automation runs `openclaw health --json`, `channels status --probe`, `models status --check` and, once installed, `gog auth list --check`, reading each entry and not exit codes. After every update and monthly (OCL-13): a happy-deploy script works through the bundled healthcheck checklist host-side (`openclaw security audit --deep` with `--json`, `gateway status --deep`, `doctor --lint`, then listening ports, firewall, FileVault, Time Machine and the software-update schedule), compares findings with the previous run and prints `NO_REPLY` when nothing changed; accepted findings go into `security.audit.suppressions`. Monthly checklist lines: every new agent or key has its own capped OpenAI project and a term in the daily cost alert; a quarterly restore drill into a scratch folder; each new store is inside the nightly archive.",
+   "depends_on": [
+    "G003 jobs registry",
+    "G006 audit digest",
+    "gog installed on the Mac mini (for the Google sign-in check only)"
+   ],
+   "caveats": [
+    "The roadmap's M1 Grafana alerts already cover 'gateway down' and 'iMessage unhealthy', so the new work is expiring sign-ins and model credentials, plugins that failed to load and a live channel probe; do not build the same alert twice.",
+    "The Google half of the daily check waits until the gog command-line tool is installed.",
+    "The roadmap already says to re-run the audit after each update; this only makes it automatic and change-based.",
+    "Plain doctor can migrate state, so scheduled checks use the lint form, and the audit's fix flag is never used in a scheduled job.",
+    "The deep audit probes the live Gateway and loads plugin security collectors, so it runs while the Gateway is up; whether it can run from the scheduler as the happy user without the Gateway token on the command line is untested.",
+    "Spend caps, the daily budget alert and the nightly verified backup already exist, so what is carried here is three checklist lines and not a feature; eval-clone spend is labelled 'unknown' and the daily alert does not see it.",
+    "The backup archive holds sign-ins and keys and is not encrypted by OpenClaw, so it must never be copied to iCloud or any unencrypted place.",
+    "What the channel probe reports for a Basic-mode iMessage account is unverified."
+   ],
+   "safety": "Read-only and host-side: no agent gains exec or any other tool, no model reads the output, and the result goes only to Tony.",
+   "tier": 2,
+   "section": "Operator checks and recovery",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "G001",
+  "members": [
+   "G001",
+   "G002"
+  ],
+  "why": "same batch",
+  "note": "Snooze, mute and vacation mode keep their paused-until state in the same store as the notification plugin and rely on its priority classes, so the standing limits and the pause-by-chat become one wave B card.",
+  "record": {
+   "name": "Notification policy: daily cap, quiet hours, priority classes and job tags, plus snooze, mute and vacation mode by chat",
+   "description": "Caps how many unprompted texts each parent gets in a day, holds non-urgent ones outside allowed hours and labels each one so you know which job sent it. Either parent can text 'mute until 3' or 'we are away next week', and briefs, bin reminders and routines pause for that window while urgent alerts still arrive.",
+   "example": "Jordan texts: 'We are away next week.' Briefs and bin reminders stop for the week; an urgent alert still arrives.",
+   "how": "Policy (G001): an in-house plugin with `before_tool_call` on `message` (fails closed) and a `message_sending` cancel for `--announce` deliveries (fails open on error); counters live in the household store, and schedules are generated inside the allowed windows in the first place. Pause (G002): a paused-until row in the same store that each job reads first, answering `NO_REPLY`; or `openclaw automations disable|enable <job-id>` from a host helper; `cron.enabled: false` pauses everything. The policy's priority classes decide which alerts still pass during a mute. A sender listed in `commands.ownerAllowFrom` can also ask the agent to disable an existing automation by chat.",
+   "depends_on": [
+    "F031 household store (counters and the paused-until row)",
+    "G003 jobs registry (schedules generated inside the allowed windows)"
+   ],
+   "caveats": [
+    "Each iPhone can already silence the night on a schedule, so what Happy adds is the daily cap, the urgent or not-urgent split, the label and the pause by chat.",
+    "It is not a hard gate for scheduled texts: the message_sending hook that sees `--announce` deliveries lets the message through if the plugin throws or times out, and only the agent's own message tool is gated fail-closed.",
+    "The reading of the announce path comes from bundled JavaScript and not a doc page, so confirm it with a throwaway hook before relying on either hook.",
+    "No doc lists a job id on message_sending, so each job may have to write its own tag into the text.",
+    "No built-in quiet hours or priority classes were found in OpenClaw, so keeping urgent alerts on during a mute depends on this plugin.",
+    "The household store does not exist yet, so the counters and the paused-until row are a design and not an installed feature.",
+    "The fixed emergency reply (CRT-13) answers an inbound text and must never be held back by quiet hours, caps or a mute."
+   ],
+   "safety": "Both halves only hold back or pause Happy's own unprompted texts; neither adds a recipient, a tool or a data source. Urgent classes keep passing during a mute, and switching everything off stays an operator action.",
+   "tier": 1,
+   "section": "Operator platform and guardrails",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "F051",
+  "members": [
+   "F051",
+   "F056"
+  ],
+  "why": "same batch",
+  "note": "The dedicated school mailbox with its isolated reader and the weekday 16:00 digest that is the reader's only output are one build on one agent in wave B, so they become one card; allowlist changes by chat (G016) stay separate.",
+  "record": {
+   "name": "School mailbox with an isolated reader and a weekday 16:00 digest",
+   "description": "A separate mailbox registered with school, PTA, coaches and the lunch system is read by an isolated, memory-less reader, so no parent's private inbox is touched. Weekday afternoons both parents get a five-line text of the day's school and activity mail with dates spelled out, a dated to-do list with day-before reminders offered, and one line per child from the school platforms' own summary emails where the school uses them.",
+   "example": "Trigger: weekdays at 16:00. Text: 'School mail today: picture day is Thursday 15 October, order form due Wednesday 14 October; PTA meeting moved to Tuesday 20 October at 7 pm; lunch balance is low. Want a reminder the day before each?'",
+   "how": "Mailbox (F051): the bundled `imap` plugin on a new mailbox (iCloud needs `watch.mode: \"interval\"`), a sender allowlist that includes both parents for forwards, and a tool-less reader. The plugin cannot text a person by itself, so reaching the parents needs a hook-pinned `message` tool or a scheduled sweep. Digest (F056): `automations create '0 16 * * 1-5' --agent school-mail --session isolated --announce --to <chat>` with `--tools school-mail-ro__*`; the read MCP is `gog mcp` (Gmail) or a himalaya wrapper (iCloud). Setup done once by a parent, per platform: ParentSquare posts set to Digest with email on, PowerSchool's scheduled emails and Balance Alert sent to the mailbox, Google Classroom guardian summaries, the lunch service's low-balance alert, library notices; each sender goes on the allowlist.",
+   "depends_on": [
+    "a new mailbox and its app-specific password (choice of provider)",
+    "F031 household store for the dated checklist",
+    "F007 reminders for the day-before offers",
+    "knowing which platforms the district uses",
+    "G009 family-only delivery or a 15-minute sweep job (for the urgent pass-through)"
+   ],
+   "caveats": [
+    "Pick the mailbox provider with the password in mind: the plugin signs in with a mailbox password only, which on Gmail means a Google app password that Google does not recommend, while OpenClaw's guide names Fastmail and iCloud.",
+    "Each school system has to accept an extra guardian address, a manual chore per system, and auto-forwarding from a parent's Gmail may fail the plugin's aligned-DMARC check, so registering the address directly is the safe route.",
+    "The reader gets body text and attachment file names only, so PDF or image newsletters and flyer attachments are not read.",
+    "Urgent alerts are not this digest's job, since the school's own alerts reach the parents' phones first; the reader keeps one backup rule (a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep, not held until 16:00), and sorting urgent from routine on real district mail is untested.",
+    "PowerSchool emails carry grades and attendance and Classroom summaries carry assignment titles: these are a child's education records and they reach the cloud model under store:false, which is why the card is rated medium risk.",
+    "Classroom summaries (missing and upcoming work, no grades) arrive only if the school uses Classroom and the teacher switches them on, and the guardian invitation expires after 120 days.",
+    "One job appears to take one delivery target, so two parents need two jobs or the parents' group chat, and the iCloud read path likely needs an in-house himalaya wrapper.",
+    "For a school or team app that sends no email, try the app's own email notifications into this mailbox first and a parent's screenshot to Happy second; Canvas and ClassDojo have no verified email path."
+   ],
+   "safety": "All school mail is untrusted and is read only by the memory-less school-mail agent behind a sender allowlist with verified authentication; that agent has no web or file tools and can only announce to the two parents. Links are relayed only when their domain matches the allowlisted sender. No agent logs in to a school portal and no portal credentials are stored.",
+   "tier": 2,
+   "section": "School and kids",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "SRC-03",
+  "members": [
+   "SRC-03",
+   "SRC-04"
+  ],
+  "why": "same batch",
+  "note": "The CPSC product-recall watch and the FDA food-and-medicine recall watch are the same no-model command job with a seen-id file and a local match against the family's own lists, so they become one recall-watch card.",
+  "record": {
+   "name": "Recall watch matched to what the family owns: products (CPSC), food and medicine (FDA)",
+   "description": "A script checks the Consumer Product Safety Commission's recall list each day and FDA's recall and safety notices twice a day, and texts a parent only when a notice matches something the family owns, an allergen it cares about, a staple brand or a children's medicine in the cabinet. The agencies publish far more notices than anyone reads, so the filter is the feature.",
+   "example": "Trigger: a new recall whose product name contains a brand on the family's owned-items list. Text: 'CPSC recall 26-xxx: <product title>. Hazard: burn. Remedy: refund. Link: cpsc.gov/...'",
+   "how": "Two operator-created command jobs with no model, each announced to a pinned parent. Products (SRC-03): `node scripts/cpsc-recalls.mjs` once a day asks the CPSC recall web service for recalls since the last run (a date filter only), keeps seen RecallID values in a state file and matches product, maker, retailer and UPC fields locally against owned-item keywords and a short kid-category list; an owned match texts now, a category match waits for a Sunday digest of at most five. Food and medicine (SRC-04): `node scripts/fda-recalls.mjs` twice a day reads FDA's Recalls/Safety Alerts RSS feed and matches titles against allergen, staples and medicine keywords from family.json5. Both print a templated line or `NO_REPLY`. Cars are not polled: parents add VINs and car seats to NHTSA's SaferCar app.",
+   "depends_on": [
+    "F018 command-job pattern",
+    "G003 jobs registry",
+    "G001 notification policy",
+    "the home systems registry in F043 or a hand-kept owned-items list",
+    "allergen, staples and medicine keyword lists in family.json5"
+   ],
+   "caveats": [
+    "The match is only as good as the family's lists: substring matching on brand names gives some false positives and misses unlisted items, and FDA titles that do not name the allergen or brand are missed.",
+    "Both agencies already offer their own recall sign-ups, so Happy adds the match against the family's own list and not earlier notice.",
+    "FDA's own list says not every recall has a press release or is posted there, so silence from this watch is not an all-clear.",
+    "openFDA enforcement data is updated weekly and FDA says it must not be used to issue alerts or to make medical decisions, so the RSS notices give timeliness and openFDA is only a detail lookup.",
+    "Meat, poultry and egg-product recalls come from USDA FSIS, whose developer page refused the fetch, so that leg is not included.",
+    "The food and medicine leg is worth most if a child has a diagnosed food allergy; otherwise it is a low-frequency nudge.",
+    "Run one job per parent with its own seen-id state file, because with a shared file the second parent's job finds nothing new and stays silent.",
+    "No key or rate limit is documented for the CPSC service, so poll once a day and not more."
+   ],
+   "safety": "No model runs in either job, and nothing about the family leaves the house: the lists are pulled by date or whole and filtered locally. Recall titles are untrusted and a delivered line is mirrored into the owning agent's transcript, so the scripts print a fixed template with stripped, capped titles and only the official link. Not medical advice.",
+   "tier": 2,
+   "section": "Health, safety and admin",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "CRT-13",
+  "members": [
+   "CRT-13",
+   "F036"
+  ],
+  "why": "same purpose",
+  "note": "The sitter or grandparent sheet is drawn from the same contacts, medical notes and routines as the family emergency plan, so both one-page cards and the fixed emergency reply sit on one card.",
+  "record": {
+   "name": "Emergency card and sitter sheet from one set of family facts, plus a fixed reply to emergency texts",
+   "description": "Happy helps write and keep current a one-page family emergency plan to print, and from the same facts makes a sitter or grandparent sheet (bedtimes, allergies, medicines, emergency contacts) for a parent to forward. Happy is never the emergency channel: a text that looks like an emergency gets one fixed line at once, telling the person to call emergency services, without waiting for a model.",
+   "example": "A parent texts 'make the sitter sheet for Friday' and gets one message to forward or print. A parent who texts 'He swallowed something, what do I do?' gets the fixed call-emergency-services line immediately.",
+   "how": "Plan (CRT-13): Ready.gov's four steps (talk it through, consider the household's needs, write the plan, practise it) become a short interview on <p>-main; the result is a page in the family folder (F043) and a printed sheet (F080), and a yearly reminder re-checks the contacts. Sitter sheet (F036): a prompt template referenced from AGENTS.md over the same facts, prompt-only and able to go first; nothing is sent by Happy and the Wi-Fi password is never stored. Fixed reply: the kill-switch plugin's `before_dispatch` hook matches a short list of emergency phrases and returns a canned final reply (call the local emergency number now; for a possible poisoning call poison control; Happy cannot call anyone). It answers before model dispatch, so it still works during a model outage.",
+   "depends_on": [
+    "G005 kill-switch plugin (shares the hook)",
+    "F043 family folder",
+    "F080 print",
+    "F007 reminders (the yearly contact re-check)",
+    "F009 calendar read (only for 'tonight's plan' on the sitter sheet)"
+   ],
+   "caveats": [
+    "Happy can be down in exactly the events that matter, since a power cut stops the Mac and a network outage stops iMessage, so the printed sheet is the part that survives.",
+    "Phrase matching will fire on jokes and miss paraphrases, so the fixed reply must be harmless when wrong.",
+    "The phone's own emergency call and medical ID features are the right tools on the phone, and Happy should point to them, not imitate them.",
+    "Quiet hours and daily caps (G001) must never hold the fixed reply back; a reply to an inbound text is not a proactive message, but test it.",
+    "Only the two parents can text Happy, so a sitter or grandparent gets the forwarded or printed sheet and cannot ask Happy directly.",
+    "'Tonight's plan' on the sitter sheet needs the calendar connection (F009), which is not built yet.",
+    "No poison-control number is given here because the federal Poison Help site refused automated fetches, so the parents write the number into the fixed reply themselves."
+   ],
+   "safety": "The fixed reply is a string written by the parents and sent only to the sender: no tool, no data, no model. The plan page holds contacts and medical notes, so it lives in the private family folder and on paper; only the fridge-level subset goes on the sitter sheet, which a parent forwards, because Happy messages nobody outside the family.",
+   "tier": 2,
+   "section": "Health, safety and admin",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "G015",
+  "members": [
+   "G015",
+   "F047"
+  ],
+  "why": "same batch",
+  "note": "The locked-down per-person mail agent and the read-only Gmail tool that is the only thing it reads are one build with one account grant, so they become one wave C card; drafts, email-to-self and the morning digest stay separate.",
+  "record": {
+   "name": "Per-person mail agent with read-only Gmail: 'did I get an email about X?'",
+   "description": "One locked-down mail agent per adult can search and read that adult's own Gmail under a read-only grant: nothing is changed, labelled or sent, and the agent cannot browse, run code or message anyone but its owner. A parent asks 'did the dentist confirm?' and gets the sender, the date and the gist, or a five-line timeline of the thread.",
+   "example": "Tony texts: 'Did the dentist confirm Thursday?' Happy answers with the sender, the date and one line of gist from his own inbox.",
+   "how": "Agent (G015): one `<p>-mail` entry per adult with `profile: \"minimal\"`, an explicit `<p>-gmail__*` allow plus the `tools.sandbox.tools` gate, web, fs, runtime and browser denied, memory search off for that agent, and an owner-pinned send hook for its own scheduled turns; checked with `openclaw sandbox explain --agent`. Tool (F047): `gog mcp` as a host-side stdio entry under `mcp.servers`, read tools only, one token per adult, authorised with `--gmail-scope readonly`. Hand-off: <p>-main spawns <p>-mail through `subagents.allowAgents` and gets a bounded answer back. Scheduled sweeps of named senders would use this same read-only tool; the IMAP watch on a personal inbox was dropped.",
+   "depends_on": [
+    "decision: whether personal mail may be read by the cloud model with storage off (the roadmap's M4 rule is a local model only, and no local model is installed)",
+    "gog installed and each adult's own Google sign-in with a read-only Gmail grant",
+    "F048 Gmail drafts tool, only if the draft-writing part is wanted"
+   ],
+   "caveats": [
+    "The roadmap's M4 keeps each inbox on a local model and none is installed, so this sends personal mail to the cloud model, and without Zero Data Retention the 30-day abuse-monitoring log applies to that text.",
+    "gog is not installed on this Mac, so its flags come from upstream docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the installed version.",
+    "With sandbox mode all, MCP tools stay hidden unless `tools.sandbox.tools` names `bundle-mcp` or the server glob, and the minimal profile does not allow MCP tools implicitly.",
+    "'Memory off' is not one switch: memory search has a per-agent override, dreaming is plugin-wide, and the session-exclusion setting only matches hook sessions.",
+    "'Send pinned to owner' applies only when the mail agent runs its own scheduled or hook turn, because a mail agent spawned from <p>-main always loses `message` and `session_status`.",
+    "Whether both adults' tokens would share one keyring under the happy user is open (a per-adult GOG_HOME is an inference), and the refresh-token lifetime of a self-made Google OAuth client left in testing status was not checked.",
+    "That a before_tool_call hook reaches MCP tool calls is implied by the docs, but no sentence there names MCP tools.",
+    "The thread-summary half is free inside Gmail now, so what this adds is asking from the iMessage thread."
+   ],
+   "safety": "The mail agent holds private mail and reads untrusted mail text, so it gets no way out: no web, files, runtime or browser, and messages only to its owner. Read-only means Google's read-only scope on a per-adult token. Draft writing and sending are separate cards with their own grants, so no write path is hidden here.",
+   "tier": 1,
+   "section": "Mail access",
+   "wave": "C"
+  }
+ },
+ {
+  "into": "F072",
+  "members": [
+   "F072",
+   "F073",
+   "G019",
+   "MKT-13"
+  ],
+  "why": "same batch",
+  "note": "The kids agent base, its one purpose (homework hints), and the parent oversight that has to exist on the day it first answers a child (chat hours, safety alerts, nightly digest) are all blocked on the same local model and children's accounts, so they become one later card.",
+  "record": {
+   "name": "Kids agent (waits for a local model): own handle, homework hints, chat hours, parent alerts and a nightly digest",
+   "description": "Later, each child texts Happy from their own Apple account and gets a helper with no tools and no memory, on a local model, that gives grade-level hints and short explanations and never a finished worksheet. The parents get set chat hours per child, an immediate text when a message is flagged for safety or distress, and an evening digest of what each child asked.",
+   "example": "Trigger: at 21:40 the 8-year-old texts the kids agent and gets a fixed 'time for bed, ask me tomorrow' line. Separately, a message classified as distress sends both parents: 'Safety flag in the 10-year-old's chat at 16:12, please check in.'",
+   "how": "Base (F072): `bindings[]` by DM handle to one agent per kid, the minimal profile with `session_status` and `gateway` denied, memory search off, a daily reset, and an in-house kid-safety plugin running a local classifier on `before_dispatch` and `message_sending`. Hints (F073): hint-first rules and a grade band in the kid agent's AGENTS.md; replies carry no URLs. Hours and alerts (MKT-13), same plugin: `before_dispatch` claims messages outside each kid's hours from family.json5 with a fixed reply and no model call; on a distress or safety label it sends a pre-written supportive reply and texts both parents the category and time through family delivery. Digest (G019): a host-side command job reads the kid agent's session history and summarises it on a local model, delivered straight to the parents.",
+   "depends_on": [
+    "a local model and local safety classifiers (the roadmap's M2, currently skipped)",
+    "the kid-safety evals passing",
+    "each kid having an own Apple child account and handle",
+    "G009 family delivery primitive"
+   ],
+   "caveats": [
+    "Blocked until a local model and local classifiers exist and the kid-safety evals pass, because kids' content never goes to a cloud model or cloud speech.",
+    "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven: false alarms will annoy, misses matter more, and a home system has no human reviewer between the flag and the parent notice.",
+    "Even Google's supervised version for under-13s tells parents its filters are not perfect, so the parent alerts and the review of flagged chats are part of the base and not extras.",
+    "'Refuse whole-worksheet answers' is a prompt rule, and no source shows a model holds to it when a child pushes.",
+    "The alert is a heads-up to parents and not a crisis service, and the parents should be told so.",
+    "The chat-hours half needs no model and can ship the day the kid agent does; the safety flag and the digest need the local model.",
+    "Whether kids admitted by pairing are refused as approvers is untested, and how a plugin sends a proactive message to the parents from inside a hook was not found in the hook docs read.",
+    "Until then a parent can run a practice quiz from their own chat (MKT-02), which is the parent using the cloud model and not the child."
+   ],
+   "safety": "No cloud call touches kid content: the agent, its classifiers and the digest summariser are local, and with the classifier down the agent answers 'ask a grown-up'. Alerts carry a category, not the child's words, and go only to the two parents. The digest quotes a child, so a host job delivers it, never into a session a cloud model later reads.",
+   "tier": 1,
+   "section": "People and access",
+   "wave": "later"
+  }
+ },
+ {
+  "into": "F076",
+  "members": [
+   "F076",
+   "F077",
+   "F081"
+  ],
+  "why": "same batch",
+  "note": "The Hue plugin, the Sonos plugin and the goodnight check that reads both run through the same two command-line tools and the same stateless home agent in wave C, so they become one card that states the read-only check and the switching separately and carries high risk.",
+  "record": {
+   "name": "House devices by text: Hue lights and Sonos through a stateless home agent, with a read-only goodnight check",
+   "description": "A parent texts Happy to switch Hue rooms and scenes by name, or to play a Sonos favourite, pause everything or set a room's volume, inside a room allowlist, a hard volume cap and quiet hours enforced in code. Separately, at 22:30 a parent gets a text only if lights or speakers are still on; that check switches nothing.",
+   "example": "Jordan texts: 'Downstairs lights off and pause the music.' At 22:30, only if something is on: 'Still on: family room lights, living room Sonos.'",
+   "how": "Step 1, read-only (F081): a command payload with no model runs openhue and sonos status on the Gateway host at 22:30 and prints `NO_REPLY` when everything is off; nothing is actuated. Step 2, switching: a sandboxed, stateless home agent reached by `sessions_spawn` holds two in-house plugins. Hue (F076) wraps the openhue CLI on the host, with the bridge key in ~/.openhue/config.yaml, a room allowlist and quiet hours in code. Sonos (F077) wraps the sonos CLI: favourites and allowlisted scenes only, a volume cap and a lower night cap in code; it needs the macOS Local Network permission for the gateway's node process, or `--ip` per speaker. Scheduled bedtime scenes are left to the Hue app, and the other bundled device skills stay uninstalled.",
+   "depends_on": [
+    "openhue CLI installed and the Hue bridge paired",
+    "sonos CLI installed (Homebrew tap or prebuilt archive; no Go toolchain needed)",
+    "macOS Local Network permission for the gateway's node process",
+    "sessions_spawn from each parent's agent to the home agent (the F019 hand-off pattern)",
+    "decision: direct command-line tools here, or Home Assistant (HOM-01) as the single device path, not both"
+   ],
+   "caveats": [
+    "This switches things in the house, so the room allowlist, the volume caps and quiet hours are enforced in plugin code and not by the prompt.",
+    "Neither command-line tool is installed, and the bridge and the two speakers (living room and family room) come from the 9 Oct scan and were not re-checked.",
+    "Whether the launchd-run gateway needs the Local Network switch for plain HTTPS to the Hue bridge is unverified, since the bundled skills document it only for Sonos discovery.",
+    "The volume caps (35, and 10 at night) are design numbers and not sourced.",
+    "Play-by-search uses the music service already linked in the Sonos app, so Happy holds no music login, but auto-playing the first search hit has no content filter.",
+    "The Hue app can already switch lights at a set time and when you leave home, so Happy's part at night is the reminder and not the switching.",
+    "Whether the two tools report 'on' states in a form a short script can parse reliably has not been tried.",
+    "Home Assistant (HOM-01) is an alternative route to the same devices and not an addition, so pick one."
+   ],
+   "safety": "Switching is the riskier part: the home agent can change lights and speakers, so it is stateless, holds no family data, is reached only by a bounded hand-off, and its limits live in code. The goodnight check is read-only, runs no model and switches nothing. Locks, garage, alarm and gate are never included.",
+   "tier": 3,
+   "section": "The house",
+   "wave": "C"
+  }
+ },
+ {
+  "into": "MAC-02",
+  "members": [
+   "MAC-02",
+   "MAC-03"
+  ],
+  "why": "same batch",
+  "note": "The clean macOS virtual machine exists only to give the stateless desk agent a desktop to drive, so the two halves of the screen-control pilot become one later card.",
+  "record": {
+   "name": "Screen-control pilot: one stateless desk agent on a clean, resettable Mac VM (app setup, watching view and go-live test included)",
+   "description": "An experimental pilot, parked until there is a chore worth it: a dedicated agent with no memory and no other tools is the only holder of `computer`, and it drives a clean macOS virtual machine with no Apple Account, Messages or saved passwords, never happy's own desktop. A parent's agent hands it one bounded task and gets a short text result back; no family task is approved for it today.",
+   "example": "Operator pilot, not a family text yet: Tony gives desk one synthetic task from the acceptance set (a sample file on the clean desk, with a result that can be checked as a file). desk answers 'done, saved as result.txt' or 'stopped: a sign-in window appeared'.",
+   "how": "Clean desk (MAC-03): a macOS guest on the Mac mini built with Apple's Virtualization framework (for example the Lume CLI) and reset to a known snapshot before every run; OpenClaw.app is installed inside the guest, paired as its own node and granted Accessibility and Screen Recording there; files move only through the File Transfer plugin limited to one folder. Desk agent (MAC-02): `agents.entries.desk` with memory off, `tools.profile: minimal`, `computer` added and everything else denied, reached only by `sessions_spawn` from a parent's agent; a `before_tool_call` hook allowlists actions, checks the kill file and returns `requireApproval` on the first action of each run. Around it: Screen Sharing inside the VM only, so a person can watch, and a ten-task acceptance test with three planted-instruction cases.",
+   "depends_on": [
+    "MAC-04 default-deny lifted for exactly one node",
+    "disk and memory on the Mac mini for a macOS guest",
+    "a route from the guest to the loopback-bound gateway (tailnet identity or SSH tunnel) and a firewall rule limiting the guest to the gateway address",
+    "`gateway.nodes.commands.allow` entries for the file commands",
+    "F019 spawn pattern",
+    "G005 kill switch",
+    "G009 family delivery",
+    "existing on-demand eval harness (for the acceptance test)",
+    "a named family chore that no app or script already handles (none approved today)"
+   ],
+   "caveats": [
+    "The guest is not empty of secrets: OpenClaw.app inside it is signed in to the family gateway, so until the app is shown to run as a node with no operator rights, the agent driving the screen can open a console to everything the clean desk was built to keep away.",
+    "The gateway is bound to loopback and published only through Tailscale Serve, so the guest needs an SSH tunnel, its own tailnet identity or a wider gateway bind, and each of those changes the M0 baseline and needs its own review.",
+    "Pairing the Mac app pairs a whole node: shell execution, a browser proxy, node MCP calls and a desktop stream arrive together with pointer control.",
+    "A hook sees typed parameters and not meaning, so an action allowlist cannot stop the model clicking the wrong thing, and what exists on the controlled desktop is the real boundary.",
+    "The approval on the first action only proves that a parent started the task: the dozens of clicks after it run unreviewed, and the prompt is text only with no screenshot.",
+    "Red-team research on computer-use agents reports injected on-screen instructions succeeding in a large share of attempts, so the tool's built-in warning to the model is a tripwire and not a control.",
+    "A desktop that is never reset is the agent's memory, because files, open windows and the clipboard carry over from one run, or one parent, to the next.",
+    "Whether Computer Control works inside a macOS guest with a virtual display, and whether an approval raised inside a spawned desk run reaches the asking parent's chat, are both untested, and a pass on the acceptance test shows usefulness, not safety."
+   ],
+   "safety": "desk reads untrusted content (the screen) and holds no memory, accounts or message tool; its ways out are whatever the controlled desktop can reach. The trifecta counts as respected only after the app's operator access inside the guest is removed or proven absent, guest egress is limited to the gateway, and the guest is reset before each run. Never-list items stay off that desktop.",
+   "tier": 3,
+   "section": "The Mac and other computers",
+   "wave": "later"
+  }
+ },
+ {
+  "into": "F045",
+  "members": [
+   "F045",
+   "G013"
+  ],
+  "why": "same batch",
+  "note": "The Sheets and Drive lookup and the Contacts lookup both add one more read-only Google service to a parent's own agent through the same gog tool and the same per-person sign-in, so one later card covers the grant.",
+  "record": {
+   "name": "More read-only Google data per person: Sheets, Docs, Drive and Contacts",
+   "description": "An adult can ask about a named Google Sheet or Doc (chore chart, house projects) and get the answer read from the file where it already lives, or ask for a person's or a vendor's number from their own Google Contacts. Nothing is changed or moved.",
+   "example": "Jordan texts: 'What is next on the house projects sheet?' or 'What is the plumber's number?'",
+   "how": "Both ride on the gog command-line tool and each adult's own Google sign-in, the same sign-in step as the calendar and Gmail readers. Sheets, Docs and Drive (F045): register `gog mcp` with `openclaw mcp add`; write tools stay hidden by default, `--allow-tool drive_search,drive_get,docs_get,sheets_read_range` narrows it further, and it is allowed only on that person's main. Contacts (G013): gog's MCP server lists no Contacts tool, so a thin read-only stdio MCP wrapper around gog's contacts listing is still needed, registered per person in the same way with the contacts service consented.",
+   "depends_on": [
+    "gog installed and each adult's Google sign-in with the Drive, Docs, Sheets and contacts services consented (the same sign-in step as F009 and the read-only Gmail in G015)",
+    "decision: whether files shared by other people are read at all"
+   ],
+   "caveats": [
+    "gog is not installed, so which version ships `gog mcp`, its contacts subcommands and the scopes it requests were not checked locally, and no first-party page opened shows a read-only Drive scope choice at consent time.",
+    "Whether the family keeps anything useful in Sheets is unknown.",
+    "Only Google Contacts is covered, because an Apple Contacts route was never sourced.",
+    "A Drive search can return files that other people have shared with the account, so what Happy reads there may be untrusted text.",
+    "With sandbox mode all, MCP tools also have to be named in the sandbox tool gate, as for the Gmail and calendar readers.",
+    "The contacts lookup mainly serves sitter sheets and paste-ready vendor drafts that need the right number."
+   ],
+   "safety": "Read-only on that adult's own account, but it lands on the agent that holds the adult's memory. A Drive search can surface files shared by other people, which is untrusted text, so keep the lookup to files the adult owns or names and decide before building whether shared files are read at all. Contacts stay on their owner's agent.",
+   "tier": 1,
+   "section": "Memory, knowledge and skills",
+   "wave": "later"
+  }
+ },
+ {
+  "into": "F029",
+  "members": [
+   "F029",
+   "SRC-09"
+  ],
+  "why": "same batch",
+  "note": "The sports-schedule change alert and the public page and feed watcher are the same operator-created no-model command job with a state file and one templated line, so they become one watcher card in wave B.",
+  "record": {
+   "name": "Public calendar, feed and page watchers: a text when a game moves or a site posts something new",
+   "description": "Tony registers a team's calendar link, a site's feed or a public page; a script with no model checks it on a schedule and texts a parent once when a practice or game moves or is cancelled, when camp registration opens, or when the school, district or town site posts something new. Subscribing the same team link in the family calendar also puts practices and games into Happy's calendar answers and briefs.",
+   "example": "Trigger: the Saturday game's start time changes in the team's feed. Text: 'Soccer Saturday moved from 9:00 to 10:30, same field.'",
+   "how": "All are operator-created host command jobs with no model call, the pattern of the weather watch (F018). Schedule watch (SRC-09): add the subscription link from TeamSnap, SportsEngine or GameChanger to the family calendar so F009 reads it; then `node scripts/ics-watch.mjs <feed name>`, hourly in season, fetches the link from a file only the happy user can read, keeps each event's start, location and status in a state file, and prints one line per changed event in the next seven days. Page and feed watch (F029): `node scripts/watch-page.mjs <watch name>` every 6 hours uses the site's RSS/Atom feed when there is one, otherwise a plain https GET, keeps seen ids or a text hash, and prints one templated line with a link on the registered host only. Both print `NO_REPLY` when nothing is new.",
+   "depends_on": [
+    "F018 command-job pattern",
+    "G003 jobs registry",
+    "G001 notification policy",
+    "F009 family calendar read-only and decision 4 (Google or iCloud calendar), for showing the schedule in calendar answers",
+    "First check which of the family's school, town, library and camp sites publish a feed"
+   ],
+   "caveats": [
+    "A parent cannot start a watch from chat: a command job is created by the operator, so each new watch is a request to Tony.",
+    "Subscribed calendars can lag by up to a day (TeamSnap says Google can take up to 24 hours), which is why the change text needs its own script, and the team app's own push is still the fastest signal for a same-day change.",
+    "A team's subscription link is a bearer secret, since anyone with it can read the schedule, so keep it out of family.json5 if that file is committed.",
+    "Many school and town pages change for reasons that do not matter (a date, a banner), so a hash watch can fire falsely; a per-watch keyword that must appear cuts this down.",
+    "Pages that render only with JavaScript are out of reach of a host command job, and many school portals and social pages publish no feed.",
+    "Command jobs run on the Gateway host as the happy user, outside the sandbox, agent tool policy and OpenClaw's fetch guardrails, so the scripts check each address themselves (https, public host) and are reviewed like the rest of the config repo.",
+    "Run one job per parent with its own state file, or one job delivering to the parents' group chat once F006 exists, because with a shared state file the second parent's job stays silent.",
+    "The text says that something changed and gives the link; reading the page is a separate ask to the research agent (F019), and price drops are not covered."
+   ],
+   "safety": "No model reads the feed or the page: the scripts relay only a fixed line, with coach-typed titles and locations stripped to plain characters and capped, so outside text cannot steer an agent. Requests go only to addresses Tony registered. Team schedules say where the kids will be and when, so they stay on the host and go only to pinned parent handles.",
+   "tier": 2,
+   "section": "Research and page watchers",
+   "wave": "B"
+  }
+ }
+]

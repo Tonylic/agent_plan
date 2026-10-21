@@ -1,0 +1,586 @@
+[
+  {
+    "id": "VOX-01",
+    "name": "Talk mode on a parent's iPhone (native speech loop)",
+    "tier": 1,
+    "cluster": "Talk mode",
+    "description": "Each parent installs the OpenClaw iPhone app and can hold a spoken back-and-forth with their own agent: the phone transcribes, the gateway answers exactly as it would a text, and the reply is spoken. The app also adds a Listen action on any reply and a Siri phrase or Action Button shortcut that starts voice. New compared with the 9 Oct catalog, which only has voice memos over iMessage.",
+    "example": "Parent presses the Action Button and says: what is on tomorrow, and do I need to pack anything for soccer?",
+    "how": "App Store OpenClaw app on each adult iPhone, reaching the gateway over the tailnet (the app connects over LAN or tailnet; this gateway is Tailscale Serve only). Tony generates the pairing code with `openclaw qr`, choosing `--limited` or `--voice-node` instead of the default admin handoff. Native Talk is a loop: Apple Speech recognition on the phone, Gateway chat on the chosen agent (tony-main or jordan-main), then `talk.speak` playback through the gateway TTS path. Keys: `talk.agentId` (owner when the client sends no agent-prefixed session key), `talk.speechLocale`, `talk.silenceTimeoutMs`, `talk.interruptOnSpeech`. Entry points: the inline Talk control, the `Start Live Voice` App Shortcut, the Siri phrase, or the Action Button.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": ["OpenClaw iOS app on each adult iPhone", "Tailscale on both phones", "VOX-03 voice guardrails (pairing profile decision)", "a TTS engine: VOX-04 or F004"],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Audio can leave the house even in the native loop: the docs say Apple Speech recognition on iOS may use network services. The transcript then goes to OpenAI as text like any typed message.",
+      "iOS may suspend background audio, so voice is best-effort unless the app is in the foreground; the Siri shortcut does not bypass unlock or foreground restrictions.",
+      "The default pairing code hands the phone an operator token that includes admin scope, and the app lets its user pick any agent. Per-person separation on this surface is by convention unless VOX-03 is done first.",
+      "`openclaw qr` only advertises a Tailscale URL when OpenClaw itself owns the Serve route (`gateway.tailscale.mode`), so the M0 Serve setup has to be checked before pairing.",
+      "Dictating an iMessage to Happy with the keyboard microphone or Siri already works today with no setup. Talk adds the continuous loop, barge-in and spoken replies, not a new capability."
+    ],
+    "safety": "Input is the parent's own voice and the session runs on that parent's existing <p>-main with the same tool policy, hooks and family-only recipient pin, so no new trifecta leg is added. The new exposure is the paired device credential, which is why limited or voice-node scopes come first. A child must not use a parent's Talk session, because every agent today is cloud-backed.",
+    "unverified": [
+      "Whether the iPhone app can run Talk when paired with a `--voice-node` code (the docs describe that profile for an embedded or room voice client and for the Watch).",
+      "Which `talk.provider` ids besides elevenlabs, mlx and system the gateway accepts for playback on iOS.",
+      "Whether a Talk session can continue the same conversation as the person's iMessage thread, or only shares agent memory."
+    ],
+    "overlaps_existing": ["F003", "F004"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/platforms/ios.md:15", "title": "iOS app", "anchor": "App Store", "supports": "The official iPhone app is distributed through the App Store, so no developer build is needed."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:19", "title": "iOS app", "anchor": "LAN or tailnet", "supports": "The app reaches a gateway over WebSocket on the LAN or the tailnet."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:12", "title": "Talk mode", "anchor": "may use network services", "supports": "Native Talk uses the platform speech recognizer, and on Apple devices that recognizer can send audio to a network service."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:19", "title": "Talk mode", "anchor": "continuous loop", "supports": "Native Talk listens, sends the transcript through the active session, waits for the answer and speaks it with talk.speak."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:651", "title": "iOS app", "anchor": "best-effort", "supports": "iOS can suspend background audio, so voice features are best-effort when the app is not active."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:655", "title": "iOS app", "anchor": "Start Live Voice", "supports": "An App Shortcut opens the app to the current chat and starts the same Talk path as the inline control."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:668", "title": "iOS app", "anchor": "Action Button", "supports": "The shortcut can be assigned to the iPhone Action Button or the Home Screen."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:35", "title": "iOS app", "anchor": "Listen", "supports": "Any assistant message can be spoken on demand from the chat, using gateway TTS with an on-device fallback."},
+      {"kind": "installed", "ref": "docs/cli/qr.md:54", "title": "openclaw qr", "anchor": "operator.admin", "supports": "The default mobile setup code hands off an operator token that includes admin, approvals, read and write scopes."},
+      {"kind": "installed", "ref": "docs/cli/qr.md:69", "title": "openclaw qr", "anchor": "gateway.tailscale.mode=serve|funnel", "supports": "The pairing command advertises a Tailscale URL only when OpenClaw owns the Serve or Funnel route."},
+      {"kind": "installed", "ref": "docs/nodes/talk/session-ownership.md:17", "title": "Talk session ownership", "anchor": "talk.agentId", "supports": "On a multi-agent gateway Talk needs an explicit owner: talk.agentId or an agent-prefixed session key."}
+    ]
+  },
+  {
+    "id": "VOX-02",
+    "name": "Realtime voice conversation (OpenAI realtime or GPT-Live over WebRTC)",
+    "tier": 1,
+    "cluster": "Talk mode",
+    "description": "Low-latency, interruptible speech-to-speech: the phone streams audio straight to an OpenAI realtime voice model, which answers in a natural voice and hands anything that needs tools or memory to the person's agent. This is the upgrade path from VOX-01 when the turn-by-turn loop feels slow.",
+    "example": "Hands full at the stove: Happy, how long do I rest a pork tenderloin... actually, first convert 425 Fahrenheit to a fan oven setting.",
+    "how": "`talk.realtime` block on the gateway: `provider` openai, a realtime model from the installed docs, `mode` realtime, `transport` webrtc (the iPhone path is client-owned WebRTC) and `brain` agent-consult so every tool call is routed through gateway policy on <p>-main. iOS client-owned WebRTC is Platform-key-only, so it needs an OpenAI Platform API key under `talk.realtime.providers.openai` (as a SecretRef), separate from the per-person chat provider ids. The host enforces a fresh spoken yes before high-impact actions started by voice. Finalized utterances are appended to the agent session so later text and voice turns share history.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": ["VOX-01", "VOX-03 voice guardrails", "an OpenAI Platform key dedicated to voice", "G004 spend caps extended to the voice key"],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "Raw audio, not just text, goes to OpenAI for the whole call: with WebRTC the media runs directly between the device and the provider.",
+      "Billed separately from chat. OpenAI's pricing page lists gpt-live-1 at $0.05 per minute and gpt-realtime-mini at $10 in and $20 out per million audio tokens. Ten minutes a day on gpt-live-1 works out to about $15 a month per parent (my arithmetic).",
+      "`talk.realtime` is one gateway-wide block, so the per-person provider ids and per-person cost split used for text do not carry over to voice.",
+      "The installed docs mark the iOS GPT-Live path as implemented with device live verification still pending, and GPT-Live sessions end at a 30-minute TTL.",
+      "In a kitchen with children talking in the background, their voices are streamed to a cloud model. Use it with the phone at the ear or headphones, or stay on VOX-01 push-to-talk.",
+      "For most kitchen questions the native loop is enough; realtime mainly buys barge-in and lower latency."
+    ],
+    "safety": "`brain: agent-consult` keeps tools behind the same <p>-main policy, hooks and approvals as text. The spoken-confirmation gate is host-enforced, bound to the final arguments and consumed once, so generated text cannot confirm on the user's behalf. Never point realtime at a kids agent: it is cloud audio by construction.",
+    "unverified": [
+      "Whether a store:false style retention control applies to realtime sessions.",
+      "Whether realtime credentials can be set per agent or per person.",
+      "Real latency and barge-in quality on the home Wi-Fi."
+    ],
+    "overlaps_existing": ["F004"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/nodes/talk.md:13", "title": "Talk mode", "anchor": "client-owned WebRTC", "supports": "On iOS, OpenAI realtime configs with webrtc transport run as a client-owned WebRTC session."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:181", "title": "Talk mode", "anchor": "Platform-key-only", "supports": "iOS client-owned WebRTC requires an OpenAI Platform API key rather than an OAuth login."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:209", "title": "Talk mode", "anchor": "agent-consult", "supports": "The agent-consult brain routes realtime tool calls through gateway policy."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:156", "title": "Talk mode", "anchor": "device live verification pending", "supports": "The docs list iOS client-owned Talk with GPT-Live as implemented but not yet verified live on devices."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:131", "title": "Talk mode", "anchor": "30-minute session TTL", "supports": "GPT-Live runtime bounds are 8 concurrent sessions per gateway and a 30-minute session lifetime."},
+      {"kind": "installed", "ref": "docs/nodes/talk/realtime-sessions.md:57", "title": "Talk realtime sessions and delegation", "anchor": "directly between the client and OpenAI", "supports": "In WebRTC calls the audio media flows between the client device and OpenAI while the gateway owns tools and transcripts."},
+      {"kind": "installed", "ref": "docs/nodes/talk/realtime-sessions.md:131", "title": "Talk realtime sessions and delegation", "anchor": "exact spoken confirmation", "supports": "Voice-originated runs need a new spoken confirmation before sending messages, controlling nodes, browser or computer actions and similar high-impact steps."},
+      {"kind": "installed", "ref": "docs/nodes/talk/realtime-sessions.md:87", "title": "Talk realtime sessions and delegation", "anchor": "appended live", "supports": "Finalized user and assistant utterances are written into the active agent session so chat and voice share one history."},
+      {"kind": "web", "ref": "https://developers.openai.com/api/docs/pricing", "title": "OpenAI API pricing", "anchor": "gpt-live-1", "supports": "Lists per-minute pricing for gpt-live-1 and per-token audio pricing for the gpt-realtime models."}
+    ]
+  },
+  {
+    "id": "VOX-03",
+    "name": "Voice guardrails pack (scoped devices, Talk owner, spoken confirmation)",
+    "tier": 1,
+    "cluster": "Voice safety",
+    "description": "One reviewed set of limits that goes in before any voice surface is switched on: voice devices get talk-only credentials, Talk has an explicit owner agent, voice may read but must confirm before acting, the model cannot switch itself to a cloud voice, and a house rule says shared-room microphones never reach a memory-holding or cloud-backed agent while kids are around.",
+    "example": "Trigger: Tony pairs a new voice device. The happy-inspect check lists paired devices and fails if any voice device holds admin or write scope.",
+    "how": "Pair phones, watches and room devices with `openclaw qr --voice-node` (node token plus only operator.read and operator.talk) or `--limited`. Set `talk.agentId` explicitly, because a multi-agent gateway has no unambiguous Talk owner. Use `talk.realtime.brain: agent-consult` and keep the built-in spoken-confirmation gate. Leave `tts.modelOverrides.allowProvider` off so a reply directive cannot move speech to a cloud provider. Add a read-only device and scope listing to the operator's inspect script. For hard per-person enforcement the documented route is `gateway.roles` (named operator roles that restrict agents and scopes for verified identities).",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": ["decision: may family voice devices hold operator.read", "G006 audit digest", "G005 kill switch covering Talk sessions"],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "operator.read is documented as not being a per-person privacy boundary: a talk-only device can still read gateway status and session data across agents.",
+      "Talk clients choose the agent (the Watch literally asks which agent), so 'Jordan's device only reaches jordan-main' is not enforced without gateway roles.",
+      "There is no speaker identification anywhere in the stack. Whoever is near the microphone is the user; the FaceTime doc says the same about its own calls.",
+      "With roles configured, plain device or bootstrap tokens are rejected for operator connections, so roles change how every app signs in. That is a bigger project than voice."
+    ],
+    "safety": "This entry is the control layer for the whole voice lens: credential scopes, tool policy and a host-enforced confirmation are limits the model cannot talk its way past. It does not solve the kids rule; only a local model does.",
+    "unverified": [
+      "Whether the iOS and Watch apps still connect once `gateway.roles` is configured.",
+      "Whether a voice-node device can be pinned to exactly one agent.",
+      "Whether the kill switch hooks in G005 fire for realtime Talk sessions."
+    ],
+    "overlaps_existing": ["G005", "G006"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/cli/qr.md:58", "title": "openclaw qr", "anchor": "room voice client", "supports": "The voice-node profile issues an operator token limited to read and talk that cannot send messages or change configuration."},
+      {"kind": "installed", "ref": "docs/gateway/operator-scopes.md:42", "title": "Operator scopes", "anchor": "operator.talk", "supports": "operator.talk allows creating, steering and closing Talk sessions without general write access."},
+      {"kind": "installed", "ref": "docs/gateway/operator-scopes.md:482", "title": "Operator scopes", "anchor": "not a per-person", "supports": "The docs state that operator.read does not separate people inside one gateway and that separate trust domains are needed for that."},
+      {"kind": "installed", "ref": "docs/gateway/operator-scopes.md:104", "title": "Operator scopes", "anchor": "named operator roles", "supports": "Gateways can bind verified profiles to roles that limit which agents and scopes a person may use."},
+      {"kind": "installed", "ref": "docs/gateway/operator-scopes.md:174", "title": "Operator scopes", "anchor": "bootstrap-token", "supports": "Once roles are configured, device-token or bootstrap-token operator logins without a verified identity are rejected."},
+      {"kind": "installed", "ref": "docs/nodes/talk/client-ui.md:23", "title": "Talk client UI", "anchor": "choose an agent", "supports": "The Watch client asks the user to pick an agent when more than one exists."},
+      {"kind": "installed", "ref": "docs/nodes/talk/realtime-sessions.md:131", "title": "Talk realtime sessions and delegation", "anchor": "exact spoken confirmation", "supports": "High-impact actions started by voice are blocked until the user confirms aloud, per action."},
+      {"kind": "installed", "ref": "docs/tools/tts/commands.md:28", "title": "Text-to-speech commands and directives", "anchor": "allowProvider", "supports": "A model-emitted provider switch in a TTS directive is ignored unless allowProvider is turned on."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:41", "title": "FaceTime plugin", "anchor": "does not authenticate each speaker", "supports": "OpenClaw's own voice integration states it does not verify who is speaking on a call."}
+    ]
+  },
+  {
+    "id": "VOX-04",
+    "name": "Local neural voice for spoken replies (the kid-safe TTS engine)",
+    "tier": 1,
+    "cluster": "Text to speech",
+    "description": "Replaces the robotic macOS `say` voice from F004 with a natural voice synthesized entirely on the Mac mini, so read-aloud answers, briefs and later any kids' content never touch a cloud TTS provider. This is the piece every other voice feature borrows its speech from.",
+    "example": "Parent texts: read me today's brief. Or sends `/tts latest` after a long answer and gets an audio file back in iMessage.",
+    "how": "Gateway `tts` block. Documented option A: Speech Swift's local server on loopback (`brew install speech`, `speech-server --port 8080`) with the `openai` speech provider pointed at the loopback base URL, `model` tts-1 (which selects Kokoro) and `responseFormat` wav. Option B: `tts-local-cli` running the `speech` or `say` command. Option C: the bundled sherpa-onnx-tts skill with a Piper voice. Per-agent control through `agents.entries.<id>.tts` (off for research and inbox). `tts.auto: inbound` gives a voice answer to a voice memo; `/tts latest` reads the previous reply. ffmpeg on the host for conversions.",
+    "who": "both",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": ["F004", "Homebrew installs done from the admin account (speech, ffmpeg)", "decision: which local engine"],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+      "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+      "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+      "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+      "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio."
+    ],
+    "safety": "Speech synthesis is an output transformation on the gateway host and adds no new way for an agent to send data out. With a loopback or CLI engine no text leaves the Mac for TTS, which is what the kids' cloud-TTS rule requires. Keep provider switching by directive off (VOX-03).",
+    "unverified": [
+      "Kokoro or Piper voice quality and speed on this Mac.",
+      "Whether pointing `tts.providers.openai` at loopback has any side effect on the earlier decision not to add a catalog openai model provider (it is a different config block).",
+      "Whether scheduled announce deliveries (briefs) pass through Auto-TTS or only interactive replies do."
+    ],
+    "overlaps_existing": ["F004", "F074"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/tools/tts/configuration.md:297", "title": "Text-to-speech configuration", "anchor": "Speech Swift", "supports": "OpenClaw documents Speech Swift and speech-core as local speech engines for macOS, Linux and Windows."},
+      {"kind": "installed", "ref": "docs/tools/tts/configuration.md:331", "title": "Text-to-speech configuration", "anchor": "127.0.0.1:8080", "supports": "The OpenAI speech provider can be pointed at a loopback Speech Swift server."},
+      {"kind": "installed", "ref": "docs/tools/tts/configuration.md:341", "title": "Text-to-speech configuration", "anchor": "selects Kokoro", "supports": "On the local server the tts-1 model name maps to the Kokoro engine."},
+      {"kind": "installed", "ref": "docs/tools/tts/configuration.md:446", "title": "Text-to-speech configuration", "anchor": "agents.entries.*.tts", "supports": "Each agent can override provider, voice, persona or auto mode."},
+      {"kind": "installed", "ref": "docs/tools/tts/quickstart.md:44", "title": "Text-to-speech quickstart", "anchor": "explicit-intent only", "supports": "The tts agent tool stays silent unless the user asks for audio or Auto-TTS is enabled."},
+      {"kind": "installed", "ref": "docs/tools/tts/quickstart.md:67", "title": "Text-to-speech quickstart", "anchor": "node-edge-tts", "supports": "The keyless Microsoft provider is an online Edge service, not a local engine."},
+      {"kind": "installed", "ref": "docs/tools/tts.md:12", "title": "Text-to-speech", "anchor": "audio attachment", "supports": "Only four channels get native voice messages; every other channel, including iMessage, receives an audio attachment."},
+      {"kind": "installed", "ref": "docs/channels/imessage/rich-messages.md:49", "title": "iMessage rich messages", "anchor": "asVoice", "supports": "Sending a file as a voice message is part of the private-API action list."},
+      {"kind": "installed", "ref": "docs/channels/imessage/private-api.md:11", "title": "iMessage private API", "anchor": "SIP off", "supports": "The private-API action set requires disabling SIP, which this install does not do."},
+      {"kind": "installed", "ref": "docs/tools/tts/commands.md:84", "title": "Text-to-speech commands and directives", "anchor": "/tts latest", "supports": "A slash command re-sends the latest assistant reply as audio once."},
+      {"kind": "installed", "ref": "docs/tools/tts/field-reference.md:28", "title": "Text-to-speech field reference", "anchor": "inbound", "supports": "The inbound auto mode sends audio only after an inbound voice message."},
+      {"kind": "installed", "ref": "skills/sherpa-onnx-tts/SKILL.md:3", "title": "sherpa-onnx-tts skill", "anchor": "offline, no cloud", "supports": "A bundled skill provides offline local TTS through sherpa-onnx."},
+      {"kind": "installed", "ref": "skills/sag/SKILL.md:3", "title": "sag skill", "anchor": "ElevenLabs text-to-speech", "supports": "The sag skill is a front end to the ElevenLabs cloud service."}
+    ]
+  },
+  {
+    "id": "VOX-05",
+    "name": "Cooking companion by voice (hands-free kitchen session)",
+    "tier": 2,
+    "cluster": "Voice workflows",
+    "description": "A parent props the phone on the counter and walks through a recipe by voice: next step, how much butter again, set a 12-minute reminder, with the ability to interrupt a long answer.",
+    "example": "Happy, start the chili recipe I sent this morning, one step at a time.",
+    "how": "A workflow on <p>-main over VOX-01 (or VOX-02). The recipe arrives earlier as pasted text or a photo over iMessage (F001). A kitchen-mode section in AGENTS.md: one step per turn, short sentences, repeat quantities with units, no lists or links. `talk.interruptOnSpeech` gives barge-in; `talk.silenceTimeoutMs` is raised so a pause while stirring does not end the turn. Timers go through the existing reminders tool (F007) and arrive as a text.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": ["VOX-01", "F007 timed reminders", "F001 attachments for recipe photos"],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "For timers the phone or watch is simply better: a Siri timer is faster and audible, while Happy's reminder is an iMessage ping.",
+      "<p>-main does not browse, so 'find me a recipe' is a research-agent job first (F019); the kitchen session works from text the parent chose to send.",
+      "With kids in the kitchen this should be push-to-talk on the parent's phone, not an open microphone.",
+      "The docs recommend headphones for open-microphone sessions because speaker audio feeds back into the mic."
+    ],
+    "safety": "Same agent, tool policy and hooks as typed chat; nothing new can leave the house. The only content entering the memory-holding agent is the recipe the parent sent.",
+    "unverified": [
+      "How well Apple dictation copes with extractor-fan and pan noise.",
+      "Whether the silence timeout can be changed per session rather than gateway-wide."
+    ],
+    "overlaps_existing": ["F007", "F033"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/nodes/talk.md:200", "title": "Talk mode", "anchor": "interruptOnSpeech", "supports": "Talk has a config key, on by default, that stops playback when the user starts speaking."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:199", "title": "Talk mode", "anchor": "silenceTimeoutMs", "supports": "The pause window before a transcript is sent is configurable and differs by platform."},
+      {"kind": "installed", "ref": "docs/nodes/talk/macos-relay.md:72", "title": "Talk on macOS and the Gateway relay", "anchor": "Use headphones", "supports": "The docs advise headphones so speaker output does not feed an open microphone."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:25", "title": "iOS app", "anchor": "inline Talk control", "supports": "The iPhone chat screen offers dictation, voice notes and an inline Talk control in one place."}
+    ]
+  },
+  {
+    "id": "VOX-06",
+    "name": "In the car: Siri plus iMessage, with a driving reply style",
+    "tier": 2,
+    "cluster": "Voice workflows",
+    "description": "While driving, a parent talks to Happy through what the car already has: Siri sends the iMessage and announces Happy's reply. Happy's part is a driving style: at most two short sentences, no links, no lists, numbers written for speech, details deferred until parked.",
+    "example": "Hey Siri, text Happy: driving, what time does practice end and who has pickup?",
+    "how": "No new tool or plugin. A rule in each <p>-main AGENTS.md: when a message starts with the word driving (or the person says they are in the car), answer in at most two plain sentences and offer to send the rest later. Optional hardening: a `before_dispatch` keyword hook that sets a short-lived car flag on the session so follow-ups stay terse. Siri's message announcements in CarPlay do the listening and speaking.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "I found no CarPlay surface in the installed OpenClaw docs or changelog (a search for the word returned nothing), so there is no Happy app on the car screen to plan for.",
+      "The OpenClaw Start Live Voice shortcut is not a car feature: it needs the phone unlocked and the app in the foreground.",
+      "Anything that needs a tap, such as an approval prompt, has to wait until parked.",
+      "This is mostly the phone doing its job; the only work is making Happy's replies fit to be read aloud."
+    ],
+    "safety": "Identical to typed iMessage: allowlisted sender, same agent, same hooks, same family-only outbound pin. No new device credential and no audio leaves the phone other than through Apple's own Siri.",
+    "unverified": [
+      "How Siri handles long or multi-part replies in CarPlay.",
+      "Whether a voice memo (F003) can be recorded hands-free in CarPlay.",
+      "Apple's detailed CarPlay Messages pages returned only navigation when fetched, so only the general CarPlay support page is cited."
+    ],
+    "overlaps_existing": ["F003"],
+    "sources": [
+      {"kind": "web", "ref": "https://support.apple.com/en-us/108415", "title": "Use CarPlay with your iPhone - Apple Support", "anchor": "announce your incoming messages", "supports": "Apple states that Siri can announce incoming messages in the car and that CarPlay sends and receives messages."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:665", "title": "iOS app", "anchor": "foreground restrictions", "supports": "The OpenClaw live-voice shortcut does not bypass iOS unlock or foreground requirements."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:662", "title": "iOS app", "anchor": "Start live voice with OpenClaw", "supports": "The app registers a Siri phrase that starts Talk, which is the only Siri integration the docs describe."}
+    ]
+  },
+  {
+    "id": "VOX-07",
+    "name": "Sonos announce (intercom-style)",
+    "tier": 2,
+    "cluster": "Voice workflows",
+    "description": "A parent texts an announcement and the house speakers say it, then go back to what they were playing. The 9 Oct catalog parks this as a later toy under F077; this entry spells out the two real ways to do it and what each costs.",
+    "example": "Happy, tell the house the bus leaves in ten minutes.",
+    "how": "One extra tool, `announce(text, rooms)`, in the planned `home-sonos` plugin on the stateless `home` agent. It synthesizes the text with the local engine from VOX-04, serves the file from a small LAN-only HTTP server on the Mac, and plays it as an overlay. Route A, no Home Assistant: the Sonos audio-clip command `loadAudioClip` with a `streamUrl`, which mixes the clip with whatever is playing but is documented as part of the cloud Control API with OAuth; or sonoscli `play-uri`, which is plain playback rather than an overlay. Route B, if Home Assistant is ever installed for VOX-11: its local Sonos integration plays an announcement with `announce: true` and restores the volume. In code: text length cap, volume cap, quiet hours from G001, speaker allowlist, a daily cap.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": ["F077 Sonos plugin", "VOX-04 local TTS", "decision: Sonos account OAuth, Home Assistant, or local play-uri only", "G001 notification policy"],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The bundled sonoscli skill documents discover, status, play, volume and grouping only; it has no announce or speech command. The tool's site lists `play-url` and `play-uri`, but I could not confirm that either resumes the previous music.",
+      "Sonos audio clips only work on players that report the AUDIO_CLIP capability; the two speakers here are unchecked.",
+      "LAN speaker control from the gateway needs the macOS Local Network permission for the launchd node process.",
+      "A talking house at the wrong moment is worse than no feature; quiet hours and a low daily cap matter more than voice quality."
+    ],
+    "safety": "The recipient is the household itself and the text comes from a parent's own message. The tool must never be reachable from research or mail-reader output, or an injected web page becomes audible in the living room. Speech is synthesized locally. No lock, alarm or door is involved.",
+    "unverified": [
+      "Whether sonoscli `play-uri` restores the prior queue or stream after a clip.",
+      "Whether these two Sonos models support audio clips, and whether a purely local clip endpoint is usable without the Sonos cloud.",
+      "Latency from text to sound."
+    ],
+    "overlaps_existing": ["F077", "G001"],
+    "sources": [
+      {"kind": "installed", "ref": "skills/sonoscli/SKILL.md:3", "title": "sonoscli skill", "anchor": "discover/status/play/volume/group", "supports": "The bundled Sonos skill covers discovery, status, playback, volume and grouping, with no announcement feature."},
+      {"kind": "installed", "ref": "skills/sonoscli/SKILL.md:56", "title": "sonoscli skill", "anchor": "Local Network", "supports": "On macOS the gateway's parent process needs Local Network permission for Sonos discovery to work."},
+      {"kind": "web", "ref": "https://docs.sonos.com/reference/audioclip-loadaudioclip-playerid", "title": "Sonos developer docs: loadAudioClip", "anchor": "loadAudioClip", "supports": "Sonos has a command that schedules an audio clip from a URL on a player, can mix it with playing content, and requires players with the audio-clip capability and Control API authorization."},
+      {"kind": "web", "ref": "https://www.home-assistant.io/integrations/sonos/", "title": "Home Assistant: Sonos integration", "anchor": "announce", "supports": "Home Assistant's local Sonos integration plays TTS or alerts as an overlay, lowering and then restoring the music volume."},
+      {"kind": "web", "ref": "https://sonoscli.sh/commands/", "title": "sonoscli command index", "anchor": "play-uri", "supports": "The CLI lists play-url and play-uri commands and no say, tts, announce or clip command."}
+    ]
+  },
+  {
+    "id": "VOX-08",
+    "name": "Parent talks to Happy from the Apple Watch",
+    "tier": 3,
+    "cluster": "Wearables",
+    "description": "Raise the wrist, ask, hear the answer. There are three ways and they differ a lot: dictating an ordinary iMessage to Happy from the Watch (works today), the OpenClaw Watch companion that relays one turn at a time through the iPhone, and a standalone realtime call placed by the Watch itself.",
+    "example": "On a walk without the phone in hand: ask Happy whether the library is open tomorrow.",
+    "how": "Path 1, nothing to build: Messages on the Watch to Happy's contact. Path 2, `Talk to Claw`: the OpenClaw Watch app (installed from the iPhone's Watch app) uses watchOS dictation, relays text through the paired iPhone app and reads the reply with the system voice; it needs the iPhone pairing from VOX-01 but no separate Watch pairing. Path 3, `Talk on Watch`: standalone realtime; setup gives the Watch its own node credential plus operator.read and operator.talk, audio is WebRTC Opus over UDP between the Watch and the provider, and it needs `talk.realtime` with webrtc transport plus a secure gateway URL that the Watch trusts and can reach by itself.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": ["an Apple Watch (ownership unknown)", "VOX-01", "VOX-02 for the standalone path", "VOX-03"],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Standalone voice is effectively blocked here when away from the phone: the docs say a tailnet-only route is not enough, and this gateway is reachable only over Tailscale Serve.",
+      "The docs themselves say physical-Watch microphone and speaker routing, wrist-down use, network handoff, battery and long-call reliability still need device validation.",
+      "The Watch asks which agent to use, so it does not enforce one person, one agent.",
+      "Path 1 already covers the quick question from the wrist; the companion app adds a spoken reply, not a new ability."
+    ],
+    "safety": "The Watch runs no agent; the gateway owns tools and policy, and the Watch credential is limited to read and talk. Do not open a public endpoint just to make standalone voice work.",
+    "unverified": [
+      "Whether either adult owns an Apple Watch.",
+      "Apple's Watch Messages dictation page could not be fetched in this run, so path 1 rests on common knowledge rather than a cited page."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {"kind": "installed", "ref": "docs/platforms/ios.md:263", "title": "iOS app: Apple Watch voice and chat", "anchor": "watchOS dictation", "supports": "The companion path uses Watch dictation, relays text through the paired iPhone and reads the answer back one turn at a time."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:376", "title": "iOS app: Standalone voice", "anchor": "tailnet-only route is not enough", "supports": "Standalone Watch voice needs a gateway URL the Watch can reach independently; a tailnet-only route does not qualify away from the phone."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:395", "title": "iOS app: Standalone voice", "anchor": "operator.talk", "supports": "Watch setup grants only a node credential plus read and talk operator scopes, not admin."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:405", "title": "iOS app: Standalone voice", "anchor": "Opus over UDP", "supports": "Watch call audio travels as WebRTC between the Watch and the voice provider, not through the gateway."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:436", "title": "iOS app: Standalone voice", "anchor": "still need device validation", "supports": "The docs list physical-Watch behaviors that have not been validated on real devices."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:157", "title": "Talk mode", "anchor": "physical Watch verification pending", "supports": "The Talk status table marks standalone Watch Talk as implemented but not verified on a physical Watch."}
+    ]
+  },
+  {
+    "id": "VOX-09",
+    "name": "Mac mini as an always-listening room microphone (Voice Wake, push-to-talk)",
+    "tier": 3,
+    "cluster": "Room devices",
+    "description": "Say a wake phrase near the Mac mini and speak a request; the Mac recognizes it on-device and forwards the text to an agent, optionally answering aloud. Of the four kitchen-device candidates this has the best-documented wake word, and it is still the wrong fit for this install today.",
+    "example": "Computer... what is the weather for the game at four?",
+    "how": "Install OpenClaw.app (the menu bar companion; needs macOS 15, Voice Wake and push-to-talk need macOS 26 or newer, this Mac runs 27) in a logged-in desktop session and connect it to the existing gateway. Add a USB speakerphone: the Mac mini has a built-in speaker but no microphone. Enable Voice Wake (on-device Apple Speech only; it refuses to start otherwise) or hold Right Option for push-to-talk. Wake words are one gateway-wide list set through `voicewake.set`, with optional routing from a trigger phrase to an agent id. Spoken answers come from Talk Mode with a local `talk.provider` (system or mlx).",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": ["OpenClaw.app on the gateway Mac", "USB microphone and speaker", "a stateless, tool-light room agent", "local model before any child may use it", "VOX-03"],
+    "value": 2,
+    "effort": "L",
+    "caveats": [
+      "Why not now: installing the Mac app also registers a Mac node that combines screen capture and computer control on the gateway host, which is a far larger change than adding a microphone.",
+      "An open microphone in a shared room has no idea who is speaking. Routed to tony-main it reads a parent's memory out to anyone; with kids in the room their words go to a cloud model, which the family's own rule forbids.",
+      "The Mac mini is unlikely to sit in the kitchen, and room pickup depends entirely on the added microphone.",
+      "Happy is a common English word and would trigger falsely; the built-in defaults are openclaw, claude and computer.",
+      "Forwarding goes to the app's active WebChat session or the gateway's main session key, so on this multi-agent gateway the routing table must be set deliberately.",
+      "Microphone, Speech and Accessibility or Input Monitoring permissions have to be granted by hand in that user's desktop session."
+    ],
+    "safety": "Wake detection itself stays on the Mac and never falls back to network recognition, which is good. The transcript still goes to whatever agent is targeted, so it may only be a memory-less agent with no accounts, and for a room that kids use that agent has to be local, which does not exist while M2 is skipped. Any node the app registers needs its screen and computer-control commands denied by policy.",
+    "unverified": [
+      "Whether OpenClaw.app can run in the non-admin happy session next to the Homebrew gateway, and whether its node can be limited to voice only.",
+      "Microphone pickup across a real room.",
+      "Whether wake routing by trigger phrase is editable outside the app UI."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {"kind": "installed", "ref": "docs/platforms/mac/voicewake.md:12", "title": "Voice wake (macOS)", "anchor": "macOS 26 or newer", "supports": "Voice Wake and push-to-talk on the Mac require macOS 26 or later."},
+      {"kind": "installed", "ref": "docs/platforms/mac/voicewake.md:16", "title": "Voice wake (macOS)", "anchor": "never falls back to network", "supports": "Passive wake-word listening only runs with on-device recognition and will not use network recognition."},
+      {"kind": "installed", "ref": "docs/platforms/mac/voicewake.md:21", "title": "Voice wake (macOS)", "anchor": "hold Right Option", "supports": "Push-to-talk captures speech while the right Option key is held, with no wake word."},
+      {"kind": "installed", "ref": "docs/platforms/mac/voicewake.md:43", "title": "Voice wake (macOS)", "anchor": "Accessibility/Input Monitoring", "supports": "The voice features need Microphone and Speech permission plus Accessibility or Input Monitoring approval for the hotkey."},
+      {"kind": "installed", "ref": "docs/platforms/mac/voicewake.md:64", "title": "Voice wake (macOS)", "anchor": "main session key", "supports": "Recognized speech is forwarded to the active WebChat session or else the gateway main session."},
+      {"kind": "installed", "ref": "docs/nodes/voicewake.md:9", "title": "Voice wake", "anchor": "one global list", "supports": "Wake words are a single gateway-owned list shared by every node."},
+      {"kind": "installed", "ref": "docs/nodes/voicewake.md:29", "title": "Voice wake", "anchor": "keeps at most 32 triggers", "supports": "The trigger list is normalized and falls back to built-in default words when empty."},
+      {"kind": "installed", "ref": "docs/nodes/voicewake.md:49", "title": "Voice wake", "anchor": "agentId", "supports": "A wake route can target a specific agent id."},
+      {"kind": "installed", "ref": "docs/platforms/macos.md:32", "title": "macOS app", "anchor": "macOS 15.0", "supports": "The Mac app has its own OS requirement and is separate from the CLI gateway already installed."},
+      {"kind": "installed", "ref": "docs/platforms/macos.md:267", "title": "macOS app", "anchor": "computer control", "supports": "The Mac app registers one node that includes screen capture and computer control along with system commands."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:191", "title": "Talk mode", "anchor": "macOS-local playback paths", "supports": "Talk playback on a Mac can use local providers (mlx or system) instead of a cloud voice."},
+      {"kind": "web", "ref": "https://www.apple.com/mac-mini/specs/", "title": "Mac mini - Tech Specs - Apple", "anchor": "Built-in speaker", "supports": "Apple's audio specs for the Mac mini list a speaker, a headphone jack and HDMI audio but no built-in microphone."}
+    ]
+  },
+  {
+    "id": "VOX-10",
+    "name": "Spare iPhone as a kitchen voice terminal",
+    "tier": 3,
+    "cluster": "Room devices",
+    "description": "An old iPhone on a charger in the kitchen, locked to the OpenClaw app, works as a tap-to-talk (or wake-word) terminal for quick household questions and list additions. This is the most realistic room device with hardware the family may already own.",
+    "example": "Tap the Talk control: add paper towels to the shopping list. Or: what is for dinner according to the plan?",
+    "how": "App Store OpenClaw app on the spare phone, signed in with a household Apple Account rather than a parent's. Tailscale on the phone. Pair with `openclaw qr --voice-node` so the device holds only a node token plus operator.read and operator.talk. Guided Access pins the phone to the one app. In the app's Talk settings: Voice Wake, Talk, background listening, speakerphone, plus the keep-awake setting. Point `talk.agentId` (or the app's agent picker) at a new stateless kitchen agent with a short allowlist (weather, list add, calendar read), never at tony-main or jordan-main.",
+    "who": "both",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": ["a spare iPhone (existence unknown)", "VOX-03", "a new stateless kitchen agent", "VOX-04 local TTS", "local model before kids may use it"],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "iOS voice features are best-effort unless the app stays in the foreground, hence Guided Access plus keep-awake. Months of always-on use on a charger is untested.",
+      "On iOS the speech recognizer may use Apple's network service, and the docs only promise the on-device-only wake contract for macOS.",
+      "Kids will talk to it. Every agent today is cloud-backed, so under the family's own rule this terminal is for parents only until a local model exists. Guided Access controls taps, not voices.",
+      "No speaker identification: a guest can ask anything the kitchen agent can answer, so keep memory and private data out of that agent.",
+      "A talk-only device can still read gateway status (operator.read).",
+      "If Tony also wants an idle iPhone as a device for Happy to operate, that is a different job; a phone pinned by Guided Access cannot be both."
+    ],
+    "safety": "The voice-node credential cannot send messages, change config or call write-scoped methods. The kitchen agent is shared, so it keeps no memory and holds no accounts, per the shared-agent rule; its only write is a list add. The kids rule is the real blocker and is not solved by configuration.",
+    "unverified": [
+      "Whether the iPhone app accepts a voice-node setup code and can be pinned to one agent.",
+      "Voice Wake reliability with the screen dimmed, and battery health on a permanent charger.",
+      "Whether a spare iPhone exists."
+    ],
+    "overlaps_existing": ["F032"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/cli/qr.md:42", "title": "openclaw qr", "anchor": "--voice-node", "supports": "A pairing option issues node credentials plus only read and talk operator scopes."},
+      {"kind": "installed", "ref": "docs/cli/qr.md:58", "title": "openclaw qr", "anchor": "room voice client", "supports": "The docs intend the voice-node profile for an embedded or room voice client that cannot send messages or change configuration."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:20", "title": "iOS app", "anchor": "Voice wake", "supports": "The iPhone app exposes Talk mode and Voice wake as node capabilities."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:74", "title": "iOS app", "anchor": "background listening", "supports": "The app has per-device settings for Voice Wake, Talk, background listening and speakerphone."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:69", "title": "iOS app", "anchor": "keep-awake behavior", "supports": "The app has a device setting that controls keeping the phone awake."},
+      {"kind": "installed", "ref": "docs/platforms/ios.md:651", "title": "iOS app", "anchor": "best-effort", "supports": "Voice is best-effort on iOS when the app is not active."},
+      {"kind": "installed", "ref": "docs/nodes/voicewake.md:13", "title": "Voice wake", "anchor": "local Voice Wake enable/disable toggle", "supports": "iOS has a local Voice Wake toggle that uses the gateway's shared trigger list."},
+      {"kind": "installed", "ref": "docs/nodes/talk.md:12", "title": "Talk mode", "anchor": "may use network services", "supports": "Apple speech recognition on iOS may send audio to a network service."},
+      {"kind": "web", "ref": "https://support.apple.com/en-us/111795", "title": "Use Guided Access on iPhone or iPad - Apple Support", "anchor": "Guided Access", "supports": "iOS can restrict a device to a single app until a passcode is entered."}
+    ]
+  },
+  {
+    "id": "VOX-11",
+    "name": "Home Assistant Voice Preview Edition kitchen speaker",
+    "tier": 3,
+    "cluster": "Room devices",
+    "description": "The roadmap's kitchen speaker: a small open device with a physical microphone mute where wake word, speech-to-text and text-to-speech can all run locally in Home Assistant, so only text would be handed to Happy. It is the only candidate with hardware mute and fully local speech, and its main purpose (kids) is blocked until there is a local model.",
+    "example": "Okay Nabu, what is the weather this afternoon?",
+    "how": "Buy the device. Run Home Assistant OS in a VM on the Mac (documented minimum 2 GB RAM and 2 vCPUs; a VirtualBox image for Apple Silicon, or UTM). Add Whisper or Speech-to-Phrase for speech-to-text and Piper for speech through the Wyoming integration for a fully local pipeline. Then a conversation agent must forward the text to a stateless OpenClaw agent, and that hop is the unsolved part: Home Assistant's official OpenAI integration only talks to OpenAI's own endpoint, and OpenClaw's OpenAI-compatible chat endpoint is off by default and documented as full operator access, so Home Assistant would hold an owner-level credential unless a small kids-only shim sits in between, as the roadmap already notes.",
+    "who": "both",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": ["local model (M2, currently skipped)", "Home Assistant OS VM on the Mac", "a scoped endpoint or shim between Home Assistant and the gateway", "kids agent (M5)"],
+    "value": 2,
+    "effort": "L",
+    "caveats": [
+      "The price on Home Assistant's page is now $69 (59 EUR); the roadmap says $59.",
+      "Home Assistant itself calls it a preview that cannot yet do everything commercial assistants do.",
+      "It adds an always-on VM to patch and back up, in a house whose only Home Assistant relevant gear is Hue, Sonos and one TV.",
+      "Open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware; the fast Speech-to-Phrase option covers home-control phrases only.",
+      "Without a local model, a speaker question reaches OpenAI as text. That is acceptable for adults and not allowed for kids, so the device's reason for existing is blocked. For adult-only use it would be experimental rather than blocked.",
+      "Side benefit if it is ever built: Home Assistant's Sonos integration gives the announce feature in VOX-07 for free."
+    ],
+    "safety": "Speech stays inside the house. The risk is the bridge credential: the chat-completions endpoint is equivalent to an operator secret. The speaker must reach only a tool-less, memory-less agent, and kids' questions may only go to a local model with the roadmap's classifiers in front.",
+    "unverified": [
+      "Which Home Assistant conversation integration can target a custom OpenAI-compatible endpoint in 2026 (the roadmap cites a community one; I did not verify it).",
+      "Whisper latency inside a VM on this Mac.",
+      "Whether OpenClaw can issue an HTTP credential scoped to one agent."
+    ],
+    "overlaps_existing": ["F072", "F074"],
+    "sources": [
+      {"kind": "web", "ref": "https://www.home-assistant.io/voice-pe/", "title": "Home Assistant Voice Preview Edition", "anchor": "Home Assistant Voice Preview Edition", "supports": "Official product page: price, on-device wake word, physical mic mute, local or cloud speech processing, and the statement that it is a preview."},
+      {"kind": "web", "ref": "https://www.home-assistant.io/installation/macos", "title": "Home Assistant: install on macOS", "anchor": "2 GB", "supports": "On a Mac, Home Assistant OS runs as a virtual machine with a documented minimum of 2 GB RAM and 2 vCPUs, including an Apple Silicon image."},
+      {"kind": "web", "ref": "https://www.home-assistant.io/voice_control/voice_remote_local_assistant/", "title": "Home Assistant: installing a local Assist pipeline", "anchor": "Speech-to-Phrase", "supports": "A fully local pipeline uses Whisper or Speech-to-Phrase plus Piper through the Wyoming integration, and Whisper is recommended only for powerful hardware."},
+      {"kind": "web", "ref": "https://www.home-assistant.io/integrations/openai_conversation/", "title": "Home Assistant: OpenAI integration", "anchor": "official OpenAI API endpoint", "supports": "The official OpenAI conversation integration does not support OpenAI-compatible third-party endpoints."},
+      {"kind": "installed", "ref": "docs/gateway/openai-http-api.md:8", "title": "OpenAI chat completions", "anchor": "disabled by default", "supports": "The gateway's OpenAI-compatible HTTP surface exists but is off unless enabled."},
+      {"kind": "installed", "ref": "docs/gateway/openai-http-api.md:41", "title": "OpenAI chat completions", "anchor": "full operator access", "supports": "A credential for that endpoint is equivalent to an owner or operator credential, not a per-user scope."}
+    ]
+  },
+  {
+    "id": "VOX-12",
+    "name": "A phone number for Happy, family only (wake-up call out, call-in)",
+    "tier": 3,
+    "cluster": "Telephony",
+    "description": "Happy rings a parent's phone and speaks a short message when a text is not enough, for example an overnight tornado warning or a message from the school nurse that went unread. In principle a parent could also call Happy. Possible and cheap, but it needs a public endpoint that the current design deliberately does not have.",
+    "example": "Trigger: an urgent-class alert was not acknowledged within five minutes. Happy calls and says: tornado warning for our county until 2:40, check your messages.",
+    "how": "`@openclaw/voice-call` plugin (not in the installed bundle; installed with `openclaw plugins install`), provider twilio, telnyx or plivo, a `fromNumber`, `outbound.defaultMode: notify` (speak and hang up), `maxConcurrentCalls` 1, `maxDurationSeconds`, `inboundPolicy` left at disabled. The agent tool is `voice_call` with `initiate_call`; the `to` number is pinned to the two parents by the same fail-closed before_tool_call hook as G009. The plugin requires a publicly reachable webhook (tunnel or Tailscale Funnel). A smaller variant keeps the gateway private: a host-side script that creates the call through Twilio's REST API with inline TwiML in the `Twiml` parameter, which needs no webhook.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": ["a Twilio or Telnyx account and number", "decision: any public ingress at all", "G001 urgent class", "F018 weather alerts", "G009 recipient pin"],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Cost is not the issue. Twilio's US page lists $1.15 a month for a local number, $0.0140 a minute outbound, $0.0085 a minute inbound and $0.0044 a minute for Media Streams; Telnyx lists $1.00 a month per number.",
+      "The plugin's setup fails without a public webhook URL, and Funnel by definition exposes a listener to the public internet. That contradicts 'reachable only over Tailscale Serve'.",
+      "Call-in is the weak half: the docs call the caller allowlist a low-assurance caller-ID screen, so a memory-holding agent must never sit behind it. Keep inbound disabled.",
+      "A synthetic-voice call is covered by the FCC ruling in VOX-13; calling the parents' own phones with their consent is the unproblematic case.",
+      "The phone can probably do this without any infrastructure: a per-contact setting that lets Happy's texts sound through silent mode and Focus. I could not load Apple's page for it, so it is listed as unverified, but it should be tried first."
+    ],
+    "safety": "Recipient pinned to the family in code. Notify mode speaks a fixed message and ends, so nothing untrusted comes back into an agent. Inbound stays off. The public webhook is new ingress to the gateway host, which is why the REST-only variant, or simply the phone's own settings, is preferred. No third party is ever called.",
+    "unverified": [
+      "Apple's Emergency Bypass setting for a contact (seen in search results only; the support page body would not load).",
+      "Whether carriers label a new number as spam.",
+      "Whether notify-mode calls would work at runtime without the webhook; the docs say setup refuses to start."
+    ],
+    "overlaps_existing": ["G009", "G001", "F018"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/plugins/voice-call.md:16", "title": "Voice call plugin", "anchor": "twilio", "supports": "The plugin supports Plivo, Telnyx and Twilio as telephony providers, plus a mock provider."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call.md:33", "title": "Voice call plugin", "anchor": "@openclaw/voice-call", "supports": "The plugin is a separate package that has to be installed."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call.md:89", "title": "Voice call plugin", "anchor": "public webhook URL", "supports": "Setup for the real providers fails unless it resolves to a public webhook address."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/configuration.md:82", "title": "Voice call configuration", "anchor": "defaultMode", "supports": "Outbound calls default to notify mode, with conversation as the alternative."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/configuration.md:116", "title": "Voice call configuration", "anchor": "inboundPolicy", "supports": "Inbound calls are disabled by default."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/tts-and-inbound-calls.md:125", "title": "Voice call TTS and inbound calls", "anchor": "low-assurance caller-ID screen", "supports": "The inbound allowlist filters on caller ID and does not prove who owns the calling number."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/security-and-interfaces.md:87", "title": "Voice call security and interfaces", "anchor": "initiate_call", "supports": "The agent tool can start a call with a message, an optional destination and a mode."},
+      {"kind": "web", "ref": "https://www.twilio.com/en-us/voice/pricing/us", "title": "Twilio Programmable Voice pricing (United States)", "anchor": "$0.0140", "supports": "Per-minute and monthly number prices for outbound and inbound calls and Media Streams in the US."},
+      {"kind": "web", "ref": "https://www.twilio.com/docs/voice/api/call-resource", "title": "Twilio Voice API: Call resource", "anchor": "Twiml", "supports": "An outbound call can carry its instructions inline, so no webhook fetch is required, and the status callback is optional."},
+      {"kind": "web", "ref": "https://telnyx.com/pricing/voice-api", "title": "Telnyx Voice API pricing", "anchor": "$0.002", "supports": "Telnyx's list prices for per-minute voice and monthly numbers, for comparison."},
+      {"kind": "web", "ref": "https://tailscale.com/kb/1223/funnel", "title": "Tailscale Funnel", "anchor": "Funnel", "supports": "Funnel routes traffic from the public internet to a local service, unlike Serve, which stays inside the tailnet."}
+    ]
+  },
+  {
+    "id": "VOX-13",
+    "name": "Happy phones a business or another person (rejected; draft a call script instead)",
+    "tier": 3,
+    "cluster": "Telephony",
+    "description": "Call the dentist and move the appointment, call the pizzeria, call the coach: Happy places a call and converses with a third party in a synthetic voice. The plugin can do it; for this family it is not reasonable. The useful version is Happy preparing the call so a parent makes it in thirty seconds.",
+    "example": "Happy, call the pediatrician's office and ask whether they have a slot on Thursday.",
+    "how": "Mechanically: the voice-call plugin in conversation mode with a realtime voice model (supported on Twilio and Telnyx), `send_dtmf` for phone trees, a five-minute default cap, and call records kept in the gateway's call store. Recommended instead: <p>-main asks the research agent for the number and opening hours, then replies with a four-line script (who is calling, what is wanted, acceptable slots, callback number) and the parent taps to call; or it drafts the email or text for the parent to send (F037).",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": ["F019 research agent (for the call-script alternative)", "F037 draft-only outreach (for the call-script alternative)"],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "FCC Declaratory Ruling FCC 24-17 (released February 2024) confirms that AI-generated voices are an artificial voice under the TCPA: such calls need the called party's prior express consent and must identify the caller at the start.",
+      "The statute bars artificial-voice calls to mobile numbers and to residential lines without prior express consent, with a private right of action of $500 per violation. A family cannot know whether a coach's, a sitter's or a small business's number is a mobile.",
+      "Recording and transcription: conversation and realtime modes send the other party's speech to a cloud provider and keep a record. Federal law allows interception with one party's consent, but some states require everyone's consent; Washington's statute is one example and counts consent only when the recording is announced. Happy cannot know the other party's state.",
+      "House rules: outbound goes only to the family, bookings are on the never list, and a live phone conversation is untrusted input into an agent that can speak back, which is two trifecta legs in one call.",
+      "Practical: phone trees, hold music, mispronounced names, and the social cost of a robot calling the school office.",
+      "This is a reading of the cited sources for planning, not legal advice."
+    ],
+    "safety": "Cannot be made to respect the family-only recipient pin or the never list, so it is rejected rather than gated. The script-drafting alternative keeps a human as the caller and adds no tool.",
+    "unverified": [
+      "A state-by-state survey of recording consent; only the federal statute and one all-party state were opened.",
+      "Whether a call to a business landline falls outside the statute's residential-line clause; the text I read names residential lines and mobile service.",
+      "Voice-call transcript retention settings."
+    ],
+    "overlaps_existing": ["F037"],
+    "sources": [
+      {"kind": "web", "ref": "https://docs.fcc.gov/public/attachments/FCC-24-17A1.txt", "title": "FCC Declaratory Ruling FCC 24-17, CG Docket No. 23-362", "anchor": "FCC 24-17", "supports": "The FCC ruled that the TCPA's artificial or prerecorded voice restrictions cover AI-generated and cloned voices, requiring prior express consent and caller identification."},
+      {"kind": "web", "ref": "https://www.govinfo.gov/content/pkg/USCODE-2023-title47/html/USCODE-2023-title47-chap5-subchapII-partI-sec227.htm", "title": "47 U.S.C. 227, Restrictions on use of telephone equipment (govinfo)", "anchor": "artificial or prerecorded voice", "supports": "The statute prohibits artificial-voice calls to cellular numbers and residential lines without the called party's prior express consent."},
+      {"kind": "web", "ref": "https://www.govinfo.gov/content/pkg/USCODE-2023-title18/html/USCODE-2023-title18-partI-chap119-sec2511.htm", "title": "18 U.S.C. 2511, Interception and disclosure of wire, oral, or electronic communications prohibited (govinfo)", "anchor": "prior consent", "supports": "Federal law permits a private party to intercept a communication when that party is a participant or one participant has consented beforehand."},
+      {"kind": "web", "ref": "https://app.leg.wa.gov/rcw/default.aspx?cite=9.73.030", "title": "RCW 9.73.030 (Washington State Legislature)", "anchor": "9.73.030", "supports": "An example of a state that requires the consent of all participants to record a private call, obtained by announcing the recording."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/realtime-and-streaming.md:26", "title": "Voice call realtime and streaming", "anchor": "Twilio and Telnyx", "supports": "Full-duplex realtime voice on phone calls is supported for two of the telephony providers."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/security-and-interfaces.md:90", "title": "Voice call security and interfaces", "anchor": "send_dtmf", "supports": "The agent tool can send keypad digits during a call, which is what phone trees need."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/configuration.md:118", "title": "Voice call configuration", "anchor": "maxDurationSeconds", "supports": "Calls are cut off at a hard duration cap that defaults to 300 seconds."},
+      {"kind": "installed", "ref": "docs/plugins/voice-call/configuration.md:126", "title": "Voice call configuration", "anchor": "voice-calls", "supports": "Call records are stored on the gateway host under the state directory."}
+    ]
+  },
+  {
+    "id": "VOX-14",
+    "name": "FaceTime Audio calls with Happy (blocked by this Mac's security baseline)",
+    "tier": 3,
+    "cluster": "Telephony",
+    "description": "Call Happy's Apple Account over FaceTime Audio and just talk, or have Happy ring a parent after an approval. It would be the most natural call-home path for an all-Apple family, and the installed version cannot be run without undoing two M0 decisions.",
+    "example": "A parent FaceTime-audio calls the Happy contact from the car park and asks what is still on the shopping list.",
+    "how": "`@openclaw/facetime` plugin plus a signed native companion, `ownerHandles` for the callers, a realtime voice provider, a BlackHole-based audio driver built locally with full Xcode, and a helper injected into the FaceTime and Phone apps. The agent tool is `facetime_call` with one-shot approval before dialing; incoming calls from owner handles are answered automatically.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": ["reduced SIP (conflicts with the SIP-on baseline)", "an administrator account and full Xcode on the gateway Mac", "a realtime voice provider key (VOX-02)"],
+    "value": 2,
+    "effort": "L",
+    "caveats": [
+      "The docs require `csrutil enable --without debug` from Recovery, developer-tools access, an administrator account for the driver and full Xcode. This gateway runs with SIP fully on under a non-admin user by design.",
+      "It is labelled experimental and disabled by default, uses private Apple APIs, and warns that behavior may differ across macOS versions; this Mac is on macOS 27.",
+      "Every listed handle has owner authority and there is no guest tier, and the integration does not authenticate the speaker. That does not fit one agent per person.",
+      "Audio is processed by a cloud realtime provider and the docs say everyone on the call must consent; calls must stay one-to-one.",
+      "FaceTime calls only: no ordinary phone numbers, one managed call at a time.",
+      "Worth re-reading on each OpenClaw release, because a version that works with SIP on would change this verdict."
+    ],
+    "safety": "Cannot be reconciled with SIP on and a non-admin runtime user, which are controls the model cannot talk past and should not be traded for convenience. Owner authority per handle also cuts across the per-person agent split. Never for kids: it is cloud audio.",
+    "unverified": [
+      "Behavior on macOS 27.",
+      "Whether the native companion formula is published for this release."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:16", "title": "FaceTime plugin", "anchor": "experimental, disabled by default", "supports": "The plugin's status is experimental and it is off unless enabled."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:21", "title": "FaceTime plugin", "anchor": "private Apple APIs", "supports": "The integration relies on private Apple APIs and a helper injected into Apple's call apps."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:22", "title": "FaceTime plugin", "anchor": "reduced SIP debugging protections", "supports": "It needs SIP's debugging protection reduced on the gateway Mac."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:191", "title": "FaceTime plugin", "anchor": "csrutil enable --without debug", "supports": "The documented setup step changes SIP from Recovery mode."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:32", "title": "FaceTime plugin", "anchor": "/Applications/Xcode.app", "supports": "Full Xcode must be installed to build the audio driver."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:35", "title": "FaceTime plugin", "anchor": "administrator account", "supports": "An administrator account is required for the driver and Mac setup."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:37", "title": "FaceTime plugin", "anchor": "Everyone on a call must consent", "supports": "All call participants must agree to their audio being processed by the voice provider."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:62", "title": "FaceTime plugin", "anchor": "no guest tier", "supports": "Every configured handle gets full owner authority."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:265", "title": "FaceTime plugin", "anchor": "facetime_call", "supports": "Outgoing calls use an agent tool that asks for one-time approval before dialing."},
+      {"kind": "installed", "ref": "docs/plugins/facetime.md:326", "title": "FaceTime plugin", "anchor": "FaceTime calls only", "supports": "Cellular, PSTN and emergency call types are rejected."}
+    ]
+  },
+  {
+    "id": "VOX-15",
+    "name": "Happy as a meeting note-taker on Zoom, Meet or Teams (deferred)",
+    "tier": 3,
+    "cluster": "Meetings",
+    "description": "Happy joins a video meeting as a guest, for example a parent-teacher conference or an HOA call, captures the captions and writes notes; the plugins can also make it speak. A reasonable thing to ask about, and not worth building for a handful of meetings a year.",
+    "example": "Happy, join my 4:30 conference link and send me the notes afterwards.",
+    "how": "Separate plugins per platform (`google-meet`, `zoom-meetings`, `teams-meetings`), each driving Chrome on the gateway host or a paired node. `transcribe` mode joins observe-only and needs no audio bridge; `agent` and `bidi` modes talk back and need BlackHole plus SoX. Notes are written automatically to the gateway state database and read with `openclaw transcripts`. A stateless notes agent, not <p>-main, would have to be the meeting's agent.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": ["a browser on the gateway host (none today)", "a stateless meeting-notes agent", "disclosure to the other participants every time"],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "It needs Chrome automation on the gateway, which this stack does not have, and Zoom may demand a CAPTCHA or host admission; CAPTCHA solving is on the never list.",
+      "There is no automatic consent announcement; the docs put disclosure on the operator. The recording-consent law in VOX-13 applies, and a bot named Happy in a teacher conference changes the conversation.",
+      "Other people's speech is untrusted content and goes to the cloud model as text.",
+      "Talk-back modes give Happy a voice to strangers, which breaks the family-only outbound rule; only transcribe mode is even arguable.",
+      "The cheap substitute already exists: a parent records a voice memo of their own summary afterwards and sends it to Happy (F003), or uses the meeting platform's own notes."
+    ],
+    "safety": "Only acceptable shape: transcribe-only into a stateless agent with no outbound tool, notes delivered to the requesting parent alone. Even then it adds a browser and a third-party-facing presence, so it is deferred.",
+    "unverified": [
+      "Caption availability for guest joins on school or district accounts.",
+      "Whether the notes agent can be fully separated from person memory in these plugins."
+    ],
+    "overlaps_existing": ["F003"],
+    "sources": [
+      {"kind": "installed", "ref": "docs/plugins/meeting-plugins.md:39", "title": "Meeting plugins", "anchor": "observe-only", "supports": "Transcribe mode joins without speaking and exposes a bounded caption transcript with no virtual-audio bridge."},
+      {"kind": "installed", "ref": "docs/plugins/meeting-plugins.md:63", "title": "Meeting plugins", "anchor": "Automatic notes are on by default", "supports": "Browser joins persist captions and meeting notes unless transcripts are disabled."},
+      {"kind": "installed", "ref": "docs/plugins/meeting-plugins.md:133", "title": "Meeting plugins", "anchor": "brew install blackhole-2ch sox", "supports": "Talk-back modes on macOS need a virtual audio device and SoX on the Chrome host."},
+      {"kind": "installed", "ref": "docs/plugins/meeting-plugins.md:214", "title": "Meeting plugins", "anchor": "CAPTCHA", "supports": "Zoom can require authentication, a passcode, CAPTCHA completion or host admission that automation does not bypass."},
+      {"kind": "installed", "ref": "docs/plugins/meeting-plugins.md:218", "title": "Meeting plugins", "anchor": "consent rules require disclosure", "supports": "The operator is told to join only authorized meetings and to disclose automated participation, transcription or synthetic speech where rules require it."},
+      {"kind": "installed", "ref": "docs/plugins/google-meet.md:16", "title": "Google Meet plugin", "anchor": "no automatic consent announcement", "supports": "The plugin does not announce itself or ask for consent when it joins a call."}
+    ]
+  }
+]

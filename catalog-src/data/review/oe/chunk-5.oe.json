@@ -1,0 +1,362 @@
+[
+  {
+    "id": "F033",
+    "kind": "over-engineering",
+    "part": "Sunday dinner-plan job with a saved plan",
+    "where": "how",
+    "problem": "A scheduled job builds five dinner ideas every Sunday and stores the plan so a later chat can pick it up. The card itself calls it one more unprompted Sunday text, and the recipe box it draws on starts empty.",
+    "checked": "Card how, caveats 1 and 11, and its source docs/automation/cron-jobs/payloads.md (a scheduled run starts a fresh session, which is why the plan has to be saved somewhere). Fact sheet: who cooks, allergies and preferred times for texts were never stated. Roadmap: no rule asks for it. Card unverified: the 9 Oct remark that meal-plan features are little used has no source.",
+    "proposal": {
+      "action": "simplify",
+      "text": "No scheduled job. A parent texts 'dinner ideas for this week' when they want them, and their own agent answers in the same chat, where the calendar read (F009) already is. Nothing is saved between sessions and no job is registered."
+    },
+    "loses": "The unprompted Sunday nudge.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F033",
+    "kind": "over-engineering",
+    "part": "Recipe box as wiki pages in the family vault",
+    "where": "how",
+    "problem": "Saving recipes needs the vault's second step (the memory-wiki plugin, which is not enabled today) and creates a store of text lifted from web pages that agents read back later. The only feature built on it is the Sunday plan.",
+    "checked": "Card caveat 10 (a saved recipe is a place where an instruction hidden in a page could persist), F043 card (wiki_apply belongs to its step 2), G006 unverified (the memory-wiki plugin is not enabled on this install), card caveat 4 and its AnyList source (phones and recipe apps already keep recipes).",
+    "proposal": {
+      "action": "defer",
+      "text": "Leave the recipe box out of the first build. Recipes stay where the family keeps them now (a link, a note on the phone or a recipe app). Add the box only if a parent asks for saved recipes after using the link step."
+    },
+    "loses": "Dinner ideas drawn from the family's own saved recipes.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F033",
+    "kind": "over-engineering",
+    "part": "llm-task schema step for the recipe",
+    "where": "how",
+    "problem": "An extra plugin is switched on so the research helper returns the recipe in a fixed shape. The card says nothing in the platform forces that check to run and it does not vet the content, and every list write already waits for a yes.",
+    "checked": "Card caveat 8 and unverified items 5 and 6 (whether the check can be enforced, and whether llm-task works with the per-person provider ids). Installed docs/tools/llm-task.md (needs the plugin enabled, tools.alsoAllow and an allowed-model list). F019 card (research already returns a page answer with its link).",
+    "proposal": {
+      "action": "drop",
+      "text": "Use the ordinary research hand-off (F019): research reads the page and returns ingredients and steps as text with the link; the parent's agent scales the amounts and offers the grocery list. No llm-task plugin on this card."
+    },
+    "loses": "A predictable field layout for the returned recipe.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F033",
+    "kind": "over-engineering",
+    "part": "Fallback to the research browser and summarize wrapper",
+    "where": "depends_on",
+    "problem": "Pages that plain fetch cannot read, and video recipes, are routed to a second reader that belongs to a large tier 3 card. Nobody asked for video recipes, and the card already says Happy tells the parent when a page returns nothing.",
+    "checked": "Card depends_on (F020 'only as fallbacks') and caveat 3; index (F020 is effort L); fact sheet (no such request).",
+    "proposal": {
+      "action": "drop",
+      "text": "When a page cannot be read, Happy says so and asks the parent to paste the ingredients. Remove F020 from this card's dependencies."
+    },
+    "loses": "Recipes on script-rendered pages and in videos.",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "CRT-10",
+    "kind": "over-engineering",
+    "part": "Dose log kept inside Happy",
+    "where": "description",
+    "problem": "The card's own caveats say a note the two parents share on their phones already gives them one log, works when Happy is down and keeps a child's health notes away from the cloud model, and that the poison centre wants the log kept with the medicine. Happy's version needs a new table, a new tool, a deletion sweep and an eval case.",
+    "checked": "Card caveats 4 and 5 and review history rounds 3 and 4 (value already cut from 4 to 3 for this reason). The poison centre page is the card's own listed source; not reopened. Fact sheet: medications and any wish for a sick-day feature were never stated. Roadmap: no rule asks for it.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want Happy to keep the dose log at all? Default: no. Use a shared note or a paper log by the medicine, as the cited poison centre advises, and keep only the helpers that need no build (draft an absence note, list what tomorrow needs cancelling)."
+    },
+    "loses": "A texted 'when was the last dose?' answered with the elapsed time worked out in code.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-10",
+    "kind": "over-engineering",
+    "part": "Two ways to make 'no dose advice' a hard limit",
+    "where": "how",
+    "problem": "The lookup reply is to be built in code and sent 'unchanged' by the agent, or else answered by a no-model phrase hook. The first is still an instruction to the model, and a parent can ask the same agent a dose question in plain chat either way, so neither closes the risk it names.",
+    "checked": "Card safety text (a model 'can still break it by volunteering'). Roadmap never list and section 5: no rule on health advice. happy-config evals/smoke.yaml: the main agent answers health questions today (case PG-06), and templates/person/AGENTS.md has no health rule. Installed docs/plugins/hooks/messages.md for the before_dispatch claim.",
+    "proposal": {
+      "action": "simplify",
+      "text": "One mechanism: the tool returns the logged rows, the elapsed minutes computed in code and the fixed check-the-label line; the agent answers normally under one AGENTS.md rule, with the one eval case. Drop the 'send unchanged' rendering and the before_dispatch phrase route."
+    },
+    "loses": "A last-dose answer when the cloud model is down, and a guarantee that covers the exact lookup phrase only.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-10",
+    "kind": "over-engineering",
+    "part": "14-day deletion sweep that also reaches the change journal",
+    "where": "how",
+    "problem": "A scheduled sweep deletes the log rows after 14 days and must also delete rows in another card's journal, yet the card lists two more places where the same text stays. It is machinery that clears part of the copies.",
+    "checked": "Card caveat 7 (the chat transcript and the session-memory file are not cleared) and G006 caveat 11. Roadmap O3: the only retention rule on record is 30 and 90 days for traces. Fact sheet: the operator can read everyone's data by decision.",
+    "proposal": {
+      "action": "drop",
+      "text": "No per-feature sweep. The lookup reads only recent rows (for example the last 48 hours). If Tony wants old rows removed, set one retention rule for the whole household store in F031."
+    },
+    "loses": "Automatic removal of the store's copy of a child's dose notes after two weeks.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "CRT-10",
+    "kind": "over-engineering",
+    "part": "Sick-day add-ons bundle",
+    "where": "depends_on",
+    "problem": "The mode also carries a tracked ask to the other parent, a check-in reminder, a return-to-school rule and a list of what to cancel. Each is an ordinary request to a feature built elsewhere, but listing them here makes a small log wait on three more cards.",
+    "checked": "Card depends_on (F007, F009 and the G009 relay step). G009 card: the relay is an optional second step that needs its own table and a yes/no hook.",
+    "proposal": {
+      "action": "reword",
+      "text": "State the build as the log only and remove F007, F009 and the G009 relay from depends_on. A parent who wants a reminder, tomorrow's calendar or a note to the other parent asks for it in the usual way once those features exist."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "CRT-13",
+    "kind": "over-engineering",
+    "part": "Fixed reply to emergency phrases (before_dispatch hook)",
+    "where": "how",
+    "problem": "A phrase list intercepts texts such as 'he swallowed something' and sends one canned line in place of the model's answer. The card says it fires on jokes and misses paraphrases, and it needs ordering rules against the stop phrase, lock-outs, quiet hours and caps, each with a test.",
+    "checked": "Roadmap: no rule asks for an emergency responder. happy-config evals/smoke.yaml case PG-06: the main agent already answers a swallowed-battery text with emergency guidance, and it passed in the 8 Oct baseline run. Card caveats 2 and 4. G005 and G001 cards (the couplings). The card's hook sources show the hook exists, not that a canned line is advised.",
+    "proposal": {
+      "action": "drop",
+      "text": "No hook. One line in AGENTS.md: when a message sounds like an emergency, the first line of the reply says to call emergency services or Poison Help, then answer the question. Keep the existing eval case. The printed sheet still carries the numbers."
+    },
+    "loses": "An instant fixed line when the cloud model is down or slow.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-13",
+    "kind": "over-engineering",
+    "part": "Form kit spread across five features",
+    "where": "how",
+    "problem": "One school or camp form touches a page per child, a row in the renewals table, a row in the household store, a timed reminder offered through the dates flow, and photo reading, so this card lists nine dependencies. The parent's question is only 'what do I still need for camp?'.",
+    "checked": "Card how and depends_on (nine entries). Card history round 5 and the F043 card: the rule that dates do not live in the family folder was written by reviewers. Card unverified: validity windows for physicals are not sourced. Fact sheet: camp, sports and school platforms were never stated.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Keep everything about a child's forms on that child's page in the family folder: where each document is, its valid-until date, and the open forms as a short checklist. A due-date reminder is an ordinary reminder when the parent asks. Drop the F031 row per form, the F063 row and the F010 routing."
+    },
+    "loses": "A document's expiry showing up in the monthly look-ahead without being asked.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-13",
+    "kind": "assumption",
+    "part": "Sitter sheet and camp and sports form kit",
+    "where": "description",
+    "problem": "Two of the three paper outputs assume a sitter or grandparents who mind the children, and camp and sports sign-ups. None of that has been stated, and the config records no children.",
+    "checked": "Fact sheet, 'Never stated' list (a sitter, grandparents, activities, allergies, medications) and its summary of family.json5. Card history: the sitter sheet (F036) and the form kit (CRT-12) were merged in by reviewers in rounds 1 and 4.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Which of the three do you want: the one-page emergency plan, the sitter sheet, the school and camp form kit? Default: the emergency plan page only; the other two are added when a parent first asks for one."
+    },
+    "loses": "nothing until a parent asks",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F063",
+    "kind": "over-engineering",
+    "part": "Two homes for the dates table",
+    "where": "how",
+    "problem": "Dates live in a table generated from Tony's registry file and also in household-store rows that parents add by chat, and the card leaves 'decide which' open. One list is kept in two places with two ways to change it.",
+    "checked": "Card caveat 1 and depends_on. F031 card: wave A, describes itself as the back end for these upkeep rows and already has schedule get, upsert and mark-done. F042 card: family.json5 facts change only through the generator and a deploy.",
+    "proposal": {
+      "action": "simplify",
+      "text": "One home: the household store (F031). Parents and Tony add or change a date by chat and the monthly script reads the store. Drop the table generated from family.json5 and the F042 dependency."
+    },
+    "loses": "Dates passing through the config repo's review before they take effect.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F063",
+    "kind": "over-engineering",
+    "part": "Notification-policy carve-outs for a monthly text",
+    "where": "caveats",
+    "problem": "To survive a daily cap and a mute, the monthly job gets its own priority class, reads the pause row itself and becomes a daily run that sends at most once a month. The cap and the mute it defends against are features nobody has asked for.",
+    "checked": "Card caveat 6 and the last depends_on line. G001 card (wave B, not built). Fact sheet: quiet hours and a daily cap on texts were never stated. Card how: a row is listed again each month once its lead time has started, so a missed month repairs itself for long-lead rows.",
+    "proposal": {
+      "action": "drop",
+      "text": "Keep one monthly run and mark it as outside the cap and the mute (it is one text a month). Remove the pause-row read and the daily-run variant."
+    },
+    "loses": "A parent who muted Happy for a week still gets this one text.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F063",
+    "kind": "over-engineering",
+    "part": "Model-run fallback kept beside the script",
+    "where": "how",
+    "problem": "The card keeps the earlier design (a model run with the table in its prompt) 'as a fallback', with its own caveat about wrong date sums. A second route to the same text is not needed.",
+    "checked": "Card how and caveat 4. Card history round 3: the script replaced the model route because the model would do the date sums.",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove the fallback and its caveat. The script is the only build."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F063",
+    "kind": "over-engineering",
+    "part": "'File this' reads a policy PDF for its end date",
+    "where": "safety",
+    "problem": "Happy would read an insurance or warranty PDF to pull out one date. That sends the document to the cloud model, which the card lists as an open decision, when the parent can type the date in one line.",
+    "checked": "Card adds (carried over from the removed item F044), safety text and depends_on (F002). frame.json decision on attachments: Zero Data Retention is applied for, not granted. Fact sheet: insurance was never mentioned.",
+    "proposal": {
+      "action": "drop",
+      "text": "The parent types 'car insurance ends 3 March' and Happy files the row. No PDF reading on this card, and the open decision goes away with it."
+    },
+    "loses": "Dropping a PDF on Happy and having the date and a one-line summary filed.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F063",
+    "kind": "assumption",
+    "part": "Row types carried in from removed items",
+    "where": "description",
+    "problem": "The table is specified with children's yearly check-ups, a child passport rule, pet rows 'if the family gets a pet', gift dates with last year's gift note, tax and benefit deadlines, domains and Global Entry. None of these has been stated, and the config records no children, cars, pets or passports.",
+    "checked": "Fact sheet, 'Never stated' list and its summary of family.json5. Card adds (from F012, F038, F044, F069 and SRC-11 to SRC-13). Card unverified: several lead times have no listed source.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Which dates do you want tracked? Default: start with an empty table and lead-time rules for passport, driver's licence and car only; add a row type when a parent first types one in. Remove the pet branch and the gift-note memory."
+    },
+    "loses": "Ready-made rows for check-ups, pets, gifts and tax dates.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G008",
+    "kind": "over-engineering",
+    "part": "Checks run as Gateway jobs that text Tony",
+    "where": "how",
+    "problem": "The operator checks are to run as Gateway command jobs through the new jobs registry and reach Tony as texts. The decided alert route is ntfy, and a check that reports through the Gateway cannot report when the Gateway or iMessage is what broke.",
+    "checked": "Fact sheet, decided earlier: 'alerts by ntfy; healthchecks.io for silence'. Roadmap O0 and O1. happy-config: launchd/ (eval, backup and sandbox-check jobs), bin/happy-sandbox-check (pushes a metric for a Grafana rule), bin/happy-eval (pushes counts to ntfy), observability alert rules and contact points.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Follow the pattern already in the repo: a launchd job runs the script as happy and pushes one metric per check for a Grafana rule, or a counts-only line to ntfy as the eval job does. No G003 dependency and no NO_REPLY handling."
+    },
+    "loses": "Check results arriving in the same iMessage thread as Happy.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G008",
+    "kind": "over-engineering",
+    "part": "Daily integration check in wave A",
+    "where": "wave",
+    "problem": "The card's own caveats say the five-minute probe and the Grafana alerts already cover a down gateway and unhealthy iMessage, and its history calls the daily channel probe a second opinion. The one new signal, an expiring Google sign-in, cannot be checked until gog is installed in wave B.",
+    "checked": "Card caveats 1 and 2 and history round 3. happy-config alert rules (gateway down, iMessage replies failing, run error ratio, sandbox down) and system/happy-healthcheck. Installed docs/cli/models.md: the model check's exit 1 also covers 'indeterminate readiness', which it says can happen with exec secret references, the kind this install uses; not tried here. Index: G015 is wave B.",
+    "proposal": {
+      "action": "defer",
+      "text": "Do not build a daily job in wave A. Add one check when the mail card goes live: the Google sign-in, plus the model sign-in if one live run shows a clean zero on this install. Drop the daily channel probe."
+    },
+    "loses": "A daily look at plugin load state and the model sign-in between deploys.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G008",
+    "kind": "over-engineering",
+    "part": "Behaviour cases with reminder and approval fixtures",
+    "where": "how",
+    "problem": "Two of the four cases named (no secret echo, no fake 'done') are already in the smoke set. The other two need fake reminder and approval tools built for the eval clones before the real tools exist.",
+    "checked": "happy-config evals/smoke.yaml ('won't reveal secrets', 'can't send messages', BD-02, BD-03) and baseline/evals-m1. Installed docs/concepts/personal-agent-benchmark-pack.md (ten themes; needs a source checkout, so it cannot run here). Roadmap section 7 and the fact sheet: evals run on demand and after a critical-path change. Card history round 3: merged in by review.",
+    "proposal": {
+      "action": "drop",
+      "text": "Take this part off the card. Each feature that adds a tool (reminders, approvals, memory) adds one smoke case in its own card when it ships, as was done for BD-04. No fixtures are built ahead."
+    },
+    "loses": "Partial-failure and pending-versus-done checks before those tools exist.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "G006",
+    "kind": "over-engineering",
+    "part": "'Undo that' (undo tool, guard hook, inverses, added delete)",
+    "where": "how",
+    "problem": "Undo needs every write tool to record an inverse, a new tool with its own guard hook, a check that the item has not changed since, and a delete added to tools that were deliberately built without one. The card itself says most undo requests are corrections the same tool already handles and that undo can be left out.",
+    "checked": "Card caveats 4 and 5. F030 card ('no delete') and F010 card (the calendar wrapper 'leaves delete out'). Roadmap: no rule asks for undo. The card's demand source is general guidance, not a requirement. Card unverified: stable item ids for an inverse are not known.",
+    "proposal": {
+      "action": "drop",
+      "text": "No undo tool. A parent says 'tick that off' or 'cancel that reminder' and the existing tool does it. For the one case the card says matters, an overwritten household fact, the fact row in F031 keeps its previous value."
+    },
+    "loses": "One phrase that reverses Happy's last write, including deleting a list item or calendar entry it added.",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "G006",
+    "kind": "over-engineering",
+    "part": "In-house journal that stores item text",
+    "where": "how",
+    "problem": "Each write tool writes its own journal row with the item text, which then needs a retention rule that is not defined, a per-person read filter and deletion hooks from two other cards. The Sunday text in the card's own example is only counts.",
+    "checked": "Installed docs/cli/audit.md and docs/gateway/audit.md: tool activity records are on by default, kept 30 days, hold no content and can be filtered by agent, kind and date. Card caveats 6, 9 and 11 and the example. CRT-10 card (its sweep must reach the journal). F031 caveat 2 (the per-asker filter).",
+    "proposal": {
+      "action": "simplify",
+      "text": "Build the weekly counts from the built-in ledger: the script queries it per parent's agent for the past week and counts by tool name. No journal table and no rows written inside the tools. Leave out the approvals line until an approval hook exists."
+    },
+    "loses": "Naming which list, reminder or recipient: the review says '6 list items added', not 'to Groceries'.",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "G006",
+    "kind": "over-engineering",
+    "part": "Memory-save rows from an after_tool_call hook",
+    "where": "how",
+    "problem": "A hook copies the text of every saved note into the household store so the review can date it. That second copy then has to be deleted whenever a note is corrected or a conversation is forgotten, and the hook's inputs were read in type definitions, not run.",
+    "checked": "Card caveat 9 and unverified item 6. Installed docs/concepts/memory.md: daily notes are dated files (memory/YYYY-MM-DD.md). F041 card: notes saved from chat are limited to memory/*.md by default.",
+    "proposal": {
+      "action": "simplify",
+      "text": "The review script reads the parent's memory folder directly and counts or lists the dated files changed that week, notes and chat snapshots alike. No hook and no copy of note text."
+    },
+    "loses": "An exact per-save record if a note is ever written to an undated file.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G006",
+    "kind": "over-engineering",
+    "part": "Sunday push text plus an ask-by-chat read tool",
+    "where": "description",
+    "problem": "The review is delivered two ways: a scheduled Sunday text and a tool the agent can call when asked. Nobody has asked for a weekly report, and the card notes it would sit beside two other Sunday texts.",
+    "checked": "Fact sheet: preferred times for texts and whether Jordan wants any of this were never stated. Card caveat 8. Roadmap: no parent-facing report is required (the weekly report in O3 is the operator's). G005 card: /status, /usage and /tools already answer Tony's health and cost questions.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want a weekly 'what Happy did' text, an answer only when asked, or neither for now? Default: the Sunday script text for Tony only at first and no chat read tool; Jordan is added if she wants it."
+    },
+    "loses": "Asking 'what did you do this week?' mid-week and getting an answer.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "PLAN",
+    "kind": "over-engineering",
+    "part": "Phrase matchers that answer before the model",
+    "where": "how",
+    "problem": "Four cards each claim an inbound text by matching phrases before the model sees it: the stop phrase (G005), a bare yes or no for the relay (G009), emergency phrases (CRT-13) and 'last dose' (CRT-10). They share one hook and already need rules for which is checked first.",
+    "checked": "r7.json how fields of G005, G009, CRT-13 and CRT-10. CRT-13 caveat 4 (emergency phrases must be checked before the stop file). Installed docs/plugins/hooks/messages.md (a before_dispatch claim ends the message with a fixed reply). G005 and G009 are outside this chunk and were read only for this point.",
+    "proposal": {
+      "action": "simplify",
+      "text": "One house rule: a text is claimed before the model only where skipping the model is the point, which is the stop phrase. The emergency line and the last-dose lookup go through the model in normal chat (see the CRT-13 and CRT-10 rows); the relay's yes or no is for the G009 review to settle."
+    },
+    "loses": "No-model answers for those cases when the cloud model is down.",
+    "saves": "none",
+    "severity": "low"
+  }
+]

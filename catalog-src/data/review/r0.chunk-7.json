@@ -1,0 +1,1629 @@
+[
+ {
+  "id": "SRC-04",
+  "name": "Food and medicine recall watch (FDA)",
+  "tier": 2,
+  "cluster": "Recalls and safety",
+  "description": "A filtered watch on FDA recall and safety-alert notices for allergens the family cares about, brands on the grocery staples list and the children's medicines in the cabinet. The feed is real and current: 20 notices dated 24 Sep to 9 Oct 2026 at the time of this run.",
+  "example": "Trigger: a new FDA notice whose title contains 'undeclared sesame' or a staple brand. Text: 'FDA recall notice: <title, shortened>. Link: fda.gov/...'",
+  "how": "Operator-created command job (no model), twice a day: `--command-argv '[\"node\",\"scripts/fda-recalls.mjs\"]' --announce --to <parent>`. The script reads FDA's Recalls/Safety Alerts RSS feed, keeps seen item ids in a state file and matches titles locally against keyword lists generated from family.json5 (allergens, staples from F032, medicines). For a match it may look up the structured record in openFDA (`food/enforcement.json` or the drug equivalent) to add `classification` and `distribution_pattern`; that lookup works without a key inside the daily limit. Prints a templated line or `NO_REPLY`.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F018 command-job pattern",
+   "allergen and staples keyword list in family.json5",
+   "G003 jobs registry"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "openFDA enforcement data is updated weekly and FDA says it must not be used to issue alerts to the public or to make medical decisions; use the RSS notices for timeliness and openFDA only as a detail lookup for the family's own use.",
+   "Titles are written by the recalling company; keyword matching misses recalls that do not name the allergen or brand in the title.",
+   "Meat, poultry and egg-product recalls come from USDA FSIS, whose developer page refused this run's fetch (HTTP 403), so that leg is not included.",
+   "Value is much higher if a child has a diagnosed food allergy; otherwise this is a low-frequency nudge.",
+   "Run one job per parent with its own seen-id state file; with a shared file the second parent's job finds nothing new."
+  ],
+  "safety": "No model runs in the job. Titles are written by the recalling company and are untrusted, and the installed source mirrors a delivered announce line into the session transcript of the agent that owns the job. So the script prints the matched keyword and the fda.gov link, with the title either left out or stripped to plain letters, digits and spaces and capped at about 80 characters. Nothing about the family leaves the house: the feed is pulled whole and filtered locally. Not medical advice; the message points to the official notice.",
+  "unverified": [
+   "The USDA FSIS recall API (endpoint, fields, terms): the page returned 403.",
+   "Whether the FDA RSS feed has a documented polling limit."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml",
+    "title": "FDA Recalls/Safety Alerts RSS feed",
+    "anchor": "Recalls/Safety Alerts",
+    "supports": "FDA publishes a keyless RSS feed of recall and safety notices; at fetch time it held 20 items dated 24 Sep to 9 Oct 2026 covering foods, drugs and supplements.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/food/enforcement/",
+    "title": "openFDA: Food enforcement reports",
+    "anchor": "issue alerts to the public",
+    "supports": "The food enforcement dataset is updated weekly and FDA says it should not be used to issue public alerts or to track a recall's lifecycle.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/drug/enforcement/",
+    "title": "openFDA: Drug enforcement reports",
+    "anchor": "updated weekly",
+    "supports": "The drug recall dataset has the same weekly cadence and the same warnings against use for alerts or medical decisions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/authentication/",
+    "title": "openFDA: Authentication",
+    "anchor": "240 requests per minute",
+    "supports": "Without a key the API allows 240 requests a minute and 1,000 a day per IP address, far above a household lookup.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.fda.gov/food/enforcement.json?limit=1",
+    "title": "openFDA food enforcement endpoint, live response",
+    "anchor": "distribution_pattern",
+    "supports": "The endpoint answers without a key and returns fields such as recalling_firm, product_description, reason_for_recall, classification and distribution_pattern.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads: Command payloads",
+    "anchor": "without starting a model-backed turn",
+    "supports": "The poll and filter run as a deterministic script with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, which is why company-written titles must be sanitised or left out.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All six sources hold and the feed is live. The safety text needs tightening: recall titles are written by the recalling company, and the installed source shows the announced line is mirrored into an agent's session transcript, so the script should relay the matched keyword and the official link rather than free company text."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "SRC-05",
+  "name": "Vehicle recall check by make, model and year (NHTSA)",
+  "tier": 2,
+  "cluster": "Recalls and safety",
+  "description": "A monthly check of NHTSA's recall list for each family car, texting when a new recall campaign appears for that make, model and year, with a nudge to confirm by VIN. Candidate asked for 'by VIN': the public API that answered in this run is keyed by make, model and model year, not VIN.",
+  "example": "Trigger: a campaign number not seen before for the family minivan. Text: 'New NHTSA recall for your <year make model>: <component>. Check your VIN on NHTSA's recall page or with the dealer.'",
+  "how": "Operator-created command job (no model): `--cron '0 9 1 * *' --command-argv '[\"node\",\"scripts/nhtsa-recalls.mjs\"]' --announce --to <parent>`. For each vehicle row in family.json5 (make, model, model year only) the script requests `https://api.nhtsa.gov/recalls/recallsByVehicle?make=..&model=..&modelYear=..`, keeps seen `NHTSACampaignNumber` values in a state file and prints `Component`, a shortened `Summary` and the `parkIt` / `parkOutSide` flags for new ones, or `NO_REPLY`. A set flag marks the message urgent for G001.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F018 command-job pattern",
+   "vehicle rows in family.json5",
+   "G003 jobs registry"
+  ],
+  "value": 2,
+  "effort": "S",
+  "caveats": [
+   "Make, model and year over-reports: a campaign may cover only some trims or build dates. Only a VIN lookup says whether this car is affected, and that lookup stays with the parent.",
+   "NHTSA's own website pages returned HTTP 403 to this run's plain fetch, so the VIN lookup tool, its limits and NHTSA's app could not be read; only the API host and the vPIC decoder docs were.",
+   "vPIC can decode a VIN to make, model and year, but that sends the VIN to NHTSA; typing the three values by hand avoids it.",
+   "One popular 2018 minivan returned 16 campaigns on first run; the first run must baseline silently."
+  ],
+  "safety": "No model call. The request discloses a make, model and year to a federal API, never the VIN, plate or owner. Output is a fixed template with a truncated government-written summary. Happy never books the repair (bookings are on the never-list).",
+  "unverified": [
+   "That NHTSA's website VIN lookup and its SaferCar app push VIN-specific recall alerts (seen only in search snippets; the pages returned 403).",
+   "Any documented rate limit for api.nhtsa.gov.",
+   "Car-seat recall lookup by API."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=honda&model=odyssey&modelYear=2018",
+    "title": "NHTSA recalls API, live response",
+    "anchor": "NHTSACampaignNumber",
+    "supports": "A keyless request by make, model and model year returned JSON with Count, Message and results, each result carrying NHTSACampaignNumber, Component, Summary, Consequence, Remedy, parkIt and parkOutSide.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://vpic.nhtsa.dot.gov/api/",
+    "title": "NHTSA vPIC vehicle API",
+    "anchor": "DecodeVinValues",
+    "supports": "NHTSA's vPIC service decodes a VIN into vehicle attributes in XML, CSV or JSON and applies an automated traffic rate control, with no key shown in the examples.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:189",
+    "title": "Automation payloads: command flags",
+    "anchor": "--command-argv",
+    "supports": "The job runs an exact argv with no shell parsing, so vehicle values never pass through a shell.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-10",
+  "name": "Sick-day mode with a shared what-was-given log",
+  "tier": 2,
+  "cluster": "kids' health days",
+  "description": "When a child is ill, both parents log what they gave and when, and either can ask 'when was the last dose?' and get the same answer; a poison control centre lists medicine given by more than one person who do not communicate as a cause of double dosing, and recommends a log that is marked at every dose. The same mode drafts the absence note and lists what tomorrow needs cancelling. Happy records and recalls. It never advises a dose.",
+  "example": "Jordan texts: 'L has a fever, gave the children's acetaminophen at 7:40.' Later Tony texts: 'When was the last dose?'",
+  "how": "Rows in the household store (F031): child nickname, what the parent typed, time, who. A care_last tool, built with defineToolPlugin like the store, returns the latest rows and the elapsed minutes, computed in code and not by the model. Both parents' agents read the same table. The reply always ends with a fixed line: check the label for dose and timing, and ask the pediatrician or poison control if unsure. There is no dose arithmetic and no 'you can give more now'. Add-ons from features already in the catalog: a draft absence note the parent sends through the school's own channel (F037), tomorrow's calendar items that need a cancel or a cover (F009), a tracked ask to the other parent about staying home (G010), and a one-shot check-in reminder ('--at'). For 'can she go back tomorrow?' Happy quotes CDC's general rule with its link (symptoms improving overall and no fever for 24 hours without fever-reducing medicine) and says the school's policy wins. Rows delete themselves after 14 days and are kept out of memory writes. To make 'no dose advice' a limit and not a request, care_last returns the finished reply text (the rows as typed, the elapsed time and the fixed line) and the agent is told to send it unchanged; an exact 'last dose' phrase can instead be answered by a before_dispatch claim with no model at all, which also keeps the lookup working when the model is down.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F007 reminders",
+   "F009 calendar read",
+   "G010 parent-to-parent relay",
+   "9 Oct decision 3, if photos of labels are sent"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "This is a log, not a clinician. A wrong elapsed time is worse than none, so the time comes from the message timestamp unless the parent states one, and the reply repeats it back.",
+   "FDA says more than 600 medicines contain acetaminophen and that a child's dose should never be guessed. The log stores the product name as typed so a parent can spot two products with the same ingredient; Happy does not make that judgement.",
+   "Child health notes pass through a cloud model under store:false. Use a nickname or initial and keep diagnoses out.",
+   "For one parent alone, a note on the phone does the same job. The value is the shared view across two people."
+  ],
+  "safety": "Runs on <p>-main only: private data, no untrusted content in the turn (the CDC and FDA lines are fixed text, not fetched), and output only to the two parents through the pinned delivery. Nothing about the child's health is handed to the research agent, per the roadmap's handoff rule. The elapsed time and the fixed line come from code. The rule against dose advice is an AGENTS.md instruction, and a model can still break it by volunteering a 'next dose' remark from its own knowledge; rendering the lookup reply in code, or answering the lookup phrase with a no-model claim, is what turns it into a limit. Add an eval case that asks 'can I give more now?' and must get only the fixed line.",
+  "unverified": [
+   "Whether the iPhone Health app's medication log can be shared live between two parents; if it can, that is the better tool.",
+   "Whether the school takes absence notes by email or only through its attendance line or app.",
+   "Session transcripts that mention the illness follow the general retention setting; only the rows are auto-deleted."
+  ],
+  "overlaps_existing": [
+   "F007",
+   "F031",
+   "F037",
+   "G010",
+   "F060"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/consumers/consumer-updates/dont-overuse-acetaminophen",
+    "title": "Don't Overuse Acetaminophen | FDA",
+    "anchor": "Overuse Acetaminophen",
+    "supports": "FDA warns against combining products that contain acetaminophen, says hundreds of medicines contain it, and tells parents to follow the label and never guess a child's dose.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/respiratory-viruses/prevention/precautions-when-sick.html",
+    "title": "Preventing Spread of Respiratory Viruses When You're Sick | CDC",
+    "anchor": "Preventing Spread of Respiratory Viruses",
+    "supports": "CDC's general guidance is to stay home when sick and return to normal activities after 24 hours of overall improvement with no fever and no fever-reducing medicine.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins",
+    "anchor": "defineToolPlugin",
+    "supports": "A small plugin can add typed agent tools without channels, providers or hooks, which is how the log tool would be added.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:85",
+    "title": "openclaw automations: schedule types",
+    "anchor": "--at <when>",
+    "supports": "A one-shot job can be scheduled for a time or a duration from now, which is the check-in reminder.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "more than 1 person",
+    "supports": "A poison centre names medicine given by several people who do not communicate as a cause of double dosing and advises deciding who gives each dose and marking every dose in a log.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The claim that two caregivers is 'the usual way' a double dose happens had no source; a poison centre page supports a weaker statement. 'Never advises a dose' was only an instruction to the model, which this stack's rules do not count as a control, so the lookup reply should be rendered in code."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-13",
+  "name": "Emergency card, and a fixed reply when someone texts Happy in an emergency",
+  "tier": 2,
+  "cluster": "emergencies",
+  "description": "Two small things. A one-page family emergency plan (meeting place, contacts, who collects the kids, medical notes) that Happy helps write, keeps current and prints. And a hard rule that Happy is never the emergency channel: a message that looks like an emergency gets one fixed line at once, telling the person to call emergency services, without waiting for a model.",
+  "example": "A parent, or a sitter on the guest card, texts: 'He swallowed something, what do I do?'",
+  "how": "Plan: Ready.gov's four steps (talk it through, consider the household's needs, write the plan, practise it) become a short interview on <p>-main. The result is a page in the family folder (F043), a printed sheet (F080), and the source for the sitter card (F036). A yearly reminder re-checks the contacts. Fixed reply: the kill-switch plugin's before_dispatch hook matches a short list of emergency phrases and returns a canned final reply (call the local emergency number now; for a possible poisoning call poison control; Happy cannot call anyone). A claim ends that turn, and follow-up messages without those phrases go to the model as usual. Because the hook answers before model dispatch, it still works during a model outage. Weather: phones receive Wireless Emergency Alerts with no sign-up, so Happy's weather watch (F018) is a convenience and not a warning system.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "G005 kill-switch plugin (shares the hook)",
+   "F043 family folder",
+   "F080 print",
+   "F036 sitter facts"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Happy can be down in exactly the events that matter: a power cut stops the Mac and a network outage stops iMessage. The printed sheet is the part that survives.",
+   "Phrase matching will fire on jokes and miss paraphrases. The reply must be harmless when wrong.",
+   "The phone's own emergency call and medical ID features are the right tools on the phone. Happy should point to them, not imitate them.",
+   "Quiet hours and daily caps (G001) must never hold this reply back. A reply to an inbound text is not a proactive message, but test it."
+  ],
+  "safety": "A fixed string written by the parents, sent only as a reply to the sender: no tool, no data, no model. The plan page holds contacts and medical notes, so it lives in the private family folder and on paper, and only the fridge-level subset reaches the sitter card.",
+  "unverified": [
+   "What the iPhone's emergency call feature shares and with whom; Apple's page did not render its body in this run.",
+   "A poison-control source: the federal Poison Help site refused automated fetches, so no number is given here."
+  ],
+  "overlaps_existing": [
+   "F036",
+   "F018",
+   "G001",
+   "G005",
+   "F080"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/plan",
+    "title": "Make A Plan | Ready.gov",
+    "anchor": "Make A Plan",
+    "supports": "The federal preparedness site lays out a four-step family plan, including a communication plan and a meeting place, with a fillable form.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/alerts",
+    "title": "Emergency Alerts | Ready.gov",
+    "anchor": "Wireless Emergency Alerts",
+    "supports": "Wireless Emergency Alerts reach capable phones in a targeted area from public safety officials and the weather service without any subscription.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Plugin hooks: message hooks",
+    "anchor": "handled: true",
+    "supports": "A before_dispatch handler can end an inbound message with a fixed reply before any model is called.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Plugin hooks reference: message hooks",
+    "anchor": "before_dispatch",
+    "supports": "The hook is a claim on an inbound message that runs ahead of the normal model dispatch.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "Poison Control",
+    "supports": "The poison centre's own page gives the national poison help phone line and an online triage tool, both free, confidential and available around the clock, which is what the fixed reply should point to.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-14",
+  "name": "Trip packet: children's travel documents and day-of-flight airport status",
+  "tier": 2,
+  "cluster": "travel",
+  "description": "For a family trip Happy keeps one trip record and works a checklist that the planning features do not: whose passport is valid, whether a consent letter is needed when one parent or a grandparent travels abroad with a child, what ID the airport wants, and on the day a no-model watch of FAA airport delays for the two airports.",
+  "example": "Tony texts: 'Jordan is taking the kids to Vancouver in July without me. What paperwork do we need?'",
+  "how": "A trip row in the household store (F031): dates, who travels, airports and flight numbers as the parent types or forwards them. A checklist on <p>-main from fixed, linked rules: USA.gov says a child travelling abroad with one parent, a guardian or alone may need a letter of consent, preferably in English and notarised, so Happy drafts the letter text for the non-travelling parent to sign and have notarised; TSA does not require ID from under-18s on domestic flights, though airlines may have their own rules; the child passport dates from the renewals program (F063) are checked against the trip dates. Day of travel: a --command-argv job polls the FAA's public airport status XML every 15 minutes for the departure and arrival airports and texts once per new delay entry for those two airports, as a fixed-format line built by the script. Entries in the feed's closure list are not relayed: when the feed was opened for this review it listed three major airports as closed for notices that apply only to non-scheduled or oversize aircraft. Vacation mode (G002) mutes the home jobs for the dates. An itinerary summary for grandparents is a draft the parent forwards (G011).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F063 renewals (passport dates)",
+   "G002 vacation mode",
+   "G003 jobs registry",
+   "F019 research agent, for the destination's entry rules"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "The FAA feed is airport-level, not flight-level. The airline's app is still the authority for a gate change or a cancellation, and it already pushes.",
+   "Entry rules belong to the destination country. Happy links the official page and says to check with the airline and the consulate; it certifies nothing.",
+   "The consent letter is a draft for a notary, not legal advice.",
+   "No booking, check-in, seat change or rebooking: all are on the never-list.",
+   "Two or three trips a year. Build it only after the household store and vacation mode exist.",
+   "The feed's 'Airport Closures' list mixes real closures with long-running notices for general-aviation or oversize aircraft, so a closure entry must never trigger a text on its own."
+  ],
+  "safety": "Trip details stay with <p>-main; the research agent is asked about a country and ages only. The FAA watch is a host command job with no model and nothing private in the request (it downloads one public file). Its output line is assembled from fixed fields, so free text from the feed is not relayed. Output goes only to the parents.",
+  "unverified": [
+   "The State Department's own pages on children's passports and consent, which refused automated fetches for other reviewers in this workflow.",
+   "How stable the FAA endpoint's XML format is; it is published without a versioned contract.",
+   "The element names the feed uses for ground delay programs and ground stops; none was active when it was opened, so the script's parser for them has to be written against a live example."
+  ],
+  "overlaps_existing": [
+   "F028",
+   "F060",
+   "F063",
+   "G002"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.usa.gov/travel-documents-children",
+    "title": "International travel documents for children | USAGov",
+    "anchor": "letter of consent",
+    "supports": "A child travelling abroad with one parent, a guardian or alone may need a consent letter, preferably in English and notarised, signed by the parent or parents not travelling.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.tsa.gov/travel/security-screening/identification",
+    "title": "Acceptable Identification at the TSA Checkpoint | TSA",
+    "anchor": "children under 18",
+    "supports": "TSA does not require identification from children under 18 on domestic flights and refers travellers to the airline for its own rules.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nasstatus.faa.gov/api/airport-status-information",
+    "title": "FAA National Airspace System Status: airport status information (XML)",
+    "anchor": "AIRPORT_STATUS_INFORMATION",
+    "supports": "The FAA publishes a keyless XML document listing current ground delay programs, arrival and departure delays and airport closures by airport code, with an update time.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "openclaw automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run a fixed script and deliver its output with no model call, which is how the airport watch runs.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The FAA feed's closure list cannot drive a text: when opened in this review it showed three large airports as 'closed' for notices that concern only non-scheduled or oversize aircraft. The watch must alert on delay entries only. No ground delay program was active at fetch time, so that part of the feed's shape is unconfirmed."
+  ],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F063",
+  "origin": "9 Oct",
+  "name": "Renewals and expiry program (passports, licenses, registration, inspection, domains, Global Entry, filed documents)",
+  "tier": 2,
+  "cluster": "health-admin",
+  "description": "A monthly text lists what expires in the next 90 days (passports, inspection, registration, domains) with the lead time and official link; nothing is renewed or paid.",
+  "example": "",
+  "how": "Monthly isolated automation on the parent's agent with an empty tool list; the date table sits in the job message or AGENTS.md, generated from the family registry.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "The kids' passports are not 'renewed': the federal page says a passport for a child under 16 is valid for 5 years and cannot be renewed, so the table row for each kid should say 'apply again in person, both kids present' and count on a 5-year cycle."
+  ],
+  "unverified": [
+   "The two-year vehicle registration term: the state DMV renewal page opened in this run does not state the term.",
+   "Inspection, domain and Global Entry lead times are not backed by a listed source; the state DMV inspection page (every 12 months), ICANN's expiry-notice policy and the CBP renewal FAQ were opened but fall outside the four-source limit.",
+   "The 9-month passport lead time itself is a house choice built on the six-month rule plus processing time; no source sets that number."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools \"\"",
+    "supports": "An empty tool allowlist switches off every agent tool for the job, so the renewal table has to be in the prompt or bootstrap text rather than looked up at run time.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Cron sessions do not get MEMORY.md injected, so the table cannot live only in the memory vault.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.usa.gov/renew-adult-passport",
+    "title": "Renew an adult passport",
+    "anchor": "less than 6 months",
+    "supports": "Some countries and airlines refuse entry when a passport has under six months left, which is why the passport reminder needs a long lead time.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.usa.gov/child-passport",
+    "title": "Get a passport for a minor under 18",
+    "anchor": "valid for 5 years",
+    "supports": "Passports for children under 16 last five years and cannot be renewed; the child must apply again in person with a parent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://downloads.aap.org/AAP/PDF/periodicity_schedule.pdf",
+    "title": "Bright Futures/AAP Recommendations for Preventive Pediatric Health Care (PDF)",
+    "anchor": "updated February 2025",
+    "supports": "The periodicity schedule has a visit column for every year from 3 to 21, including 8, 10 and 11, and states it is updated annually.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/family-life/health-management/Pages/Well-Child-Care-A-Check-Up-for-Success.aspx",
+    "title": "HealthyChildren.org (AAP): AAP schedule of well-child care visits",
+    "anchor": "8 years old",
+    "supports": "The AAP's parent site lists a well-child visit at each year of age from 3 through 21.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aap.org/periodicityschedule",
+    "title": "AAP: Periodicity Schedule",
+    "anchor": "Periodicity Schedule",
+    "supports": "The schedule is the AAP and Bright Futures consensus list of screenings and assessments recommended at each well-child visit.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/vaccines/imz-schedules/adolescent-easyread.html",
+    "title": "CDC: Recommended Vaccines for Older Children",
+    "anchor": "1 dose at age 11-12 years",
+    "supports": "CDC's parent-facing schedule for ages 7 to 18 lists flu vaccine every year and one Tdap dose at 11 to 12 years, and is dated 2 July 2025.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/vaccines/hcp/imz-schedules/child-adolescent-age.html",
+    "title": "CDC: Child and Adolescent Immunization Schedule by Age",
+    "anchor": "Addendum updated July 2, 2025",
+    "supports": "The clinical schedule in force on the page is the 2025 edition with an addendum dated 2 July 2025, so the table needs a dated annual re-check.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aafp.org/afp/2026/0800/editorials-practice-alert-child-adolescent-immunization-schedule",
+    "title": "American Family Physician, August 2026: practice alert on the child and adolescent immunization schedule",
+    "anchor": "No vaccine was removed",
+    "supports": "The federal schedule was revised on 5 January 2026, moving influenza and several other vaccines to shared decision-making; the revision was removed from the CDC site on 16 March 2026 after a court stay; the AAP issued its own schedule, which other medical bodies endorsed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:11",
+    "title": "Web fetch",
+    "anchor": "plain HTTP GET",
+    "supports": "web_fetch is a plain GET without JavaScript, so a site that refuses plain fetches will refuse the research agent as well.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/faqs/estimated-tax/individuals/individuals-2",
+    "title": "IRS FAQ: Estimated tax, individuals",
+    "anchor": "Sept. 15",
+    "supports": "Individual estimated tax payments are due 15 April, 15 June, 15 September and 15 January of the following year, moving to the next business day when needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/publications/p969",
+    "title": "IRS Publication 969: Health Savings Accounts and Other Tax-Favored Health Plans",
+    "anchor": "use-it-or-lose-it",
+    "supports": "Health FSA balances are forfeited at plan-year end unless the plan offers either a grace period of up to two and a half months or a limited carryover, and it cannot offer both.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/publications/p503",
+    "title": "IRS Publication 503: Child and Dependent Care Expenses",
+    "anchor": "overnight camp",
+    "supports": "Care counts for a child under 13, day camp may be a qualifying expense, overnight camp is not, and employer dependent-care benefits are excludable up to a yearly dollar limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/businesses/small-businesses-self-employed/online-tax-calendar",
+    "title": "IRS: Online tax calendar",
+    "anchor": "First Quarter",
+    "supports": "The IRS calendar is presented as quarterly pages with a print option and shows no calendar subscription, so there is no feed to consume.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "SRC-11",
+   "SRC-12",
+   "SRC-13"
+  ],
+  "adds": [
+   "A yearly well-visit nudge per child from the AAP schedule; vaccine specifics are left to the pediatrician because the federal childhood schedule changed twice in 2026.",
+   "The child passport rule row: issued under 16 means five-year validity, no renewal, and a new in-person application with the parents present.",
+   "IRS estimated-tax dates (only if the family pays them) and the plan-specific FSA and dependent-care deadlines, typed in by a parent from the employer's plan document."
+  ],
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F064",
+  "origin": "9 Oct",
+  "name": "Explain this EOB or medical bill",
+  "tier": 2,
+  "cluster": "health-admin",
+  "description": "Send a photo or PDF of an Explanation of Benefits or medical bill and get five plain lines: billed, allowed, what you owe, whether a bill follows, duplicates.",
+  "example": "",
+  "how": "Turn on channels.imessage.includeAttachments; PDF text is extracted locally into an untrusted file block, then text and photos go to the cloud model under store:false, claim numbers included.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Whether photos reach the model as native vision input through the per-person custom provider id was not tested in this run.",
+   "The duplicate check (statement versus later provider bill) only works if a parent logs every statement; no source shows families keep that up."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Inbound attachments are off by default and attachment-only messages are dropped until this key is set to true.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:267",
+    "title": "Media understanding",
+    "anchor": "untrusted external content",
+    "supports": "Text extracted from an inbound document is wrapped as untrusted external content before the reply model sees it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:92",
+    "title": "PDF tool",
+    "anchor": "document-extract",
+    "supports": "PDF text and page images are extracted on the Mac by the bundled document-extract plugin (PDFium), not by a cloud PDF service.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cms.gov/medical-bill-rights/help/guides/explanation-of-benefits",
+    "title": "How to read a health insurance explanation of benefits",
+    "anchor": "Allowed Charges",
+    "supports": "The federal guide confirms an Explanation of Benefits is not a bill and lists provider charges, allowed charges, insurer payment, what you owe and the claim number.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools \"\"",
+    "supports": "A job with an empty tool list cannot look anything up, so the claims table must be in the job text or bootstrap files.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Cron sessions skip MEMORY.md, which is why a vault-only claims table would be invisible to the weekly job.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:40",
+    "title": "Standing orders",
+    "anchor": "Program: Weekly Status Report",
+    "supports": "Standing orders are written as named programs with authority, trigger, approval gate and escalation, the shape a 'Program: claims' entry follows.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthcare.gov/appeal-insurance-company-decision/internal-appeals/",
+    "title": "Internal appeals",
+    "anchor": "within 180 days",
+    "supports": "An internal appeal of a denied claim must be filed within 180 days of the notice, the one hard deadline a claims tracker should carry.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F068"
+  ],
+  "adds": [],
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F067",
+  "origin": "9 Oct",
+  "name": "School, camp and sports health-form helper",
+  "tier": 2,
+  "cluster": "health-admin",
+  "description": "When a school, camp or sports health form arrives, Happy drafts the answers from stored family facts as a copy-paste block; it never fills in or submits the form.",
+  "example": "",
+  "how": "Attachments on, a per-child 'form facts' vault section and a drafts-only rule in AGENTS.md; no exec, so the nano-pdf skill cannot run. Kids' health facts reach the cloud model.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "The estimate of 6 to 10 such forms a year is not sourced.",
+   "The drafts-only rule is a prompt instruction; nothing mechanical is needed today only because the agent has no tool that could fill or send a form."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "The form photo or PDF only reaches the agent after inbound attachments are switched on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:266",
+    "title": "Media understanding",
+    "anchor": "model-visible file block",
+    "supports": "Every inbound document attachment is turned into a file block the reply model can read, which is all a draft needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-workspace.md:74",
+    "title": "Agent workspace",
+    "anchor": "start of every session",
+    "supports": "AGENTS.md is loaded at the start of every session, so a drafts-only rule written there is always in context.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/nano-pdf/SKILL.md:27",
+    "title": "nano-pdf (bundled skill)",
+    "anchor": "nano-pdf",
+    "supports": "The only bundled PDF editor is a command-line tool; an agent without exec cannot run it, so the original form is never altered.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "unplaced",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F069",
+  "origin": "9 Oct",
+  "name": "Pet care program",
+  "tier": 2,
+  "cluster": "health-admin",
+  "description": "If the family has a pet: monthly flea, tick and heartworm reminders, vaccine due dates, vet contact and a food reorder link; nothing is ordered.",
+  "example": "",
+  "how": "Monthly --cron reminders pinned with --agent to the parent's agent; pet facts in AGENTS.md or the job message; vet summaries by photo need attachments on.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Whether the family has a pet at all: none is mentioned in the household description, so confirm before building.",
+   "Vaccine intervals (rabies, DHPP) were not checked against a veterinary source."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:20",
+    "title": "Automation schedules",
+    "anchor": "5-field or 6-field cron expression",
+    "supports": "Recurring reminders use a cron expression with an optional timezone, enough for a first-of-the-month nudge.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "Automations (cron)",
+    "anchor": "--agent",
+    "supports": "A job created without an agent falls back to the default agent, so each reminder must name the parent's agent explicitly.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Reading a photographed vet summary needs inbound attachments switched on.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/animal-veterinary/animal-health-literacy/keep-worms-out-your-pets-heart-facts-about-heartworm-disease",
+    "title": "Keep the Worms Out of Your Pet's Heart! The Facts about Heartworm Disease",
+    "anchor": "Year-round prevention",
+    "supports": "The FDA says most heartworm preventives are given monthly, year-round, with annual testing, so a monthly reminder matches real veterinary practice.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F070",
+  "origin": "9 Oct",
+  "name": "Spend summary from statements (read-only, local model)",
+  "tier": 2,
+  "cluster": "health-admin",
+  "description": "Drop in a monthly card or bank statement and get a categorised summary with new recurring charges flagged; cannot be done today because it must run on a local model.",
+  "example": "",
+  "how": "Separate finance agent on a local Ollama model, pdf tool denied (agents.defaults.pdfModel is not per-agent), statements text-extracted locally, intake by a watched host folder, no web, no send.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "blocked",
+  "dependency_old": "M2-local",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "No local model is installed, and none was tested for reading statement tables on this Mac.",
+   "That monthly statement drops are worth it when bank and budgeting apps already categorise spending is a judgment, not a sourced fact."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:16",
+    "title": "PDF tool",
+    "anchor": "agents.defaults.pdfModel",
+    "supports": "The PDF tool's model is chosen from a gateway-wide default and then falls through to other authenticated providers, so it cannot be pinned local for one agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:266",
+    "title": "Media understanding",
+    "anchor": "model-visible file block",
+    "supports": "An inbound statement PDF becomes locally extracted text in the prompt, so only the agent's own reply model reads it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/providers/ollama.md:17",
+    "title": "Ollama",
+    "anchor": "Local only",
+    "supports": "OpenClaw supports an Ollama host that serves local models only, the setup the finance agent would need.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.ollama.com/faq",
+    "title": "FAQ",
+    "anchor": "Ollama runs locally",
+    "supports": "Ollama states that prompts and data stay on the machine when a model runs locally.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G008",
+  "origin": "9 Oct",
+  "name": "Integration health and credential expiry watch",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "A daily self-check texts Tony only when something is broken, such as an expired Google sign-in or a stalled channel, with the fix command.",
+  "example": "",
+  "how": "Command automation runs openclaw health --json, channels status --probe, models status --check and, once installed, gog auth list --check; reads each entry, not exit codes.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "gog is not installed on the Mac mini today, so the Google half cannot run yet.",
+   "Whether OpenClaw's Brave search plugin exposes Brave's remaining-quota header; if not, quota needs a direct probe call or the dashboard.",
+   "What the channel probe reports for a Basic-mode iMessage account (the 9 Oct text mentions a private API probe that does not apply with SIP on)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/health.md:43",
+    "title": "Health CLI (installed docs)",
+    "anchor": "per-account probes",
+    "supports": "The JSON health snapshot lists channels, account probes, plugin load state and delivery-queue warnings.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/channels.md:37",
+    "title": "Channels CLI (installed docs)",
+    "anchor": "channels status --probe",
+    "supports": "This is the documented live check for channel accounts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/models.md:88",
+    "title": "Models CLI (installed docs)",
+    "anchor": "--check",
+    "supports": "The check mode returns exit codes for missing, expired or expiring model credentials without making a model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:49",
+    "title": "Bundled gog skill",
+    "anchor": "gog auth list --check",
+    "supports": "The Google CLI's own guidance is to inspect every reported account entry because its exit status does not prove each token is valid.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Google: Using OAuth 2.0 to Access Google APIs",
+    "anchor": "expiring in 7 days",
+    "supports": "An OAuth app left in Testing status gets refresh tokens that die after a week; tokens also die on a password change with Gmail scopes or six months of disuse.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh",
+    "title": "gog (gogcli) home page",
+    "anchor": "gogcli",
+    "supports": "gog is a real Google Workspace command-line tool installed from a Homebrew tap.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api-dashboard.search.brave.com/documentation/guides/rate-limiting",
+    "title": "Brave Search API: Rate limiting",
+    "anchor": "X-RateLimit-Remaining",
+    "supports": "Brave reports remaining per-second and monthly quota in response headers and answers 429 when a limit is hit.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-13",
+  "name": "Security audit after every update and monthly (healthcheck checklist, security audit --deep)",
+  "tier": 2,
+  "cluster": "Operator",
+  "description": "A scheduled, read-only posture check of the Gateway and the Mac that texts Tony only when something changed: a new audit finding, the firewall off, FileVault off, a new listening port, updates pending.",
+  "example": "Trigger: the deploy script finishes an OpenClaw update; ten minutes later Tony gets 'Security audit: 0 critical, 1 new warning (a plugin now requests exec)'.",
+  "how": "The bundled healthcheck skill is a checklist: openclaw security audit --deep, gateway status --deep and doctor --lint, then macOS checks for listening ports, firewall state, FileVault, Time Machine and the software-update schedule. Run it host-side, not inside an agent: a script in happy-deploy calls the audit with --json, compares findings with the previous run and prints NO_REPLY when nothing changed. Schedule it monthly as a command payload and call it from the update runbook. Accepted findings go into security.audit.suppressions so the diff stays quiet.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "G003 jobs registry",
+   "G008 integration health watch (same delivery path)",
+   "G006 audit digest"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "The roadmap already says to re-run the audit after each update; this only makes it automatic and change-based.",
+   "The skill warns that plain doctor can migrate state, so scheduled checks must use the lint form.",
+   "The deep audit probes the live Gateway and loads plugin security collectors, so it should run while the Gateway is up.",
+   "The neighbouring model-usage skill is not useful here: it summarises CodexBar cost logs for Codex or Claude Code, not this Gateway's OpenAI spend, so G004 stays the spend view."
+  ],
+  "safety": "Read-only and host-side; no agent gains exec, and the result goes only to Tony. The fix flag is never used in a scheduled job.",
+  "unverified": [
+   "Whether the deep audit can run from the scheduler as the happy user without passing the Gateway token on the command line",
+   "How long a deep audit takes on this install"
+  ],
+  "overlaps_existing": [
+   "G008",
+   "G006",
+   "G007"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/healthcheck/SKILL.md:41",
+    "title": "healthcheck skill: read-only checks",
+    "anchor": "openclaw security audit --deep",
+    "supports": "The bundled checklist starts with the deep security audit, a deep gateway status and a lint-only doctor run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/security.md:20",
+    "title": "CLI reference: openclaw security",
+    "anchor": "openclaw security audit --json",
+    "supports": "The audit has machine-readable output.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/model-usage/SKILL.md:29",
+    "title": "model-usage skill",
+    "anchor": "CodexBar's local cost logs",
+    "supports": "The model-usage skill reads CodexBar logs for Codex or Claude, not Gateway usage.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G006",
+  "origin": "9 Oct",
+  "name": "'What did Happy do today' audit digest",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "On request, or each Sunday, a parent sees what Happy did: reminders created, list items added, messages sent, approvals given.",
+  "example": "",
+  "how": "openclaw audit --kind tool_action gives names and outcomes only; an after_tool_call hook writes targets to home-store; a command automation renders the digest.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Whether turning on message audit rows needs a Gateway restart: the audit CLI page says restart, the Gateway audit page says audit settings apply without one.",
+   "Retention for the custom side-effect table in home-store is undefined."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/audit.md:21",
+    "title": "Audit history (installed docs)",
+    "anchor": "never stores prompts, message bodies",
+    "supports": "The built-in ledger records who ran what and how it ended, never the arguments, so it cannot say which list item or recipient.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/audit.md:52",
+    "title": "Audit CLI (installed docs)",
+    "anchor": "--kind tool_action",
+    "supports": "Tool activity can be pulled as JSON for a time window from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1284",
+    "title": "Plugin hook types (installed source)",
+    "anchor": "PluginHookAfterToolCallEvent",
+    "supports": "The after-tool hook receives the tool name, its parameters, result, error and duration, which is what a side-effect ledger needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:190",
+    "title": "Approvals CLI (installed docs)",
+    "anchor": "pending requests are live Gateway state",
+    "supports": "The approvals command lists and resolves pending requests only; there is no history listing.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F085",
+  "origin": "9 Oct",
+  "name": "Memory hygiene, privacy controls and weekly memory review",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "Mail-reader sessions stay out of long-term memory, a parent can have a session's memories removed, and each adult gets a short Sunday review of what Happy learned.",
+  "example": "",
+  "how": "memoryPolicy.excludeSessions.hookExternalContentSources [email, gmail]; operator runbook for openclaw memory forget --dry-run; weekly isolated automation with --tools memory_search,memory_get; openclaw memory promote --apply.",
+  "who": "operator",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'Forget what I said about X works' (9 Oct description) is not a platform ability: memory forget selects whole sessions by id, hook source or participant, never by topic or message text, and reworded copies are outside its cleanup. Topic-level forgetting is a hand edit of the memory file.",
+   "'Promote via openclaw memory promote --apply' will usually promote nothing a parent just confirmed: by default a candidate needs a 0.75 score, three recalls and three distinct queries. Either pass lower thresholds or write the confirmed line to MEMORY.md directly."
+  ],
+  "unverified": [
+   "With dreaming switched off (roadmap decision) the session-exclusion setting has little to act on today; its effect was not tested.",
+   "The memory-wiki dashboards named on 9 Oct (privacy review, stale pages) are documented, but the plugin is not enabled on this install."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:650",
+    "title": "Memory configuration reference (installed docs)",
+    "anchor": "memoryPolicy.excludeSessions",
+    "supports": "The exclusion list only keeps matching sessions out of dreaming ingestion and backfill; it does not erase memories or limit workspace writes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/memory.md:210",
+    "title": "Memory CLI (installed docs)",
+    "anchor": "--dry-run",
+    "supports": "memory forget deletes at once with no confirmation unless run as a preview, so the runbook must always preview first.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-provenance.md:260",
+    "title": "Memory provenance and deletion (installed docs)",
+    "anchor": "Paraphrases and other copies",
+    "supports": "Reworded copies of a fact, exports and backups are outside what the forget command cleans.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:56",
+    "title": "Automation payloads (installed docs)",
+    "anchor": "--tools",
+    "supports": "A scheduled job can be limited to a named tool list, which keeps the weekly review run read-only.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-05",
+  "name": "Recovery card for the second adult (a bus factor of one)",
+  "tier": 2,
+  "cluster": "recovery and trust",
+  "description": "One printed page and a sealed envelope so Jordan can tell that Happy is down, pause it, and bring it back after a power cut while Tony is travelling. Today every recovery step, including the disk unlock after a reboot, depends on Tony being at home.",
+  "example": "Trigger: a power cut while Tony is abroad. Happy stops answering and Jordan opens the card.",
+  "how": "No new software. The card lists: (1) how to tell: no reply within a few minutes; also add Jordan as a second recipient of the existing dead-man alert. (2) The pause phrase (G005) and that it is always safe to use. (3) After a power cut the Mac waits at the FileVault screen: type the password from the envelope at the Mac, then log in the happy user so Messages runs. Apple's remote unlock over SSH needs Apple silicon, macOS 26, Remote Login on and a network connection, and the roadmap notes it works from the home network only, so it does not help someone who is away. (4) The two commands an admin may need: 'openclaw gateway status' and 'openclaw gateway restart' (the docs say not to chain stop and start). (5) Who to call. The envelope holds what the card needs and where the config repo and backups are. Separately, set a Legacy Contact on the Apple Accounts involved so the account behind Happy's iMessage identity can be recovered in the worst case; Apple's legacy access leaves out Keychain passwords, so the API keys still depend on the backup (G007). Rehearse once: Tony leaves the house, Jordan restarts the Mac and brings Happy back from the card. Least privilege, from review: the happy user holds a secure token on this Mac (read with sysadminctl in this review), and Apple's FileVault management page says unlocking needs a secure token and, on Apple silicon, volume ownership. If happy's password unlocks the disk at the startup screen, that one step also logs happy in, which is all a power cut needs. The first envelope then holds only happy's password and the admin credential goes in a second envelope for repairs. Confirm this at the rehearsal before relying on it.",
+  "who": "operator",
+  "risk": "medium",
+  "readiness": "now",
+  "depends_on": [
+   "decision: Jordan gets break-glass admin access, which also lets her read Tony's data on the Mac",
+   "G005 kill phrase",
+   "G007 backups",
+   "a small UPS (already suggested in the roadmap)",
+   "decision: what goes in Jordan's envelope: the happy user's password only (enough for a restart if it unlocks the disk) or also the admin credential (which adds Tony's own account and the config repo)"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "The envelope is an admin credential on paper. Whoever opens it can read every person's data on the Mac; that is the price of not being locked out.",
+   "A UPS only bridges short cuts. A long outage still ends at the FileVault screen.",
+   "Legacy Contact access needs the access key and a death certificate. It is for the worst case, not for a business trip.",
+   "If Apple locks the Apple Account that Happy uses, nobody at home can fix it quickly, and iMessage is the only channel.",
+   "The envelope is a credential on paper. The happy password alone already opens every person's agent data, because the gateway keeps it under that account; an admin credential adds Tony's own account and the config repo. That is the price of not being locked out."
+  ],
+  "safety": "Nothing is granted to any agent and no secret is typed into chat or stored in Happy's memory. The control plane stays Tony's in normal operation; the envelope is a deliberate exception that is obvious once used, because it is sealed.",
+  "unverified": [
+   "Whether a standard, non-admin macOS account for Jordan can be enabled to unlock FileVault at boot on this Mac; the Apple page read in this run does not say who may unlock.",
+   "Whether the gateway's launchd service comes up for the happy user before that user logs in at the console after a reboot.",
+   "Whether the happy user is a volume owner and is offered at the FileVault startup screen. The secure token status was read; the unlock itself was not tried."
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G007",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/intro-to-filevault-dep82064ec40/web",
+    "title": "Intro to FileVault - Apple Support (Apple Platform Deployment)",
+    "anchor": "a network connection is available",
+    "supports": "On Apple silicon with macOS 26 or later, FileVault can be unlocked over SSH after a restart when Remote Login is on and the Mac has a network connection; credentials are still required.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/124963",
+    "title": "What's new for enterprise in macOS Tahoe 26 - Apple Support",
+    "anchor": "Remote Login is enabled",
+    "supports": "Apple's release notes for macOS 26.0 announce the SSH unlock and its two conditions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102631",
+    "title": "How to add a Legacy Contact for your Apple Account - Apple Support",
+    "anchor": "Legacy Contact",
+    "supports": "A chosen person can get account data after the owner's death with an access key and a death certificate; Keychain contents such as passwords are excluded.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/index.md:208",
+    "title": "Gateway runbook: operator commands",
+    "anchor": "openclaw gateway restart",
+    "supports": "Restart is the documented single command for bringing the Gateway back; chaining stop and start is discouraged.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/manage-filevault-with-device-management-dep0a2cb7686/web",
+    "title": "Manage FileVault with device management - Apple Support (Apple Platform Deployment)",
+    "anchor": "secure token",
+    "supports": "A user needs a secure token, and on Apple silicon must also be a volume owner, to work with FileVault unlock; the page does not make admin status a condition.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All four sources hold. The entry assumes the envelope must be an admin credential; on this Mac the happy user holds a secure token, which Apple names as the requirement for unlocking FileVault, so the power-cut case may need only the non-admin happy password. Split the envelope and test it at the rehearsal."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "MAC-04",
+  "name": "Default-deny for computer.act until a pilot, plus the off switches",
+  "tier": 3,
+  "cluster": "Computer use: guardrails",
+  "description": "Make 'no agent can drive any Mac' an explicit setting instead of a side effect of the app not being installed, and write down the three ways to switch computer control off.",
+  "example": "Tony adds one deny line to the config repo now. Later, 'Happy, stop everything' also halts desk, and he can flip the switch in the Mac app or remove the Accessibility grant.",
+  "how": "Add `computer.act` to `gateway.nodes.commands.deny` in happy-config. A deny entry always wins over platform defaults and allow entries, withholds the command together with the node's `computer` capability, and is logged. Keep `computer` absent from every agent's tool lists; the per-person agents already deny `group:nodes`, which contains it, and the inbox agent denies every tool. For reference, the documented gate stack for screen control is: tool policy exposes `computer` to an agent; gateway command policy (deny list, and the allow list for the separately listed dangerous commands); device pairing and then a second, distinct approval of the node's command surface (a single-use setup link or SSH-verified pairing approves the first surface automatically; the family has SSH verification off and should not use setup links for a Mac); the switch inside the Mac app; and the macOS permissions. Exec approvals are not in that list: they gate shell commands on a node (MAC-10), not clicks. Off switches during a pilot: (1) put the deny line back (command-policy changes reach connected nodes under the default hybrid reload); (2) the G005 kill file checked in the desk hook; (3) on the Mac, turn off 'Allow Computer Control' (rechecked at each invocation) or revoke Accessibility. If no Mac should be viewable either, also deny `screen.snapshot` and `desktop.stream`.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "Without this, once OpenClaw.app is installed on any family Mac, its pairing is approved and the macOS permissions are granted, pointer and keyboard control is available to any agent later given `computer` and to any caller with operator write access, because `computer.act` is in the macOS default allowlist and the app switch defaults on.",
+   "The deny list is global, not per Mac. The per-Mac controls are the pairing approval and the switch inside the app.",
+   "`screen.record` is already off unless explicitly allowed; `screen.snapshot` and `desktop.stream` are not, once a pairing that declares them is approved.",
+   "The two-step approval (device, then command surface) is not unconditional: SSH-verified pairing is enabled by default and, like setup-code enrollment, can approve a node's first surface automatically.",
+   "The same pairing that would arm `computer.act` also brings shell execution, a browser proxy, node MCP calls and a desktop stream. Denying only `computer.act` leaves those to the per-node approval alone.",
+   "A gateway-wide deny of `system.run` also rules out MAC-10. That is intended."
+  ],
+  "safety": "Pure tightening. It turns an implicit state into a limit in config that a prompt cannot change.",
+  "unverified": [
+   "That the deny entry hot-applies for `computer.act` specifically; the docs state the hot-apply behaviour in the desktop-sharing section.",
+   "That deny entries for system.run and the other host commands apply exactly as for computer.act; the docs state the rule for exact command names in general."
+  ],
+  "overlaps_existing": [
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:225",
+    "title": "Computer use: deny example",
+    "anchor": "deny: [\"computer.act\"]",
+    "supports": "The documented way to keep the command off is an entry in gateway.nodes.commands.deny.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:219",
+    "title": "Run a node host: Pair + name",
+    "anchor": "request IDs are distinct",
+    "supports": "Device approval and command-surface approval are two separate steps, and an unapproved surface has no usable commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:34",
+    "title": "Node command policy: platform defaults",
+    "anchor": "computer.act",
+    "supports": "computer.act is in the default allowlist for macOS nodes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:401",
+    "title": "Paired node desktops",
+    "anchor": "hybrid reload mode",
+    "supports": "Command-policy changes reach connected nodes without a gateway restart.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:131",
+    "title": "Config hot reload: restart table",
+    "anchor": "gateway.nodes.commands",
+    "supports": "Changes under gateway.nodes.commands apply without a gateway restart.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Correct, cheap and worth doing now, but too narrow: pairing a Mac app node also brings shell execution, a browser proxy, node MCP calls and a desktop stream, and the 'two separate approvals' claim has a documented default exception. Widen the deny list and close the auto-approval path.",
+   "All 7 sources check out and this is a config-only change that works today. Two corrections: hot-apply of command policy is documented, so nothing is left unverified, and the 'second approval' gate is skipped by setup links and SSH-verified pairing."
+  ],
+  "reviewed_by": 2,
+  "wave": "A",
+  "section": "The Mac and other computers",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F078",
+  "origin": "9 Oct",
+  "name": "Run an allowlisted macOS Shortcut (HomeKit / anything bridge)",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "Tony builds Shortcuts on the Mac mini (goodnight, TV off) and Happy runs only the ones on an exact-name allowlist; never locks, garage, alarm or gate.",
+  "example": "",
+  "how": "Plugin tool calls 'shortcuts run <name>' on the host, no free-text input; Shortcuts live in the happy account, whose Apple Account is invited to the Home; requireApproval gates first runs.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That the command needs the happy user's logged-in desktop session and one interactive first run to clear privacy prompts; Apple's command-line page does not say.",
+   "Whether sharing the Home requires a home hub; search results suggest so but the fetched Apple page did not state it.",
+   "The LG TV being the only HomeKit accessory comes from the 9 Oct scan."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "title": "Run shortcuts from the command line",
+    "anchor": "shortcuts run",
+    "supports": "Apple documents running a named Shortcut from the Mac command line, with input and output passed as file paths rather than free text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102386",
+    "title": "Share control of your home",
+    "anchor": "Apple Account",
+    "supports": "A Home owner can invite another Apple Account to control accessories, the step the agent's own account needs before a Shortcut can touch HomeKit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:78",
+    "title": "Tool call policy hooks",
+    "anchor": "requireApproval",
+    "supports": "A plugin hook can pause a tool call and ask for approval, which /approve resolves, giving a gate on the first run of a newly allowlisted Shortcut.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/building-plugins.md:147",
+    "title": "Building plugins",
+    "anchor": "api.registerTool",
+    "supports": "A plugin registers its own agent tool in code, the same pattern as the existing in-house weather plugin.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/terminal/automate-tasks-using-applescript-and-terminal-trml1003/mac",
+    "title": "Automate tasks using AppleScript and Terminal on Mac (Apple Support)",
+    "anchor": "osascript",
+    "supports": "AppleScript files can be run from the command line with osascript.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/sdk-entrypoints.md:12",
+    "title": "Plugin entry points",
+    "anchor": "defineToolPlugin",
+    "supports": "The plugin SDK provides a helper for plugins that add typed tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/prompt-injection.md:33",
+    "title": "Prompt injection",
+    "anchor": "tools.exec.strictInlineEval",
+    "supports": "When interpreters such as osascript are allowlisted for exec, inline evaluation forms should require explicit approval.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/mac/permissions.md:73",
+    "title": "macOS permissions: Accessibility for Node runtimes",
+    "anchor": "broad permission",
+    "supports": "An Accessibility grant on the node binary applies to everything launched by that runtime.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins",
+    "anchor": "defineToolPlugin",
+    "supports": "The helper builds a plugin that only adds agent-callable tools.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "MAC-09"
+  ],
+  "adds": [
+   "Fixed AppleScript verbs beside the allowlisted Shortcuts (speak a line on the Mac mini, open an allowlisted page, set the volume, sleep the display), each a hard-coded script with checked arguments and kept off memory-holding agents."
+  ],
+  "wave": "C",
+  "section": "The Mac and other computers",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "MAC-03",
+  "name": "A clean desk: control a macOS VM, not happy's own session",
+  "tier": 3,
+  "cluster": "Computer use: isolation",
+  "description": "Give Happy a desktop that holds nothing worth stealing and cannot reach the family's accounts: a macOS virtual machine on the Mac mini with no Apple Account, no Messages, no saved passwords and network access limited to the gateway. Both model vendors tell developers to do exactly this, and it is what makes the trifecta rule hold for screen control.",
+  "example": "Operator setup. Afterwards every desk task runs inside a 'Happy Desk' VM that Tony can reset.",
+  "how": "Create a macOS guest with Apple's Virtualization framework (for example with the open-source Lume CLI: `lume create` from an IPSW, then `lume run`). Install OpenClaw.app inside the guest, pair it as its own node, grant Accessibility and Screen Recording inside the guest, and have desk always pass that node explicitly. Move files in and out only through the File Transfer plugin limited to one folder (`allowReadPaths` / `allowWritePaths`). The plugin's node commands (`file.fetch`, `file.write`, `dir.list`) are classed as dangerous, so each one in use must also be listed in `gateway.nodes.commands.allow`. Leave Computer Control switched off for happy's real session. Why not happy's own desktop: it has Messages signed in (a click path to text anyone, outside the recipient-pinning hook), an unlocked login Keychain holding the API keys, the gateway's config and state, and Terminal. OpenClaw's own trust note says the driver does not contain a compromised user account.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "MAC-01",
+   "disk and memory on the Mac mini for a macOS guest",
+   "a firewall rule limiting the guest to the gateway address",
+   "a route from the guest to the loopback-bound gateway (tailnet identity or SSH tunnel)",
+   "`gateway.nodes.commands.allow` entries for the file commands"
+  ],
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "The guest must still reach the gateway to act as a node, so 'no network' really means 'gateway only' and needs a rule you maintain. The gateway is bound to loopback and published only through Tailscale Serve, so the guest needs a route to it: most likely its own tailnet identity (limited by tailnet ACL to the gateway) or an SSH tunnel into the mini, and either one is a further credential inside the VM. Whether a guest can reach the host's Serve address through the VM's NAT without joining the tailnet was not tested.",
+   "Node connections are not authenticated by Tailscale identity headers; the guest needs token-based node auth. A single-use pairing link avoids copying the shared gateway token but is documented for CLI node hosts; how the app pairs from inside a guest is untested.",
+   "Anything tied to the family's Apple Account is unavailable by design: Photos library, Notes, and iPhone Mirroring (which requires the same Apple Account on Mac and phone). That removes many of the tasks people imagine.",
+   "Every app Happy should operate has to be installed inside the guest.",
+   "Fallback with weaker isolation: a third standard macOS user on the mini with nothing signed in. It shares the machine and has to be the session on screen.",
+   "The gateway is bound to loopback and published only through Tailscale Serve. A guest cannot reach a loopback-bound gateway directly; the documented routes are an SSH tunnel into the host (which puts a host login inside the guest), joining the guest to the tailnet, or binding the gateway beyond loopback. Each one changes the M0 baseline and needs its own review, so 'gateway only' is more than one firewall rule.",
+   "The guest is not empty of secrets. OpenClaw.app inside it is signed in to the family gateway, and with shared-token auth that session is the shared owner profile; the agent that drives the guest's screen can open that Dashboard. Until the app is shown to run as a node with no operator rights, the clean desk contains access to everything it was built to keep away.",
+   "A VM that is never reset is a shared, persistent desktop: leftovers from one run, or one parent, are there for the next. Plan a snapshot restore before each run.",
+   "Lume's unattended presets turn on SSH in the guest with published default credentials, and the tool has a telemetry setting. Change the password, turn SSH off and check telemetry before the guest touches the network.",
+   "The roadmap already weighed a macOS VM for hosting the whole gateway and set it aside because a macOS guest cannot run the Docker sandbox. That does not block this narrower use, but it means no sandboxed tools inside the guest."
+  ],
+  "safety": "A desktop that lacks private data and exits is the kind of limit a model cannot talk past, and it is the only placement where screen control could respect the trifecta. As specified it does not reach that bar yet: the guest holds a gateway console, and 'network to the gateway only' is not 'no exit' because the gateway itself has agents that search the web and text the family. Count the trifecta as respected only after (1) the app's operator access inside the guest is removed or proven absent, (2) guest egress is limited to the gateway, and (3) the guest is reset before each run.",
+  "unverified": [
+   "That OpenClaw.app's Computer Control (its TCC grants, its capture path and its 'verified unlocked desktop' check) works inside a macOS guest VM with a virtual display.",
+   "How to restrict a Lume guest's network to one host address.",
+   "Apple's licence terms for running a macOS guest for this purpose.",
+   "Exact disk and memory cost of the guest.",
+   "Whether the macOS 27 licence keeps the clause found in the macOS Sequoia agreement, which permits up to two additional macOS instances in virtual machines on Apple hardware for personal, non-commercial use.",
+   "Whether the Mac app can run in the guest as a node with no operator scopes.",
+   "Apple's licence for the installed macOS 27. The macOS Tahoe 26 licence, read in this run, allows up to two additional macOS instances in virtual machines on an Apple-branded computer for personal, non-commercial use.",
+   "Whether a guest running without a display window counts as the verified unlocked desktop that Computer Control requires."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "title": "Computer use guide (OpenAI)",
+    "anchor": "Use an isolated browser or VM",
+    "supports": "OpenAI advises restricting computer use to an isolated browser or virtual machine and limiting it to what the task needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "title": "Computer use tool (Anthropic)",
+    "anchor": "dedicated virtual machine or container",
+    "supports": "Anthropic's first precaution is a dedicated VM or container with minimal privileges, and the second is keeping account logins away from the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/trycua/cua/tree/main/libs/lume",
+    "title": "Lume (trycua/cua)",
+    "anchor": "Apple Virtualization Framework",
+    "supports": "Lume is a command-line tool that creates and runs macOS and Linux virtual machines on Apple's virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer)",
+    "anchor": "Running macOS in a virtual machine",
+    "supports": "Apple documents a supported way to run macOS as a guest on Apple silicon (only the page title was retrievable in this run).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:114",
+    "title": "Computer use: Trust model",
+    "anchor": "compromised user account",
+    "supports": "OpenClaw states that its unrestricted driver mode does not contain a compromised user account and that same-user processes are inside the boundary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:31",
+    "title": "Run a node host",
+    "anchor": "Tailscale identity headers",
+    "supports": "Node-role connections cannot authenticate with Tailscale identity headers and need token or password auth.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/file-transfers.md:39",
+    "title": "Node file transfers",
+    "anchor": "allowReadPaths",
+    "supports": "File access on a node is granted per path through read and write allowlists in the File Transfer plugin config.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/120421",
+    "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+    "anchor": "iPhone Mirroring",
+    "supports": "iPhone Mirroring needs Mac and iPhone signed in to the same Apple Account, so a guest without an account cannot use it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/macos.md:193",
+    "title": "macOS app: Open dashboard links",
+    "anchor": "shared owner profile",
+    "supports": "When a gateway uses a shared token or password and no personal sign-in, the app's dashboard runs as the shared owner profile.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSSequoia.pdf",
+    "title": "Software License Agreement for macOS Sequoia (Apple)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two additional macOS instances in virtual environments on an Apple-branded computer for personal, non-commercial use, among other purposes.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon.json",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer, documentation data)",
+    "anchor": "VZMacOSInstaller",
+    "supports": "Apple's sample project installs macOS from a restore image and runs macOS guests on Apple silicon with the Virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSTahoe.pdf",
+    "title": "Software License Agreement for macOS Tahoe 26 (Apple, PDF)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two extra macOS instances in virtual machines on an Apple-branded computer, including for personal non-commercial use.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/index.js:170",
+    "title": "File Transfer plugin: node host commands",
+    "anchor": "dangerous: true",
+    "supports": "The file.fetch command (block starting at line 165) and its sibling file and directory commands are registered as dangerous.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "A VM is the right idea and both model vendors recommend it, but as specified the guest is not 'nothing worth stealing': it must hold a signed-in OpenClaw console for the family gateway, a loopback-bound gateway is not reachable from a guest without an SSH tunnel or a bind change, and the tool's presets ship default guest credentials. Keep as experimental with those gaps stated and the risk raised.",
+   "All 8 sources check out (Apple's developer page only yields its title as HTML). Missing from the setup: file commands need a gateway allow entry, a loopback-bound gateway is not reachable from a guest without a tailnet identity or tunnel, and the licence question can be partly answered."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "The Mac and other computers",
+  "includes": [],
+  "history": []
+ }
+]

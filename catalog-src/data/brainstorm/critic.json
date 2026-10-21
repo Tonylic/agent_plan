@@ -1,0 +1,1008 @@
+[
+  {
+    "id": "CRT-01",
+    "name": "Undo the last thing (a change journal with inverses)",
+    "tier": 1,
+    "cluster": "recovery and trust",
+    "description": "A parent can say 'undo that' after Happy adds the wrong reminder, list item, calendar entry or household fact, and Happy reverses its own last write after showing what it will reverse. The 9 Oct audit digest (G006) only reports what happened; nothing in either catalog takes a write back.",
+    "example": "Jordan texts: 'Undo that, I meant Thursday, not Tuesday.'",
+    "how": "OpenClaw has no undo for tool effects. The only rewind found in the installed docs is the Control UI's session rewind, an admin-scoped action that moves the transcript back and does not mention reversing what tools did. So this is in-house work. Each in-house write tool (the household store, the Reminders bridge, the calendar-write server, the hook that pins reminders made with the automations tool) writes a journal row from inside the tool, where the before-state is known: who asked, when, which tool, and the inverse call. The after_tool_call hook only observes results and cannot supply the before-state. An undo_last tool on <p>-main, limited by a before_tool_call hook to the requester's own rows from the last 24 hours, shows the row, waits for a yes, then runs the inverse: restore the old value or delete the new row, un-complete or delete the reminder item, delete the calendar event Happy created, or 'openclaw automations remove' for a scheduled reminder. A saved note is undone by editing the line in MEMORY.md (F041); derived memory is an operator job with 'openclaw memory forget'. Every write reply ends by saying whether it can be undone.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F031 household store",
+      "F030 Reminders bridge",
+      "F007 reminders",
+      "F010 calendar write, if built",
+      "G006 audit digest (can share the journal table)"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Sent things cannot be recalled: a text to the other parent, an email to the owner, a print job, a Sonos announcement. The reply has to say so at the time of sending.",
+      "Only Happy's own writes are covered. If a parent has since edited the same reminder or event on a phone, the inverse could overwrite that edit, so the tool should refuse when the item changed after Happy wrote it.",
+      "'openclaw memory forget' deletes at once with no confirmation unless --dry-run is passed, and it keeps the source transcripts; it is not something to hand to a chat command.",
+      "The phone already has undo for what a person does by hand. This covers only what Happy did on their behalf."
+    ],
+    "safety": "Undo reverses a write that the same person's agent made, so it adds no new reach: no new recipient and no new data source. The hook keys on the requester's handle and blocks on error. It lives on <p>-main, which does not read untrusted web content, and it cannot touch the other parent's rows.",
+    "unverified": [
+      "That no built-in undo for tool effects exists anywhere in 2026.9.7. This rests on a search of the installed docs for undo, rewind and revert, not on reading the source.",
+      "Whether the Reminders command-line tool and the calendar server return stable item ids that an inverse can target; neither is installed yet."
+    ],
+    "overlaps_existing": ["G006", "G020", "F041", "F031", "F030", "F010", "F007"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/web/control-ui/chat.md:299",
+        "title": "Control UI chat: transcript actions",
+        "anchor": "sessions.rewind",
+        "supports": "The one rewind the docs describe is a Control UI action that returns a session to the point before a message; it needs admin scope and is about the transcript, not about reversing tool effects."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:149",
+        "title": "Plugin hooks reference: tool hooks",
+        "anchor": "after_tool_call",
+        "supports": "The after-tool hook is listed as observe-only (results, errors, duration), so a journal with inverses has to be written by the tools themselves."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:136",
+        "title": "Managing automation jobs",
+        "anchor": "openclaw automations remove",
+        "supports": "A scheduled job can be deleted by id, which is the inverse of creating a reminder."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/memory.md:210",
+        "title": "openclaw memory forget",
+        "anchor": "deletes immediately",
+        "supports": "Removing derived memory is an operator command that deletes without a confirmation prompt unless a dry run is requested, and it leaves session transcripts in place."
+      },
+      {
+        "kind": "web",
+        "ref": "https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf",
+        "title": "OpenAI: A practical guide to building agents (PDF, page 26, tool safeguards)",
+        "anchor": "reversibility",
+        "supports": "The model vendor's own guide rates a tool's risk partly by whether its effect can be reversed and asks for human oversight of irreversible actions."
+      }
+    ]
+  },
+  {
+    "id": "CRT-02",
+    "name": "Lost or stolen phone: lock one person out",
+    "tier": 1,
+    "cluster": "recovery and trust",
+    "description": "If a parent's iPhone is lost or stolen, the other parent can stop Happy answering that person's handle with one text, before anyone reaches the Mac. Today the only switch is Tony editing the family file and redeploying.",
+    "example": "Tony texts: 'Happy, lock out Jordan' after her phone is left in a taxi.",
+    "how": "Happy trusts the sender's Apple handle: channels.imessage.dmPolicy is 'allowlist' and channels.imessage.allowFrom lists the family, and the same list decides who may answer /approve. Whoever holds an unlocked phone is that person to Happy. The built-in '/allowlist remove' needs commands.config: true, which this install keeps off. So: (1) Today, operator path: remove the handle in family.json5, run gen-family and the deploy script. The docs' incident steps offer the blunt version, dmPolicy 'disabled' for everyone. (2) Build, chat path: extend the kill-switch plugin (G005). A before_dispatch claim matches one exact phrase from an adult's handle, writes the named person's handles to a suspended file, and from then on claims every inbound message from those handles with no reply; the message_sending hook cancels scheduled texts to them. Lifting the suspension is CLI-only. (3) If that phone also ran the OpenClaw app, 'openclaw devices revoke' and 'openclaw devices remove' retire its Gateway token. (4) Phone side, done by the owner from another device: Find My's lost mode locks the phone with its passcode.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "G005 kill-switch plugin (shares the before_dispatch hook)",
+      "family.json5 registry and gen-family"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "A locked phone already stops most of this. The gap is a phone taken while unlocked, or a passcode seen over a shoulder: Apple's Stolen Device Protection page lists the actions it protects and Messages is not among them.",
+      "Either adult can lock the other out. That is a nuisance at worst and Tony undoes it at the Mac.",
+      "If whoever holds the phone sends the phrase first, the real owner needs the CLI.",
+      "After the phone is replaced the handle is the same, so the suspension has to be lifted by hand.",
+      "It stops delivery to that person, not their scheduled jobs; pair with pause (G002) if the jobs should stop too."
+    ],
+    "safety": "The phrase can only narrow access. Nothing in the chat path can add a sender; that stays a reviewed change to family.json5. It also removes a stolen phone's ability to answer approval prompts, since /approve is authorised against the same allowFrom list.",
+    "unverified": [
+      "Whether iMessage for a phone number can be re-registered on another device after a SIM swap without the Apple Account password.",
+      "Whether owner-only slash commands from a suspended handle are parsed before the before_dispatch hook runs."
+    ],
+    "overlaps_existing": ["G005", "G016", "G008"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/access-control.md:24",
+        "title": "iMessage access control and routing: DM policy",
+        "anchor": "channels.imessage.allowFrom",
+        "supports": "Admission to Happy over iMessage is decided by a list of sender handles."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/rich-messages.md:109",
+        "title": "iMessage rich messages: approvals",
+        "anchor": "approver list",
+        "supports": "The /approve text command is authorised against the same allowFrom list, so a handle on it can resolve approvals."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:634",
+        "title": "Slash commands: argument notes",
+        "anchor": "commands.config: true",
+        "supports": "Removing an allowlist entry from chat needs the config-commands switch, which the family's baseline keeps off."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/security/operator-incident-response.md:17",
+        "title": "Operator incident response: contain",
+        "anchor": "Freeze access",
+        "supports": "The documented containment step is to switch risky DMs to a disabled policy and remove allow-all entries."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "title": "Plugin hooks: message hooks",
+        "anchor": "handled: true",
+        "supports": "A plugin can claim an inbound message before model dispatch and end it with a fixed reply or with silence."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/devices.md:175",
+        "title": "openclaw devices revoke",
+        "anchor": "openclaw devices revoke",
+        "supports": "A paired device's token can be revoked by an admin, which covers a lost phone that ran the OpenClaw app."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/101593",
+        "title": "How to find your lost iPhone or iPad - Apple Support",
+        "anchor": "lost iPhone or iPad",
+        "supports": "Marking the device as lost from another device locks it with its passcode and suspends cards; Apple also advises reviewing the Apple Account."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120340",
+        "title": "About Stolen Device Protection for iPhone - Apple Support",
+        "anchor": "Stolen Device Protection",
+        "supports": "The feature gates passwords, payment methods and account changes behind biometrics and a delay; the page does not list Messages as protected."
+      }
+    ]
+  },
+  {
+    "id": "CRT-03",
+    "name": "Guest tier: a grandparent or sitter can text Happy and gets a fridge-level card only",
+    "tier": 1,
+    "cluster": "extended family",
+    "description": "A third kind of user between 'family adult' and 'nobody'. A grandparent minding the kids, or a regular sitter, can text Happy and get answers from a short fixed card (bedtimes, allergies, where things are, who to call) and nothing else. Today such a sender is dropped, or if allowlisted lands in the tool-less inbox agent that knows nothing.",
+    "example": "Grandma texts in Chinese: 'What time does the younger one go to bed, and can she have peanuts?'",
+    "how": "family.json5 gains a role 'guest'. gen-family adds the guest's handle to channels.imessage.allowFrom and emits a bindings[] entry with match.peer (kind 'direct', id the handle) to a shared 'guest' agent: no tools, memory off, minimal profile, its own workspace whose AGENTS.md is the card, rendered from the sitter facts (F036). Bindings only route; admission is still the allowlist. Replies follow the guest's language (G011). 'Tell the parents ...' is claimed by a before_dispatch pattern and forwarded word for word through the pinned family delivery (G009), the same shape as the kid check-in relay (G018). A dated guest, such as a sitter for one evening, is removed by a host job that edits the registry and redeploys. Whether grandparents also become recipients for G009 is a separate decision; the default stays no, with a parent forwarding drafts.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "decision: who beyond the two parents may text Happy",
+      "F036 sitter facts",
+      "G009 family delivery",
+      "G011 languages",
+      "every approval hook checks that the requester is a parent"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Adding a handle to allowFrom also puts it on the /approve approver list. Every approval gate must check that the requester is a parent before a guest is admitted.",
+      "Most sitters will just text the parents. The realistic user is a grandparent who stays for days and writes in another language.",
+      "The guest must be on iMessage. A WeChat channel exists only as an external plugin maintained by Tencent's Weixin team with a QR login of a personal account; adding it for one relative is a much bigger change than this feature. WhatsApp is on the never-list.",
+      "The card goes to a cloud model and to a person outside the two-parent circle. Put on it only what you would tape to the fridge: no door codes, no Wi-Fi password, no policy or record numbers.",
+      "The install uses the allowlist policy, so strangers get silence. Under the pairing policy an unknown number would be sent a pairing code; do not switch to it for guests."
+    ],
+    "safety": "The guest agent has no tools and no memory, so the card is all there is to leak and it was written for that reader. It reads only the guest's own messages. Its only ways out are a reply to that guest and the verbatim relay to the two parents, which is done in code and not by the model. It is a shared agent and, by the roadmap rule, holds no accounts. It is never used for the children.",
+    "unverified": [
+      "That allowFrom entries have no built-in expiry; none was found in the installed docs.",
+      "Whether the guest agent or the group agent would answer if a guest writes in a group chat with the parents."
+    ],
+    "overlaps_existing": ["F036", "G011", "G018", "G009"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/access-control.md:20",
+        "title": "iMessage access control and routing: DM policy",
+        "anchor": "allowlist",
+        "supports": "Under the allowlist policy only listed handles are admitted, so a guest has to be added explicitly."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-bindings.md:13",
+        "title": "Agent bindings",
+        "anchor": "Bindings only pick the agent",
+        "supports": "A binding routes an already-admitted sender to an agent and grants no access by itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-bindings.md:98",
+        "title": "Agent bindings: match a specific conversation",
+        "anchor": "peer.kind",
+        "supports": "One direct conversation can be routed to a dedicated agent by matching its peer id."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/rich-messages.md:109",
+        "title": "iMessage rich messages: approvals",
+        "anchor": "approver list",
+        "supports": "Any handle in allowFrom is authorised for /approve, which is why a guest entry needs an owner check in approval hooks."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/pairing.md:21",
+        "title": "Pairing: DM pairing",
+        "anchor": "unknown senders get a short code",
+        "supports": "Under the pairing policy an unknown sender is sent a code and waits for approval, which is the alternative the family did not choose."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/multi-user.md:17",
+        "title": "Multi-user mode: trust boundary",
+        "anchor": "give them separate agents",
+        "supports": "OpenClaw's advice for people who must not reach each other's data is a separate agent per person or group."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/wechat.md:13",
+        "title": "WeChat channel",
+        "anchor": "external plugin",
+        "supports": "WeChat is reached through an external plugin maintained outside OpenClaw, with direct chats only."
+      }
+    ]
+  },
+  {
+    "id": "CRT-04",
+    "name": "When the model is down: an honest failure, a same-vendor fallback, and jobs that need no model",
+    "tier": 1,
+    "cluster": "recovery and trust",
+    "description": "With one cloud vendor and no local model, a provider incident makes Happy answer with a raw error or not at all. This sets what the family sees and what keeps working: one plain 'the model is down' line, an optional sibling-model fallback, and the alerts that never needed a model.",
+    "example": "Trigger: gpt-6-sol returns server errors for ten minutes at 07:00 while the morning brief is due.",
+    "how": "Fact on this install: each person agent is generated with model.fallbacks: [], and the docs say an agent's primary is strict unless its model object lists fallbacks. So after the built-in retries any failure is surfaced as a terminal error that keeps the provider's HTTP status. Options, cheapest first. (1) Add gpt-6-luna on the same per-person provider id as the single fallback for <p>-main: one line in gen-family, since both models are already in that agent's modelPolicy.allow under the same key and store setting. This covers model-scoped incidents and rate limits, not a vendor-wide outage. The docs say a fallback is used for that turn only and a one-line notice is shown in direct chats. Mail and kid agents keep fallbacks: [] as the roadmap requires. (2) No cross-vendor fallback: it needs a second vendor's key and a new privacy decision, and the local route is the skipped M2. (3) Keep the important alerts model-free: the weather watch (F018) and bin reminders are --command-argv jobs and the kill phrase (G005) is a before_dispatch claim, so all three work through an outage. (4) Extend the health watch (G008): when the existing error-ratio alert has fired for N minutes, a host script sends each parent one fixed line and later one 'back' line through the pinned delivery. 'openclaw models status --check' is not the detector: its own docs say a clean exit does not prove a request will succeed.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "decision: let the smaller sibling model answer when the main one fails",
+      "G008 health watch and the O1 error-ratio alert",
+      "G009 family delivery (for the notice)"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "OpenAI's status history listed 39 incidents in September 2026 and 23 in the first ten days of October across all its products. Most do not touch the API models Happy uses, but some did, for example 'elevated error rates across API models' on 17 Sep.",
+      "An answer from the smaller model can be worse than the usual one; the fallback notice tells the parent which model answered.",
+      "An API key that hits its monthly cap looks like an outage until the month ends; the fixed line should say 'limit reached' when that is the cause.",
+      "If the Mac, the home internet or iMessage is what failed, nothing here helps. The dead-man alert is then the only signal and it goes to Tony.",
+      "A scheduled brief that fails is simply missed unless the job's retry settings say otherwise."
+    ],
+    "safety": "No new data path. The fallback uses the same provider id, key and store:false setting, and the notice is a fixed string to pinned family recipients. Mail and kid agents stay strict, so their content can never move to another model by accident.",
+    "unverified": [
+      "The exact text a parent sees on iMessage when every candidate fails; the docs describe it, it was not triggered in this run.",
+      "Whether gpt-6-luna stays healthy during typical gpt-6-sol incidents.",
+      "Whether command jobs deliver normally while model calls are failing; nothing suggests otherwise but it was not tested."
+    ],
+    "overlaps_existing": ["G008", "G004", "F018", "G005"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/model-failover.md:126",
+        "title": "Model failover: selection source policy",
+        "anchor": "fallbacks: []",
+        "supports": "An agent's own primary model is strict unless that agent's model object lists fallbacks; an empty list makes strictness explicit."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/model-failover.md:47",
+        "title": "Model failover: runtime flow",
+        "anchor": "surface the terminal failure",
+        "supports": "When every candidate fails, the run reports a terminal failure instead of answering."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/model-failover.md:345",
+        "title": "Model failover: retry and visible failures",
+        "anchor": "Visible failure messages",
+        "supports": "The user-visible failure keeps the provider's HTTP status and leaves raw provider detail out."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/model-failover.md:470",
+        "title": "Model failover: fallback notices",
+        "anchor": "operational messages",
+        "supports": "Fallback and recovery notices are sent once per state change in direct conversations and are not part of the assistant's answer."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:70",
+        "title": "openclaw automations: command jobs",
+        "anchor": "--command-argv",
+        "supports": "A scheduled job can run a fixed command and deliver its output with no model call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/models.md:90",
+        "title": "openclaw models status --check: exit codes",
+        "anchor": "does not prove",
+        "supports": "A clean status check covers auth and routing only and is explicitly not proof that a model request will succeed."
+      },
+      {
+        "kind": "web",
+        "ref": "https://status.openai.com/history",
+        "title": "OpenAI Status: incident history",
+        "anchor": "OpenAI Status",
+        "supports": "The vendor's own history page lists dozens of incidents a month in autumn 2026, including API-wide error-rate incidents."
+      }
+    ]
+  },
+  {
+    "id": "CRT-05",
+    "name": "Recovery card for the second adult (a bus factor of one)",
+    "tier": 2,
+    "cluster": "recovery and trust",
+    "description": "One printed page and a sealed envelope so Jordan can tell that Happy is down, pause it, and bring it back after a power cut while Tony is travelling. Today every recovery step, including the disk unlock after a reboot, depends on Tony being at home.",
+    "example": "Trigger: a power cut while Tony is abroad. Happy stops answering and Jordan opens the card.",
+    "how": "No new software. The card lists: (1) how to tell: no reply within a few minutes; also add Jordan as a second recipient of the existing dead-man alert. (2) The pause phrase (G005) and that it is always safe to use. (3) After a power cut the Mac waits at the FileVault screen: type the password from the envelope at the Mac, then log in the happy user so Messages runs. Apple's remote unlock over SSH needs Apple silicon, macOS 26, Remote Login on and a network connection, and the roadmap notes it works from the home network only, so it does not help someone who is away. (4) The two commands an admin may need: 'openclaw gateway status' and 'openclaw gateway restart' (the docs say not to chain stop and start). (5) Who to call. The envelope holds what the card needs and where the config repo and backups are. Separately, set a Legacy Contact on the Apple Accounts involved so the account behind Happy's iMessage identity can be recovered in the worst case; Apple's legacy access leaves out Keychain passwords, so the API keys still depend on the backup (G007). Rehearse once: Tony leaves the house, Jordan restarts the Mac and brings Happy back from the card.",
+    "who": "operator",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "decision: Jordan gets break-glass admin access, which also lets her read Tony's data on the Mac",
+      "G005 kill phrase",
+      "G007 backups",
+      "a small UPS (already suggested in the roadmap)"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "The envelope is an admin credential on paper. Whoever opens it can read every person's data on the Mac; that is the price of not being locked out.",
+      "A UPS only bridges short cuts. A long outage still ends at the FileVault screen.",
+      "Legacy Contact access needs the access key and a death certificate. It is for the worst case, not for a business trip.",
+      "If Apple locks the Apple Account that Happy uses, nobody at home can fix it quickly, and iMessage is the only channel."
+    ],
+    "safety": "Nothing is granted to any agent and no secret is typed into chat or stored in Happy's memory. The control plane stays Tony's in normal operation; the envelope is a deliberate exception that is obvious once used, because it is sealed.",
+    "unverified": [
+      "Whether a standard, non-admin macOS account for Jordan can be enabled to unlock FileVault at boot on this Mac; the Apple page read in this run does not say who may unlock.",
+      "Whether the gateway's launchd service comes up for the happy user before that user logs in at the console after a reboot."
+    ],
+    "overlaps_existing": ["G005", "G007", "G008"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/deployment/intro-to-filevault-dep82064ec40/web",
+        "title": "Intro to FileVault - Apple Support (Apple Platform Deployment)",
+        "anchor": "a network connection is available",
+        "supports": "On Apple silicon with macOS 26 or later, FileVault can be unlocked over SSH after a restart when Remote Login is on and the Mac has a network connection; credentials are still required."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/124963",
+        "title": "What's new for enterprise in macOS Tahoe 26 - Apple Support",
+        "anchor": "Remote Login is enabled",
+        "supports": "Apple's release notes for macOS 26.0 announce the SSH unlock and its two conditions."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102631",
+        "title": "How to add a Legacy Contact for your Apple Account - Apple Support",
+        "anchor": "Legacy Contact",
+        "supports": "A chosen person can get account data after the owner's death with an access key and a death certificate; Keychain contents such as passwords are excluded."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/index.md:208",
+        "title": "Gateway runbook: operator commands",
+        "anchor": "openclaw gateway restart",
+        "supports": "Restart is the documented single command for bringing the Gateway back; chaining stop and start is discouraged."
+      }
+    ]
+  },
+  {
+    "id": "CRT-06",
+    "name": "A Windows or Linux PC as something Happy can operate",
+    "tier": 3,
+    "cluster": "other computers",
+    "description": "If the family has or gets a Windows PC, OpenClaw can pair it as a node and, experimentally, see and drive its desktop. It is assessed here because Tony asked about controlling computers: the route exists, it is rougher than the Mac route, and the reasons against driving anyone's everyday machine apply in full.",
+    "example": "Tony texts: 'Open the tax program on the office PC and tell me what the error box says.'",
+    "how": "Two layers. (1) Windows Hub, OpenClaw's companion app, registers the PC as a node with a screen snapshot, camera, location, notifications and system.run, which is shell execution on that PC. (2) Desktop control comes from the bundled cua-computer plugin, which the docs label experimental on Windows and Linux: enable the plugin on the node host, start 'openclaw node run' from the interactive desktop session, approve the pairing update. computer.act is then a platform default with no allow entry needed. It controls the primary display only, with no key or mouse-button holds and no modifier-held clicks, scrolls or drags. On this stack it would need the same wrapper as the Mac route: gateway.nodes.commands.deny as the default, a stateless 'desk' agent, an owner-only hook, and Tony watching.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "experimental",
+    "depends_on": [
+      "hardware: a Windows 10/11 or Linux PC that is nobody's daily machine",
+      "the Mac computer-use decisions from the other lens (deny list first, stateless agent, attended only)",
+      "Tailscale on the PC"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "No Windows or Linux PC appears in the hardware list given for this house. Without one this is a non-feature.",
+      "Pairing Windows Hub brings shell execution and location along with the screen, so the deny list has to be written before pairing, not after.",
+      "A screenshot-driven agent sees whatever is on that screen: mail, browser sessions, saved logins. On a personal PC that is private data, untrusted content and a way out in one tool.",
+      "Remote help for a grandparent's PC is the case people usually have in mind. Do not do it with an agent; screen sharing with the person present is the safe form.",
+      "A school-issued or work-managed PC must never be paired. It is someone else's device."
+    ],
+    "safety": "It cannot be placed on a personal or managed PC under the trifecta rule. Only a dedicated machine logged out of everything could host it, attended, with computer.act and system.run denied by default and enabled per sitting. At that point it does nothing that a logged-out browser on the Mac mini cannot. Keep it denied.",
+    "unverified": [
+      "Whether the family owns any Windows or Linux PC.",
+      "Whether Windows Hub and the cua-computer plugin work together in practice on 2026.9.7; only the docs were read."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:198",
+        "title": "Computer use: Windows and Linux",
+        "anchor": "Windows and Linux (experimental, direct SDK)",
+        "supports": "Desktop control on Windows and Linux is a documented but experimental route through the bundled CUA plugin."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:220",
+        "title": "Computer use: Windows and Linux, step 4",
+        "anchor": "built-in platform default",
+        "supports": "Once the plugin is enabled and the pairing update approved, computer.act needs no further allow entry; a deny entry is the off switch."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:232",
+        "title": "Computer use: Windows and Linux, limits",
+        "anchor": "only the primary display",
+        "supports": "The Windows and Linux fulfiller is limited to one display and lacks held-input and modifier actions."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/windows.md:72",
+        "title": "Windows: node mode",
+        "anchor": "Windows Hub can register",
+        "supports": "The Windows companion app can join the Gateway as a node that exposes Windows-native commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/windows.md:84",
+        "title": "Windows: node mode, common commands",
+        "anchor": "system.run",
+        "supports": "The Windows node's command families include shell execution alongside screen, camera and location."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "gateway.nodes.commands.deny",
+        "supports": "A Gateway-wide deny list always wins over platform defaults and allow entries."
+      }
+    ]
+  },
+  {
+    "id": "CRT-07",
+    "name": "A child's own device: school Chromebook, tablet, game console",
+    "tier": 3,
+    "cluster": "kids' devices",
+    "description": "The answer to 'can Happy manage the kids' devices?' for the non-Apple ones. It cannot: each is controlled from the vendor's own parent app or by the school, none of the pages read offers an interface for a home agent, and a child's device must not become a Happy node. Another lens covers Apple's Screen Time; this covers the rest.",
+    "example": "Jordan texts: 'Lock the Switch until homework is done', or 'What did he do on the school Chromebook today?'",
+    "how": "No mechanism on this stack. School Chromebook with a school account: Google says parents cannot add controls, because the school sets up and manages the account. Personal Chromebook or Android tablet: Family Link supervises Android 5 and later and ChromeOS 71 and later from the parent's app; it does not supervise iPhones or iPads. Nintendo Switch: play-time limits, game restrictions and activity reports live in Nintendo's free phone app, which two guardians can share. OpenClaw's own ChromeOS page is about running a Gateway inside the Chromebook's Linux container, not about controlling a Chromebook. What Happy can do with features already in the catalog: keep the agreed device rules as a family fact (F043), send a weekly 'look at the reports' reminder (F007), and put the device rules on the sitter card (F036).",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": [],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Any workaround means giving an agent a parent's vendor login and driving the parent app or site by screen automation: a credential that can approve purchases and change a child's account.",
+      "Pairing a kid's tablet as an OpenClaw node would expose its camera, location and screen to the Gateway. The kids are not users and the provider terms are 13+.",
+      "The vendor apps already push reports and requests to both parents' phones.",
+      "Pausing at the router is a different lever; see the home network entry."
+    ],
+    "safety": "Parental-control authority stays with the two adults in the vendors' apps. No kid device is paired, no vendor parent credential is stored, and approving a child's purchase or download is a purchase action on the never-list.",
+    "unverified": [
+      "That none of these vendors offers a consumer interface for parental controls. The pages read describe apps only and mention no API; absence was not proven.",
+      "Which devices the kids actually have.",
+      "Amazon's parent dashboard for Fire tablets was not opened in this run."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/chromebook/answer/9797958",
+        "title": "Learn on a school-managed Chromebook - Chromebook Help",
+        "anchor": "school-managed Chromebook",
+        "supports": "On a school Chromebook with a school account the school manages the account and parents cannot add their own controls."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/families/answer/9116646",
+        "title": "Learn which devices can be supervised - Google For Families Help",
+        "anchor": "devices can be supervised",
+        "supports": "Family Link supervision covers Android and ChromeOS devices and most of its tools do not work on iPhones or iPads."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.nintendo.com/us/switch/parental-controls/",
+        "title": "Parental Controls App - Nintendo US",
+        "anchor": "Parental Controls",
+        "supports": "Switch limits and reports are managed from Nintendo's phone app, which two guardians can use from their own devices."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/chromeos.md:9",
+        "title": "ChromeOS platform page",
+        "anchor": "Crostini",
+        "supports": "OpenClaw's ChromeOS support means running a Gateway inside the Linux container, not operating the Chromebook."
+      }
+    ]
+  },
+  {
+    "id": "CRT-08",
+    "name": "Home network: pause a device, filter the kids' DNS, 'is the internet down?'",
+    "tier": 3,
+    "cluster": "home network",
+    "description": "The network lever parents ask for: pause the kids' tablet at bedtime, block adult sites, and be told when the internet drops. Happy should not hold the router's admin login. Two of the three are one-time settings in the router or DNS, and the third can only be reported after the fact.",
+    "example": "Tony texts: 'Pause the kids' Wi-Fi until 7 am.'",
+    "how": "Not recommended as an agent tool. Pausing is a consumer-router app feature: Google's Nest Wifi, as one example, lists on-demand pause and scheduled time-outs in its Home app and mentions no API, so the bedtime schedule is set there once. Filtering is a resolver choice: Cloudflare's family resolvers block malware (1.1.1.2) or malware plus adult content (1.1.1.3) and are set on the router or per device. Happy's own tools are built to stay off the LAN: web_fetch blocks private and internal hostnames, and the roadmap forbids router port forwards. What can be built safely is read-only and model-free: a command job that probes the home gateway address and one outside host every few minutes into a log, and a single line after reconnection ('internet was out 14:02 to 14:40'), because during an outage iMessage cannot be delivered anyway.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "router make and model (unknown)",
+      "G008 health watch (for the after-the-fact line)"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "A router admin credential can change DNS for the whole house and open ports. In an agent's hands it would be the highest-value secret on the network.",
+      "Happy cannot tell anyone the internet is down while it is down; the phones notice first.",
+      "DNS filtering is coarse, and cellular data or a different resolver gets round it. It complements the devices' own parental controls and does not replace them.",
+      "The probe job would be the first thing on the Mac that talks to the router on a schedule; keep it to a ping."
+    ],
+    "safety": "No agent gets a route to the router: fetch and browser tools keep their private-network block, no router credential is stored, nothing is port-forwarded. The connectivity log is a host job with no model and no secrets, and its one line goes to the parents only.",
+    "unverified": [
+      "The family's router brand and whether it has a local interface an operator script could use; eero's support pages returned errors in this run.",
+      "Whether the Mac's outbound firewall rules allow the probe.",
+      "Whether paused devices can still reach other devices on the LAN (router-specific)."
+    ],
+    "overlaps_existing": ["G008"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/googlenest/answer/6294727",
+        "title": "Compare Wifi products - Google Home and Nest Help",
+        "anchor": "Family Wi-Fi",
+        "supports": "A mainstream home router offers pause on demand and scheduled time-outs through its own phone app, with no API described."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.cloudflare.com/1.1.1.1/setup/",
+        "title": "Cloudflare 1.1.1.1 docs: Set up (1.1.1.1 for Families)",
+        "anchor": "1.1.1.3",
+        "supports": "Cloudflare publishes free resolvers that block malware, or malware and adult content, configured on a device or router."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:71",
+        "title": "web_fetch: how it works",
+        "anchor": "Blocks private/internal hostnames",
+        "supports": "The fetch tool refuses private and internal hosts and re-checks redirects, so it cannot be pointed at the router."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:70",
+        "title": "openclaw automations: command jobs",
+        "anchor": "--command-argv",
+        "supports": "A fixed command can run on a schedule and deliver its output with no model call."
+      }
+    ]
+  },
+  {
+    "id": "CRT-09",
+    "name": "The family car: status and remote commands",
+    "tier": 3,
+    "cluster": "vehicle",
+    "description": "An honest answer to 'can Happy check or control the car?'. Only some makes have an interface an owner can use. Where one exists (Tesla's Fleet API is the documented example) it needs a registered developer application and a public key hosted on a domain, and its best-known commands are locks and openings, which the never-list bans for the house.",
+    "example": "Jordan texts: 'Is the car charged enough for tomorrow?' or 'Did I lock the car?'",
+    "how": "No path today. For a Tesla: Fleet API is a data and command service for applications the owner authorises. Setup means a Tesla account, an application registered with business details, a key pair whose public key is hosted on a domain, and a virtual key installed on the car before commands work; it is billed per use, with a monthly discount for individual developers. The realistic bridge would be Home Assistant's Tesla Fleet integration, which exposes battery, range and charging sensors but also lock, trunk and climate controls and a location tracker. If Home Assistant is ever running and the car is a Tesla, expose only the read-only charge sensors to the stateless home agent and leave locks, openings, climate and the tracker unexposed. For other makes the automaker's phone app is the interface. In the car itself, Siri plus iMessage is how Happy is reached.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "the car's make (unknown)",
+      "a Home Assistant hub",
+      "a public web host for the key file, which the Tailscale-only design does not provide"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Lock, unlock, trunk and remote start are actuation of the kind the never-list bans for doors and the garage. Treat the car the same.",
+      "The car's location is a person's location; the catalog already says to use Find My for that.",
+      "Hosting a public key on a domain is an internet-facing artefact the current design avoids.",
+      "The automaker's app already shows charge, lock state and location on both parents' phones, with push alerts.",
+      "Recalls, registration and inspection are covered elsewhere without touching the car."
+    ],
+    "safety": "No vehicle credential or command reaches any agent. If a read-only slice is ever built it lives in the stateless home agent, which has no web access and no send path, with locks and openings never exposed.",
+    "unverified": [
+      "The family's car make and whether it has any owner interface.",
+      "Current per-request prices; Tesla's billing page gives examples, not a full table.",
+      "Whether Home Assistant's MCP server can reliably hide individual entities of one device; another lens found its tools are generic intents."
+    ],
+    "overlaps_existing": ["F063", "F078"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api",
+        "title": "What is Fleet API? | Tesla Fleet API",
+        "anchor": "What is Fleet API?",
+        "supports": "Tesla offers an owner-authorised data and command service whose setup requires a registered application, a hosted public key and, for commands, a key paired to the vehicle."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.tesla.com/docs/fleet-api/billing-and-limits",
+        "title": "Billing and Limits | Tesla Fleet API",
+        "anchor": "Billing and Limits",
+        "supports": "The service is pay-per-use with a monthly discount for individual developers and per-device rate limits."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/tesla_fleet/",
+        "title": "Tesla Fleet - Home Assistant",
+        "anchor": "Tesla Fleet",
+        "supports": "The official Home Assistant integration exposes charge sensors together with lock, trunk and climate controls and a location tracker, and needs a developer application and a hosted public key."
+      }
+    ]
+  },
+  {
+    "id": "CRT-10",
+    "name": "Sick-day mode with a shared what-was-given log",
+    "tier": 2,
+    "cluster": "kids' health days",
+    "description": "When a child is ill, both parents log what they gave and when, and either can ask 'when was the last dose?' and get the same answer; two caregivers not knowing what the other gave is the usual way a double dose happens. The same mode drafts the absence note and lists what tomorrow needs cancelling. Happy records and recalls. It never advises a dose.",
+    "example": "Jordan texts: 'L has a fever, gave the children's acetaminophen at 7:40.' Later Tony texts: 'When was the last dose?'",
+    "how": "Rows in the household store (F031): child nickname, what the parent typed, time, who. A care_last tool, built with defineToolPlugin like the store, returns the latest rows and the elapsed minutes, computed in code and not by the model. Both parents' agents read the same table. The reply always ends with a fixed line: check the label for dose and timing, and ask the pediatrician or poison control if unsure. There is no dose arithmetic and no 'you can give more now'. Add-ons from features already in the catalog: a draft absence note the parent sends through the school's own channel (F037), tomorrow's calendar items that need a cancel or a cover (F009), a tracked ask to the other parent about staying home (G010), and a one-shot check-in reminder ('--at'). For 'can she go back tomorrow?' Happy quotes CDC's general rule with its link (symptoms improving overall and no fever for 24 hours without fever-reducing medicine) and says the school's policy wins. Rows delete themselves after 14 days and are kept out of memory writes.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F031 household store",
+      "F007 reminders",
+      "F009 calendar read",
+      "G010 parent-to-parent relay",
+      "9 Oct decision 3, if photos of labels are sent"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "This is a log, not a clinician. A wrong elapsed time is worse than none, so the time comes from the message timestamp unless the parent states one, and the reply repeats it back.",
+      "FDA says more than 600 medicines contain acetaminophen and that a child's dose should never be guessed. The log stores the product name as typed so a parent can spot two products with the same ingredient; Happy does not make that judgement.",
+      "Child health notes pass through a cloud model under store:false. Use a nickname or initial and keep diagnoses out.",
+      "For one parent alone, a note on the phone does the same job. The value is the shared view across two people."
+    ],
+    "safety": "Runs on <p>-main only: private data, no untrusted content in the turn (the CDC and FDA lines are fixed text, not fetched), and output only to the two parents through the pinned delivery. Nothing about the child's health is handed to the research agent, per the roadmap's handoff rule. No medical advice is generated; the fixed line and the no-dose rule sit in code and in AGENTS.md.",
+    "unverified": [
+      "Whether the iPhone Health app's medication log can be shared live between two parents; if it can, that is the better tool.",
+      "Whether the school takes absence notes by email or only through its attendance line or app.",
+      "Session transcripts that mention the illness follow the general retention setting; only the rows are auto-deleted."
+    ],
+    "overlaps_existing": ["F007", "F031", "F037", "G010", "F060"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.fda.gov/consumers/consumer-updates/dont-overuse-acetaminophen",
+        "title": "Don't Overuse Acetaminophen | FDA",
+        "anchor": "Overuse Acetaminophen",
+        "supports": "FDA warns against combining products that contain acetaminophen, says hundreds of medicines contain it, and tells parents to follow the label and never guess a child's dose."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cdc.gov/respiratory-viruses/prevention/precautions-when-sick.html",
+        "title": "Preventing Spread of Respiratory Viruses When You're Sick | CDC",
+        "anchor": "Preventing Spread of Respiratory Viruses",
+        "supports": "CDC's general guidance is to stay home when sick and return to normal activities after 24 hours of overall improvement with no fever and no fever-reducing medicine."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/tool-plugins.md:11",
+        "title": "Tool plugins",
+        "anchor": "defineToolPlugin",
+        "supports": "A small plugin can add typed agent tools without channels, providers or hooks, which is how the log tool would be added."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:85",
+        "title": "openclaw automations: schedule types",
+        "anchor": "--at <when>",
+        "supports": "A one-shot job can be scheduled for a time or a duration from now, which is the check-in reminder."
+      }
+    ]
+  },
+  {
+    "id": "CRT-11",
+    "name": "Childcare coverage planner: no-school days and summer weeks",
+    "tier": 2,
+    "cluster": "school year and jordan",
+    "description": "A grid of every weekday the kids have no school (teacher days, breaks, early releases, the ten or so summer weeks) against who covers it: camp, grandparents, a trip, a parent off work. Happy keeps the grid, lists the open cells months ahead, tracks registration dates and forms, and at tax time lists what was paid to which day camp. The existing features report the calendar; none of them plans coverage.",
+    "example": "Trigger: first Sunday of February. Happy texts both parents: 'Jordan coverage: 4 of 10 weeks open for the 10-year-old, 6 for the 8-year-old. Two camps you saved open registration this week.'",
+    "how": "Inputs: the district calendar (a subscribed feed, G012, or a photo or PDF through snap-to-action, F011) gives the no-school weekdays; parents add coverage by text. Store: household store rows (F031) keyed by date range and child nickname, with a status (open, pencilled, booked, paid) and a provider name. Jobs: a monthly isolated job on <p>-main from January to May, and weekly in the four weeks before each break ('--cron'), listing open cells; page watchers for 'registration opens' on camps the parents name (F029, created by Tony); options research by the stateless research agent given ages, weeks and a distance only (F026). Parents register and pay themselves. After paying, a parent sends the receipt and Happy records amount and provider. In February it lists day-camp totals per provider and which providers still lack a taxpayer number, because IRS Publication 503 treats day camp, and not overnight camp, as a possible work-related care expense for a child under 13, and asks for the provider's name, address and taxpayer number (Form W-10 is the request form).",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F031 household store",
+      "G012 or F011 for the district calendar",
+      "F029 watchers and F026 research (need the research agent)",
+      "F007 reminders",
+      "F084 privacy gate for receipts"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Most states set the school year near 180 days (28 states in the NCES table), which leaves roughly 80 weekdays a year without school, holidays included. The planner earns its keep only if both parents work on those days.",
+      "Camp sites are often script-heavy or bot-walled. Expect 'could not verify' and rely on the parent pasting dates.",
+      "Registration is a booking and a payment. Happy stops at the reminder and the link.",
+      "The tax list is for the preparer, not tax advice. Whether a camp qualifies depends on facts Happy does not have.",
+      "A shared spreadsheet does the grid. The gain here is the reminders and the tie-in to forms and receipts."
+    ],
+    "safety": "The grid lives with <p>-main, which holds private data and does not browse. The research agent gets ages, date ranges and distance only, never names, school or address. Watchers run on research with no private data. No registration, booking or payment is performed. Receipts pass the document privacy gate before any cloud call.",
+    "unverified": [
+      "Whether the family's district publishes a calendar feed or only a PDF.",
+      "That the 2025 edition of Publication 503 carries over unchanged to the 2026 tax year."
+    ],
+    "overlaps_existing": ["G012", "F011", "F029", "F026", "F015", "F061", "F031"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/publications/p503",
+        "title": "IRS Publication 503 (2025), Child and Dependent Care Expenses",
+        "anchor": "overnight camp",
+        "supports": "Day camp can count as a work-related care expense for a child under 13 while overnight camp does not, and the care provider must be identified by name, address and taxpayer number."
+      },
+      {
+        "kind": "web",
+        "ref": "https://nces.ed.gov/programs/statereform/tab1_1-2020.asp",
+        "title": "NCES State Education Practices, Table 1.1: minimum instructional days and hours by state, 2020",
+        "anchor": "Minimum number of instructional days",
+        "supports": "Most states require about 180 instructional days a year, which is what leaves the remaining weekdays to cover."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:89",
+        "title": "openclaw automations: schedule types",
+        "anchor": "--cron <expression>",
+        "supports": "Recurring jobs take a cron expression with a time zone, which carries the monthly and pre-break reminders."
+      }
+    ]
+  },
+  {
+    "id": "CRT-12",
+    "name": "Enrolment and camp paperwork kit",
+    "tier": 2,
+    "cluster": "school year and jordan",
+    "description": "Every August and every camp season the same documents are asked for again: the immunization record, a recent physical, insurance details, emergency contacts, proof of address. Happy keeps a per-child index of where each document is and when it stops being accepted, warns before a form is due, and prepares the copy-paste answers. The parent fills, signs and submits.",
+    "example": "Jordan texts: 'Camp forms for both kids are due May 1. What do I still need?'",
+    "how": "One Markdown page per child in the shared family folder, indexed through memory.search.extraPaths (F043 step 1). For each document it records where the official copy lives (the pediatric office, the state immunization registry, the filing cabinet), the date on it, and the date it stops being accepted. CDC says it holds no vaccination records and points parents to the child's doctor, the state immunization information system and the school, so the page notes which of those worked last time. A dated row per form in the household store (F031) drives the reminders: 'the physical on file is older than this camp accepts, book a visit' and 'forms due in 14 days'. The health-form helper (F067) supplies the copy-paste block. Scans stay in Files or the paper folder; only the index goes to Happy.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F043 family folder",
+      "F031 household store",
+      "F067 health-form helper",
+      "F007 reminders"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Requirements differ by state, district and camp. Happy tracks what each form asked for last time; it does not know the rules.",
+      "The official immunization record has to come from the doctor or the state registry. Happy cannot fetch it, because portal logins are out of scope.",
+      "Signing is done by the parent, with the phone's markup tools or on paper. Happy never signs, fills a web form or submits.",
+      "An index of where documents are is itself sensitive. Keep ID numbers, policy numbers and certificate numbers out of it."
+    ],
+    "safety": "Index pages hold locations and dates, not the documents or identifiers. They sit in the parents' private agents' search path, nothing is browsed in the same turn, and nothing is sent outside the family. Children's health details stay out of research handoffs.",
+    "unverified": [
+      "Whether this state's immunization registry gives parents direct online access.",
+      "Typical validity windows for school and camp physicals; twelve months is often quoted but was not sourced here."
+    ],
+    "overlaps_existing": ["F067", "F043", "F044", "F063", "F031"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.cdc.gov/vaccines-children/records/index.html",
+        "title": "Keeping Track of Records | Childhood Vaccines | CDC",
+        "anchor": "immunization information systems",
+        "supports": "CDC keeps no vaccination records; parents get them from the doctor, the state registry or the school, and schools, activities and travel may require them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:446",
+        "title": "Memory configuration reference: search",
+        "anchor": "extraPaths",
+        "supports": "Extra directories or files can be added to an agent's memory search index, which is how a shared family folder becomes searchable."
+      }
+    ]
+  },
+  {
+    "id": "CRT-13",
+    "name": "Emergency card, and a fixed reply when someone texts Happy in an emergency",
+    "tier": 2,
+    "cluster": "emergencies",
+    "description": "Two small things. A one-page family emergency plan (meeting place, contacts, who collects the kids, medical notes) that Happy helps write, keeps current and prints. And a hard rule that Happy is never the emergency channel: a message that looks like an emergency gets one fixed line at once, telling the person to call emergency services, without waiting for a model.",
+    "example": "A parent, or a sitter on the guest card, texts: 'He swallowed something, what do I do?'",
+    "how": "Plan: Ready.gov's four steps (talk it through, consider the household's needs, write the plan, practise it) become a short interview on <p>-main. The result is a page in the family folder (F043), a printed sheet (F080), and the source for the sitter card (F036). A yearly reminder re-checks the contacts. Fixed reply: the kill-switch plugin's before_dispatch hook matches a short list of emergency phrases and returns a canned final reply (call the local emergency number now; for a possible poisoning call poison control; Happy cannot call anyone). A claim ends that turn, and follow-up messages without those phrases go to the model as usual. Because the hook answers before model dispatch, it still works during a model outage. Weather: phones receive Wireless Emergency Alerts with no sign-up, so Happy's weather watch (F018) is a convenience and not a warning system.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "G005 kill-switch plugin (shares the hook)",
+      "F043 family folder",
+      "F080 print",
+      "F036 sitter facts"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Happy can be down in exactly the events that matter: a power cut stops the Mac and a network outage stops iMessage. The printed sheet is the part that survives.",
+      "Phrase matching will fire on jokes and miss paraphrases. The reply must be harmless when wrong.",
+      "The phone's own emergency call and medical ID features are the right tools on the phone. Happy should point to them, not imitate them.",
+      "Quiet hours and daily caps (G001) must never hold this reply back. A reply to an inbound text is not a proactive message, but test it."
+    ],
+    "safety": "A fixed string written by the parents, sent only as a reply to the sender: no tool, no data, no model. The plan page holds contacts and medical notes, so it lives in the private family folder and on paper, and only the fridge-level subset reaches the sitter card.",
+    "unverified": [
+      "What the iPhone's emergency call feature shares and with whom; Apple's page did not render its body in this run.",
+      "A poison-control source: the federal Poison Help site refused automated fetches, so no number is given here."
+    ],
+    "overlaps_existing": ["F036", "F018", "G001", "G005", "F080"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.ready.gov/plan",
+        "title": "Make A Plan | Ready.gov",
+        "anchor": "Make A Plan",
+        "supports": "The federal preparedness site lays out a four-step family plan, including a communication plan and a meeting place, with a fillable form."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.ready.gov/alerts",
+        "title": "Emergency Alerts | Ready.gov",
+        "anchor": "Wireless Emergency Alerts",
+        "supports": "Wireless Emergency Alerts reach capable phones in a targeted area from public safety officials and the weather service without any subscription."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "title": "Plugin hooks: message hooks",
+        "anchor": "handled: true",
+        "supports": "A before_dispatch handler can end an inbound message with a fixed reply before any model is called."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:164",
+        "title": "Plugin hooks reference: message hooks",
+        "anchor": "before_dispatch",
+        "supports": "The hook is a claim on an inbound message that runs ahead of the normal model dispatch."
+      }
+    ]
+  },
+  {
+    "id": "CRT-14",
+    "name": "Trip packet: children's travel documents and day-of-flight airport status",
+    "tier": 2,
+    "cluster": "travel",
+    "description": "For a family trip Happy keeps one trip record and works a checklist that the planning features do not: whose passport is valid, whether a consent letter is needed when one parent or a grandparent travels abroad with a child, what ID the airport wants, and on the day a no-model watch of FAA airport delays for the two airports.",
+    "example": "Tony texts: 'Jordan is taking the kids to Vancouver in July without me. What paperwork do we need?'",
+    "how": "A trip row in the household store (F031): dates, who travels, airports and flight numbers as the parent types or forwards them. A checklist on <p>-main from fixed, linked rules: USA.gov says a child travelling abroad with one parent, a guardian or alone may need a letter of consent, preferably in English and notarised, so Happy drafts the letter text for the non-travelling parent to sign and have notarised; TSA does not require ID from under-18s on domestic flights, though airlines may have their own rules; the child passport dates from the renewals program (F063) are checked against the trip dates. Day of travel: a --command-argv job polls the FAA's public airport status XML every 15 minutes for the departure and arrival airports and texts once per new ground delay or closure, as a fixed-format line built by the script. Vacation mode (G002) mutes the home jobs for the dates. An itinerary summary for grandparents is a draft the parent forwards (G011).",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F031 household store",
+      "F063 renewals (passport dates)",
+      "G002 vacation mode",
+      "G003 jobs registry",
+      "F019 research agent, for the destination's entry rules"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The FAA feed is airport-level, not flight-level. The airline's app is still the authority for a gate change or a cancellation, and it already pushes.",
+      "Entry rules belong to the destination country. Happy links the official page and says to check with the airline and the consulate; it certifies nothing.",
+      "The consent letter is a draft for a notary, not legal advice.",
+      "No booking, check-in, seat change or rebooking: all are on the never-list.",
+      "Two or three trips a year. Build it only after the household store and vacation mode exist."
+    ],
+    "safety": "Trip details stay with <p>-main; the research agent is asked about a country and ages only. The FAA watch is a host command job with no model and nothing private in the request (it downloads one public file). Its output line is assembled from fixed fields, so free text from the feed is not relayed. Output goes only to the parents.",
+    "unverified": [
+      "The State Department's own pages on children's passports and consent, which refused automated fetches for other reviewers in this workflow.",
+      "How stable the FAA endpoint's XML format is; it is published without a versioned contract."
+    ],
+    "overlaps_existing": ["F028", "F060", "F063", "G002"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.usa.gov/travel-documents-children",
+        "title": "International travel documents for children | USAGov",
+        "anchor": "letter of consent",
+        "supports": "A child travelling abroad with one parent, a guardian or alone may need a consent letter, preferably in English and notarised, signed by the parent or parents not travelling."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.tsa.gov/travel/security-screening/identification",
+        "title": "Acceptable Identification at the TSA Checkpoint | TSA",
+        "anchor": "children under 18",
+        "supports": "TSA does not require identification from children under 18 on domestic flights and refers travellers to the airline for its own rules."
+      },
+      {
+        "kind": "web",
+        "ref": "https://nasstatus.faa.gov/api/airport-status-information",
+        "title": "FAA National Airspace System Status: airport status information (XML)",
+        "anchor": "AIRPORT_STATUS_INFORMATION",
+        "supports": "The FAA publishes a keyless XML document listing current ground delay programs, arrival and departure delays and airport closures by airport code, with an update time."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:70",
+        "title": "openclaw automations: command jobs",
+        "anchor": "--command-argv",
+        "supports": "A scheduled job can run a fixed script and deliver its output with no model call, which is how the airport watch runs."
+      }
+    ]
+  },
+  {
+    "id": "CRT-15",
+    "name": "Video clips sent to Happy",
+    "tier": 1,
+    "cluster": "media",
+    "description": "Parents will send short videos as naturally as photos: the dishwasher's blinking error, a recital clip, a how-to from the coach. On this provider set Happy cannot watch them. The bundled video-understanding providers are Google, Qwen and Moonshot, and none is configured. A local wrapper can at least transcribe the sound track.",
+    "example": "Tony sends a 20-second clip of the furnace panel: 'What is it trying to tell me?'",
+    "how": "Turning on channels.imessage.includeAttachments (F001) forwards video along with photos and voice memos. Media understanding then looks for a video-capable entry: the bundled order for video is Google, then Qwen, then Moonshot, with a 50 MB default input cap, and OpenAI is not in that list. Without such an entry the reply flow continues and the docs say the original media is still passed to the model; whether gpt-6-sol accepts a video file that way is untested. Honest options: (1) a line in AGENTS.md telling the sender to send a photo or a few screenshots instead; (2) a local CLI entry in tools.media.models with the video capability that runs an in-house script, in which ffmpeg extracts the audio track for the same local whisper path as voice memos (F003); (3) a Google key for video, which is a new vendor outside the store:false arrangement and is not proposed.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "F001 inbound attachments",
+      "F003 local transcription",
+      "F084 privacy gate",
+      "ffmpeg on the Mac"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "A still photo answers most of these questions and already works with photo understanding (F002).",
+      "Family videos contain the children's faces and voices. Any frames sent as images go to the cloud model under the same decision as photos (9 Oct decision 3).",
+      "iPhone clips are large; anything over the cap is skipped.",
+      "The docs' own command-line example for video calls a Gemini tool, which is the cloud route under another name."
+    ],
+    "safety": "Option 2 keeps the audio on the Mac and sends only a transcript, like voice memos. No new vendor is added. Video from unknown senders never arrives because of the sender allowlist, and the document privacy gate still runs on the extracted text.",
+    "unverified": [
+      "Whether gpt-6-sol accepts video input at all through the custom provider ids.",
+      "Whether a CLI media entry can hand back still frames as well as text; the docs show text output only.",
+      "Whether ffmpeg is installed for the happy user."
+    ],
+    "overlaps_existing": ["F001", "F002", "F003"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Inbound attachments, video included, reach the agent only when this switch is on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:178",
+        "title": "Media understanding: bundled provider order",
+        "anchor": "Video: Google",
+        "supports": "The bundled providers for video understanding are Google, Qwen and Moonshot; OpenAI is listed for images only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:63",
+        "title": "Media understanding: per-capability keys",
+        "anchor": "50MB video",
+        "supports": "Video input has a default size cap."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:10",
+        "title": "Media understanding: overview",
+        "anchor": "Original media is always delivered",
+        "supports": "When understanding is disabled or fails, the reply flow continues and the original media is still handed to the model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:109",
+        "title": "Media understanding: CLI entry example",
+        "anchor": "capabilities: [\"video\", \"image\"]",
+        "supports": "A local command can be registered as a video-capable media entry that receives the attachment path."
+      }
+    ]
+  }
+]

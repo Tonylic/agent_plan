@@ -1,0 +1,1280 @@
+[
+ {
+  "id": "MAC-01",
+  "verdict": "revise",
+  "reason": "All 19 sources check out and the model qualifies. Two things change: a macOS app build for 2026.9.7 is published (it was listed as unverified), and installing the app pairs a full node with exec and Desktop sharing, not only computer control.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:19",
+    "ok": true,
+    "note": "Read lines 11-21. Anchor on the line. Peekaboo is the default provider and CUA is a driver daemon embedded in OpenClaw.app; Windows and Linux use the cua-computer plugin instead."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:28",
+    "ok": true,
+    "note": "Anchor on the line. Accessibility and Screen Recording go to OpenClaw; the native Peekaboo path also needs Event Posting."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:32",
+    "ok": true,
+    "note": "Anchor on the line. The sentence names the coding profile; the same two keys (tools.alsoAllow and tools.sandbox.tools.alsoAllow) apply to any restricted profile."
+   },
+   {
+    "ref": "dist/extensions/cua-computer/index.js:2458",
+    "ok": true,
+    "note": "Anchor on the line. Line 2393 sets isSupportedPlatform true on darwin only when the app-provided endpoint variable is present, so the npm gateway alone throws COMPUTER_DRIVER_UNAVAILABLE."
+   },
+   {
+    "ref": "docs/platforms/macos.md:32",
+    "ok": true,
+    "note": "Anchor on the line: the app needs macOS 15.0 or later."
+   },
+   {
+    "ref": "docs/platforms/macos.md:52",
+    "ok": true,
+    "note": "Anchor on the line: some releases ship no macOS app asset. Confirmed against GitHub: 2026.10.1 has none, 2026.9.7 and 2026.9.9 do."
+   },
+   {
+    "ref": "docs/platforms/mac/bundled-gateway.md:54",
+    "ok": true,
+    "note": "Anchor on the line. Attach-only mode to an independently managed local Gateway skips CLI installation."
+   },
+   {
+    "ref": "docs/nodes/index.md:19",
+    "ok": true,
+    "note": "Anchor on the line (sentence spans 18-20): do not start a second CLI node; the app is the sole node identity on that Mac."
+   },
+   {
+    "ref": "docs/platforms/mac/permissions.md:69",
+    "ok": true,
+    "note": "Anchor on the line. Lines 71-73 explain that a grant on the shared node executable is inherited by every package it launches."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:285",
+    "ok": true,
+    "note": "Anchor on the line. Capture and input need a verified unlocked desktop; a manual lock retires the execution."
+   },
+   {
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:153",
+    "ok": true,
+    "note": "Anchor on the line. Also read dist/builtin-openclaw-dCw2mRD9.mjs:19150, where modelHasVision is derived from the model's input list containing image."
+   },
+   {
+    "ref": "docs/gateway/config-tools/custom-providers.md:97",
+    "ok": true,
+    "note": "Anchor on the line. The config repo's custom provider entries for gpt-6-sol declare text and image (checked read-only)."
+   },
+   {
+    "ref": "docs/platforms/mac/peekaboo.md:26",
+    "ok": true,
+    "note": "Anchor on the line. Lines 21-26 list four separate desktop-control paths."
+   },
+   {
+    "ref": "docs/plugins/codex-computer-use.md:11",
+    "ok": true,
+    "note": "Anchor on the line. Codex owns the native tool calls during Codex-mode turns only."
+   },
+   {
+    "ref": "docs/tools/screen.md:12",
+    "ok": true,
+    "note": "Anchor on the line: the screen tool is layout and navigation, not capture."
+   },
+   {
+    "ref": "docs/tools/code-execution.md:33",
+    "ok": true,
+    "note": "Anchor on the line (sentence spans 32-33): no access to local files, shell or paired devices."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "ok": true,
+    "note": "Fetched. Page describes GPT-6 Sol; 'Input modalities: text, image'; computer_use is listed under supported tools (Responses API). Note that OpenAI's computer-use guide uses gpt-6.1-sol in its examples, not gpt-6-sol."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/102316",
+    "ok": true,
+    "note": "Fetched. 'FileVault is turned on' appears in the list of cases where automatic login is unavailable and a manual login is required."
+   },
+   {
+    "ref": "https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac",
+    "ok": true,
+    "note": "Fetched. Page warns that giving apps access also gives them access to contacts, calendar and other information. It does not say whether an administrator password is needed."
+   }
+  ],
+  "corrections": {
+   "how": "Which computer: (a) the Mac mini's own happy desktop, with the app running in happy's GUI session and attached to the existing npm gateway (attach-only; do not also start a CLI node on that Mac); (b) a clean macOS VM on the mini (MAC-03, the recommended target); (c) a parent's MacBook with the app in remote mode over the tailnet (MAC-12, not recommended). What to install: OpenClaw.app (needs macOS 15+) from the project's release downloads; the Homebrew npm gateway stays as it is. Enabling the bundled `cua-computer` plugin alone does nothing on macOS: its code throws unless the app supplies its private endpoint. Permissions go to OpenClaw.app, never to the shared `node` binary: Accessibility and Screen Recording, plus Event Posting for the default Peekaboo provider. The app's 'Allow Computer Control' switch starts ON. Gateway side: approve the device, then approve the node's command surface (`openclaw nodes pending` / `openclaw nodes approve`); `computer.act` is a macOS platform default, so no `gateway.nodes.commands.allow` entry is involved. Tool policy: the family runs `tools.profile: minimal` with sandbox mode all, so the one holder agent (MAC-02) needs `computer` in both `tools.alsoAllow` and `tools.sandbox.tools.alsoAllow`. Model: gpt-6-sol qualifies as the vision-capable model because OpenClaw only checks the model's catalog `input` list for image support, and the family's custom provider entries declare text and image; OpenAI's own model page lists image input too. Version: the v2026.9.7 release carries OpenClaw-2026.9.7.dmg, so the app can match the pinned gateway; the newest release (2026.10.1, published 10 Oct 2026) has no macOS app asset. Sandbox gate: `computer` is on the shipped sandbox default-deny list, and an explicit entry in `tools.sandbox.tools.allow` or `alsoAllow` removes it from that list. The per-person agents also deny `group:nodes`, which contains `computer` (the inbox agent denies every tool); the holder agent must not carry that deny.",
+   "caveats": [
+    "Capture and input need a verified unlocked desktop. With FileVault on there is no automatic login, so after every reboot someone signs in by hand; a manual lock retires the running task and OpenClaw will not unlock the Mac.",
+    "macOS permission grants are tied to the app's signature, bundle id and path; the docs call them fragile and describe a stale Accessibility grant after app updates that needs remove and re-add.",
+    "Once the app is paired and granted, any agent that holds `computer` can drive that Mac with no per-action confirmation, because the app switch defaults on.",
+    "The three other desktop-control paths are not shortcuts: the `peekaboo` CLI skill needs the exec tool plus a bridge host; direct `cua-driver mcp` is a separately installed prerelease driver that OpenClaw neither installs nor polices; Codex Computer Use only serves Codex-mode agents, which this stack does not run.",
+    "Two similarly named tools are unrelated: `screen` only arranges Control UI panes, and `code_execution` is remote Python at xAI with no access to paired devices.",
+    "Some OpenClaw releases ship no macOS app asset (true of 2026.10.1), so the app version may trail the gateway. 2026.9.7 does ship one.",
+    "Pairing the app pairs a whole node, not one command. The same approval covers everything the app declares: shell execution on that Mac (`system.run`, governed by the app's exec approvals, which start at full access with no prompts on an unconfigured node), Desktop sharing (`desktop.stream`, on by default), screenshots and the widget panel. Set the app's exec approvals to deny and switch Desktop sharing off before approving the pairing."
+   ],
+   "unverified": [
+    "Whether a standard (non-admin) macOS 27 user can approve Accessibility and Screen Recording without an administrator password.",
+    "Whether screen capture works when happy's session is in the background behind another fast-user-switched session, or when no display is attached to the Mac mini.",
+    "How well gpt-6-sol drives OpenClaw's own `computer` function schema (OpenAI's native computer tool is a different interface).",
+    "Whether the app's own updater can be held at 2026.9.7 while the gateway stays pinned.",
+    "Whether the app, attached to the existing gateway, can obtain the gateway token from the Keychain reference the config uses, or needs the token supplied another way."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://github.com/openclaw/openclaw/releases/expanded_assets/v2026.9.7",
+    "title": "openclaw 2026.9.7 release assets (GitHub)",
+    "anchor": "OpenClaw-2026.9.7.dmg",
+    "supports": "The 2026.9.7 release includes macOS app disk images, so an app build matching the installed gateway exists."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:258",
+    "title": "Run a node host: System commands",
+    "anchor": "system.run.prepare",
+    "supports": "The macOS app node exposes shell-execution commands alongside its other commands."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/macos.md:95",
+    "title": "macOS app: First run",
+    "anchor": "Desktop sharing",
+    "supports": "Desktop sharing is on by default in the app and is separate from Computer Control."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:31",
+    "title": "Exec approvals",
+    "anchor": "An unconfigured node",
+    "supports": "A node with no approvals configured runs commands at full access without prompts."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:39",
+    "title": "Sandbox constants: DEFAULT_TOOL_DENY",
+    "anchor": "\"computer\"",
+    "supports": "The computer tool is on the sandbox's shipped default-deny list."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/tool-policy-DdImvcDJ.mjs:116",
+    "title": "Sandbox tool policy resolution",
+    "anchor": "filterDefaultDenyForExplicitAllows",
+    "supports": "An explicit sandbox allow or alsoAllow entry removes the matching tool from the default-deny list."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/builtin-openclaw-dCw2mRD9.mjs:19150",
+    "title": "Embedded runner: tool preparation",
+    "anchor": "input?.includes(\"image\")",
+    "supports": "Vision capability is taken from the model entry's input list."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/codex-computer-use.md:80",
+    "title": "Codex Computer Use: Direct cua-driver MCP",
+    "anchor": "prerelease builds",
+    "supports": "The standalone CUA driver ships as prerelease builds and OpenClaw does not install it or grant its permissions."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-02",
+  "verdict": "revise",
+  "reason": "All 9 sources check out. The hook question is largely settled by the source, but the approval step has limits the text omits (text-only card, short timeout, either parent can approve), and the parents' agents cannot spawn anything under today's config.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:94",
+    "ok": true,
+    "note": "Anchor on the line. Screenshots are model-only and on-screen content is to be treated as untrusted."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:110",
+    "ok": true,
+    "note": "Anchor on the line. Seven high-risk families are classified; classification adds no per-action prompt."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:277",
+    "ok": true,
+    "note": "Anchor on the line: no per-action confirmation once grants exist."
+   },
+   {
+    "ref": "docs/gateway/config-tools/tool-policy.md:75",
+    "ok": true,
+    "note": "Anchor on the line: group:nodes contains nodes and computer. Line 36 confirms the minimal profile holds only session_status and gateway (update only)."
+   },
+   {
+    "ref": "docs/plugins/hooks/tool-policy.md:48",
+    "ok": true,
+    "note": "Anchor on the line. The result type has block, blockReason and requireApproval; line 78 says requireApproval pauses the run and /approve resolves it."
+   },
+   {
+    "ref": "docs/tools/loop-detection.md:12",
+    "ok": true,
+    "note": "Anchor on the line. Detection is disabled by default; per-agent override at agents.entries.*.tools.loopDetection (line 46)."
+   },
+   {
+    "ref": "docs/gateway/security/prompt-injection.md:34",
+    "ok": true,
+    "note": "Anchor on the line: use a read-only or tool-disabled reader agent and pass a summary to the main agent."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "ok": true,
+    "note": "Fetched. 'Treat screen content as untrusted.' is a bullet under Run safely; text on a page cannot grant permission."
+   },
+   {
+    "ref": "https://arxiv.org/abs/2505.21936",
+    "ok": true,
+    "note": "Fetched the abstract. 42.9% is the attack success rate for one agent, 7.6% for the most secure one, and a later model reached 60%."
+   }
+  ],
+  "corrections": {
+   "how": "New `agents.entries.desk`: memory off, `tools.profile: minimal`, `computer` added through `tools.alsoAllow` and `tools.sandbox.tools.alsoAllow`, everything else denied (web_search, web_fetch, browser, message, exec, gateway, cron, sessions_spawn). Model gpt-6-sol, not the smaller luna. Reached only through `sessions_spawn` from tony-main or jordan-main, the same handoff pattern the catalog uses for research (F019). An in-house plugin hook on `before_tool_call` matching `computer`: blocks actions outside a short allowlist (for example allow screenshot, clicks, type, key, scroll, wait, get_window_state; block kill_app, escalate_scope, browser_navigate, browser_download, browser_set_input_files, start_recording, replay_trajectory unless a feature needs them), checks the G005 kill file, and returns `requireApproval` on the first action of each run so the asking parent confirms with /approve. `tools.loopDetection.enabled: true` for desk plus a run timeout. Calls always name the node explicitly so input never lands on another Mac. Today tony-main and jordan-main deny `sessions_spawn` and have an empty `subagents.allowAgents`, so each parent's agent needs `sessions_spawn` allowed and `subagents.allowAgents: [\"desk\"]`, with `runTimeoutSeconds` set on the spawn. desk must not inherit the family's `group:nodes` deny (it contains `computer`); deny `nodes` by name instead. Approvals: `approvals.plugin` is already enabled in session mode in the config repo; over iMessage the prompt is plain text answered with `/approve <id> allow-once` or `deny`.",
+   "caveats": [
+    "A hook sees typed parameters, not meaning: a click at pixel (x, y) is opaque, so an action allowlist cannot stop the model clicking the wrong thing. What exists on the controlled desktop is the real boundary.",
+    "OpenClaw itself asks for no confirmation per action; a plugin approval on every one of 30 or more actions would be unusable, so approval is realistic only at task start or for named high-risk actions.",
+    "Text the model types can carry facts from the task into whatever window has focus.",
+    "desk's reply returns to an agent that holds memory. Treat it as untrusted: apply the F041 rule that blocks memory writes in runs that consumed outside content.",
+    "Red-team research on computer-use agents reports injected on-screen instructions succeeding in a large share of attempts, so the tool's built-in warning to the model is a tripwire, not a control.",
+    "The approval prompt is text only: the title is capped at 80 characters and the description at 512, the screenshot is never shown, and an unanswered request is denied after 2 minutes by default (10 minutes at most). Over iMessage any handle on the approver list (`channels.imessage.allowFrom`) can resolve it, so if both parents are listed, either can approve the other's task."
+   ],
+   "unverified": [
+    "Live behaviour of the hook on `computer` calls. The installed source wraps every built-in tool, `computer` included, with the before_tool_call hook, and the tool's schema has `action`, `node`, `text`, `app` and `url` parameters, but this was read, not run.",
+    "That a spawned desk run returns its result to the requester under the family's session-visibility settings (the roadmap lists the same open question for research).",
+    "Whether an approval raised inside a spawned desk run is delivered to the asking parent's iMessage chat; session-mode delivery is documented for the originating chat, not for a child session."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:17906",
+    "title": "OpenClaw tool assembly",
+    "anchor": "wrapToolWithBeforeToolCallHook",
+    "supports": "Every tool in the built-in set, which includes the computer tool created at line 17625, is wrapped with the before_tool_call hook."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:1193",
+    "title": "computer tool schema",
+    "anchor": "action: stringEnum",
+    "supports": "The computer tool takes a named action parameter that a hook can match on."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:78",
+    "title": "Plugin permission requests",
+    "anchor": "80 characters",
+    "supports": "Approval titles are capped at 80 characters and descriptions at 512; the default timeout is two minutes."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage: Approval polls and reactions",
+    "anchor": "channels.imessage.allowFrom",
+    "supports": "Over iMessage, /approve is authorized against the channel's allowFrom approver list, so any listed handle can resolve a request."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:119",
+    "title": "Sub-agents",
+    "anchor": "subagents.allowAgents",
+    "supports": "Which agents a given agent may spawn is set per agent with an allowAgents list."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-03",
+  "verdict": "revise",
+  "reason": "All 8 sources check out (Apple's developer page only yields its title as HTML). Missing from the setup: file commands need a gateway allow entry, a loopback-bound gateway is not reachable from a guest without a tailnet identity or tunnel, and the licence question can be partly answered.",
+  "source_checks": [
+   {
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "ok": true,
+    "note": "Fetched. 'Use an isolated browser or VM and an allow list of sites and actions.' under Restrict the environment."
+   },
+   {
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "ok": true,
+    "note": "Fetched. 'Using a dedicated virtual machine or container with minimal privileges' and 'Avoiding giving the model access to sensitive data, such as account login information' both appear."
+   },
+   {
+    "ref": "https://github.com/trycua/cua/tree/main/libs/lume",
+    "ok": true,
+    "note": "Fetched. README: CLI and framework for macOS and Linux VMs using Apple Virtualization Framework; examples show lume create with --ipsw and lume run. No networking or isolation options are described, and no licence was visible."
+   },
+   {
+    "ref": "https://developer.apple.com/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon",
+    "ok": true,
+    "note": "Weak: the HTML returns only the page title, which contains the anchor. Apple's data endpoint for the same page (added below) gives the abstract and the IPSW install step."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:114",
+    "ok": true,
+    "note": "Anchor on the line: unrestricted CUA mode does not contain a compromised user account; same-user processes are inside the boundary."
+   },
+   {
+    "ref": "docs/nodes/node-host.md:31",
+    "ok": true,
+    "note": "Anchor on the line: Tailscale identity headers do not authenticate node-role connections."
+   },
+   {
+    "ref": "docs/nodes/file-transfers.md:39",
+    "ok": true,
+    "note": "Anchor on the line, inside the per-node policy example with allowWritePaths and followSymlinks: false."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/120421",
+    "ok": true,
+    "note": "Fetched. Requirements include iPhone and Mac signed in to the same Apple Account with two-factor authentication; a Mac with Apple silicon or a T2 chip; iPhone locked and nearby."
+   }
+  ],
+  "corrections": {
+   "how": "Create a macOS guest with Apple's Virtualization framework (for example with the open-source Lume CLI: `lume create` from an IPSW, then `lume run`). Install OpenClaw.app inside the guest, pair it as its own node, grant Accessibility and Screen Recording inside the guest, and have desk always pass that node explicitly. Move files in and out only through the File Transfer plugin limited to one folder (`allowReadPaths` / `allowWritePaths`). The plugin's node commands (`file.fetch`, `file.write`, `dir.list`) are classed as dangerous, so each one in use must also be listed in `gateway.nodes.commands.allow`. Leave Computer Control switched off for happy's real session. Why not happy's own desktop: it has Messages signed in (a click path to text anyone, outside the recipient-pinning hook), an unlocked login Keychain holding the API keys, the gateway's config and state, and Terminal. OpenClaw's own trust note says the driver does not contain a compromised user account.",
+   "caveats": [
+    "The guest must still reach the gateway to act as a node, so 'no network' really means 'gateway only' and needs a rule you maintain. The gateway is bound to loopback and published only through Tailscale Serve, so the guest needs a route to it: most likely its own tailnet identity (limited by tailnet ACL to the gateway) or an SSH tunnel into the mini, and either one is a further credential inside the VM. Whether a guest can reach the host's Serve address through the VM's NAT without joining the tailnet was not tested.",
+    "Node connections are not authenticated by Tailscale identity headers; the guest needs token-based node auth. A single-use pairing link avoids copying the shared gateway token but is documented for CLI node hosts; how the app pairs from inside a guest is untested.",
+    "Anything tied to the family's Apple Account is unavailable by design: Photos library, Notes, and iPhone Mirroring (which requires the same Apple Account on Mac and phone). That removes many of the tasks people imagine.",
+    "Every app Happy should operate has to be installed inside the guest.",
+    "Fallback with weaker isolation: a third standard macOS user on the mini with nothing signed in. It shares the machine and has to be the session on screen."
+   ],
+   "unverified": [
+    "That OpenClaw.app's Computer Control (its TCC grants and capture path) works inside a macOS guest VM.",
+    "How to restrict a Lume guest's network to one host address.",
+    "Apple's licence for the installed macOS 27. The macOS Tahoe 26 licence, read in this run, allows up to two additional macOS instances in virtual machines on an Apple-branded computer for personal, non-commercial use.",
+    "Exact disk and memory cost of the guest.",
+    "Whether a guest running without a display window counts as the verified unlocked desktop that Computer Control requires."
+   ],
+   "depends_on": [
+    "MAC-01",
+    "disk and memory on the Mac mini for a macOS guest",
+    "a firewall rule limiting the guest to the gateway address",
+    "a route from the guest to the loopback-bound gateway (tailnet identity or SSH tunnel)",
+    "`gateway.nodes.commands.allow` entries for the file commands"
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon.json",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer, page data)",
+    "anchor": "Virtualization framework",
+    "supports": "Apple's sample installs and runs a macOS guest on Apple silicon from a restore image using its own virtualization framework."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSTahoe.pdf",
+    "title": "Software License Agreement for macOS Tahoe 26 (Apple, PDF)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two extra macOS instances in virtual machines on an Apple-branded computer, including for personal non-commercial use."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/index.js:170",
+    "title": "File Transfer plugin: node host commands",
+    "anchor": "dangerous: true",
+    "supports": "The file.fetch command (block starting at line 165) and its sibling file and directory commands are registered as dangerous."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:83",
+    "title": "Run a node host: SSH tunnel",
+    "anchor": "gateway.bind=loopback",
+    "supports": "A remote node cannot connect directly to a loopback-bound gateway and needs a tunnel or another reachable endpoint."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:66",
+    "title": "Run a node host: setup link",
+    "anchor": "single-use",
+    "supports": "A node host can be enrolled with a single-use link that carries a bootstrap token instead of the shared gateway token."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-04",
+  "verdict": "revise",
+  "reason": "All 7 sources check out and this is a config-only change that works today. Two corrections: hot-apply of command policy is documented, so nothing is left unverified, and the 'second approval' gate is skipped by setup links and SSH-verified pairing.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:225",
+    "ok": true,
+    "note": "Anchor on the line, in a json5 example under gateway.nodes.commands."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:279",
+    "ok": true,
+    "note": "Anchor on the line: deny is an explicit global revocation that always wins, the capability is withheld with the command, and no allow entry is needed otherwise."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:106",
+    "ok": true,
+    "note": "Anchor on the line. The gate list matches: tool exposure, dangerous-command allowlist, device and command pairing approval, node-local enablement, OS permissions."
+   },
+   {
+    "ref": "docs/nodes/node-host.md:219",
+    "ok": true,
+    "note": "Anchor on the line. Lines 220-221 add an exception the feature omits: SSH-verified and bootstrap enrollment can approve the first surface automatically."
+   },
+   {
+    "ref": "docs/nodes/command-policy.md:34",
+    "ok": true,
+    "note": "Anchor on the line: computer.act is in the macOS default row. Line 38 notes desktop nodes advertise it only while Computer Control is enabled."
+   },
+   {
+    "ref": "docs/nodes/command-policy.md:55",
+    "ok": true,
+    "note": "Anchor on the line: screen.record needs gateway.nodes.commands.allow, and deny always wins."
+   },
+   {
+    "ref": "docs/gateway/config-browser-ui-desktop.md:401",
+    "ok": true,
+    "note": "Anchor on the line (sentence spans 400-402). The wording is general: Gateway command-policy changes apply to connected nodes without a restart or reconnect."
+   }
+  ],
+  "corrections": {
+   "how": "Add `computer.act` to `gateway.nodes.commands.deny` in happy-config. A deny entry always wins over platform defaults and allow entries, withholds the command together with the node's `computer` capability, and is logged. Keep `computer` absent from every agent's tool lists; the per-person agents already deny `group:nodes`, which contains it, and the inbox agent denies every tool. For reference, the documented gate stack for screen control is: tool policy exposes `computer` to an agent; gateway command policy (deny list, and the allow list for the separately listed dangerous commands); device pairing and then a second, distinct approval of the node's command surface (a single-use setup link or SSH-verified pairing approves the first surface automatically; the family has SSH verification off and should not use setup links for a Mac); the switch inside the Mac app; and the macOS permissions. Exec approvals are not in that list: they gate shell commands on a node (MAC-10), not clicks. Off switches during a pilot: (1) put the deny line back (command-policy changes reach connected nodes under the default hybrid reload); (2) the G005 kill file checked in the desk hook; (3) on the Mac, turn off 'Allow Computer Control' (rechecked at each invocation) or revoke Accessibility. If no Mac should be viewable either, also deny `screen.snapshot` and `desktop.stream`.",
+   "unverified": []
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:131",
+    "title": "Config hot reload: restart table",
+    "anchor": "gateway.nodes.commands",
+    "supports": "Changes under gateway.nodes.commands apply without a gateway restart."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:69",
+    "title": "Run a node host: setup link",
+    "anchor": "bootstrap enrollment",
+    "supports": "Enrollment through an administrator-minted setup link approves the device and its first declared command surface in one step."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:53",
+    "title": "Node command policy: desktop host commands",
+    "anchor": "desktop.stream",
+    "supports": "Screenshot and desktop-stream commands become available once a pairing that declares them is approved."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-05",
+  "verdict": "keep",
+  "reason": "All 7 sources and every quoted number check out; the eval harness it extends exists in the config repo.",
+  "source_checks": [
+   {
+    "ref": "https://arxiv.org/abs/2404.07972",
+    "ok": true,
+    "note": "Fetched the abstract: 369 tasks, humans over 72.36%, best model 12.24%."
+   },
+   {
+    "ref": "https://xlang.ai/blog/osworld-verified",
+    "ok": true,
+    "note": "Fetched. 'Introducing OSWorld-Verified', dated Jul 28, 2025; more than 300 reported issues fixed and a verified leaderboard section."
+   },
+   {
+    "ref": "https://www.anthropic.com/news/claude-sonnet-4-5",
+    "ok": true,
+    "note": "Fetched, dated Sep 29, 2025. 61.4% on OSWorld; the methodology footnote says scores use the OSWorld-Verified framework."
+   },
+   {
+    "ref": "https://www.anthropic.com/news/claude-opus-4-8",
+    "ok": true,
+    "note": "Fetched, dated May 28, 2026. 82.3% appears once, in a footnote: it is the re-scored figure for Opus 4.7 after a change in how the evaluation is run. The page text gives no number for Opus 4.8 itself."
+   },
+   {
+    "ref": "https://osworld-v2.xlang.ai/",
+    "ok": true,
+    "note": "Fetched. 108 long-horizon workflows; the best system (Claude Opus 4.8) completes 20.6%; completion falls to zero for tasks above about 163 minutes. No GPT-6 model is listed."
+   },
+   {
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "ok": true,
+    "note": "Fetched (limitations are in the last part of the page). Latency, 'Computer vision accuracy and reliability', tool-selection errors, niche or multiple applications, and the dropdown and scrollbar note all appear."
+   },
+   {
+    "ref": "CHANGELOG.md:156",
+    "ok": true,
+    "note": "Anchor on the line, in the 2026.9.7 section: blank selectors, releasing attached desktops, and loop detection for unchanged window reads."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-06",
+  "verdict": "revise",
+  "reason": "All 5 sources check out and the permission split is documented. One dependency is missing: a screenshot through the `computer` tool still needs `computer.act` advertised and allowed, so this conflicts with MAC-04 and with MAC-03's advice for happy's own session.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/mac/permissions.md:81",
+    "ok": true,
+    "note": "Anchor on the line: Accessibility, Event Posting, input listening and Screen Recording are separate grants, which is why screenshots can succeed while clicks and typing fail."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:72",
+    "ok": true,
+    "note": "Anchor on the line: screenshot is a read action distinct from pointer, scroll and keyboard actions."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:94",
+    "ok": true,
+    "note": "Anchor on the line: screenshots are never auto-delivered to chat."
+   },
+   {
+    "ref": "docs/plugins/hooks/tool-policy.md:46",
+    "ok": true,
+    "note": "Anchor on the line, in the BeforeToolCallResult type."
+   },
+   {
+    "ref": "https://support.apple.com/guide/mac-help/control-access-screen-system-audio-recording-mchld6aa7d23/mac",
+    "ok": true,
+    "note": "Fetched. Privacy & Security has a 'Screen & System Audio Recording' list with a per-app switch."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "The screenshot is sent to OpenAI under store:false. If the Messages window is open on happy's desktop, family texts are in the picture.",
+    "The desktop must be unlocked; a locked Mac yields nothing useful.",
+    "Tony can already see the same screen with macOS Screen Sharing over the tailnet with no model involved; the agent route only wins when he is on his phone.",
+    "The G008 health watch answers most 'is Happy OK' questions without any pixels.",
+    "This cannot coexist with the MAC-04 deny, and it contradicts MAC-03's advice to keep Computer Control off in happy's own session: the `computer` tool is offered only for a node that advertises both `computer.act` and `screen.snapshot`, so the switch must be on and the deny lifted, leaving the missing Accessibility grant as the one barrier to input on that desktop."
+   ],
+   "depends_on": [
+    "MAC-01",
+    "MAC-02",
+    "MAC-04 deny lifted (the deny list is global)"
+   ],
+   "unverified": [
+    "Whether the node still advertises the command pair, and the tool is still offered, when Accessibility is not granted; the docs only say that screenshots can succeed while clicks and typing fail.",
+    "Whether macOS asks again from time to time to confirm screen recording for the app, which on an unattended Mac would stop capture until someone clicks."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:159",
+    "title": "computer tool: node eligibility",
+    "anchor": "commands.includes(\"computer.act\")",
+    "supports": "A paired Mac enters the computer tool pool only if it advertises both the input command and the screenshot command."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:350",
+    "title": "Computer use: macOS permissions troubleshooting",
+    "anchor": "separate TCC buckets",
+    "supports": "The computer-use page itself says capture can work while input stays denied."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:246",
+    "title": "Computer use: the computer.act node command",
+    "anchor": "Locally enabled",
+    "supports": "The node advertises the input command whenever the Computer Control switch is on, independent of the macOS grants."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-07",
+  "verdict": "revise",
+  "reason": "All 5 sources check out. The file hand-off has one more gate than stated (a gateway allow entry for the file commands) and does not say which agent holds the file tools.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:78",
+    "ok": true,
+    "note": "Anchor on the line: window and element actions including get_window_state and set_value, offered only when the provider descriptor has them."
+   },
+   {
+    "ref": "docs/nodes/file-transfers.md:59",
+    "ok": true,
+    "note": "Anchor on the line, in the command table with file.write and dir.list."
+   },
+   {
+    "ref": "docs/nodes/file-transfers.md:89",
+    "ok": true,
+    "note": "Anchor on the line: every fetch is saved in the gateway media store and returns localPath and mediaId."
+   },
+   {
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "ok": true,
+    "note": "Fetched. The limitations list says the model may output wrong coordinates and that tasks needing perfect precision need human oversight."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "ok": true,
+    "note": "Fetched. 'Typing sensitive information into a form counts as transmission.' appears, with 'Confirm consequential actions.' as the bullet heading."
+   }
+  ],
+  "corrections": {
+   "how": "jordan-main, which holds the family facts, writes the needed values into the task text and spawns desk. The file is placed in the VM's single shared folder with the File Transfer plugin (`file.write`), desk works in Preview using window and element actions where the provider offers them (`get_window_state`, `set_value`) and pixel clicks otherwise, and the result is fetched back (`file.fetch`) and delivered to the asking parent through the pinned family delivery path. The hook asks the parent to approve before the first action. The file commands are classed as dangerous plugin node commands, so they must be listed in `gateway.nodes.commands.allow` as well as in the plugin's path policy. Sending the finished PDF back as an attachment works in the family's Basic iMessage mode.",
+   "unverified": [
+    "How a file fetched by desk is handed to the parent's agent for sending as an iMessage attachment.",
+    "How usable Preview's annotation text boxes are through the accessibility tree.",
+    "That a host-side PDF library fills this family's fillable forms reliably, and how fast the built-in Apple form tools are in practice.",
+    "Which agent holds `file_write` and `file_fetch`. Giving them to desk breaks 'computer is its only tool'; giving them to the parent's memory-holding agent lets it pull a file from an untrusted desktop."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/openclaw.plugin.json:24",
+    "title": "File Transfer plugin manifest",
+    "anchor": "file_fetch",
+    "supports": "The plugin's agent tools are file_fetch, dir_list, dir_fetch and file_write."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:17",
+    "title": "iMessage: Basic mode",
+    "anchor": "Basic mode",
+    "supports": "Outbound media sends work in Basic mode without the private API."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-08",
+  "verdict": "reject",
+  "reason": "`show_widget` is offered only to clients that declare the `inline-widgets` capability or to a channel with its own presenter; iMessage runs get neither and scheduled jobs cannot target a device. With iMessage as the only channel, neither example in the feature can work, and the phone already shows the same schedule.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/mac/canvas.md:16",
+    "ok": true,
+    "note": "Anchor on the line. The recommended agent path is show_widget with the node panel target, but this page does not say which sessions are offered the tool."
+   },
+   {
+    "ref": "docs/platforms/mac/canvas.md:21",
+    "ok": true,
+    "note": "Anchor on the line: panel widgets are render-only."
+   },
+   {
+    "ref": "docs/nodes/command-policy.md:45",
+    "ok": true,
+    "note": "Anchor on the line: the three canvas commands are plugin defaults on macOS."
+   },
+   {
+    "ref": "docs/tools/show-widget.md:235",
+    "ok": true,
+    "note": "Anchor on the line; the inline-fallback sentence is two lines down at 237. Line 42 of the same file, which the feature did not cite, restricts who gets the tool at all."
+   },
+   {
+    "ref": "docs/tools/show-widget.md:381",
+    "ok": true,
+    "note": "Anchor on the line: inline script and the listed public CDNs are allowed, other loads blocked."
+   }
+  ],
+  "corrections": {
+   "readiness": "blocked",
+   "how": "Blocked on the family's only channel. The widget-panel commands (`canvas.present`, `canvas.navigate`, `canvas.hide`) are allowed by default for a paired OpenClaw.app, and the documented agent path is `show_widget` with `presentation.target: \"node_panel\"`. But OpenClaw exposes `show_widget` only when the originating client declares the `inline-widgets` capability (the Control UI and the native apps) or a current-channel presenter matches (Discord Activities). Other channel runs do not receive the tool, and scheduled jobs get a pinned-only surface that cannot set `presentation.target`. An iMessage text or a 06:45 job therefore cannot open the panel. What still works: a parent asking from the Control UI or from the app's own chat on that Mac, or the operator CLI (`openclaw nodes canvas present|navigate --node <id>`) pointing at a document created earlier. The plugin's separate `canvas` tool only presents, hides or navigates to an existing hosted document, and it is on the sandbox default-deny list.",
+   "caveats": [
+    "Not reachable from iMessage or from a scheduled job: `show_widget` is offered only to clients with the `inline-widgets` capability, and the scheduled surface forbids device presentation.",
+    "A text to the parent's phone reaches them wherever they are; a panel on one Mac does not. The shared calendar and phone widgets already show the schedule.",
+    "Render-only: buttons inside the card do nothing, and only one panel shows at a time.",
+    "Needs happy's session on screen and a display attached; if nothing eligible is connected the card just appears inline in chat.",
+    "Cards may contain inline script and load from a fixed list of public CDNs; keep the tool on agents that never read untrusted content.",
+    "A screen in a shared room shows the family schedule to visitors."
+   ],
+   "unverified": [
+    "Whether a display is attached to the Mac mini.",
+    "Whether an iMessage-originated agent could reuse a document made earlier in the Control UI through the `canvas` tool."
+   ],
+   "value": 1
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:42",
+    "title": "show_widget: availability",
+    "anchor": "inline-widgets",
+    "supports": "The tool is exposed only to clients declaring the inline-widgets capability or to a channel with a matching presenter; other channel runs do not receive it."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:44",
+    "title": "show_widget: scheduled surface",
+    "anchor": "pinned-only",
+    "supports": "A scheduled run that is allowed the tool can only pin to a dashboard and cannot set a device presentation target."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:1109",
+    "title": "show_widget tool definition",
+    "anchor": "requiredClientCaps",
+    "supports": "Without a current-channel presenter or the pinned-only surface, the tool carries a required client capability."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/mac/canvas.md:50",
+    "title": "Widget panel: Agent path",
+    "anchor": "canvas.present",
+    "supports": "The panel target only selects a connected macOS node that declares the present command."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:38",
+    "title": "Sandbox constants: DEFAULT_TOOL_DENY",
+    "anchor": "\"canvas\"",
+    "supports": "The canvas tool is on the sandbox's shipped default-deny list."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-09",
+  "verdict": "revise",
+  "reason": "All 5 sources check out and nothing here needs OpenClaw.app. One detail is wrong: home_weather is built with `definePluginEntry`, not `defineToolPlugin` (both exist).",
+  "source_checks": [
+   {
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "ok": true,
+    "note": "Fetched. 'shortcuts run' with -i/--input-path and -o/--output-path; exits 0 on success and 1 on error; 'shortcuts list' also documented."
+   },
+   {
+    "ref": "https://support.apple.com/guide/terminal/automate-tasks-using-applescript-and-terminal-trml1003/mac",
+    "ok": true,
+    "note": "Fetched. AppleScript scripts can be run from Terminal with the osascript command, with a script-file example."
+   },
+   {
+    "ref": "docs/plugins/sdk-entrypoints.md:12",
+    "ok": true,
+    "note": "Anchor on the line: defineToolPlugin is one of four entry helpers. Line 15 marks all plugin APIs experimental. The family's home_weather plugin uses definePluginEntry, not this helper."
+   },
+   {
+    "ref": "docs/gateway/security/prompt-injection.md:33",
+    "ok": true,
+    "note": "Anchor on the line: osascript is named among interpreters for which inline eval should need approval."
+   },
+   {
+    "ref": "docs/platforms/mac/permissions.md:73",
+    "ok": true,
+    "note": "Anchor on the line: a node entry is broad permission for that Node runtime."
+   }
+  ],
+  "corrections": {
+   "how": "An in-house tool plugin in the gateway process (same pattern as home_weather, which uses `definePluginEntry` and registers a tool; the SDK's `defineToolPlugin` helper is the tool-only alternative). Each tool spawns a fixed argument list, for example `osascript` with a bundled script file and one validated argument, or `shortcuts run` with a name from an allowlist and an input file path. Arguments are checked in code (enumerations, length caps, URL allowlist). No agent gets the general exec tool. The Automation consent for each target app is granted once by hand in happy's session. Held by the stateless home agent proposed for F076 to F078; output-only verbs could sit on a parent's agent.",
+   "caveats": [
+    "Works only for apps that expose scripting commands or Shortcuts actions. Scripts that click through another app's interface need Accessibility for the calling process, which here would be the shared node binary; leave those out.",
+    "If the same commands were routed through the exec tool with an allowlist instead of a plugin, inline `osascript -e` forms should be made approval-only with `tools.exec.strictInlineEval`.",
+    "Verbs act on happy's account only. Shortcuts on the parents' own phones already run their personal automations better.",
+    "No verb may send, buy, unlock or open a door; those stay on the never list.",
+    "The plugin SDK entry helpers are marked experimental; pin and retest on each OpenClaw update.",
+    "If macOS attributes the Automation consent to the shared `node` binary (unverified), everything that binary runs inherits control of those apps, the same concern the docs raise for Accessibility."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins",
+    "anchor": "defineToolPlugin",
+    "supports": "The helper builds a plugin that only adds agent-callable tools."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/sdk-entrypoints.md:15",
+    "title": "Plugin entry points",
+    "anchor": "experimental",
+    "supports": "All plugin APIs, including the entry helpers, are experimental and should be pinned and tested per host version."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-10",
+  "verdict": "revise",
+  "reason": "All 6 sources check out. The CLI command named cannot write an `argPattern` entry, and a default CLI node on a parent's Mac advertises desktop sharing and more unless its command list is restricted.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/node-exec.md:16",
+    "ok": true,
+    "note": "Anchor on the line. The command adds a path pattern only; docs/cli/approvals.md shows no argument-pattern option on allowlist add."
+   },
+   {
+    "ref": "docs/nodes/node-exec.md:41",
+    "ok": true,
+    "note": "Anchor on the line: while a sandbox runtime is active, automatic host selection rejects node routing; tools.exec.host must be set to node explicitly."
+   },
+   {
+    "ref": "docs/tools/exec-approvals.md:456",
+    "ok": true,
+    "note": "Anchor on the line. argPattern is a field of a hand-authored allowlist entry; lines 478-481 warn that a path-only entry for the same binary lets unmatched arguments through."
+   },
+   {
+    "ref": "docs/tools/exec-approvals.md:31",
+    "ok": true,
+    "note": "Anchor on the line: an unconfigured node uses the full, no-prompt baseline."
+   },
+   {
+    "ref": "docs/tools/exec-approvals.md:53",
+    "ok": true,
+    "note": "Anchor on the line: paired nodes extend trusted operator capability onto the node host."
+   },
+   {
+    "ref": "docs/platforms/mac/permissions.md:136",
+    "ok": true,
+    "note": "Anchor on the line: file reads or listings can hang until the process doing the work is granted access."
+   }
+  ],
+  "corrections": {
+   "how": "The target Mac runs a node whose exec approvals are set to allowlist with no prompts and a deny fallback before pairing. The allowlist has one entry: the script's absolute path with an `argPattern` that fixes the permitted arguments. `openclaw approvals allowlist add --node ...` only adds a path pattern, so write the whole approvals document (allowlist security, no prompts, deny fallback, and the one entry) with `openclaw approvals set --node <id> --file <json5>`, and leave no path-only entry for the same script beside it, because unmatched arguments would fall back to that. On the gateway the holder agent's exec is pointed at that node explicitly (`tools.exec.host` node, `tools.exec.mode` allowlist, `tools.exec.node` bound). The holder is the stateless home agent, not a parent's memory-holding agent. The script is owned by an admin and not writable by the node's user.",
+   "caveats": [
+    "On happy's own account there is almost nothing to tidy. The value requires pairing a parent's Mac, and a paired node extends gateway-operator power onto that Mac.",
+    "An unconfigured node starts with full execution and no prompts; the allowlist must be in place first.",
+    "macOS can make directory listings hang until Desktop, Documents and Downloads access is granted to the exact process doing the work.",
+    "A weekly launchd job running the same script needs no agent at all and is the simpler answer.",
+    "From sandboxed sessions exec does not route to a node on its own; the host must be set explicitly.",
+    "A CLI node started with defaults advertises more than exec: it shares that Mac's desktop when Screen Sharing is on (`desktop.host.enabled` defaults to enabled on CLI nodes) and publishes skills, plugin tools and MCP servers. Start it with an explicit `--commands` list limited to the exec commands.",
+    "The holder would be the first agent in this stack with the `exec` tool; no agent has it today.",
+    "That Mac needs token-based node auth to the gateway (Tailscale identity is not accepted for nodes). A single-use setup link avoids copying the shared token but approves the first command surface automatically, so the exec allowlist has to exist before the link is used."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:110",
+    "title": "openclaw approvals: Replace approvals from a file",
+    "anchor": "openclaw approvals set --node",
+    "supports": "A node's whole approvals document, including hand-authored entries, is written from a file with the set command."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:480",
+    "title": "Exec approvals: argPattern",
+    "anchor": "path-only entry",
+    "supports": "A path-only entry for the same binary lets unmatched arguments through, so it must be omitted."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:350",
+    "title": "Paired node desktops",
+    "anchor": "desktop.host.enabled",
+    "supports": "CLI nodes share their desktop by default unless the setting is explicitly false."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:125",
+    "title": "Run a node host: Restrict the node command surface",
+    "anchor": "disables computer use",
+    "supports": "An explicit command list also turns off computer use, skill and plugin-tool publication, MCP servers and worker hosting."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:69",
+    "title": "Run a node host: setup link",
+    "anchor": "bootstrap enrollment",
+    "supports": "A setup link approves the device and its first declared command surface, including shell execution when declared."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-11",
+  "verdict": "revise",
+  "reason": "All 5 sources check out, and the command and tool names are now confirmed from the plugin manifest. One gate is missing: the file commands are dangerous plugin node commands and stay blocked until listed in `gateway.nodes.commands.allow`.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/file-transfers.md:19",
+    "ok": true,
+    "note": "Anchor on the line: listing, fetch and write are independently selectable tools; node-command and path policies still apply."
+   },
+   {
+    "ref": "docs/nodes/file-transfers.md:39",
+    "ok": true,
+    "note": "Anchor on the line, in a per-node policy keyed by node id, with followSymlinks: false."
+   },
+   {
+    "ref": "docs/nodes/file-transfers.md:68",
+    "ok": true,
+    "note": "Anchor on the line: unary reads and writes keep the 16 MiB limit."
+   },
+   {
+    "ref": "docs/nodes/node-host.md:108",
+    "ok": true,
+    "note": "Anchor on the line: an explicit comma-separated list of exact command ids for node run, node install or connect."
+   },
+   {
+    "ref": "docs/nodes/node-host.md:125",
+    "ok": true,
+    "note": "Anchor on the line (sentence spans 125-126)."
+   }
+  ],
+  "corrections": {
+   "how": "The bundled File Transfer plugin on the gateway, with `plugins.entries.file-transfer.config` listing that node and `allowReadPaths` / `allowWritePaths` for the single folder and symlinks not followed. The MacBook's node is started with an explicit `--commands` list containing only the file commands; an explicit list also switches off computer use, skills, plugin tools and MCP on that node. Limit is 16 MiB per file. Fetched files are read by a tool-poor reader agent, not directly by the parent's memory-holding agent. The file commands (`file.fetch`, `dir.list`, `file.write`, plus `file.stat`, `dir.fetch` and `file.create`) are registered as dangerous plugin node commands, so the ones in use must also be added to `gateway.nodes.commands.allow`. The agent-facing tools are `file_fetch`, `dir_list`, `dir_fetch` and `file_write`.",
+   "caveats": [
+    "Sending the file to Happy as an iMessage attachment (F001) already does this from any Apple device with one drag; build HappyDrop only if a real need survives that comparison, such as larger files.",
+    "The MacBook has to be awake and on the tailnet.",
+    "Fetched content is untrusted external content.",
+    "A denied path rejects a whole directory fetch rather than being filtered out.",
+    "The MacBook needs token-based node auth to the gateway; Tailscale identity is not accepted for nodes."
+   ],
+   "unverified": [
+    "That a CLI-started macOS node whose `--commands` list holds only the file commands still advertises them. The bundled plugin registers them as node-host commands and is enabled by default, but this was not run."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/openclaw.plugin.json:24",
+    "title": "File Transfer plugin manifest",
+    "anchor": "file_fetch",
+    "supports": "The plugin's agent tools are file_fetch, dir_list, dir_fetch and file_write, and its policy schema names the six node commands."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/index.js:170",
+    "title": "File Transfer plugin: node host commands",
+    "anchor": "dangerous: true",
+    "supports": "The file and directory node commands are registered as dangerous."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:31",
+    "title": "Run a node host: Machine authentication",
+    "anchor": "Tailscale identity headers",
+    "supports": "Node connections need token or password auth, not Tailscale identity."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-12",
+  "verdict": "reject",
+  "reason": "Confirmed as a not-recommended entry. The pairing works as described and all 6 sources check out, which is exactly why it fails the trifecta rule: private data, an untrusted screen and every exit the laptop has sit in one tool with no per-action confirmation.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:283",
+    "ok": true,
+    "note": "Anchor on the line: actions run while the durable controls stay enabled, with no per-action confirmation."
+   },
+   {
+    "ref": "docs/tools/exec-approvals.md:53",
+    "ok": true,
+    "note": "Anchor on the line."
+   },
+   {
+    "ref": "docs/platforms/mac/remote.md:9",
+    "ok": true,
+    "note": "Anchor on the line: the app connects directly to trusted LAN or tailnet gateway URLs, or manages an SSH tunnel for a loopback-only gateway."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:88",
+    "ok": true,
+    "note": "Anchor on the line. It covers scrolling on the Peekaboo provider only; the caveat's wider wording is supported for CUA desktop input by line 120."
+   },
+   {
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "ok": true,
+    "note": "Fetched. 'Avoiding giving the model access to sensitive data, such as account login information' appears in the security precautions."
+   },
+   {
+    "ref": "https://arxiv.org/abs/2505.21936",
+    "ok": true,
+    "note": "Fetched the abstract; attack success rates of 7.6% to 42.9%, and 60% for a later model."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "A personal laptop has signed-in banking, mail, a password manager and the parent's Apple Account on screen or one click away.",
+    "There is no confirmation per action, and the grant lasts as long as the app keeps advertising the command.",
+    "On the default macOS provider, screen-coordinate scrolling is foreground input at the pointer, and CUA desktop input also uses the foreground route, so the agent and the person at the keyboard get in each other's way.",
+    "Both vendors tell developers to keep logins and sensitive data away from a computer-use model, and published red-team work shows such agents following instructions planted on screen.",
+    "If a parent insists on a one-off: attended only, switch 'Allow Computer Control' on for that sitting and off after, watch the whole run, and close every money or password window first."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:120",
+    "title": "Computer use: CUA Driver provider",
+    "anchor": "foreground desktop route",
+    "supports": "CUA desktop input is delivered through the foreground desktop."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:275",
+    "title": "Computer use: Authorization",
+    "anchor": "no lease",
+    "supports": "Once enabled and approved, the input command stays available with no lease, expiry or arm/disarm step."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-13",
+  "verdict": "revise",
+  "reason": "All 5 sources check out. Two claims go further than they can: a hook cannot recognise a sign-in page, password field or CAPTCHA, and nothing read says a named isolated profile keeps a session between runs, which the whole 'sign in once' idea depends on.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/computer-use.md:84",
+    "ok": true,
+    "note": "Anchor on the line: the CUA provider's browser family, including navigate, type, file inputs and download."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:126",
+    "ok": true,
+    "note": "Anchor on the line: a new ephemeral profile or a named isolated profile; never attaches to an existing profile. It does not say a named profile keeps a session between runs."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:110",
+    "ok": true,
+    "note": "Anchor on the line."
+   },
+   {
+    "ref": "docs/tools/browser-login.md:12",
+    "ok": true,
+    "note": "Anchor on the line. Line 14 adds that OpenClaw itself allows owner-supplied credentials through form fills; the family rule here is stricter."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "ok": true,
+    "note": "Fetched. 'Use an isolated browser or VM and an allow list of sites and actions.' and 'Computer use can affect real accounts and data.' both appear."
+   }
+  ],
+  "corrections": {
+   "safety": "desk has no memory and the file returns only to the parent who asked. What the hook can enforce: the `url` of `browser_navigate` against a site allowlist, and a block or approval on `browser_type`, `browser_set_input_files` and `browser_download`. It cannot see the page, so it cannot tell a password field, a 2FA prompt or a CAPTCHA from any other input, and it does not see where a clicked link leads; those refusals rest on the agent's instructions and on a parent watching. Money sites stay off the URL allowlist.",
+   "unverified": [
+    "Whether the CUA browser family works inside a macOS guest.",
+    "How a browser download handle becomes a file desk can return.",
+    "Whether a named isolated profile keeps a signed-in session from one run to the next; the docs tie browser references to a single execution and say nothing about cookies persisting."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:27",
+    "title": "Computer use: Requirements",
+    "anchor": "driver not bundled",
+    "supports": "CUA can be selected only when the pinned driver is present in the signed app bundle."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:1273",
+    "title": "computer tool schema",
+    "anchor": "isolated_named",
+    "supports": "The tool accepts a profile choice of a new or a named isolated profile, plus a url parameter a hook can inspect."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:86",
+    "title": "Computer use: the computer agent tool",
+    "anchor": "openclaw:computer-resource",
+    "supports": "Browser downloads are returned as opaque handles owned by the computer host and tied to one execution."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-14",
+  "verdict": "revise",
+  "reason": "Both sources check out and nothing here depends on OpenClaw.app. One caveat states as fact that parents can print from their phones, which depends on AirPrint support that was not confirmed for this printer.",
+  "source_checks": [
+   {
+    "ref": "https://openprinting.github.io/cups/doc/options.html",
+    "ok": true,
+    "note": "Fetched. 'lp -d printer filename', 'lp -n num-copies filename' and 'lpstat -p -d' all appear; published by OpenPrinting CUPS."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/108963",
+    "ok": true,
+    "note": "Fetched. Notes steps include 'Scan Documents', automatic capture in Auto mode, and dragging corners to adjust."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "Driving a vendor's print or scan window by screenshots would be slower and more fragile than one command or the phone camera.",
+    "No scanner was seen on the home network; the phone is the scanner.",
+    "The PRO-100 is sold as a photo printer (not confirmed in this run), so plain pages are likely costly in ink; keep the copies cap.",
+    "If the PRO-100 supports AirPrint (not confirmed), parents can already print from their phones directly; Happy's value is printing something it found or composed."
+   ],
+   "unverified": [
+    "That the Canon PRO-100 has no scanner and whether it supports printing straight from iPhones (the vendor page refused the fetch).",
+    "Which lp options this printer's driver accepts.",
+    "Whether the non-admin happy account can add the print queue itself or an administrator has to add it."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102895",
+    "title": "About AirPrint (Apple Support)",
+    "anchor": "AirPrint",
+    "supports": "An iPhone prints without drivers to an AirPrint-enabled printer on the same Wi-Fi network; whether this printer is one was not confirmed."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-15",
+  "verdict": "revise",
+  "reason": "All 7 sources check out. One caveat is imprecise: only the gateway's Host Desktop source is a Labs feature, while a paired Mac's Desktop sharing is on by default, which is the stronger reason to deny `desktop.stream` until it is wanted.",
+  "source_checks": [
+   {
+    "ref": "docs/gateway/config-browser-ui-desktop.md:184",
+    "ok": true,
+    "note": "Anchor on the line: it is the host desktop source that is a Labs feature and off by default."
+   },
+   {
+    "ref": "docs/gateway/config-browser-ui-desktop.md:225",
+    "ok": true,
+    "note": "Anchor on the line: desktop.host.managed is Linux only. Line 274 adds that on macOS the host source attaches to the system's Screen Sharing."
+   },
+   {
+    "ref": "docs/gateway/config-browser-ui-desktop.md:335",
+    "ok": true,
+    "note": "Anchor on the line: paired-node Desktop sharing is on by default and uses an existing node-local RFB server."
+   },
+   {
+    "ref": "docs/nodes/computer-use.md:17",
+    "ok": true,
+    "note": "Anchor on the line; the last sentence limits the pause-on-takeover arbitration to cloud environment desktops."
+   },
+   {
+    "ref": "docs/platforms/mac/permissions.md:104",
+    "ok": true,
+    "note": "Anchor on the line: Screen Sharing may request an immediate lock when its last viewer disconnects, and OpenClaw honours it."
+   },
+   {
+    "ref": "https://support.apple.com/guide/mac-help/turn-screen-sharing-on-or-off-mh11848/mac",
+    "ok": true,
+    "note": "Fetched. 'Only these users' under Allow access for; also notes Screen Sharing and Remote Management cannot both be on."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "ok": true,
+    "note": "Fetched. 'Confirm consequential actions.' with the instruction to keep users in control of hard-to-reverse actions."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "On ordinary gateway or paired-node desktops there is no arbitration between human and agent: the 'taking control pauses agent input' behaviour exists only for cloud desktops, so a hand on the mouse mid-run collides with the agent.",
+    "Screen Sharing may lock the Mac when the last viewer disconnects, and a lock retires the running task.",
+    "Turning on Screen Sharing adds a remote-control service to the Mac mini; limit it to one account and keep it reachable only over the tailnet.",
+    "`desktop.stream` is separate from `computer.act`; deny it if unused.",
+    "The gateway's Host Desktop source is a Labs feature and off by default. A paired Mac's Desktop sharing is not a Labs feature: it is on by default once the app is paired and macOS Screen Sharing is enabled.",
+    "Watching through the Control UI asks for the target macOS account's name and password, because macOS Screen Sharing uses account authentication; the panel keeps them in browser memory for that connection."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/web/control-ui/feature-reference.md:65",
+    "title": "Control UI feature reference: Labs",
+    "anchor": "Host Desktop",
+    "supports": "The Labs page lists Host Desktop and Cloud Worker Desktop, not paired-node desktops."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:387",
+    "title": "Paired node desktops",
+    "anchor": "macOS ARD",
+    "supports": "Connecting to a Mac node's desktop asks for that Mac's account credentials, held in memory for reconnects."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:274",
+    "title": "Browser, UI and desktop config: Desktop",
+    "anchor": "Screen Sharing",
+    "supports": "On macOS the host desktop source attaches to the system Screen Sharing service."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "MAC-16",
+  "verdict": "reject",
+  "reason": "Confirmed as a not-recommended entry; all 7 sources check out. Presence is harmless but answers a question this household does not need an agent for, and Logbook is continuous screen capture sent to a cloud model.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/presence.md:18",
+    "ok": true,
+    "note": "Anchor on the line: a recent-activity hint, not proof of which computer sent a message."
+   },
+   {
+    "ref": "docs/nodes/presence.md:107",
+    "ok": true,
+    "note": "Anchor on the line (sentence spans 106-109): only idle duration and source are sent, no keys, coordinates, app names or window titles."
+   },
+   {
+    "ref": "docs/plugins/logbook.md:22",
+    "ok": true,
+    "note": "Anchor on the line; line 23 says enabling the plugin opts the gateway into capture."
+   },
+   {
+    "ref": "docs/plugins/logbook.md:92",
+    "ok": true,
+    "note": "Anchor on the line: default interval 30 seconds; up to 16 frames per 15-minute window go to the vision model."
+   },
+   {
+    "ref": "docs/plugins/logbook.md:17",
+    "ok": true,
+    "note": "Anchor on the line: sampled screenshots go to the configured vision route, which need not be local."
+   },
+   {
+    "ref": "docs/plugins/logbook.md:33",
+    "ok": true,
+    "note": "Anchor on the line: the bundled Codex plugin must be enabled and authenticated."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/119854",
+    "ok": true,
+    "note": "Fetched. Under 'App & Website Activity' a parent can see most-used apps and websites, set a Screen Time schedule and time allowances, through Family Sharing."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "Presence is a recent-activity hint, not proof of who is at the keyboard, and only Macs running the app report it. It answers a question nobody in a four-person house needs an agent for.",
+    "For children, Apple's Screen Time through Family Sharing already gives app and website activity and limits, with nothing sent to an AI provider.",
+    "Logbook would send continuous pictures of a family member's screen to a cloud model. For a child's Mac that collides with the rule against cloud models for kids' content; for an adult's Mac it is surveillance of everything on screen, including banking and mail.",
+    "Logbook depends on the Codex plugin and its login, which this stack does not use.",
+    "Logbook does not need OpenClaw.app: once the plugin is on, a headless macOS node gets a `logbook.snapshot` command backed by the system screenshot tool. Keep the plugin disabled on any gateway that has a Mac node paired."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/logbook.md:31",
+    "title": "Logbook plugin: Before you begin",
+    "anchor": "logbook.snapshot",
+    "supports": "A headless macOS node host gains a plugin-provided screenshot command once Logbook is active, so the app is not required."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/presence.md:24",
+    "title": "Presence",
+    "anchor": "`presence` tool",
+    "supports": "Agents read people and device presence through a core tool."
+   }
+  ],
+  "removed_sources": []
+ }
+]

@@ -1,0 +1,775 @@
+[
+  {
+    "id": "CRT-01",
+    "verdict": "revise",
+    "reason": "All five sources hold and no built-in undo for tool effects was found. Two build facts were missing: the 9 Oct Reminders bridge (F030) was specified with no delete, so undo needs a delete limited to ids in Happy's own journal; and value is lowered because most 'undo' requests, including the entry's own example, are corrections the same write tool already handles.",
+    "source_checks": [
+      {
+        "ref": "docs/web/control-ui/chat.md:299",
+        "ok": true,
+        "note": "Line 299 describes Rewind as repointing the session to the state before a message, tagged sessions.rewind and operator.admin; nothing about reversing tool effects."
+      },
+      {
+        "ref": "docs/plugins/hooks/reference.md:149",
+        "ok": true,
+        "note": "Hook table row lists after_tool_call as kind Observe (results, errors, duration)."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:136",
+        "ok": true,
+        "note": "Line 136 is 'openclaw automations remove <jobId>' under a 'Delete a job' comment."
+      },
+      {
+        "ref": "docs/cli/memory.md:210",
+        "ok": true,
+        "note": "Warning at 210-211: deletes immediately unless --dry-run, no confirmation prompt, source transcripts retained; section heading is 'memory forget' (line 202)."
+      },
+      {
+        "ref": "https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf",
+        "ok": true,
+        "note": "PDF fetched (34 pages) and text extracted locally. Page 26, 'Tool safeguards', rates tools by read-only vs write access, reversibility, permissions and financial impact; page 31 asks for human oversight of irreversible actions."
+      }
+    ],
+    "corrections": {
+      "value": 3,
+      "caveats": [
+        "Sent things cannot be recalled: a text to the other parent, an email to the owner, a print job, a Sonos announcement. The reply has to say so at the time of sending.",
+        "Only Happy's own writes are covered. If a parent has since edited the same reminder or event on a phone, the inverse could overwrite that edit, so the tool should refuse when the item changed after Happy wrote it.",
+        "'openclaw memory forget' deletes at once with no confirmation unless --dry-run is passed, and it keeps the source transcripts; it is not something to hand to a chat command.",
+        "The phone already has undo for what a person does by hand. This covers only what Happy did on their behalf.",
+        "The 9 Oct Reminders bridge (F030) was specified as list, add and complete with no delete. Undo needs a delete, so that delete must accept only item ids that Happy's own journal recorded as created by Happy, enforced inside the tool and not left to the model.",
+        "The entry's own example ('I meant Thursday, not Tuesday') is a correction, which the same write tool already handles with a second write. The journal earns its place for overwritten household facts, where the old value would otherwise be gone, and as the audit trail."
+      ],
+      "unverified": [
+        "That no built-in undo for tool effects exists anywhere in 2026.9.7. This rests on a search of the installed docs for undo, rewind and revert, not on reading the source.",
+        "Whether the Reminders command-line tool and the calendar server return stable item ids that an inverse can target; neither is installed yet.",
+        "A wider search of the installed docs in this review (undo, revert, checkpoint) also found no undo for tool effects; the dist source was still not read."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:36",
+        "title": "Plugin hooks: tool policy, before_tool_call context",
+        "anchor": "ctx.requester",
+        "supports": "The before-tool hook is given the host-derived requester, including the sender id, and the docs say to fail closed when a needed field is missing; this is what lets undo be limited to the asker's own rows."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:93",
+        "title": "Plugin hooks reference: per-handler defaults",
+        "anchor": "Fail closed",
+        "supports": "A before_tool_call handler that throws or times out blocks the tool call, so the own-rows check cannot be skipped by a hook error."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-02",
+    "verdict": "revise",
+    "reason": "Sources hold, but the chat-path lock is built on hooks that fail open (claim hooks log and continue on error; a failed message_sending handler is skipped), so it needs a fail-closed gate in before_agent_run. The safety claim that suspension removes approver rights is wrong for the chat path: the handle stays on allowFrom, which is the approver list.",
+    "source_checks": [
+      {
+        "ref": "docs/channels/imessage/access-control.md:24",
+        "ok": true,
+        "note": "Line 24 names channels.imessage.allowFrom as the allowlist field; lines 17-22 list dmPolicy values including allowlist and disabled."
+      },
+      {
+        "ref": "docs/channels/imessage/rich-messages.md:109",
+        "ok": true,
+        "note": "Line 109: /approve is authorised against the allowFrom approver list when it is non-empty. Line 105 adds that poll and reaction approvals use the same list and bypass dmPolicy."
+      },
+      {
+        "ref": "docs/tools/slash-commands.md:634",
+        "ok": true,
+        "note": "Line 634: /allowlist add|remove requires commands.config: true. The family config sets commands.config false (read-only check of the config repo)."
+      },
+      {
+        "ref": "docs/gateway/security/operator-incident-response.md:17",
+        "ok": true,
+        "note": "Step 3 'Freeze access' says to switch risky DMs to dmPolicy disabled and remove allow-all entries."
+      },
+      {
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "ok": true,
+        "note": "Lines 15-18: before_dispatch may return handled: true with or without text; described as a claim."
+      },
+      {
+        "ref": "docs/cli/devices.md:175",
+        "ok": true,
+        "note": "Heading at 175 is 'openclaw devices revoke --device <id> --role <role>'; 'openclaw devices remove <deviceId>' is at line 116. No node or app is paired today, so this step is moot for now."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/101593",
+        "ok": true,
+        "note": "Fetched. Marking as lost locks the device with its passcode and suspends Apple Pay cards; the page tells the owner to review Apple Account information and change the password if anything looks wrong."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120340",
+        "ok": true,
+        "note": "Fetched. The lists of biometric-only and delayed actions do not mention Messages or sending texts. The page does list 'Open a locked app' as biometric-only, which the entry did not use."
+      }
+    ],
+    "corrections": {
+      "how": "Happy trusts the sender's Apple handle: channels.imessage.dmPolicy is 'allowlist' and channels.imessage.allowFrom lists the family, and the same list decides who may answer /approve. Whoever holds an unlocked phone is that person to Happy. The built-in '/allowlist remove' needs commands.config: true, which this install keeps off. So: (1) Today, operator path: remove the handle in family.json5, run gen-family and the deploy script. The docs' incident steps offer the blunt version, dmPolicy 'disabled' for everyone. (2) Build, chat path: extend the kill-switch plugin (G005). A before_dispatch claim matches one exact phrase from an adult's handle, writes the named person's handles to a suspended file, and from then on claims every inbound message from those handles with no reply; the message_sending hook cancels scheduled texts to them. Lifting the suspension is CLI-only. (3) If that phone also ran the OpenClaw app, 'openclaw devices revoke' and 'openclaw devices remove' retire its Gateway token. (4) Phone side, done by the owner from another device: Find My's lost mode locks the phone with its passcode. Enforcement note from review: before_dispatch is a claim hook, and the hook runner's default for claim hooks is to log and continue when a handler throws, while a failed message_sending handler is skipped. A suspension that lives only in those two hooks therefore fails open. The suspended file must also be checked in before_agent_run, which blocks the run before the model reads the prompt, fails closed and carries ctx.senderId, and in before_tool_call for that person's agent. The phrase match itself can stay in before_dispatch.",
+      "safety": "The phrase can only narrow access. Nothing in the chat path can add a sender; that stays a reviewed change to family.json5. The chat-path suspension does not take the handle off channels.imessage.allowFrom, which is also the approver list for /approve and for tapback approvals, and the docs say those shortcuts bypass dmPolicy. So only the operator path (remove the handle and redeploy) removes a stolen phone's approver rights. Until that is done, the suspension has to block that person's agent runs and tool calls with fail-closed hooks so that no new approval prompt is raised for the stolen phone to answer, and that person's scheduled jobs should be paused (G002).",
+      "caveats": [
+        "A locked phone already stops most of this. The gap is a phone taken while unlocked, or a passcode seen over a shoulder: Apple's Stolen Device Protection page lists the actions it protects and Messages is not among them.",
+        "Either adult can lock the other out. That is a nuisance at worst and Tony undoes it at the Mac.",
+        "If whoever holds the phone sends the phrase first, the real owner needs the CLI.",
+        "After the phone is replaced the handle is the same, so the suspension has to be lifted by hand.",
+        "It stops delivery to that person, not their scheduled jobs; pair with pause (G002) if the jobs should stop too.",
+        "Apple's Stolen Device Protection page lists opening a locked app among the actions that need Face ID or Touch ID with no passcode fallback. If each parent can lock the Messages app that way, the unlocked-phone gap narrows on the phone itself, with nothing to build (not confirmed, see unverified).",
+        "The lock phrase works as a weak shared secret: a thief has to know Happy exists and what the phrase is. Keep it out of Happy's own help text and replies."
+      ],
+      "unverified": [
+        "Whether iMessage for a phone number can be re-registered on another device after a SIM swap without the Apple Account password.",
+        "Whether owner-only slash commands from a suspended handle are parsed before the before_dispatch hook runs.",
+        "Whether the Messages app can be locked with Face ID on the parents' iPhones; Apple's app-lock guide page did not render its body in this run.",
+        "What the sender sees when before_agent_run blocks a run and no replacement message is set.",
+        "Whether a tapback from a suspended handle can still resolve a pending approval; the docs say reaction approvals bypass dmPolicy and are gated only by the approver list."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:99",
+        "title": "Plugin hooks reference: per-handler defaults",
+        "anchor": "including claim hooks",
+        "supports": "Claim hooks such as before_dispatch have no fail-closed default: a handler that throws is logged and dispatch continues."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:93",
+        "title": "Plugin hooks reference: per-handler defaults",
+        "anchor": "Fail closed",
+        "supports": "before_agent_run and before_tool_call block the run or the tool call when the handler throws or times out."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/prompt-and-session.md:153",
+        "title": "Plugin hooks: prompt and session, before_agent_run",
+        "anchor": "outcome: \"block\"",
+        "supports": "A before_agent_run handler can stop a run before the model reads the prompt, with an optional user-facing replacement message."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/prompt-and-session.md:199",
+        "title": "Plugin hooks: prompt and session, sender identity",
+        "anchor": "ctx.senderId",
+        "supports": "Agent hook contexts carry the channel-scoped sender id when the run started from a user message, which is what a per-handle suspension keys on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/rich-messages.md:105",
+        "title": "iMessage rich messages: approvals",
+        "anchor": "explicit approver",
+        "supports": "Poll votes and tapback approvals are gated only by the allowFrom approver list and bypass dmPolicy, so a suspension outside allowFrom does not remove approver rights."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120340",
+        "title": "About Stolen Device Protection for iPhone - Apple Support",
+        "anchor": "Open a locked app",
+        "supports": "With the feature on and the phone away from familiar places, opening a locked app needs Face ID or Touch ID with no passcode fallback."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-03",
+    "verdict": "revise",
+    "reason": "Admission through allowFrom gives a guest more than chat: commands.allowFrom is unset on this install, so a guest could send slash commands and directives, and the stated mitigation ('every approval hook checks the requester is a parent') cannot be built, because a plugin approval hook only learns the decision, not who resolved it. The unattended job that edits the registry and redeploys also breaks the reviewed-deploy rule.",
+    "source_checks": [
+      {
+        "ref": "docs/channels/imessage/access-control.md:20",
+        "ok": true,
+        "note": "Line 20: dmPolicy 'allowlist' requires at least one allowFrom entry."
+      },
+      {
+        "ref": "docs/concepts/agent-bindings.md:13",
+        "ok": true,
+        "note": "Line 13: bindings only pick the agent and are consulted after the channel has accepted the message."
+      },
+      {
+        "ref": "docs/concepts/agent-bindings.md:98",
+        "ok": true,
+        "note": "Line 98: peer.kind accepts direct, group or channel; use the canonical peer id. The iMessage page confirms a normalized DM handle is a valid peer id."
+      },
+      {
+        "ref": "docs/channels/imessage/rich-messages.md:109",
+        "ok": true,
+        "note": "Line 109: /approve is authorised against channels.imessage.allowFrom. No separate iMessage approver key was found in the installed docs."
+      },
+      {
+        "ref": "docs/channels/pairing.md:21",
+        "ok": true,
+        "note": "Lines 20-22: under the pairing policy unknown senders get a short code and are not processed until approved."
+      },
+      {
+        "ref": "docs/concepts/multi-user.md:17",
+        "ok": true,
+        "note": "Line 17: for people who must not reach each other's sessions, tools or files, use separate agents or separate gateways."
+      },
+      {
+        "ref": "docs/channels/wechat.md:13",
+        "ok": true,
+        "note": "Line 13: external plugin maintained by the Tencent Weixin team, direct chats only; QR login is described from line 35."
+      }
+    ],
+    "corrections": {
+      "how": "family.json5 gains a role 'guest'. gen-family adds the guest's handle to channels.imessage.allowFrom and emits a bindings[] entry with match.peer (kind 'direct', id the handle) to a shared 'guest' agent: no tools, memory off, minimal profile, its own workspace whose AGENTS.md is the card, rendered from the sitter facts (F036). Bindings only route; admission is still the allowlist. Replies follow the guest's language (G011). 'Tell the parents ...' is claimed by a before_dispatch pattern and forwarded word for word through the pinned family delivery (G009), the same shape as the kid check-in relay (G018). A dated guest, such as a sitter for one evening, carries an expiry date in the registry; the guest plugin refuses that handle after the date in before_agent_run, which fails closed, and Tony removes the entry at the next reviewed deploy. No unattended job edits the registry or deploys. Whether grandparents also become recipients for G009 is a separate decision; the default stays no, with a parent forwarding drafts. Before the first guest is admitted, set commands.allowFrom to the two parents: it is unset on this install, so command authorization follows the channel allowlist and a guest on allowFrom could send slash commands and inline directives to the guest agent.",
+      "depends_on": [
+        "decision: who beyond the two parents may text Happy",
+        "F036 sitter facts",
+        "G009 family delivery",
+        "G011 languages",
+        "commands.allowFrom set to the two parents before any guest is admitted",
+        "approvals stay in 'session' mode, so an approval id only ever appears in the chat that asked (already set in the config)"
+      ],
+      "caveats": [
+        "Adding a handle to allowFrom also puts it on the /approve approver list, and iMessage has no separate approver list. A plugin cannot check who resolved an approval (its onResolution callback receives only the decision), and the roadmap already records that 2026.9.7 cannot tie an approval to the person whose agent asked. What protects the parents is that the guest agent has no tools and so raises no approvals, and that prompts go only to the chat that asked, so a guest never sees an approval id. The roadmap's alternative for non-approvers, admission by pairing, costs a pairing-code reply to unknown numbers.",
+        "Most sitters will just text the parents. The realistic user is a grandparent who stays for days and writes in another language.",
+        "The guest must be on iMessage. A WeChat channel exists only as an external plugin maintained by Tencent's Weixin team with a QR login of a personal account; adding it for one relative is a much bigger change than this feature. WhatsApp is on the never-list.",
+        "The card goes to a cloud model and to a person outside the two-parent circle. Put on it only what you would tape to the fridge: no door codes, no Wi-Fi password, no policy or record numbers.",
+        "The install uses the allowlist policy, so strangers get silence. Under the pairing policy an unknown number would be sent a pairing code; do not switch to it for guests.",
+        "The relayed 'tell the parents' text is written by an outsider. Deliver it as a clearly quoted line; if it lands in a parent's agent session it is untrusted text sitting next to private memory."
+      ],
+      "unverified": [
+        "That allowFrom entries have no built-in expiry; none was found in the installed docs.",
+        "Whether the guest agent or the group agent would answer if a guest writes in a group chat with the parents.",
+        "Whether commands.allowFrom also governs /approve on iMessage, or only the channel approver list does.",
+        "Whether a relay sent through the family delivery is mirrored into the receiving parent's agent session.",
+        "Whether a guest admitted through an accessGroup entry, instead of a literal handle, counts as an approver."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:161",
+        "title": "Slash commands: configuration",
+        "anchor": "commands.allowFrom",
+        "supports": "When no command allowlist is configured, command authorization follows the channel's allowlists, so any admitted sender is command-authorized."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:155",
+        "title": "Slash commands: commands.allowFrom",
+        "anchor": "Per-provider allowlist",
+        "supports": "Once configured, the command allowlist is the only authorization source for commands and directives, which is how guests are kept to plain chat."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:58",
+        "title": "Plugin hooks: tool policy, requireApproval",
+        "anchor": "onResolution",
+        "supports": "A plugin's approval callback receives only the decision, not the identity of whoever resolved it, so a hook cannot enforce 'parents only' on resolution."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/session.md:63",
+        "title": "Session management: DM isolation",
+        "anchor": "per-channel-peer",
+        "supports": "With per-sender DM scope, which this install already sets, two guests routed to one guest agent do not share a conversation."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-04",
+    "verdict": "revise",
+    "reason": "Sources and the config facts check out (fallbacks: [] is generated per person; both models are in modelPolicy.allow). Two slips: timed reminders and the morning brief are model-backed agent turns, so 'bin reminders work through an outage' is true only if they are rebuilt as command jobs; and the outage notice must use a model-free send, because 'openclaw agent --deliver' is itself an agent turn.",
+    "source_checks": [
+      {
+        "ref": "docs/concepts/model-failover.md:126",
+        "ok": true,
+        "note": "Line 126: an agent's own primary is strict unless its model object lists fallbacks; fallbacks: [] makes that explicit. The config repo's gen-family script does emit fallbacks: [] for person agents (read-only check)."
+      },
+      {
+        "ref": "docs/concepts/model-failover.md:47",
+        "ok": true,
+        "note": "Step 'Report failure if exhausted': if every candidate fails, the terminal failure is surfaced."
+      },
+      {
+        "ref": "docs/concepts/model-failover.md:345",
+        "ok": true,
+        "note": "Line 345: visible failure messages keep the provider's HTTP status and leave raw provider detail out."
+      },
+      {
+        "ref": "docs/concepts/model-failover.md:470",
+        "ok": true,
+        "note": "Line 470: notices are operational messages, delivered once per state change outside group and channel conversations."
+      },
+      {
+        "ref": "docs/cli/cron.md:70",
+        "ok": true,
+        "note": "Line 70: --command and --command-argv jobs capture output and deliver it through announce, webhook or none."
+      },
+      {
+        "ref": "docs/cli/models.md:90",
+        "ok": true,
+        "note": "Exit code 0 of --check is described as not proving that a model request will succeed."
+      },
+      {
+        "ref": "https://status.openai.com/history",
+        "ok": true,
+        "note": "Fetched. The history view showed 39 incidents for September 2026 and 23 for 1-10 October, including 'We are seeing elevated error rates across API models' on 17 Sep. Most entries concern ChatGPT products, as the entry says."
+      }
+    ],
+    "corrections": {
+      "how": "Fact on this install: each person agent is generated with model.fallbacks: [], and the docs say an agent's primary is strict unless its model object lists fallbacks. So after the built-in retries any failure is surfaced as a terminal error that keeps the provider's HTTP status. Options, cheapest first. (1) Add gpt-6-luna on the same per-person provider id as the single fallback for <p>-main: one line in gen-family, since both models are already in that agent's modelPolicy.allow under the same key and store setting. This covers model-scoped incidents and rate limits, not a vendor-wide outage. The docs say a fallback is used for that turn only and a one-line notice is shown in direct chats. Mail and kid agents keep fallbacks: [] as the roadmap requires. (2) No cross-vendor fallback: it needs a second vendor's key and a new privacy decision, and the local route is the skipped M2. (3) Keep the important alerts model-free: the weather watch (F018) is specified as a --command-argv job and the kill phrase (G005) is a before_dispatch claim, so both work through an outage. Timed reminders (F007) and the morning brief are '--message' jobs, which the docs define as model-backed agent turns, so they fail with the model; a fixed-text reminder that must not be missed, such as bin day, has to be created as a command job that prints its line. A scheduled agent turn can also carry its own '--fallbacks' list. (4) Extend the health watch (G008): when the existing error-ratio alert has fired for N minutes, a host script sends each parent one fixed line and later one 'back' line by a model-free send: 'openclaw message send' to the pinned family handles, or a command job with announce delivery. The catalog's usual host path, 'openclaw agent --deliver', runs an agent turn and so cannot announce a model outage. 'openclaw models status --check' is not the detector: its own docs say a clean exit does not prove a request will succeed.",
+      "unverified": [
+        "The exact text a parent sees on iMessage when every candidate fails; the docs describe it, it was not triggered in this run.",
+        "Whether gpt-6-luna stays healthy during typical gpt-6-sol incidents.",
+        "Whether command jobs deliver normally while model calls are failing; nothing suggests otherwise but it was not tested.",
+        "Whether 'openclaw message send' passes through the same recipient-pinning hook as the agent's message tool; if it does not, the host script must hard-code the family handles from the registry."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:21",
+        "title": "Automation payloads",
+        "anchor": "A model-backed agent turn",
+        "supports": "A scheduled '--message' job is an agent turn that needs the model, while a command job on the next row makes no model call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:38",
+        "title": "Automation payloads: agent-turn options",
+        "anchor": "--fallbacks",
+        "supports": "A scheduled agent turn can be given its own fallback model list, or an empty one for a strict run."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/message.md:11",
+        "title": "openclaw message",
+        "anchor": "Single outbound command",
+        "supports": "There is a direct outbound send command, covering iMessage, that takes a target and the message text; the page describes no agent turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/agent.md:4",
+        "title": "openclaw agent",
+        "anchor": "run one agent turn",
+        "supports": "The agent command runs a model turn and optionally delivers its reply, so it is not usable to report that the model is down."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-05",
+    "verdict": "revise",
+    "reason": "All four sources hold. The entry assumes the envelope must be an admin credential; on this Mac the happy user holds a secure token, which Apple names as the requirement for unlocking FileVault, so the power-cut case may need only the non-admin happy password. Split the envelope and test it at the rehearsal.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/guide/deployment/intro-to-filevault-dep82064ec40/web",
+        "ok": true,
+        "note": "Fetched. SSH unlock after restart needs Apple silicon, macOS 26 or later, Remote Login on and a network connection; the page does not say which users may unlock."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/124963",
+        "ok": true,
+        "note": "Fetched. The macOS Tahoe 26.0 notes carry the SSH unlock item with the two conditions."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/102631",
+        "ok": true,
+        "note": "Fetched. A Legacy Contact needs the access key and a death certificate; iCloud Keychain data (passwords, passkeys, payment information) is excluded."
+      },
+      {
+        "ref": "docs/gateway/index.md:208",
+        "ok": true,
+        "note": "Line 208: use 'openclaw gateway restart' and do not chain stop and start; 'openclaw gateway status' is listed at line 203. Line 212 places the service in the owner's logged-in macOS session."
+      }
+    ],
+    "corrections": {
+      "how": "No new software. The card lists: (1) how to tell: no reply within a few minutes; also add Jordan as a second recipient of the existing dead-man alert. (2) The pause phrase (G005) and that it is always safe to use. (3) After a power cut the Mac waits at the FileVault screen: type the password from the envelope at the Mac, then log in the happy user so Messages runs. Apple's remote unlock over SSH needs Apple silicon, macOS 26, Remote Login on and a network connection, and the roadmap notes it works from the home network only, so it does not help someone who is away. (4) The two commands an admin may need: 'openclaw gateway status' and 'openclaw gateway restart' (the docs say not to chain stop and start). (5) Who to call. The envelope holds what the card needs and where the config repo and backups are. Separately, set a Legacy Contact on the Apple Accounts involved so the account behind Happy's iMessage identity can be recovered in the worst case; Apple's legacy access leaves out Keychain passwords, so the API keys still depend on the backup (G007). Rehearse once: Tony leaves the house, Jordan restarts the Mac and brings Happy back from the card. Least privilege, from review: the happy user holds a secure token on this Mac (read with sysadminctl in this review), and Apple's FileVault management page says unlocking needs a secure token and, on Apple silicon, volume ownership. If happy's password unlocks the disk at the startup screen, that one step also logs happy in, which is all a power cut needs. The first envelope then holds only happy's password and the admin credential goes in a second envelope for repairs. Confirm this at the rehearsal before relying on it.",
+      "depends_on": [
+        "decision: what goes in Jordan's envelope: the happy user's password only (enough for a restart if it unlocks the disk) or also the admin credential (which adds Tony's own account and the config repo)",
+        "G005 kill phrase",
+        "G007 backups",
+        "a small UPS (already suggested in the roadmap)"
+      ],
+      "caveats": [
+        "The envelope is a credential on paper. The happy password alone already opens every person's agent data, because the gateway keeps it under that account; an admin credential adds Tony's own account and the config repo. That is the price of not being locked out.",
+        "A UPS only bridges short cuts. A long outage still ends at the FileVault screen.",
+        "Legacy Contact access needs the access key and a death certificate. It is for the worst case, not for a business trip.",
+        "If Apple locks the Apple Account that Happy uses, nobody at home can fix it quickly, and iMessage is the only channel."
+      ],
+      "unverified": [
+        "Whether a standard, non-admin macOS account for Jordan can be enabled to unlock FileVault at boot on this Mac; the Apple page read in this run does not say who may unlock.",
+        "Whether the gateway's launchd service comes up for the happy user before that user logs in at the console after a reboot.",
+        "Whether the happy user is a volume owner and is offered at the FileVault startup screen. The secure token status was read; the unlock itself was not tried."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/deployment/manage-filevault-with-device-management-dep0a2cb7686/web",
+        "title": "Manage FileVault with device management - Apple Support (Apple Platform Deployment)",
+        "anchor": "secure token",
+        "supports": "A user needs a secure token, and on Apple silicon must also be a volume owner, to work with FileVault unlock; the page does not make admin status a condition."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-06",
+    "verdict": "revise",
+    "reason": "Every cited doc line checks out, but the entry's own safety analysis ends in 'keep it denied', no Windows or Linux PC is in the house inventory, and value is 1. 'experimental' is the upstream label for the software, not a recommendation; the catalog should carry this as not-recommended.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/computer-use.md:198",
+        "ok": true,
+        "note": "Heading at 198 reads 'Windows and Linux (experimental, direct SDK)'; line 200 says local control stays opt-in on those platforms."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:220",
+        "ok": true,
+        "note": "Step 4: computer.act is a built-in platform default once the plugin is enabled and the pairing update approved; a deny entry turns it off. Steps 1-3 (plugins enable cua-computer, doctor lint, 'openclaw node run' from the desktop session) are at 204-218."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:232",
+        "ok": true,
+        "note": "Line 232: primary display only; hold_key and mouse down/up unavailable; modifier-held clicks, scrolls and drags rejected."
+      },
+      {
+        "ref": "docs/platforms/windows.md:72",
+        "ok": true,
+        "note": "Line 72: Windows Hub can register as a node; commands must be declared, approved and allowed by Gateway policy."
+      },
+      {
+        "ref": "docs/platforms/windows.md:84",
+        "ok": true,
+        "note": "Command table: system.run sits in the System family; location.get is in the Device family; camera snap and clip need explicit opt-in."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:55",
+        "ok": true,
+        "note": "Line 55: gateway.nodes.commands.deny always wins over defaults and extra allow entries."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "caveats": [
+        "No Windows or Linux PC appears in the hardware list given for this house. Without one this is a non-feature.",
+        "Pairing Windows Hub brings shell execution and location along with the screen, so the deny list has to be written before pairing, not after.",
+        "A screenshot-driven agent sees whatever is on that screen: mail, browser sessions, saved logins. On a personal PC that is private data, untrusted content and a way out in one tool.",
+        "Remote help for a grandparent's PC is the case people usually have in mind. Do not do it with an agent; screen sharing with the person present is the safe form.",
+        "A school-issued or work-managed PC must never be paired. It is someone else's device.",
+        "Upstream labels the Windows and Linux desktop route experimental. That describes the software; this entry's recommendation is not to build it.",
+        "The desktop-control steps in the docs start 'openclaw node run' on the PC, which is the command-line node host; Windows Hub is a separate companion app. Using both on one PC was not tried."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-07",
+    "verdict": "keep",
+    "reason": "A sourced 'this does not work': each vendor page read confirms control sits in the vendor's parent app or with the school, and no agent placement is proposed.",
+    "source_checks": [
+      {
+        "ref": "https://support.google.com/chromebook/answer/9797958",
+        "ok": true,
+        "note": "Fetched. On a school Chromebook with a school account parents cannot add controls; the school sets up and manages the account."
+      },
+      {
+        "ref": "https://support.google.com/families/answer/9116646",
+        "ok": true,
+        "note": "Fetched. Supervision covers Android 5.0 and up and ChromeOS 71 and up; on iPhones and iPads most supervision tools do not work."
+      },
+      {
+        "ref": "https://www.nintendo.com/us/switch/parental-controls/",
+        "ok": true,
+        "note": "Fetched. Free phone app with play-time limits, game restrictions and a monthly activity summary; two parents or guardians can share it. No API is mentioned."
+      },
+      {
+        "ref": "docs/platforms/chromeos.md:9",
+        "ok": true,
+        "note": "Lines 9-13: the page is about running the Gateway inside the Crostini Linux container."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-08",
+    "verdict": "keep",
+    "reason": "Correctly filed as not-recommended; the only buildable part is a read-only, model-free connectivity log. One wording slip in a source note: the Cloudflare page does not state a price.",
+    "source_checks": [
+      {
+        "ref": "https://support.google.com/googlenest/answer/6294727",
+        "ok": true,
+        "note": "Fetched. 'Family Wi-Fi' in the Home app lists pausing Wi-Fi on demand and scheduling internet time-outs; no API is mentioned."
+      },
+      {
+        "ref": "https://developers.cloudflare.com/1.1.1.1/setup/",
+        "ok": true,
+        "note": "Fetched. 1.1.1.2 blocks malware and 1.1.1.3 blocks malware and adult content, set on a device or router. The page does not say the service is free, so drop 'free' from this source's note."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:71",
+        "ok": true,
+        "note": "Line 71: blocks private/internal hostnames and re-checks redirects."
+      },
+      {
+        "ref": "docs/cli/cron.md:70",
+        "ok": true,
+        "note": "Line 70: command jobs run a fixed command and deliver its output; the payload table in the automation docs confirms no model call."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-09",
+    "verdict": "keep",
+    "reason": "Correctly filed as not-recommended: the documented route needs a developer application and a publicly hosted key, and its commands are the lock and opening actions the never-list bans.",
+    "source_checks": [
+      {
+        "ref": "https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api",
+        "ok": true,
+        "note": "Fetched. Described as a data and command service; setup steps are an account, an application with legal business details, a key pair with the public key hosted on the application's domain, and a register call. Pairing a key to the vehicle is listed under next steps as required for commands."
+      },
+      {
+        "ref": "https://developer.tesla.com/docs/fleet-api/billing-and-limits",
+        "ok": true,
+        "note": "Fetched. Pay-per-use, a monthly discount for individual developers and small applications, and limits tracked per device per account."
+      },
+      {
+        "ref": "https://www.home-assistant.io/integrations/tesla_fleet/",
+        "ok": true,
+        "note": "Fetched. Entities include charge and battery sensors, lock, frunk and trunk covers, climate, and a location device tracker; setup needs developer credentials and a hosted public key file."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-10",
+    "verdict": "revise",
+    "reason": "The claim that two caregivers is 'the usual way' a double dose happens had no source; a poison centre page supports a weaker statement. 'Never advises a dose' was only an instruction to the model, which this stack's rules do not count as a control, so the lookup reply should be rendered in code.",
+    "source_checks": [
+      {
+        "ref": "https://www.fda.gov/consumers/consumer-updates/dont-overuse-acetaminophen",
+        "ok": true,
+        "note": "Fetched. More than 600 medications contain acetaminophen; do not take more than one such product; read the label and never guess a dose. It says nothing about two caregivers."
+      },
+      {
+        "ref": "https://www.cdc.gov/respiratory-viruses/prevention/precautions-when-sick.html",
+        "ok": true,
+        "note": "Fetched. Return to normal activities when, for at least 24 hours, symptoms are improving overall and there has been no fever without fever-reducing medication."
+      },
+      {
+        "ref": "docs/plugins/tool-plugins.md:11",
+        "ok": true,
+        "note": "Lines 11-14: defineToolPlugin builds a tool-only plugin with no channel, provider or hook."
+      },
+      {
+        "ref": "docs/cli/cron.md:85",
+        "ok": true,
+        "note": "Line 85: --at schedules one run from an ISO timestamp or a duration such as 20m. Note the one-shot is a model-backed reminder unless built as a command job."
+      }
+    ],
+    "corrections": {
+      "description": "When a child is ill, both parents log what they gave and when, and either can ask 'when was the last dose?' and get the same answer; a poison control centre lists medicine given by more than one person who do not communicate as a cause of double dosing, and recommends a log that is marked at every dose. The same mode drafts the absence note and lists what tomorrow needs cancelling. Happy records and recalls. It never advises a dose.",
+      "how": "Rows in the household store (F031): child nickname, what the parent typed, time, who. A care_last tool, built with defineToolPlugin like the store, returns the latest rows and the elapsed minutes, computed in code and not by the model. Both parents' agents read the same table. The reply always ends with a fixed line: check the label for dose and timing, and ask the pediatrician or poison control if unsure. There is no dose arithmetic and no 'you can give more now'. Add-ons from features already in the catalog: a draft absence note the parent sends through the school's own channel (F037), tomorrow's calendar items that need a cancel or a cover (F009), a tracked ask to the other parent about staying home (G010), and a one-shot check-in reminder ('--at'). For 'can she go back tomorrow?' Happy quotes CDC's general rule with its link (symptoms improving overall and no fever for 24 hours without fever-reducing medicine) and says the school's policy wins. Rows delete themselves after 14 days and are kept out of memory writes. To make 'no dose advice' a limit and not a request, care_last returns the finished reply text (the rows as typed, the elapsed time and the fixed line) and the agent is told to send it unchanged; an exact 'last dose' phrase can instead be answered by a before_dispatch claim with no model at all, which also keeps the lookup working when the model is down.",
+      "safety": "Runs on <p>-main only: private data, no untrusted content in the turn (the CDC and FDA lines are fixed text, not fetched), and output only to the two parents through the pinned delivery. Nothing about the child's health is handed to the research agent, per the roadmap's handoff rule. The elapsed time and the fixed line come from code. The rule against dose advice is an AGENTS.md instruction, and a model can still break it by volunteering a 'next dose' remark from its own knowledge; rendering the lookup reply in code, or answering the lookup phrase with a no-model claim, is what turns it into a limit. Add an eval case that asks 'can I give more now?' and must get only the fixed line."
+    },
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+        "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+        "anchor": "more than 1 person",
+        "supports": "A poison centre names medicine given by several people who do not communicate as a cause of double dosing and advises deciding who gives each dose and marking every dose in a log."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-11",
+    "verdict": "keep",
+    "reason": "Sources support the tax and school-year facts, the split between the private agent and the research agent respects the trifecta rule, and nothing is registered or paid by Happy. It is only as buildable as its six dependencies.",
+    "source_checks": [
+      {
+        "ref": "https://www.irs.gov/publications/p503",
+        "ok": true,
+        "note": "Fetched (2025 edition, first 100,000 characters). Day camp may be a work-related expense, overnight camp is not; the child must be under 13 when care is given; the provider's name, address and taxpayer number are required and Form W-10 can be used to request them."
+      },
+      {
+        "ref": "https://nces.ed.gov/programs/statereform/tab1_1-2020.asp",
+        "ok": true,
+        "note": "Fetched. Table 1.1 (2020): 28 states plus the District of Columbia list 180 minimum instructional days. The anchor phrase is in the table title; the column header is worded differently."
+      },
+      {
+        "ref": "docs/cli/cron.md:89",
+        "ok": true,
+        "note": "Line 89: --cron takes a five- or six-field expression with --tz for the time zone."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-12",
+    "verdict": "keep",
+    "reason": "Both sources hold; the entry stores only locations and dates, sends nothing outside the family and leaves filling, signing and submitting to the parent.",
+    "source_checks": [
+      {
+        "ref": "https://www.cdc.gov/vaccines-children/records/index.html",
+        "ok": true,
+        "note": "Fetched. CDC does not keep vaccination records; parents are pointed to the doctor or clinic, the state or city immunization information system and the school; schools, camps, teams and travel may require records."
+      },
+      {
+        "ref": "docs/reference/memory-config.md:446",
+        "ok": true,
+        "note": "Line 446: extraPaths adds directories or files to index; the example at 450-452 places it under memory.search, and line 466 describes the shared-notes case."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-13",
+    "verdict": "keep",
+    "reason": "Sources hold and the fixed reply needs no model, tool or data. A poison-control source is added because the federal Poison Help site returned HTTP 403 in this run as well. If the claim hook errors, the hook runner logs and continues to the model, which is harmless here.",
+    "source_checks": [
+      {
+        "ref": "https://www.ready.gov/plan",
+        "ok": true,
+        "note": "Fetched. Four numbered steps: meet with your family, assess household needs, document the plan, practise it; a meeting place, a communication plan and a fillable form are mentioned."
+      },
+      {
+        "ref": "https://www.ready.gov/alerts",
+        "ok": true,
+        "note": "Fetched. Wireless Emergency Alerts come from authorised public safety officials and the National Weather Service among others, reach enabled phones in a locally targeted area, and need no subscription."
+      },
+      {
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "ok": true,
+        "note": "Lines 15-18: before_dispatch runs before ordinary model dispatch and can return handled: true with a final text."
+      },
+      {
+        "ref": "docs/plugins/hooks/reference.md:164",
+        "ok": true,
+        "note": "Hook table: before_dispatch, kind Claim, handles an inbound message before normal model dispatch. Line 99 of the same file gives the failure default for claim hooks: log and continue."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+        "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+        "anchor": "Poison Control",
+        "supports": "The poison centre's own page gives the national poison help phone line and an online triage tool, both free, confidential and available around the clock, which is what the fixed reply should point to."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-14",
+    "verdict": "revise",
+    "reason": "The FAA feed's closure list cannot drive a text: when opened in this review it showed three large airports as 'closed' for notices that concern only non-scheduled or oversize aircraft. The watch must alert on delay entries only. No ground delay program was active at fetch time, so that part of the feed's shape is unconfirmed.",
+    "source_checks": [
+      {
+        "ref": "https://www.usa.gov/travel-documents-children",
+        "ok": true,
+        "note": "Fetched. A child travelling alone or with one parent or guardian may need a letter of consent; from the other parent, or both parents when travelling with a guardian or alone; preferably in English and notarised."
+      },
+      {
+        "ref": "https://www.tsa.gov/travel/security-screening/identification",
+        "ok": true,
+        "note": "Fetched. TSA does not require children under 18 to show identification for travel within the United States and says to contact the airline about its own rules."
+      },
+      {
+        "ref": "https://nasstatus.faa.gov/api/airport-status-information",
+        "ok": true,
+        "note": "Fetched. Keyless XML with root AIRPORT_STATUS_INFORMATION and an Update_Time element. At fetch time it held one arrival/departure delay entry and three closure entries, all three being general-aviation or oversize-aircraft notices. No ground delay program or ground stop was present, so those entry types were not seen."
+      },
+      {
+        "ref": "docs/cli/cron.md:70",
+        "ok": true,
+        "note": "Line 70: --command-argv runs an exact argv and delivers captured output; no model call per the payload table."
+      }
+    ],
+    "corrections": {
+      "how": "A trip row in the household store (F031): dates, who travels, airports and flight numbers as the parent types or forwards them. A checklist on <p>-main from fixed, linked rules: USA.gov says a child travelling abroad with one parent, a guardian or alone may need a letter of consent, preferably in English and notarised, so Happy drafts the letter text for the non-travelling parent to sign and have notarised; TSA does not require ID from under-18s on domestic flights, though airlines may have their own rules; the child passport dates from the renewals program (F063) are checked against the trip dates. Day of travel: a --command-argv job polls the FAA's public airport status XML every 15 minutes for the departure and arrival airports and texts once per new delay entry for those two airports, as a fixed-format line built by the script. Entries in the feed's closure list are not relayed: when the feed was opened for this review it listed three major airports as closed for notices that apply only to non-scheduled or oversize aircraft. Vacation mode (G002) mutes the home jobs for the dates. An itinerary summary for grandparents is a draft the parent forwards (G011).",
+      "caveats": [
+        "The FAA feed is airport-level, not flight-level. The airline's app is still the authority for a gate change or a cancellation, and it already pushes.",
+        "Entry rules belong to the destination country. Happy links the official page and says to check with the airline and the consulate; it certifies nothing.",
+        "The consent letter is a draft for a notary, not legal advice.",
+        "No booking, check-in, seat change or rebooking: all are on the never-list.",
+        "Two or three trips a year. Build it only after the household store and vacation mode exist.",
+        "The feed's 'Airport Closures' list mixes real closures with long-running notices for general-aviation or oversize aircraft, so a closure entry must never trigger a text on its own."
+      ],
+      "unverified": [
+        "The State Department's own pages on children's passports and consent, which refused automated fetches for other reviewers in this workflow.",
+        "How stable the FAA endpoint's XML format is; it is published without a versioned contract.",
+        "The element names the feed uses for ground delay programs and ground stops; none was active when it was opened, so the script's parser for them has to be written against a live example."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "CRT-15",
+    "verdict": "revise",
+    "reason": "All five doc lines hold, but 'experimental' is the wrong label: watching a clip has no path on this provider set (blocked), and the sound-track route is ordinary build work that does not serve the entry's own example of a silent furnace panel. The honest deliverable today is a line telling the sender to send a photo.",
+    "source_checks": [
+      {
+        "ref": "docs/channels/imessage/media.md:17",
+        "ok": true,
+        "note": "Line 17: inbound attachments are off by default; turning the switch on forwards photos, voice memos, video and other attachments."
+      },
+      {
+        "ref": "docs/nodes/media-understanding.md:178",
+        "ok": true,
+        "note": "Bundled order for video is Google, Qwen, Moonshot; OpenAI appears in the image order on the line above. OpenAI is also an audio provider elsewhere on the page, so 'images only' applies to this image/video list."
+      },
+      {
+        "ref": "docs/nodes/media-understanding.md:63",
+        "ok": true,
+        "note": "Default input limit row: 10MB image, 20MB audio, 50MB video. The row above gives a 500-character default output limit for video."
+      },
+      {
+        "ref": "docs/nodes/media-understanding.md:10",
+        "ok": true,
+        "note": "Line 10: original media is always delivered to the model as usual, and the reply flow continues when understanding fails or is disabled."
+      },
+      {
+        "ref": "docs/nodes/media-understanding.md:109",
+        "ok": true,
+        "note": "CLI entry example with capabilities video and image that receives {{AttachmentPath}}; its command is the gemini CLI, as the entry's caveat says."
+      }
+    ],
+    "corrections": {
+      "readiness": "blocked",
+      "caveats": [
+        "A still photo answers most of these questions and already works with photo understanding (F002).",
+        "Family videos contain the children's faces and voices. Any frames sent as images go to the cloud model under the same decision as photos (9 Oct decision 3).",
+        "iPhone clips are large; anything over the cap is skipped.",
+        "The docs' own command-line example for video calls a Gemini tool, which is the cloud route under another name.",
+        "The furnace-panel example is not served by the sound-track route: a silent clip of blinking lights yields an empty transcript. For that case the only working answer is 'send a photo'.",
+        "The video capability's default output limit is 500 characters, so a transcript route must raise maxChars on its entry or longer clips are cut short.",
+        "The family's provider entries declare text and image as model inputs (read-only check of the config repo), so video is not a declared input for either model today.",
+        "Neither ffmpeg nor a whisper binary was found under /opt/homebrew/bin in this review, so the sound-track route starts from two installs.",
+        "A coach's or stranger's clip forwarded by a parent is third-party content; its transcript reaches the parent's private agent the same way a forwarded PDF does and should be labelled as untrusted text."
+      ],
+      "unverified": [
+        "Whether gpt-6-sol could accept video input if the provider entry declared it; today the family's provider entries declare text and image only.",
+        "Whether a CLI media entry can hand back still frames as well as text; the docs show text output only."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  }
+]

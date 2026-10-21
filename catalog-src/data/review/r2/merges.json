@@ -1,0 +1,216 @@
+[
+ {
+  "into": "F002",
+  "members": [
+   "F002",
+   "F084"
+  ],
+  "why": "same purpose",
+  "note": "The local privacy gate for text PDFs is the condition Tony set for switching attachment intake on (decision 3 of 9 Oct, and the wave A order 'gate, then attachments'), and it has nothing to inspect without that switch, so the gate and photo and PDF reading become one wave A card that states the gate's limit.",
+  "record": {
+   "name": "Photos and PDFs sent to Happy are read and answered, behind a local privacy gate for text PDFs",
+   "description": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it; today a message that is only an attachment is dropped without a reply. Before that is switched on, a check on the Mac refuses a PDF whose readable text looks like a bank statement or tax form and says why; scanned PDFs and photos cannot be checked and reach the cloud model unscreened.",
+   "example": "Jordan sends a photo of a camp flyer and asks 'what do I need to bring?' and gets the answer in the same thread. Tony sends last month's bank e-statement PDF by mistake and gets a fixed line: this looks like a bank statement, so it was not sent to the cloud model.",
+   "how": "Gate first (F084): an in-house plugin whose `before_agent_run` hook returns `outcome: \"block\"` on pattern hits in the extracted file text; it needs `plugins.entries.<id>.hooks.allowConversationAccess: true` and is proven with a seeded statement PDF before the switch goes on. Switch (F002): set `channels.imessage.includeAttachments: true`; Basic mode already carries media, with inbound caps of 10 MB for an image and 20 MB for audio. Images then pass natively to the reply model and attached PDFs arrive as extracted text blocks; the optional `pdf` tool (`group:media`) adds page selection through local PDFium, 10 MB and 20 pages by default. Set `tools.media.audio.enabled: false` until local transcription (F003) exists, and add one eval case: a PDF carrying hidden instructions must cause no tool call.",
+   "depends_on": [
+    "Decision 3 (9 Oct): family photos and PDFs go to the cloud model under store:false, with the gate as the condition",
+    "`plugins.entries.<id>.hooks.allowConversationAccess: true` granted to the in-house gate plugin in config",
+    "A seeded bank-statement PDF refused in a test before the attachment switch goes on"
+   ],
+   "caveats": [
+    "The gate reads only extracted text, so a scanned statement or a phone photo of one reaches the vision model unscreened; no local vision model exists to check photos.",
+    "Whether the extracted file text is inside the prompt the hook receives is untested, so the seeded-PDF test decides whether the gate works at all.",
+    "The same switch also lets voice memos and video in, and audio auto-detection tries a configured provider key before any local program, so audio understanding stays off until local transcription (F003) is in place and one live turn shows what a voice memo turns into.",
+    "Happy cannot watch video on this provider set, so an AGENTS.md line has it say so and ask for a photo or a few screenshots.",
+    "store:false covers less than it reads: OpenAI can keep abuse-monitoring logs, content included, for up to 30 days unless the organisation has Zero Data Retention, and family photos fall under that.",
+    "Whether medical bills and Explanation of Benefits statements are let through the gate is still to settle (from the folded 'explain this' entry).",
+    "A local classifier (OCL-14) could later replace the pattern match; it takes at most 512 tokens per input, so the gate would send the first lines of each page."
+   ],
+   "safety": "A photo or PDF is outside content read by the agent that holds a parent's memory; that agent cannot browse, and its ways out stay closed or pinned to the family (G009, F007, F019). The gate runs on the Mac before any cloud call, can only block, and blocks if it fails. It is a tripwire for text PDFs, not a guarantee.",
+   "tier": 1,
+   "section": "Channel, media and voice",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "F003",
+  "members": [
+   "F003",
+   "VOX-04"
+  ],
+  "why": "same purpose",
+  "note": "Voice memos in and spoken replies out are the roadmap's single 'Voice (iMessage)' component, tied together by the reply-after-a-voice-memo setting, so local transcription and the local voice become one wave A card with the neural voice named as a later step.",
+  "record": {
+   "name": "Voice over iMessage, kept on the Mac mini: voice memos in, spoken replies out",
+   "description": "A parent sends a voice memo instead of typing; the Mac mini transcribes it, echoes the text back and answers, and after a voice memo or on request the reply also arrives as an audio file made on the Mac mini (the built-in macOS voice first, a more natural voice later). Speech stays on the Mac only with the transcriber listed explicitly and the default-on Microsoft online voice switched off, and whether the audio file itself is withheld from the cloud chat model is still to be confirmed on a live turn.",
+   "example": "Jordan sends a voice memo: 'what's on tomorrow?' Happy echoes the transcript, answers in text and attaches the same answer as audio. Or a parent sends `/tts latest` after a long answer.",
+   "how": "In (F003): an explicit `tools.media.models` CLI entry for `whisper-cli` (audio capability, `{{AttachmentPath}}`) plus `echoTranscript`; needs Homebrew whisper.cpp, ffmpeg and a GGML model file, and OpenClaw converts to WAV itself. Out (VOX-04), step 1 with no install: the gateway `tts` block with provider `tts-local-cli` running the macOS `say` command, `tts.auto: \"inbound\"` per agent so a voice memo gets a spoken answer, and `/tts latest` on demand; set `tts.providers.microsoft.enabled: false` and keep speech off for the research and inbox agents. Later step: a natural voice by one of three documented routes (Speech Swift's loopback server behind the `openai` speech provider, the `speech` command through `tts-local-cli`, or a Piper voice through sherpa-onnx).",
+   "depends_on": [
+    "F002 attachment intake switched on (voice memos arrive through the same switch)",
+    "whisper.cpp, ffmpeg and a GGML model file installed on the Mac mini",
+    "For the natural voice only: a decision on which local engine, and its Homebrew installs done from the admin account"
+   ],
+   "caveats": [
+    "A parent can already dictate a message with the iPhone keyboard and send it as text, and the roadmap schedules voice memos with the kids' voice milestone, so for the two adults this is a convenience and not a new ability.",
+    "Local-only is not the default in either direction: audio auto-detection tries a configured provider key before any local program, and the keyless Microsoft online voice is enabled by default and can serve as a fallback, so both are pinned in config.",
+    "`/tts provider <id>` is open to any authorized sender and changes the provider for everyone, so having no cloud speech provider configured is the control, and the bundled `sag` skill (ElevenLabs, a cloud voice) stays off.",
+    "The reply is a plain audio file attachment (WAV, several megabytes for a few minutes), not a voice bubble; the voice-bubble option belongs to the Private API actions, which need SIP off.",
+    "Long replies are summarised by the cloud chat model before synthesis, or truncated; for kids' content later that step must be local or off.",
+    "The natural-voice routes add a third-party Homebrew package from a 0.0.x project, a loopback server with its own launchd job and a model download; none of `speech`, `speech-server` or `ffmpeg` is installed today.",
+    "Transcription speed and accuracy for Chinese or mixed-language speech, and whether ffmpeg decodes the iMessage voice-memo format cleanly, were not measured.",
+    "Talk mode (VOX-01) has its own speech setting and does not pick up this voice automatically."
+   ],
+   "safety": "Speech-to-text runs on the Mac mini; the transcript goes to the cloud chat model like any typed message, and whether the audio file is withheld from it is an open check. Synthesis adds no way to send data out and is local only once cloud speech providers are disabled. A voice memo comes from an allowlisted parent and brings no outside content.",
+   "tier": 1,
+   "section": "Channel, media and voice",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "F010",
+  "members": [
+   "F010",
+   "F011"
+  ],
+  "why": "same purpose",
+  "note": "Offering reminders and calendar entries for the dates Happy reads, and writing the calendar entry after an approve, are one outcome in the same wave, and the proposal card's calendar half could not exist without the write card, so they become one card that states the reminder part and the higher-risk calendar write separately.",
+  "record": {
+   "name": "Dates into reminders and the family calendar after a yes (typed request, flyer photo or PDF)",
+   "description": "After reading a flyer, slip or schedule, or on a typed request, Happy lists the dates it found, each spelled out in full, and offers reminders or family-calendar entries; nothing is written until the parent says yes. Reminders come first and need no new tool; the calendar entry is a separate, higher-risk step: a write to the family calendar with no invitees after an explicit approve, or a tap-to-add calendar file if a test shows the iPhone offers to add one from Messages.",
+   "example": "Jordan sends a photo of the soccer season schedule. Happy replies with the eight game dates it read, flags one with no start time, and asks whether to set a reminder the evening before each and to put the games on the family calendar. Nothing is written until she answers.",
+   "how": "Part 1, proposals (F011): a prompt-level standing order on the parent's own agent, on top of photo and PDF reading (F002) and reminders (F007); a plain conversational proposal, not `ask_user`. Optionally the bundled `llm-task` plugin returns the dates as a schema-checked list (enable the plugin, add it with `tools.alsoAllow`, list both custom model ids in `llm.allowedCompletionModels`, keep `allowModelOverride` false). Part 2, calendar write (F010): an in-house write MCP wrapping `gog calendar create` with its own write token; a `before_tool_call` hook returns `requireApproval` (10-minute cap) and rejects attendees, and the wrapper leaves delete out. A small plugin that emits an .ics attachment is built only if the tap-to-add test passes on both parents' phones.",
+   "depends_on": [
+    "F002 photo and PDF reading with inbound attachments on (for dates taken from a photo or PDF)",
+    "F007 reminders (the reminder part)",
+    "F009 calendar connection (gog and the Google sign-in); the write uses its own separate token",
+    "Decision 4 (Google or iCloud calendar): the approved write wraps gog, so it applies only on the Google path",
+    "An in-house before_tool_call hook that asks for approval and rejects attendees",
+    "F031 household store, only for keeping dated rows such as a lunch menu"
+   ],
+   "caveats": [
+    "Dates read from a photo can be wrong (a missing year, two children on one sheet, a blurry corner), so every proposal spells each date out in full and nothing is written until the parent says yes.",
+    "Until the calendar write is built the offer is reminders only; that part needs only photo and PDF reading (F002) and reminders (F007).",
+    "The yes before a reminder is a prompt rule; the approval before a calendar write is enforced by the hook.",
+    "The tap-to-add calendar file is unconfirmed: the one report found is of a calendar file that came through Gmail and opened in Files on iOS 18 with no option to add it, so it is tested on both parents' phones before anything is built for it.",
+    "For one event on a poster a recent iPhone can already offer to add it from the camera; Happy's part is a sheet with many dates, a PDF, a day-before reminder and the calendar both parents share.",
+    "Typing /approve in iMessage Basic mode to resolve the approval was not tested end to end.",
+    "The calendar write applies only if the calendar decision lands on Google, and neither the write wrapper nor the calendar-file plugin exists yet.",
+    "A monthly lunch menu or a season schedule is one more dated document: the proposed rows are stored (F031) only after a yes, and Happy is never the allergy authority."
+   ],
+   "safety": "The riskier part is the calendar write: it changes the shared family calendar, so it gets its own token, an approval enforced by a hook that fails closed, no invitees and no delete. Proposals and reminders stay on the parent's own agent and reach only the asker. Flyer text is outside content, so every write waits for a yes.",
+   "tier": 2,
+   "section": "Calendar and family coordination",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "F018",
+  "members": [
+   "F018",
+   "F029",
+   "SRC-03"
+  ],
+  "why": "same batch",
+  "note": "The weather-alert watch, the team-schedule and page watchers and the recall watch are the same operator-created command job with no model (a fetch of a public source, a seen-ids state file, one templated line or NO_REPLY) with the same wave B dependencies, so they become one watcher card in which each watch stays its own switch; effort rises to L for five scripts.",
+  "record": {
+   "name": "Model-free watchers on public sources: storm alerts for home, moved games and changed pages, matched recalls",
+   "description": "Scripts with no model check public sources on a schedule and text a parent once when something new matters: a winter storm, wind, flood or freeze alert for home (with a chore checklist and, on a school night, a line to watch for the school's own notice), a practice or game that moved or a registered site that posted something new, or a product, food or medicine recall that matches what the family owns. Each watch is its own switch that Tony sets up; Happy does not know whether school is closed.",
+   "example": "Trigger: the Saturday game's start time changes in the team's feed. Text: 'Soccer Saturday moved from 9:00 to 10:30, same field.'",
+   "how": "All are operator-created host command jobs (`--command-argv`) with no model call: a script fetches a public source, keeps seen ids in a state file and prints one templated line or `NO_REPLY`. Weather (F018): `nws-alerts.mjs` every 30 minutes polls the National Weather Service active-alerts feed for the home point and dedups on the alert id. Schedules and pages (F029, SRC-09): `ics-watch.mjs`, hourly in season, reads a team's subscription link and reports changed events in the next seven days; `watch-page.mjs` every 6 hours uses a site's feed when there is one, otherwise a plain https GET and a text hash. Recalls (SRC-03, SRC-04): `cpsc-recalls.mjs` daily and `fda-recalls.mjs` twice a day, matched locally against owned-item, allergen, staples and medicine keyword lists.",
+   "depends_on": [
+    "G003 jobs registry",
+    "G001 notification policy",
+    "One job per parent with its own state file, or one job delivering to the parents' group chat (F006)",
+    "F009 family calendar read-only and decision 4 (Google or iCloud calendar), only for showing a team schedule in calendar answers",
+    "A first check of which of the family's school, town, library and camp sites publish a feed",
+    "For the recall watch: the home systems registry in F043 or a hand-kept owned-items list, and allergen, staples and medicine keyword lists in family.json5"
+   ],
+   "caveats": [
+    "A parent cannot start a watch from chat: command jobs are created by the operator, so each new watch is a request to Tony.",
+    "None of these gives earlier notice than the source's own service: Apple's Weather app can notify about government alerts once that is switched on, the team app's push is faster for a same-day change, and both recall agencies offer their own sign-ups; Happy adds the match, the school-night line and one text to both parents.",
+    "Happy is down in a power cut or a network outage and FDA's own list does not carry every recall, so silence from a watch is never an all-clear and the phones' emergency alerts stay on.",
+    "With a shared state file the second parent's job finds nothing new and stays silent, so each parent's job keeps its own file or one job delivers to the parents' group chat.",
+    "Command jobs run on the Gateway host as the happy user, outside the sandbox, agent tool policy and OpenClaw's fetch guardrails, so the scripts check each address themselves (https, public host) and are reviewed like the rest of the config repo.",
+    "A team's subscription link is a bearer secret, so it sits in a file only the happy user can read and stays out of family.json5 if that file is committed.",
+    "A hash watch on a school or town page can fire on changes that do not matter, pages that need JavaScript are out of reach, and many school portals publish no feed.",
+    "The recall match is only as good as the family's lists (substring matching gives false positives and misses unlisted items), and meat and poultry recalls and cars are not covered; parents add VINs and car seats to NHTSA's own app."
+   ],
+   "safety": "No model reads any feed, page or recall: each script prints a fixed line with outside titles stripped and capped, and only the official or registered link. Requests go only to addresses Tony registered, and nothing about the family is sent out. Team schedules say where the kids will be, so they stay on the host and go only to pinned parent handles.",
+   "tier": 2,
+   "section": "Research and page watchers",
+   "wave": "B",
+   "effort": "L"
+  }
+ },
+ {
+  "into": "F033",
+  "members": [
+   "F033",
+   "WEB-11"
+  ],
+  "why": "same purpose",
+  "note": "A recipe link reduced to ingredients and steps and the Sunday dinner plan both end in the same offer to add a dinner's ingredients to the shared grocery list, and the link is the only stated way a recipe gets into the recipe box the plan draws on, so they become one wave C card that names the research agent's part and the parent's agent's part separately.",
+  "record": {
+   "name": "Meals to the grocery list: recipe links, a recipe box and a Sunday dinner plan",
+   "description": "Text a recipe link and get the ingredient list and the steps, scaled to the number of people, with an offer to add the ingredients to the shared grocery list and to save the recipe. On Sunday afternoon the parent who cooks gets five dinner ideas drawn from the saved recipes and fitted to the week's calendar and allergies; a reply swaps a night or adds a dinner's ingredients to the list.",
+   "example": "A parent texts: '<recipe link> What do I need for this for six people?' Or the Sunday trigger: five dinner ideas arrive and the cook replies 'swap Wednesday'.",
+   "how": "Recipe link (WEB-11): the parent's own agent hands the URL to the research agent with `sessions_spawn`; research fetches the page with `web_fetch`, makes one `llm-task` call with a small schema (title, yield, ingredients, steps, source link) and returns it. The parent's agent scales quantities, proposes items for the shared grocery list (F030), written only after a yes, and after a yes saves the recipe to the recipe box (a household store row or a vault page). Sunday plan (F033): an isolated scheduled job on the parent's agent reads the saved recipes and the calendar and saves the plan for the main session to use when the parent replies; nothing is ordered. Pages plain fetch cannot read fall back to the research browser and the summarize wrapper (F020).",
+   "depends_on": [
+    "F019 research agent (reads the recipe page)",
+    "llm-task plugin enabled in config (the schema-shaped extraction)",
+    "F030 Reminders bridge for the grocery list",
+    "F009 calendar read (Sunday plan)",
+    "F031 household store or F043 vault for the recipe box and the saved plan",
+    "F020 research browser and summarize wrapper, only as fallbacks for script-rendered pages and video recipes"
+   ],
+   "caveats": [
+    "The recipe box starts empty; a recipe gets in when a parent sends a link and says yes to saving it.",
+    "The fetch returns readable article text, not the page's embedded recipe data, so the model parses ingredients from prose and can drop a line; the source link is always included.",
+    "Some recipe sites sit behind bot walls or paywalls and return nothing; Happy says so instead of guessing.",
+    "The phone's reader view and recipe-keeper apps already clean up a recipe page; the added value is the hand-off to the shared grocery list and a plan fitted to the family calendar.",
+    "Happy does not know what is in the kitchen, so it offers the whole ingredient list and the parent strikes what they have.",
+    "Scaling quantities is arithmetic done by a language model: fine for a stew, worth a second look for baking.",
+    "The reading part works the day the research agent exists; the grocery hand-off waits on the Reminders bridge (F030) and the Sunday plan on the calendar connection (F009), and neither exists yet.",
+    "The schema fixes the shape of what research returns, not its content, and nothing in the platform forces that check to run."
+   ],
+   "safety": "Two agents, kept apart: research reads the untrusted recipe page and is given only an address and a serving count; the parent's own agent holds the calendar, allergies and saved recipes and cannot browse. Text returned from research, and a recipe saved from it, is still outside content, so list writes and saves wait for a yes.",
+   "tier": 2,
+   "section": "Lists, meals and home upkeep",
+   "wave": "C"
+  }
+ },
+ {
+  "into": "G006",
+  "members": [
+   "G006",
+   "F085"
+  ],
+  "why": "same purpose",
+  "note": "The audit digest of what Happy did and the weekly review of what it saved to memory are the same Sunday look at Happy's own activity, sent to the same adult in the same wave, and each record already says to send them as one text; forgetting a conversation stays a separate operator step on the same card.",
+  "record": {
+   "name": "What Happy did and what it remembered: a weekly review, and forgetting a conversation on request",
+   "description": "On request, or in one Sunday text, each parent sees what Happy did on their behalf (reminders created, list items added, texts sent, approvals given) and what it saved to their memory that week. On request Tony clears what one conversation left in memory, previewed first: the forget command removes the parts it tracked and lists the notes Happy wrote itself, which are then deleted by hand.",
+   "example": "Sunday text: 'This week I set 4 reminders for you, added 6 items to Groceries, sent 2 texts to Jordan, asked you for 1 approval (given) and saved 3 notes to memory.' Or a parent asks 'what did you do today?' and gets the same list for today.",
+   "how": "Actions (G006): `openclaw audit --kind tool_action` gives tool names and outcomes, never arguments, so the target of each action comes from an in-house record (an `after_tool_call` hook, or the journal rows the write tools keep for undo, CRT-01) in one table in the household store (F031). A command automation renders the Sunday text from that table with no model; a small read tool that returns only the asker's own rows answers on request. Memory (F085): the week's saves come from the same per-write record, or from a weekly isolated automation per adult limited to `memory_search` and `memory_get`. Forgetting (F085, operator runbook): `openclaw memory forget --agent <id> --session <id-or-key> --dry-run`, read the report, repeat without `--dry-run`, then hand-delete the lines listed under `curatedWrites`.",
+   "depends_on": [
+    "F031 household store (the side-effect table)",
+    "F041 durable per-person memory (the write path whose saves this reviews)",
+    "CRT-01 undo journal, if built: one table serves both",
+    "Message audit rows switched on (`logging.audit.messages`), for the 'texts sent' line"
+   ],
+   "caveats": [
+    "The digest, the memory review and the week-ahead brief (F014) would otherwise be three Sunday texts to the same parent, so the first two go out as one.",
+    "OpenClaw's own ledger leaves out arguments on purpose, so the in-house table that holds item text and recipients needs a retention limit, which is not yet defined.",
+    "Forgetting works per conversation, not per topic: the forget command selects whole sessions, deletes at once unless `--dry-run` is passed, and leaves the transcripts and any reworded copies.",
+    "Lines Happy wrote into the memory files itself after a 'remember this' are listed for review but not deleted, so Tony removes them by hand; forgetting a single topic is likewise a hand edit.",
+    "Lines in MEMORY.md carry no date unless the agent writes one, so the weekly memory list is reliable only when it comes from the per-write record and not from the file.",
+    "Whether switching on message audit rows needs a Gateway restart is unclear, because the two installed pages disagree.",
+    "The mail-session exclusion setting only keeps those sessions out of automatic ingestion, which is switched off, so today it is a backstop that changes nothing."
+   ],
+   "safety": "The review only reports: each parent sees only their own agent's actions and saves, a limit enforced in the read tool's code because the table sits in the shared store. The riskier part is forgetting, which deletes memory at once; it stays an operator command at the Mac, with a preview first, and is never handed to a chat command.",
+   "tier": 2,
+   "section": "Operator checks and recovery",
+   "wave": "B"
+  }
+ }
+]

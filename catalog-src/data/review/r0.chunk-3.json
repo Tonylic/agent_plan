@@ -1,0 +1,1505 @@
+[
+ {
+  "id": "F048",
+  "origin": "9 Oct",
+  "name": "Per-person Gmail drafts (<p>-gmail-drafts MCP)",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "Happy writes drafts into the owner's own Gmail Drafts folder; the owner reviews and sends from Gmail, and Happy has no way to send.",
+  "example": "",
+  "how": "`gog --gmail-no-send mcp --allow-write --allow-tool gmail_create_draft,gmail_update_draft`; fail-closed `before_tool_call` block on any send tool; CLI drafts thread with `--reply-to-message-id`.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog says 'verify `--reply-to-message-id` on drafts create, else drafts are unthreaded'. The upstream command reference documents `--reply-to-message-id` and `--thread-id` on `gog gmail drafts create`, plus a separate `gog gmail drafts reply <messageId>`; the installed SKILL.md (line 59) merely omits them.",
+   "The catalog describes a custom MCP around `gog gmail drafts create` with the hook as the only send barrier. Upstream gog's own MCP server already keeps `gmail_send_message` and `gmail_send_draft` behind a separate `--allow-gmail-send` flag, so the hook is a second layer, not the only one."
+  ],
+  "unverified": [
+   "Whether gog's MCP tool `gmail_create_draft` exposes the reply and thread parameters that the CLI command has; if not, threaded drafts need a thin wrapper over the CLI.",
+   "gog is not installed here; confirm the tool names with `gog mcp --allow-write --list-tools` after install.",
+   "The promptfoo 'send attempt is blocked' test is in-house."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+    "title": "gogcli docs: MCP server",
+    "anchor": "gmail_create_draft",
+    "supports": "In gog's MCP mode the draft tools appear only with the write flag, the send tools need a separate send flag on top, and the no-send policy blocks sending while drafts still work.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-gmail-drafts-create.md",
+    "title": "gogcli command reference: gog gmail drafts create",
+    "anchor": "--reply-to-message-id",
+    "supports": "The draft-create command accepts a reply-to message id (and a thread id), which sets the reply headers and thread so the draft lands inside the conversation.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/gmail/api/auth/scopes",
+    "title": "Gmail API: Choose scopes",
+    "anchor": "gmail.compose",
+    "supports": "Google offers no drafts-only scope: the compose scope covers managing drafts and sending, and modify also includes sending, so the token itself can always send.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:67",
+    "title": "Tool call policy hooks",
+    "anchor": "block: true",
+    "supports": "A plugin's before_tool_call handler that returns a block is terminal, so a send tool can be denied in code the model cannot argue with.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F049",
+  "origin": "9 Oct",
+  "name": "mailout: email the owner only ('email me this')",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "'Email me this': long answers, tables and plans land in the asker's own inbox from a dedicated family sender; nobody else can be a recipient.",
+  "example": "",
+  "how": "Send-only tool over `gog gmail send` from a dedicated account; `before_tool_call` hook pins `to` to the requester's owner address, rejects cc/bcc, fails closed; `<p>-main` only.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That a parameter rewrite from before_tool_call is honoured for MCP-sourced tools: the doc states it for host-owned parameters and notes some native relays reject rewrites. Blocking is documented as terminal, so the safer build blocks unless the recipient equals the owner, or uses an in-house tool with no recipient parameter at all.",
+   "A daily send cap is in-house code; I found no built-in cap in the pages read.",
+   "Creating the dedicated family sender account and granting its send scope is a manual step outside OpenClaw."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:57",
+    "title": "Bundled gog skill",
+    "anchor": "gog gmail send",
+    "supports": "The gog CLI sends mail with explicit to, subject and a body read from a file or stdin, which is the primitive the mailout tool wraps.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:69",
+    "title": "Tool call policy hooks",
+    "anchor": "to rewrite host-owned tool parameters",
+    "supports": "A before_tool_call handler may return replacement parameters, which is how a recipient can be forced to the owner's address in code.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+    "title": "gogcli docs: MCP server",
+    "anchor": "--allow-gmail-send",
+    "supports": "In gog's MCP mode, sending is off unless a dedicated send flag is passed in addition to write access and tool selection.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-02",
+  "name": "Lost or stolen phone: lock one person out",
+  "tier": 1,
+  "cluster": "recovery and trust",
+  "description": "If a parent's iPhone is lost or stolen, the other parent can stop Happy answering that person's handle with one text, before anyone reaches the Mac. Today the only switch is Tony editing the family file and redeploying.",
+  "example": "Tony texts: 'Happy, lock out Jordan' after her phone is left in a taxi.",
+  "how": "Happy trusts the sender's Apple handle: channels.imessage.dmPolicy is 'allowlist' and channels.imessage.allowFrom lists the family, and the same list decides who may answer /approve. Whoever holds an unlocked phone is that person to Happy. The built-in '/allowlist remove' needs commands.config: true, which this install keeps off. So: (1) Today, operator path: remove the handle in family.json5, run gen-family and the deploy script. The docs' incident steps offer the blunt version, dmPolicy 'disabled' for everyone. (2) Build, chat path: extend the kill-switch plugin (G005). A before_dispatch claim matches one exact phrase from an adult's handle, writes the named person's handles to a suspended file, and from then on claims every inbound message from those handles with no reply; the message_sending hook cancels scheduled texts to them. Lifting the suspension is CLI-only. (3) If that phone also ran the OpenClaw app, 'openclaw devices revoke' and 'openclaw devices remove' retire its Gateway token. (4) Phone side, done by the owner from another device: Find My's lost mode locks the phone with its passcode. Enforcement note from review: before_dispatch is a claim hook, and the hook runner's default for claim hooks is to log and continue when a handler throws, while a failed message_sending handler is skipped. A suspension that lives only in those two hooks therefore fails open. The suspended file must also be checked in before_agent_run, which blocks the run before the model reads the prompt, fails closed and carries ctx.senderId, and in before_tool_call for that person's agent. The phrase match itself can stay in before_dispatch.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "G005 kill-switch plugin (shares the before_dispatch hook)",
+   "family.json5 registry and gen-family"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "A locked phone already stops most of this. The gap is a phone taken while unlocked, or a passcode seen over a shoulder: Apple's Stolen Device Protection page lists the actions it protects and Messages is not among them.",
+   "Either adult can lock the other out. That is a nuisance at worst and Tony undoes it at the Mac.",
+   "If whoever holds the phone sends the phrase first, the real owner needs the CLI.",
+   "After the phone is replaced the handle is the same, so the suspension has to be lifted by hand.",
+   "It stops delivery to that person, not their scheduled jobs; pair with pause (G002) if the jobs should stop too.",
+   "Apple's Stolen Device Protection page lists opening a locked app among the actions that need Face ID or Touch ID with no passcode fallback. If each parent can lock the Messages app that way, the unlocked-phone gap narrows on the phone itself, with nothing to build (not confirmed, see unverified).",
+   "The lock phrase works as a weak shared secret: a thief has to know Happy exists and what the phrase is. Keep it out of Happy's own help text and replies."
+  ],
+  "safety": "The phrase can only narrow access. Nothing in the chat path can add a sender; that stays a reviewed change to family.json5. The chat-path suspension does not take the handle off channels.imessage.allowFrom, which is also the approver list for /approve and for tapback approvals, and the docs say those shortcuts bypass dmPolicy. So only the operator path (remove the handle and redeploy) removes a stolen phone's approver rights. Until that is done, the suspension has to block that person's agent runs and tool calls with fail-closed hooks so that no new approval prompt is raised for the stolen phone to answer, and that person's scheduled jobs should be paused (G002).",
+  "unverified": [
+   "Whether iMessage for a phone number can be re-registered on another device after a SIM swap without the Apple Account password.",
+   "Whether owner-only slash commands from a suspended handle are parsed before the before_dispatch hook runs.",
+   "Whether the Messages app can be locked with Face ID on the parents' iPhones; Apple's app-lock guide page did not render its body in this run.",
+   "What the sender sees when before_agent_run blocks a run and no replacement message is set.",
+   "Whether a tapback from a suspended handle can still resolve a pending approval; the docs say reaction approvals bypass dmPolicy and are gated only by the approver list."
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G016",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:24",
+    "title": "iMessage access control and routing: DM policy",
+    "anchor": "channels.imessage.allowFrom",
+    "supports": "Admission to Happy over iMessage is decided by a list of sender handles.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage rich messages: approvals",
+    "anchor": "approver list",
+    "supports": "The /approve text command is authorised against the same allowFrom list, so a handle on it can resolve approvals.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:634",
+    "title": "Slash commands: argument notes",
+    "anchor": "commands.config: true",
+    "supports": "Removing an allowlist entry from chat needs the config-commands switch, which the family's baseline keeps off.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/operator-incident-response.md:17",
+    "title": "Operator incident response: contain",
+    "anchor": "Freeze access",
+    "supports": "The documented containment step is to switch risky DMs to a disabled policy and remove allow-all entries.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Plugin hooks: message hooks",
+    "anchor": "handled: true",
+    "supports": "A plugin can claim an inbound message before model dispatch and end it with a fixed reply or with silence.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/devices.md:175",
+    "title": "openclaw devices revoke",
+    "anchor": "openclaw devices revoke",
+    "supports": "A paired device's token can be revoked by an admin, which covers a lost phone that ran the OpenClaw app.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/101593",
+    "title": "How to find your lost iPhone or iPad - Apple Support",
+    "anchor": "lost iPhone or iPad",
+    "supports": "Marking the device as lost from another device locks it with its passcode and suspends cards; Apple also advises reviewing the Apple Account.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/120340",
+    "title": "About Stolen Device Protection for iPhone - Apple Support",
+    "anchor": "Stolen Device Protection",
+    "supports": "The feature gates passwords, payment methods and account changes behind biometrics and a delay; the page does not list Messages as protected.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:99",
+    "title": "Plugin hooks reference: per-handler defaults",
+    "anchor": "including claim hooks",
+    "supports": "Claim hooks such as before_dispatch have no fail-closed default: a handler that throws is logged and dispatch continues.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/prompt-and-session.md:153",
+    "title": "Plugin hooks: prompt and session, before_agent_run",
+    "anchor": "outcome: \"block\"",
+    "supports": "A before_agent_run handler can stop a run before the model reads the prompt, with an optional user-facing replacement message.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources hold, but the chat-path lock is built on hooks that fail open (claim hooks log and continue on error; a failed message_sending handler is skipped), so it needs a fail-closed gate in before_agent_run. The safety claim that suspension removes approver rights is wrong for the chat path: the handle stays on allowFrom, which is the approver list."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "People and access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-03",
+  "name": "Guest tier: a grandparent or sitter can text Happy and gets a fridge-level card only",
+  "tier": 1,
+  "cluster": "extended family",
+  "description": "A third kind of user between 'family adult' and 'nobody'. A grandparent minding the kids, or a regular sitter, can text Happy and get answers from a short fixed card (bedtimes, allergies, where things are, who to call) and nothing else. Today such a sender is dropped, or if allowlisted lands in the tool-less inbox agent that knows nothing.",
+  "example": "Grandma texts in Chinese: 'What time does the younger one go to bed, and can she have peanuts?'",
+  "how": "family.json5 gains a role 'guest'. gen-family adds the guest's handle to channels.imessage.allowFrom and emits a bindings[] entry with match.peer (kind 'direct', id the handle) to a shared 'guest' agent: no tools, memory off, minimal profile, its own workspace whose AGENTS.md is the card, rendered from the sitter facts (F036). Bindings only route; admission is still the allowlist. Replies follow the guest's language (G011). 'Tell the parents ...' is claimed by a before_dispatch pattern and forwarded word for word through the pinned family delivery (G009), the same shape as the kid check-in relay (G018). A dated guest, such as a sitter for one evening, carries an expiry date in the registry; the guest plugin refuses that handle after the date in before_agent_run, which fails closed, and Tony removes the entry at the next reviewed deploy. No unattended job edits the registry or deploys. Whether grandparents also become recipients for G009 is a separate decision; the default stays no, with a parent forwarding drafts. Before the first guest is admitted, set commands.allowFrom to the two parents: it is unset on this install, so command authorization follows the channel allowlist and a guest on allowFrom could send slash commands and inline directives to the guest agent.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "decision: who beyond the two parents may text Happy",
+   "F036 sitter facts",
+   "G009 family delivery",
+   "G011 languages",
+   "every approval hook checks that the requester is a parent",
+   "commands.allowFrom set to the two parents before any guest is admitted",
+   "approvals stay in 'session' mode, so an approval id only ever appears in the chat that asked (already set in the config)"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "Adding a handle to allowFrom also puts it on the /approve approver list, and iMessage has no separate approver list. A plugin cannot check who resolved an approval (its onResolution callback receives only the decision), and the roadmap already records that 2026.9.7 cannot tie an approval to the person whose agent asked. What protects the parents is that the guest agent has no tools and so raises no approvals, and that prompts go only to the chat that asked, so a guest never sees an approval id. The roadmap's alternative for non-approvers, admission by pairing, costs a pairing-code reply to unknown numbers.",
+   "Most sitters will just text the parents. The realistic user is a grandparent who stays for days and writes in another language.",
+   "The guest must be on iMessage. A WeChat channel exists only as an external plugin maintained by Tencent's Weixin team with a QR login of a personal account; adding it for one relative is a much bigger change than this feature. WhatsApp is on the never-list.",
+   "The card goes to a cloud model and to a person outside the two-parent circle. Put on it only what you would tape to the fridge: no door codes, no Wi-Fi password, no policy or record numbers.",
+   "The install uses the allowlist policy, so strangers get silence. Under the pairing policy an unknown number would be sent a pairing code; do not switch to it for guests.",
+   "The relayed 'tell the parents' text is written by an outsider. Deliver it as a clearly quoted line; if it lands in a parent's agent session it is untrusted text sitting next to private memory."
+  ],
+  "safety": "The guest agent has no tools and no memory, so the card is all there is to leak and it was written for that reader. It reads only the guest's own messages. Its only ways out are a reply to that guest and the verbatim relay to the two parents, which is done in code and not by the model. It is a shared agent and, by the roadmap rule, holds no accounts. It is never used for the children.",
+  "unverified": [
+   "That allowFrom entries have no built-in expiry; none was found in the installed docs.",
+   "Whether the guest agent or the group agent would answer if a guest writes in a group chat with the parents.",
+   "Whether commands.allowFrom also governs /approve on iMessage, or only the channel approver list does.",
+   "Whether a relay sent through the family delivery is mirrored into the receiving parent's agent session.",
+   "Whether a guest admitted through an accessGroup entry, instead of a literal handle, counts as an approver."
+  ],
+  "overlaps_existing": [
+   "F036",
+   "G011",
+   "G018",
+   "G009"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:20",
+    "title": "iMessage access control and routing: DM policy",
+    "anchor": "allowlist",
+    "supports": "Under the allowlist policy only listed handles are admitted, so a guest has to be added explicitly.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-bindings.md:13",
+    "title": "Agent bindings",
+    "anchor": "Bindings only pick the agent",
+    "supports": "A binding routes an already-admitted sender to an agent and grants no access by itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage rich messages: approvals",
+    "anchor": "approver list",
+    "supports": "Any handle in allowFrom is authorised for /approve, which is why a guest entry needs an owner check in approval hooks.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/pairing.md:21",
+    "title": "Pairing: DM pairing",
+    "anchor": "unknown senders get a short code",
+    "supports": "Under the pairing policy an unknown sender is sent a code and waits for approval, which is the alternative the family did not choose.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/multi-user.md:17",
+    "title": "Multi-user mode: trust boundary",
+    "anchor": "give them separate agents",
+    "supports": "OpenClaw's advice for people who must not reach each other's data is a separate agent per person or group.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/wechat.md:13",
+    "title": "WeChat channel",
+    "anchor": "external plugin",
+    "supports": "WeChat is reached through an external plugin maintained outside OpenClaw, with direct chats only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:161",
+    "title": "Slash commands: configuration",
+    "anchor": "commands.allowFrom",
+    "supports": "When no command allowlist is configured, command authorization follows the channel's allowlists, so any admitted sender is command-authorized.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:58",
+    "title": "Plugin hooks: tool policy, requireApproval",
+    "anchor": "onResolution",
+    "supports": "A plugin's approval callback receives only the decision, not the identity of whoever resolved it, so a hook cannot enforce 'parents only' on resolution.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/session.md:63",
+    "title": "Session management: DM isolation",
+    "anchor": "per-channel-peer",
+    "supports": "With per-sender DM scope, which this install already sets, two guests routed to one guest agent do not share a conversation.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Admission through allowFrom gives a guest more than chat: commands.allowFrom is unset on this install, so a guest could send slash commands and directives, and the stated mitigation ('every approval hook checks the requester is a parent') cannot be built, because a plugin approval hook only learns the decision, not who resolved it. The unattended job that edits the registry and redeploys also breaks the reviewed-deploy rule."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "People and access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F072",
+  "origin": "9 Oct",
+  "name": "Kids agent base: per-kid iMessage handle, no tools, no memory, classifiers",
+  "tier": 1,
+  "cluster": "kids",
+  "description": "Each child texts Happy from their own Apple account and gets a tool-less, memory-less helper with safety checks both ways; cannot ship until a local model exists.",
+  "example": "",
+  "how": "bindings[] by DM handle to one agent per kid; minimal profile plus deny session_status and gateway; in-house classifier plugin on before_dispatch and message_sending; memory.search off; daily reset.",
+  "who": "kid",
+  "risk": "low",
+  "readiness": "blocked",
+  "dependency_old": "M2-local",
+  "value": 4,
+  "effort": "L",
+  "caveats": [],
+  "corrections": [
+   "'OpenAI terms are 13+, no cloud shortcut' could not be confirmed as worded: OpenAI's consumer Terms of Use returned HTTP 403 in this run, and the API page that did open sets no flat 13+ bar. It says personal data of children under 13 must not be processed without zero data retention and that COPPA applies. Keeping kids off the cloud stays the family's rule; store:false was not shown to count as zero data retention."
+  ],
+  "unverified": [
+   "Llama Guard 3 as the classifier is the roadmap's choice and appears nowhere in the installed OpenClaw docs (its Ollama library page is cited under G019).",
+   "Whether kids admitted by pairing are refused as approvers; the roadmap itself marks this as untested.",
+   "How accurate any local classifier is on questions from 8 and 10 year olds; no evaluation exists yet."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:173",
+    "title": "iMessage access control and routing",
+    "anchor": "normalized DM handle",
+    "supports": "An iMessage binding can match one sender's handle, which is how each kid's messages would reach their own agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:36",
+    "title": "Configuration — tool policy",
+    "anchor": "session_status",
+    "supports": "The minimal tool profile still includes two tools, so a truly tool-less kids agent needs explicit denies on top.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:67",
+    "title": "Message and delivery hooks",
+    "anchor": "message_sending",
+    "supports": "Plugins can claim an inbound message before the model (before_dispatch, same page line 15) and rewrite or cancel an outgoing reply, the two places a safety classifier attaches.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/safety-checks/under-18-api-guidance",
+    "title": "Under-18 guidance",
+    "anchor": "zero data retention",
+    "supports": "OpenAI tells API developers not to process personal data of children under 13 without zero data retention and to comply with COPPA.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "People and access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G003",
+  "origin": "9 Oct",
+  "name": "Jobs registry and per-feature flags in family.json5",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Every scheduled feature becomes a named switch per person in one file, so turning Jordan's school digest off is a one-line change Tony can review.",
+  "example": "",
+  "how": "gen-family reads family.json5 flags and emits openclaw automations add/edit/remove with --name, --agent, --to, --tz, --announce; diffs against automations list --all --json.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Diffing against 'automations list --json' is not enough: the list shows enabled jobs only unless --all is passed, so a job disabled by a mute would look missing and be created twice. Use 'automations list --all --json'."
+  ],
+  "unverified": [
+   "Whether gen-family, run from Tony's admin account, can reach the happy user's Gateway with the admin operator scope the docs require.",
+   "How healthchecks.io alerts on a missed ping (grace time) was not on the fetched page; only the ping address forms were confirmed."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:72",
+    "title": "Automations CLI (installed docs)",
+    "anchor": "--display-name",
+    "supports": "Jobs have a stable name plus an optional human label, so the generator should key on the stable name.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://healthchecks.io/docs/http_api/",
+    "title": "Healthchecks.io: Pinging API",
+    "anchor": "hc-ping.com",
+    "supports": "A job reports success, start, failure or an exit status with a single HTTP request to its check address.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-04",
+  "name": "Standing orders: a written charter per recurring job",
+  "tier": 1,
+  "cluster": "standing authority",
+  "description": "Each recurring family job gets a short charter in the agent's AGENTS.md: what Happy may do without asking, when it runs, what needs a yes first, when to stop and ask, and what it must never do. Parents can read it and changes go through the config repo. New against the catalog: G003 registers the jobs, but nothing states their authority in one reviewable place.",
+  "example": "Job message at 19:30: \"Run the evening brief per standing orders.\" Parent text: \"From now on don't text me about bins when I'm travelling\" becomes a line under that program's What NOT to do at the next deploy.",
+  "how": "`## Program: <name>` sections (Authority, Trigger, Approval gate, Escalation, What NOT to do, plus an execute-verify-report rule) in templates/person/AGENTS.md, rendered per person by gen-family from the same family.json5 entries that drive the G003 job registry. Each automation message points at its program instead of repeating it. Isolated jobs must not use `--light-context`, which skips the bootstrap files. Held by each <p>-main, and by each reader agent for its own program.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "G003 jobs registry",
+   "F007"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "A charter is prompt text, not enforcement. It survives compaction because AGENTS.md is re-injected, but an injected page can still argue with it; the hard limits stay in tool policy and hooks.",
+   "AGENTS.md shares a bootstrap budget (20,000 characters per file by default). Keep each program to about ten lines.",
+   "Sub-agents get AGENTS.md only, and scheduled runs do not get MEMORY.md, so anything a program needs must be in AGENTS.md, the job message, or a tool result.",
+   "The documented examples are business programs (posting content, restarting services, sending reports to stakeholders). Family programs are read-and-notify only; do not copy those authorities.",
+   "A chat instruction does not change the charter: config writes from chat are off and the agents have no file tools, so it waits for a deploy."
+  ],
+  "safety": "Charters narrow behaviour and grant nothing. Never-list items are written under What NOT to do and are also unreachable by tool policy. No change to which agent holds private data, reads untrusted content, or can send.",
+  "unverified": [],
+  "overlaps_existing": [
+   "G003",
+   "F011",
+   "F013",
+   "F014",
+   "F015",
+   "F042"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:10",
+    "title": "Standing orders",
+    "anchor": "permanent operating authority",
+    "supports": "Standing orders define programs the agent may run on its own within stated bounds.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/operations.md:168",
+    "title": "Sub-agent limitations",
+    "anchor": "Sub-agent context only injects",
+    "supports": "Sub-agents receive AGENTS.md and none of the other bootstrap files.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:54",
+    "title": "Automation payloads: --light-context",
+    "anchor": "Skip workspace bootstrap file injection",
+    "supports": "The light-context flag drops the bootstrap files, which would drop the charter.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/hooks/bundled-hooks.md:72",
+    "title": "Bundled hooks: bootstrap-extra-files",
+    "anchor": "20,000 characters per file",
+    "supports": "Bootstrap injection defaults to a per-file and a total character budget.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-08",
+  "name": "Unattended-job guardrails (failure alerts, auto-disable, missed runs)",
+  "tier": 1,
+  "cluster": "scheduled autonomy",
+  "description": "Rules that stop scheduled family jobs from failing silently or misfiring after an outage: failures alert Tony rather than the family, a job that keeps failing stops itself, stale runs are skipped after a power cut, and every job has a time limit and a tool cap. New against the catalog: the built-in scheduler behaviour and defaults that G003 and G008 should be built on.",
+  "example": "The 19:30 brief fails twice in a row: Tony gets one text, and one more when it recovers. After a power cut, the 07:00 brief does not turn up at 11:40.",
+  "how": "In happy-config: a global `cron.failureAlert` object routed to the operator's handle, so alerts do not fall back to each job's own announce target; `--timeout-seconds` and an explicit `--tools` cap on every job the G003 registry emits; `cron.skipMissedJobs: true` for recurring jobs; `cron.triggers.enabled: false`, set before any agent is given the `automations` tool and kept until F029 deliberately turns triggers back on. happy-inspect reads `openclaw automations list --all` to catch auto-disabled jobs. The healthchecks dead-man switch stays as the only signal for a Mac that is off. Gateway-level; no agent gains anything.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "G003 jobs registry"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "By default a failure alert goes to the failing job's own announce target, so Jordan would receive \"job failed\" texts for her jobs unless they are rerouted.",
+   "Alerts start after 2 failures in a row with a 1-hour cooldown; repeats with the same cause count as one incident and one recovery notice closes it.",
+   "A recurring job is switched off after 10 failures in a row and then disappears from the default job list.",
+   "Without a per-job timeout an isolated agent job is bounded only by a 60-minute watchdog.",
+   "Jobs run inside the gateway. After a reboot with FileVault locked nothing fires and nothing alerts, and by default the scheduler catches up on missed recurring runs later.",
+   "One-shot reminders still catch up after an outage even with skipMissedJobs set; a late reminder is sometimes worse than none.",
+   "Once <p>-main has the automations tool, the agent offers to turn a repeated request into a schedule and creates it enabled with an immediate test run. That is pleasant, but those jobs are not in the G003 registry, so the registry diff must tolerate or report them.",
+   "Trigger scripts and script payloads run with the owning agent's full tool policy, exec included, in the Code Mode executor, and the docs name `cron.triggers.enabled` as their only switch. With triggers on, the `automations` tool also offers the model script payloads, trigger scripts and stream commands. Set `cron.triggers.enabled: false` before any agent is given that tool (F007, AUT-01, AUT-03). This switches off the trigger-script design of F029 until triggers are deliberately turned back on."
+  ],
+  "safety": "Purely restrictive. Alert text shown in chat is a normalized cause (raw errors stay in run history), and routing alerts to the operator keeps one person's job details out of another person's thread.",
+  "unverified": [
+   "The exact shape of the global `cron.failureAlert` object beyond the documented destination fields; validate in staging.",
+   "Whether scheduler-sent failure alerts pass through the G009 recipient-pin hook or bypass it.",
+   "Where the auto-disable notice lands. The docs say the owning agent receives it and that it stays active even when failure alerts are off, so it may reach the family member's thread instead of the operator's."
+  ],
+  "overlaps_existing": [
+   "G003",
+   "G008",
+   "G001",
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:105",
+    "title": "Automation delivery: failure notifications",
+    "anchor": "2 consecutive failures",
+    "supports": "A job with a failure route is covered after two failures in a row, with an hour between alerts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:214",
+    "title": "Manage automations: configuration",
+    "anchor": "cron.skipMissedJobs",
+    "supports": "A config switch makes recurring jobs skip slots missed while the gateway was offline; the default is to catch up.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:20",
+    "title": "How automations work",
+    "anchor": "60-minute watchdog",
+    "supports": "An isolated agent job with no timeout set is bounded by the scheduler's own one-hour watchdog.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:123",
+    "title": "Automation schedules: event triggers",
+    "anchor": "full tool policy",
+    "supports": "Trigger scripts and script payloads run unattended with the owning agent's whole tool policy unless triggers are disabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads: --tools",
+    "anchor": "Restrict which tools the job",
+    "supports": "Each job can carry its own tool allowlist, including an empty one.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-automation.md:53",
+    "title": "Automation config: cron.failureAlert",
+    "anchor": "failureAlert",
+    "supports": "The global failure-alert object takes enabled, after, cooldownMs, includeSkipped, mode, channel, to and accountId.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-tool-DAgRmVx6.mjs:992",
+    "title": "OpenClaw 2026.9.7 compiled source: automations tool description (script payload)",
+    "anchor": "disabled only when cron.triggers.enabled=false",
+    "supports": "The model-facing tool offers script payloads (and, one line above, stream command schedules) unless the triggers switch is set to false.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All nine sources confirmed. Two tightenings: the shape of the global `cron.failureAlert` object is documented, which closes that open question, and `cron.triggers.enabled: false` should be a precondition for giving any agent the `automations` tool, because the tool offers script payloads, trigger scripts and stream commands while triggers are on."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G005",
+  "origin": "9 Oct",
+  "name": "Kill switch: 'Happy, stop everything' phrase, Shortcut and ntfy action",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Either parent can text 'Happy, stop everything' and Happy pauses its scheduled jobs and outgoing actions until Tony switches it back on.",
+  "example": "",
+  "how": "In-house plugin: before_dispatch claims the exact phrase and writes a kill file; before_tool_call and message_sending check it; cron.enabled false; openclaw gateway stop as last level.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'Freeze every outbound write' is fail-closed only for tool calls. The phrase matcher and the message_sending check both log and continue when their handler throws or times out, so a broken plugin lets the phrase reach the model and lets scheduled announce texts out. The levels that do not depend on plugin code are the scheduler switch and stopping the Gateway."
+  ],
+  "unverified": [
+   "Whether switching the scheduler off stops a job already running, and whether switching it back needs a restart (the hot-reload table says no; the automation troubleshooting page says restart to re-enable).",
+   "Whether an ntfy HTTP action is sent from the phone and can reach the Gateway over Tailscale; the fetched part of the page did not say where the request originates.",
+   "How plugin code running as the happy user would change the scheduler setting, given the config repo is read-only to it; the kill file may be the only chat-triggered level."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:15",
+    "title": "Message and delivery hooks (installed docs)",
+    "anchor": "before_dispatch",
+    "supports": "A plugin can take an incoming message before the model sees it and answer with fixed text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:99",
+    "title": "Hook reference (installed docs)",
+    "anchor": "including claim hooks",
+    "supports": "If that claim handler fails, the Gateway logs and carries on, so the stop phrase would fall through to the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:216",
+    "title": "Managing automations (installed docs)",
+    "anchor": "cron.enabled: false",
+    "supports": "One config value turns all scheduled jobs off without deleting them.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:121",
+    "title": "Config hot reload (installed docs)",
+    "anchor": "reloads the owning subsystem",
+    "supports": "Changes to the scheduler setting apply without restarting the Gateway.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/gateway/service.md:18",
+    "title": "Gateway service CLI (installed docs)",
+    "anchor": "openclaw gateway stop",
+    "supports": "The last level is a documented service stop command.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.ntfy.sh/publish/",
+    "title": "ntfy docs: Publishing",
+    "anchor": "broadcast",
+    "supports": "A notification can carry up to three action buttons, one type of which sends an HTTP request when tapped.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "title": "Apple Shortcuts User Guide for Mac: Run shortcuts from the command line",
+    "anchor": "shortcuts run",
+    "supports": "A macOS Shortcut can be listed and run from a terminal command, so a Shortcut can wrap the stop script.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-04",
+  "name": "When the model is down: an honest failure, a same-vendor fallback, and jobs that need no model",
+  "tier": 1,
+  "cluster": "recovery and trust",
+  "description": "With one cloud vendor and no local model, a provider incident makes Happy answer with a raw error or not at all. This sets what the family sees and what keeps working: one plain 'the model is down' line, an optional sibling-model fallback, and the alerts that never needed a model.",
+  "example": "Trigger: gpt-6-sol returns server errors for ten minutes at 07:00 while the morning brief is due.",
+  "how": "Fact on this install: each person agent is generated with model.fallbacks: [], and the docs say an agent's primary is strict unless its model object lists fallbacks. So after the built-in retries any failure is surfaced as a terminal error that keeps the provider's HTTP status. Options, cheapest first. (1) Add gpt-6-luna on the same per-person provider id as the single fallback for <p>-main: one line in gen-family, since both models are already in that agent's modelPolicy.allow under the same key and store setting. This covers model-scoped incidents and rate limits, not a vendor-wide outage. The docs say a fallback is used for that turn only and a one-line notice is shown in direct chats. Mail and kid agents keep fallbacks: [] as the roadmap requires. (2) No cross-vendor fallback: it needs a second vendor's key and a new privacy decision, and the local route is the skipped M2. (3) Keep the important alerts model-free: the weather watch (F018) is specified as a --command-argv job and the kill phrase (G005) is a before_dispatch claim, so both work through an outage. Timed reminders (F007) and the morning brief are '--message' jobs, which the docs define as model-backed agent turns, so they fail with the model; a fixed-text reminder that must not be missed, such as bin day, has to be created as a command job that prints its line. A scheduled agent turn can also carry its own '--fallbacks' list. (4) Extend the health watch (G008): when the existing error-ratio alert has fired for N minutes, a host script sends each parent one fixed line and later one 'back' line by a model-free send: 'openclaw message send' to the pinned family handles, or a command job with announce delivery. The catalog's usual host path, 'openclaw agent --deliver', runs an agent turn and so cannot announce a model outage. 'openclaw models status --check' is not the detector: its own docs say a clean exit does not prove a request will succeed.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "decision: let the smaller sibling model answer when the main one fails",
+   "G008 health watch and the O1 error-ratio alert",
+   "G009 family delivery (for the notice)"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "OpenAI's status history listed 39 incidents in September 2026 and 23 in the first ten days of October across all its products. Most do not touch the API models Happy uses, but some did, for example 'elevated error rates across API models' on 17 Sep.",
+   "An answer from the smaller model can be worse than the usual one; the fallback notice tells the parent which model answered.",
+   "An API key that hits its monthly cap looks like an outage until the month ends; the fixed line should say 'limit reached' when that is the cause.",
+   "If the Mac, the home internet or iMessage is what failed, nothing here helps. The dead-man alert is then the only signal and it goes to Tony.",
+   "A scheduled brief that fails is simply missed unless the job's retry settings say otherwise."
+  ],
+  "safety": "No new data path. The fallback uses the same provider id, key and store:false setting, and the notice is a fixed string to pinned family recipients. Mail and kid agents stay strict, so their content can never move to another model by accident.",
+  "unverified": [
+   "The exact text a parent sees on iMessage when every candidate fails; the docs describe it, it was not triggered in this run.",
+   "Whether gpt-6-luna stays healthy during typical gpt-6-sol incidents.",
+   "Whether command jobs deliver normally while model calls are failing; nothing suggests otherwise but it was not tested.",
+   "Whether 'openclaw message send' passes through the same recipient-pinning hook as the agent's message tool; if it does not, the host script must hard-code the family handles from the registry."
+  ],
+  "overlaps_existing": [
+   "G008",
+   "G004",
+   "F018",
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/model-failover.md:126",
+    "title": "Model failover: selection source policy",
+    "anchor": "fallbacks: []",
+    "supports": "An agent's own primary model is strict unless that agent's model object lists fallbacks; an empty list makes strictness explicit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "openclaw automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run a fixed command and deliver its output with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/models.md:90",
+    "title": "openclaw models status --check: exit codes",
+    "anchor": "does not prove",
+    "supports": "A clean status check covers auth and routing only and is explicitly not proof that a model request will succeed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://status.openai.com/history",
+    "title": "OpenAI Status: incident history",
+    "anchor": "OpenAI Status",
+    "supports": "The vendor's own history page lists dozens of incidents a month in autumn 2026, including API-wide error-rate incidents.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:21",
+    "title": "Automation payloads",
+    "anchor": "A model-backed agent turn",
+    "supports": "A scheduled '--message' job is an agent turn that needs the model, while a command job on the next row makes no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/message.md:11",
+    "title": "openclaw message",
+    "anchor": "Single outbound command",
+    "supports": "There is a direct outbound send command, covering iMessage, that takes a target and the message text; the page describes no agent turn.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/agent.md:4",
+    "title": "openclaw agent",
+    "anchor": "run one agent turn",
+    "supports": "The agent command runs a model turn and optionally delivers its reply, so it is not usable to report that the model is down.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources and the config facts check out (fallbacks: [] is generated per person; both models are in modelPolicy.allow). Two slips: timed reminders and the morning brief are model-backed agent turns, so 'bin reminders work through an outage' is true only if they are rebuilt as command jobs; and the outage notice must use a model-free send, because 'openclaw agent --deliver' is itself an agent turn."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G001",
+  "origin": "9 Oct",
+  "name": "Notification policy: quiet hours, daily cap, priority classes, job tag on every proactive text",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Happy stays quiet at night, caps how many unprompted texts each parent gets a day, and labels each one so you know why it arrived.",
+  "example": "",
+  "how": "In-house plugin: before_tool_call on message (fail-closed) plus message_sending cancel for --announce deliveries (fail-open on error); counters in home-store; schedules generated inside allowed windows.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "reply_payload_sending does not cover --announce on the installed build: the scheduler's announce path sends without a reply-payload hook descriptor and the outbound stage skips that hook when none is supplied. message_sending is the hook that sees those deliveries (the G005 wording already uses it), and it fails open on handler error, so it is a best-effort gate."
+  ],
+  "unverified": [
+   "The announce-path reading comes from bundled JavaScript, not a doc page; confirm with a throwaway hook before relying on either hook.",
+   "How the hook learns which job produced a text; no doc lists a job id on message_sending, so the job may have to write its own tag into the text.",
+   "Whether a scheduled iPhone Do Not Disturb can silence only Happy's thread; Apple's page confirmed scheduling and allowed people, not per-contact silencing."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:67",
+    "title": "Message and delivery hooks (installed docs)",
+    "anchor": "message_sending",
+    "supports": "A plugin can rewrite or cancel any outgoing message just before delivery.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:94",
+    "title": "Hook reference (installed docs)",
+    "anchor": "Log and skip the failed handler",
+    "supports": "Outbound delivery hooks are not hard gates: if the handler throws or times out the message is still sent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/deliver-prepare--wQvThDe.mjs:854",
+    "title": "Outbound delivery preparation (installed source)",
+    "anchor": "params.replyPayloadSendingHook",
+    "supports": "The shared outbound stage runs the reply-payload hook only when the caller passes a hook descriptor, while message_sending runs whenever a handler is registered.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/run-delivery.runtime-BZRdVrGG.mjs:501",
+    "title": "Scheduler announce delivery (installed source)",
+    "anchor": "sendDurableMessageBatchCore",
+    "supports": "Scheduled announce deliveries are sent through the durable batch call without a reply-payload hook descriptor.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/notifications.md:47",
+    "title": "Control UI notifications (installed docs)",
+    "anchor": "quiet hours",
+    "supports": "The only built-in quiet hours belong to Control UI browser and app notifications, not to chat channels.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/prompt-and-session.md:172",
+    "title": "Prompt and session hooks (installed docs)",
+    "anchor": "ctx.jobId",
+    "supports": "The scheduled job id is available to some agent hooks but not to before_tool_call, so the job tag needs another source.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105112",
+    "title": "Apple Support: Do Not Disturb on iPhone or iPad (article 105112)",
+    "anchor": "Set a Schedule",
+    "supports": "Each iPhone can already silence notifications on a schedule while allowing chosen people, so the plugin's distinct value is the daily cap and batching.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G004",
+  "origin": "9 Oct",
+  "name": "Per-person and per-agent spend caps with a daily cost line",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Tony gets a daily cost line per agent and an alert when spending looks wrong, with OpenAI's own project limit as the hard stop.",
+  "example": "",
+  "how": "openclaw gateway usage-cost --agent --json for the line; Prometheus openclaw_model_cost_usd_total alert rule; OpenAI project spend limit with hard enforcement switched on.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'The OpenAI project limit is the backstop' holds only if 'Enforce a hard limit' is switched on; otherwise a project spend limit just alerts, and even the hard limit can be overshot slightly."
+  ],
+  "unverified": [
+   "The cost figures were not compared with an OpenAI invoice; they follow the prices declared for the custom provider ids in config.",
+   "Whether the separately installed diagnostics-prometheus plugin is already present from M1."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/gateway/query.md:60",
+    "title": "Gateway query CLI (installed docs)",
+    "anchor": "gateway usage-cost",
+    "supports": "The Gateway reports cost summaries per agent or across agents as JSON, with a marker when the numbers are still refreshing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/prometheus.md:118",
+    "title": "Prometheus metrics (installed docs)",
+    "anchor": "openclaw_model_cost_usd_total",
+    "supports": "A running-total cost counter labelled by agent, channel, model and provider is exported for alerting.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/api-usage-costs.md:34",
+    "title": "API usage and costs (installed docs)",
+    "anchor": "not a provider invoice",
+    "supports": "These totals are estimates from local session history, not what the provider bills.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-runtime.md:67",
+    "title": "Runtime configuration (installed docs)",
+    "anchor": "models.providers.*.models[].cost",
+    "supports": "For custom provider ids the estimate depends on the prices written into config.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/spend-limits",
+    "title": "OpenAI API guide: Spend limits",
+    "anchor": "project_spend_limit_exceeded",
+    "supports": "A project can carry a monthly spend limit that rejects requests once reached, but only when hard enforcement is switched on, and enforcement is approximate.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/",
+    "title": "Prometheus: Alerting rules",
+    "anchor": "annotations",
+    "supports": "An alert is a named expression with a hold time, which is all the soft cap needs.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G007",
+  "origin": "9 Oct",
+  "name": "Nightly backups and a quarterly restore drill",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Happy's memory, settings and history are copied every night to an encrypted place off the Mac's main disk, and a quarterly test proves the copy restores.",
+  "example": "",
+  "how": "openclaw backup create --verify nightly via launchd or a command automation, encrypted with age; openclaw backup restore --target for the drill; separate tar for home-store and family.json5.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'backup sqlite create --repository' alone is not a valid call and is not Git-versioned: it needs exactly one source (--global or --agent <id>) and writes plain snapshot directories. Git history is the separate 'openclaw backup git' command family.",
+   "Scheduling is not wholly outside the tool: 'openclaw backup enable --repository <dir> --every 24h' creates a nightly Git backup job. Only the archive and plain SQLite snapshot routes leave scheduling, rotation and encryption to the operator.",
+   "Secrets are not excluded by default (9 Oct 'needs' said they stay in Keychain): the full archive covers auth profiles and channel/provider credentials; only resolved secrets in the config copy are left out, and a secrets-excluding switch exists only for Git backups."
+  ],
+  "unverified": [
+   "Whether a later memory-wiki vault is picked up as a plugin-declared backup resource or needs its own tar step.",
+   "The quarterly canary (answering a question from the restored copy) has no documented one-command path; activating restored state is an offline operator step.",
+   "Where the age key lives and whether the happy user can read it during a drill."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/backup.md:20",
+    "title": "Backup CLI (installed docs)",
+    "anchor": "openclaw backup create --verify",
+    "supports": "One command archives state, config, sessions and workspaces and checks the archive afterwards.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/FiloSottile/age",
+    "title": "FiloSottile/age (GitHub repository)",
+    "anchor": "age-keygen",
+    "supports": "age encrypts a file to a public key and decrypts with a key file, and installs through Homebrew.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/104984",
+    "title": "Apple Support: Back up your Mac with Time Machine",
+    "anchor": "Encrypt Backup",
+    "supports": "macOS can already keep an encrypted whole-disk backup on an external drive, the zero-code baseline.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F084",
+  "origin": "9 Oct",
+  "name": "Local privacy gate for documents (tier-C refusal)",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Before any attachment goes to the cloud model, Happy refuses PDFs that look like bank statements or tax forms and says why.",
+  "example": "",
+  "how": "In-house plugin: before_agent_run returns outcome block on regex hits in the extracted file text; needs hooks.allowConversationAccess; photos cannot be checked locally yet.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That the extracted file text is inside the prompt field the hook receives; the doc only says the hook gets the current user input. Needs a test with a seeded PDF.",
+   "Which config key holds allowedMimes for iMessage attachments; the only documented allowedMimes keys sit under the Gateway HTTP API endpoints.",
+   "The exact point at which an inbound PDF falls back to page images; the 200-characters-per-page rule is documented for the pdf tool, not for channel attachments.",
+   "Photo gating is blocked, not just weak: no local vision model exists on this install, so only a caption keyword rule is possible."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:266",
+    "title": "Media understanding (installed docs)",
+    "anchor": "model-visible file block",
+    "supports": "Every inbound document is extracted and placed in front of the model on the first turn, with no tool call a tool hook could intercept.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/prompt-and-session.md:149",
+    "title": "Prompt and session hooks (installed docs)",
+    "anchor": "before_agent_run",
+    "supports": "This hook runs after the prompt is built and before the model sees it, can block the run with a replacement message, and the original text is not kept.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Hook reference (installed docs)",
+    "anchor": "Fail closed",
+    "supports": "If this hook throws or exceeds 15 seconds the run is blocked rather than allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:126",
+    "title": "Plugin hooks (installed docs)",
+    "anchor": "allowConversationAccess",
+    "supports": "A non-bundled plugin's before_agent_run handler only runs when the operator grants it conversation access in config.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:93",
+    "title": "PDF tool (installed docs)",
+    "anchor": "characters of extracted text",
+    "supports": "In the pdf tool, pages with little extractable text are rendered to images, which is how a scanned statement would reach a vision model unread.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments (installed docs)",
+    "anchor": "includeAttachments",
+    "supports": "Inbound iMessage attachments are dropped unless the operator switches them on, so the gate matters only once that switch is flipped.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API guide: Your data",
+    "anchor": "30 days",
+    "supports": "API inputs are not used for training by default but abuse-monitoring logs can keep content for up to a month, and image and file inputs get extra scanning.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-14",
+  "name": "Local classifier calls (decision_evaluate with an on-device ONNX model)",
+  "tier": 1,
+  "cluster": "Operator platform",
+  "description": "A way to ask a small on-device model a yes/no, pick-one or score question (is this email urgent, does this text look like a bank statement, is this reply fine for an eight-year-old) and get a typed answer with a probability, with no cloud call. It is the missing piece behind the catalog's privacy gate, urgent-mail gate and kids classifier, and it does not depend on the skipped local-LLM milestone.",
+  "example": "Trigger: the school-mail reader's hook asks one Boolean question about a new email's subject and first lines; only a probability above the threshold reaches the URGENT path.",
+  "how": "Release 2026.9.7 adds the decisionModel role and the core decision_evaluate tool, and plugins can call the same runtime from a hook through api.runtime.decisions.evaluate. The local provider is the @openclaw/onnx plugin, installed pinned to the Gateway version (npm:@openclaw/onnx@2026.9.7): zero-shot classifier presets on CPU in a separate worker process, with models fetched only by an explicit download command and checked against fixed hashes. Config is agents.defaults.decisionModel (or per agent) plus plugins.entries.onnx. Call it from the in-house hooks (F084 gate, F055 reader, later the F072 kids filters) rather than granting the tool to <p>-main.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "experimental",
+  "depends_on": [
+   "OpenClaw upgraded to 2026.10.1 or later (the published plugin declares that as its minimum)",
+   "A small labelled test set per question, so false positives and misses are measured before a gate relies on it",
+   "The co-versioned plugin release pinned at install (npm:@openclaw/onnx@2026.9.7), proven to load and pass its probe command on a test profile before any gate relies on it"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "The installed 2026.9.7 docs call the ONNX and TypeSafe plugins unpublished candidates; the npm registry shows @openclaw/onnx published at version 2026.10.1 with openclaw 2026.10.1 or later as a peer requirement, so it cannot be relied on with today's pinned Gateway.",
+   "These are generic zero-shot classifiers, not child-safety models; they can score and shortlist, but a kids deployment still needs its own evaluation and a second gate.",
+   "There is no fallback to the chat model when the decision provider is unavailable, and an unavailable result is not a 'no', so every gate has to fail closed.",
+   "The other provider, TypeSafe's hosted model, is a cloud service and out of scope.",
+   "Apple Foundation Models (F086) remain the alternative free on-device classifier.",
+   "The installed 2026.9.7 docs still call the ONNX and TypeSafe plugins unpublished candidates, but the npm registry now lists @openclaw/onnx 2026.9.6 through 2026.10.1, each requiring the same-numbered openclaw or later. The 2026.9.7 build (published 30 Sep 2026) matches today's pinned Gateway; the latest tag (2026.10.1) does not, so the version must be pinned at install. The plugin is weeks old, so treat it as experimental.",
+   "Each encoded input, rubric included, must fit 512 tokens and longer input is rejected rather than truncated, so a gate has to send a subject and first lines, or chunk a document itself.",
+   "Returned probabilities are model estimates, not calibrated; thresholds have to come from the labelled test set."
+  ],
+  "safety": "This strengthens the architecture: the decision runs locally and returns a typed value rather than prose, and the hook, not the model, applies the threshold; the docs say results do not grant permission to act. Hostile text can still shift a score, so a classifier is a filter in front of a hard rule, never the rule itself. No data leaves the Mac.",
+  "unverified": [
+   "Whether @openclaw/onnx 2026.10.1 loads on a 2026.9.7 host; its metadata lists a minimum host of 2026.9.6 but a plugin API of 2026.10.1",
+   "Classifier accuracy on this family's school mail and on kids' questions",
+   "Memory and CPU use of the worker process",
+   "Whether @openclaw/onnx 2026.9.7 installs and loads cleanly on this 2026.9.7 host; the installed docs predate its publication and describe only a source-checkout route",
+   "Which host the model download command fetches weights from and which egress rule it needs"
+  ],
+  "overlaps_existing": [
+   "F084",
+   "F055",
+   "F072",
+   "F086",
+   "G016"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/decision-models.md:12",
+    "title": "Decision models",
+    "anchor": "decision model",
+    "supports": "A decision model evaluates evidence against a rubric and returns a choice, a score or a Boolean probability.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/onnx.md:14",
+    "title": "Local ONNX decision models",
+    "anchor": "Inference does not send",
+    "supports": "The ONNX plugin runs classifiers locally and downloads models only on an explicit command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "CHANGELOG.md:50",
+    "title": "OpenClaw 2026.9.7 changelog, changes",
+    "anchor": "decision_evaluate",
+    "supports": "The decision tool for Boolean, choice and score questions was added in this release.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://registry.npmjs.org/@openclaw/onnx/latest",
+    "title": "@openclaw/onnx package metadata (npm registry)",
+    "anchor": "2026.10.1",
+    "supports": "The published plugin is version 2026.10.1 and declares openclaw 2026.10.1 or later as its peer dependency and plugin API floor.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://registry.npmjs.org/@openclaw/onnx/2026.9.7",
+    "title": "@openclaw/onnx 2026.9.7 package metadata (npm registry)",
+    "anchor": "2026.9.7",
+    "supports": "A plugin build numbered 2026.9.7 is published and declares openclaw 2026.9.7 or later as its peer dependency and plugin API floor.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/plugin.md:133",
+    "title": "Plugins: install sources",
+    "anchor": "npm:@openclaw/<plugin>@<version>",
+    "supports": "An official plugin can be installed from npm at an explicit pinned version.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The blocking claim is wrong: the npm registry carries a co-versioned @openclaw/onnx 2026.9.7 whose peer requirement is openclaw 2026.9.7 or later, so no Gateway upgrade is needed. Readiness moves from blocked to experimental (new plugin, load on this host unproven), and the 512-token input limit is added because it shapes every gate built on it."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F086",
+  "origin": "9 Oct",
+  "name": "Apple Foundation Models as the free on-device utility model",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "The Mac mini's built-in Apple model handles tiny background chores for free; the family sees no difference in iMessage.",
+  "example": "",
+  "how": "Bundled apple-fm plugin; openclaw onboard --non-interactive --auth-choice apple-fm --accept-risk as the happy user; utilityModel apple-fm/system; needs Swift tools and an 8,192-token model.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "experimental",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog's command is incomplete: the documented scripted form is 'openclaw onboard --non-interactive --auth-choice apple-fm --accept-risk'."
+  ],
+  "unverified": [
+   "The one use the catalog keeps (a free local classifier for F084 through llm-task) is not documented: llm-task needs a runtime that supports isolated completion and no page says apple-fm does.",
+   "Whether Apple Intelligence can be switched on and its model downloaded inside the non-admin happy account, and whether this Mac reports the 8,192-token variant; both need the on-machine probe.",
+   "Apple lists the framework from macOS 26 while OpenClaw's page requires macOS 27; only OpenClaw's own requirement was confirmed."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/apple-fm.md:23",
+    "title": "Apple Foundation Models plugin (installed docs)",
+    "anchor": "8,192 context tokens",
+    "supports": "The option appears only when the Mac reports an on-device model with a large enough window; owning an Apple silicon Mac on macOS 27 is not sufficient by itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/models.md:65",
+    "title": "Agent model configuration (installed docs)",
+    "anchor": "utilityModel",
+    "supports": "The utility model only powers session titles, recaps and progress narration on surfaces Happy does not use, so the family-visible gain on iMessage is nil.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/foundationmodels.json",
+    "title": "Apple Developer Documentation: Foundation Models (page data for /documentation/foundationmodels)",
+    "anchor": "SystemLanguageModel",
+    "supports": "Apple's framework exposes an on-device language model with structured output and tool calling, on devices that support Apple Intelligence.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/121115",
+    "title": "Apple Support: Apple Intelligence requirements (article 121115)",
+    "anchor": "Mac with M1 or later",
+    "supports": "Apple Intelligence runs on M-series Macs, needs device and Siri language to match and several gigabytes of storage for the model.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "unplaced",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F082",
+  "origin": "9 Oct",
+  "name": "Structured interaction primitives: ask_user and llm-task",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Happy asks one short numbered question when a request is ambiguous, and turns newsletter or flyer text into clean event and item lists.",
+  "example": "",
+  "how": "Allow ask_user for <p>-main only; enable bundled llm-task with tools.alsoAllow, a JSON schema, llm.allowedCompletionModels listing both custom ids, allowModelOverride false.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Whether Happy's custom OpenAI provider route runs llm-task with a truly empty tool surface; the doc carves out an 'Agents API' runtime whose service may keep built-in helpers.",
+   "That a plain iMessage reply is matched to the pending question on this install; the doc requires the replier's permissions to match the question's creator and this was not tried."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:15",
+    "title": "Ask user (installed docs)",
+    "anchor": "available only in the main session",
+    "supports": "ask_user is offered only to the main session, so mail-reader and scheduled runs never get it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:68",
+    "title": "LLM task (installed docs)",
+    "anchor": "allowedCompletionModels",
+    "supports": "The model allowlist applies to every llm-task completion, so the agent's default model must be on it as well as the cheap model.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.openclaw.ai/tools/ask-user",
+    "title": "Ask user (public OpenClaw docs)",
+    "anchor": "900 seconds",
+    "supports": "The public page states the same main-session limit and a default wait of fifteen minutes.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F083",
+  "origin": "9 Oct",
+  "name": "home_weather v2: NWS alerts, hourly rain and snow",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Ask about rain during Saturday's game or active weather alerts for home, with hour-by-hour detail and snowfall, straight from the National Weather Service.",
+  "example": "",
+  "how": "Extend the in-house home_weather plugin: follow forecastHourly from /points, add alert id, read snowfallAmount from the raw gridpoint endpoint; keep the api.weather.gov host pin.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "The snowfall field name and units were seen only in the OpenAPI description of the raw gridpoint endpoint, not in a live response.",
+   "NWS publishes no numeric rate limit, so the 10-minute cache is a design choice rather than an NWS rule.",
+   "That Apple Weather on each phone already pushes the same alerts and hourly rain (no Apple page was fetched for this)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service: API Web Service documentation",
+    "anchor": "forecastHourly",
+    "supports": "The points lookup hands back the hourly forecast address for a location; a User-Agent is required and the rate limit is unpublished with retry after a few seconds.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/openapi.json",
+    "title": "weather.gov API: OpenAPI specification",
+    "anchor": "/alerts/active",
+    "supports": "Active alerts can be filtered by a latitude and longitude point; each alert carries an id, headline, severity and end time, and the raw gridpoint data lists a snowfall layer.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/building-plugins.md:147",
+    "title": "Building plugins (installed docs)",
+    "anchor": "api.registerTool",
+    "supports": "A plugin adds its own agent tool in code, which is how the existing home_weather tool is delivered and extended.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Tool policy (installed docs)",
+    "anchor": "tools.sandbox.tools",
+    "supports": "With sandbox mode set to all, a plugin's tools stay visible only if the plugin id is in the sandbox tool allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/weather/SKILL.md:3",
+    "title": "Bundled weather skill",
+    "anchor": "wttr.in",
+    "supports": "The bundled weather skill depends on web_fetch against a third-party site, which Happy does not have, so the in-house NWS plugin stays the right path.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": []
+ }
+]

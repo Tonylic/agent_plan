@@ -1,0 +1,110 @@
+// happy-config/openclaw/openclaw.json  (JSON5)
+// Deployed to /Users/happy/.openclaw/openclaw.json by happy-deploy. M0 baseline for OpenClaw 2026.9.7.
+// No secrets live in this file: every credential is a SecretRef resolved from happy's login Keychain.
+{
+  gateway: {
+    mode: "local",
+    bind: "loopback",                 // never "lan"; remote access only through Tailscale Serve
+    port: 18789,
+    auth: {
+      mode: "token",
+      token: { source: "exec", provider: "keychain", id: "openclaw-gateway-token" },
+      allowTailscale: false,          // require the token even over the tailnet
+    },
+    tailscale: { mode: "serve" },     // OpenClaw runs `tailscale serve` itself; never "funnel"
+    terminal: { enabled: false },     // no host shell in the Control UI
+    cliAgents: { enabled: false },    // no Claude/Codex CLI sessions from the gateway
+    nodes: { pairing: { autoApproveLocal: false, sshVerify: false } },  // manual-only device pairing
+  },
+  discovery: { mdns: { mode: "off" } }, // no Bonjour advertising on the LAN
+  browser: {
+    enabled: false,                     // no host browser-control service in M0 (sandboxed browsing comes in M3)
+    allowSystemProfileImport: false,    // default allows importing cookies from a local Chrome-family profile
+  },
+
+  update: { channel: "stable", checkOnStart: false, auto: { enabled: false } }, // pinned; update by hand
+  telemetry: { enabled: false },
+
+  logging: {
+    level: "info",
+    file: "/Users/happy/Library/Logs/openclaw/openclaw.log", // JSON lines, out of /tmp
+    maxFileBytes: 52428800,           // rotate at 50 MB; OpenClaw keeps five archives
+    consoleLevel: "warn",             // keeps the unrotated LaunchAgent stdout log small
+  },
+
+  secrets: {
+    providers: {
+      keychain: {
+        source: "exec",
+        command: "/Users/happy/.openclaw/bin/keychain-resolver",
+        trustedDirs: ["/Users/happy/.openclaw/bin"],
+        passEnv: ["HOME"],
+        jsonOnly: true,
+        timeoutMs: 5000,
+      },
+    },
+  },
+
+  models: {
+    catalogRefresh: { enabled: false }, // model metadata stays as shipped; it changes only with an OpenClaw upgrade
+    providers: {
+      openai: {
+        apiKey: { source: "exec", provider: "keychain", id: "openai-api-key-main" },
+        // OpenAI on its official endpoint defaults to the Codex harness, which runs turns outside the
+        // Docker sandbox. Pin OpenClaw's own runtime.
+        agentRuntime: { id: "openclaw" },
+        // Responses calls are stored by OpenAI for 30 days; compat.supportsStore can't prevent that for
+        // catalog models. Acceptable in M0 (no private data); S3 must solve it before M4.
+      },
+    },
+  },
+
+  memory: { search: { provider: "none" } }, // keyword search only; no OpenAI embeddings
+  plugins: {
+    entries: {
+      // "Dreaming" (on by default) runs a nightly job that sends memory to the model for narratives.
+      // No background model calls in M0; revisit with memory in M1+.
+      "memory-core": { config: { dreaming: { enabled: false } } },
+    },
+  },
+  session: { dmScope: "per-channel-peer" },
+
+  tools: {
+    profile: "minimal",               // onboarding would have written "full"
+    elevated: { enabled: false },
+    sessions: { visibility: "self" }, // default is "all"
+    agentToAgent: { enabled: false }, // default is true
+    swarm: false,                     // default is on in 2026.9.x
+    codeMode: false,                  // default "auto" runs model-written JS in the gateway process, outside the sandbox
+    exec: { host: "sandbox" },        // fails closed if the sandbox is unavailable
+    fs: { workspaceOnly: true },
+  },
+
+  agents: {
+    defaults: {
+      model: { primary: "openai/gpt-6-sol" },
+      sandbox: {
+        mode: "all",                  // default is "off"
+        backend: "docker",            // Colima provides the Docker engine
+        scope: "agent",
+        workspaceAccess: "none",
+        docker: {
+          image: "openclaw-sandbox:bookworm-slim",
+          network: "none",
+          readOnlyRoot: true,
+          capDrop: ["ALL"],
+        },
+        browser: { enabled: false },
+      },
+      subagents: { maxSpawnDepth: 1 },
+    },
+    entries: {
+      main: {
+        tools: {
+          deny: ["group:runtime", "group:fs", "group:web", "group:ui", "group:automation",
+                 "group:nodes", "sessions_spawn", "sessions_send", "subagents"],
+        },
+      },
+    },
+  },
+}

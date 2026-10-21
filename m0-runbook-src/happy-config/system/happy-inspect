@@ -1,0 +1,56 @@
+#!/bin/zsh -f
+# happy-inspect: read-only views of happy's runtime for the admin account.
+# Installed root:wheel 755 at /usr/local/libexec/happy-inspect; tonyli runs it through /etc/sudoers.d/happy:
+#   sudo -u happy /usr/local/libexec/happy-inspect <command>
+# Treat the output as untrusted data: logs and audits can contain text that came from models or senders.
+set -uo pipefail
+[[ "$(/usr/bin/id -un)" == happy ]] || { print -u2 "happy-inspect: must run as happy"; exit 1; }
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+cd "$HOME"
+staged=/usr/local/var/happy-stage/current/openclaw/openclaw.json   # owned by tonyli; happy can only read it
+
+case "${1:-help}" in
+  ready)      /usr/bin/curl -fsS -m 5 http://127.0.0.1:18789/readyz; print ;;
+  status)     openclaw gateway status --deep ;;
+  posture)    for k in agents.defaults.sandbox.mode tools.profile tools.sessions.visibility \
+                       tools.agentToAgent.enabled tools.elevated.enabled tools.swarm tools.codeMode gateway.bind \
+                       gateway.tailscale.mode gateway.auth.allowTailscale gateway.terminal.enabled \
+                       gateway.cliAgents.enabled gateway.nodes.pairing.autoApproveLocal \
+                       discovery.mdns.mode browser.enabled models.catalogRefresh.enabled update.auto.enabled \
+                       models.providers.openai.agentRuntime.id plugins.entries.memory-core.config.dreaming.enabled \
+                       browser.allowSystemProfileImport; do
+                print -n -- "$k = "; openclaw config get "$k"
+              done ;;
+  audit-json) openclaw security audit --deep --json ;;
+  sandbox)    openclaw sandbox explain --agent main --json ;;
+  secrets)    openclaw secrets audit --check && openclaw secrets audit --check --allow-exec ;;
+  doctor)     openclaw doctor --lint --allow-exec ;;
+  evidence)   /bin/cat Library/Logs/happy/audit-m0.json Library/Logs/happy/secrets-m0.txt ;;
+  config)     /bin/cat .openclaw/openclaw.json ;;   # safe to print: it holds SecretRefs, not secrets
+  drift)      live=$(/usr/bin/shasum -a 256 .openclaw/openclaw.json | /usr/bin/awk '{print $1}')
+              want=$(/usr/bin/shasum -a 256 "$staged" | /usr/bin/awk '{print $1}')
+              if [[ $live == "$want" ]]; then print "config matches the staged revision $(</usr/local/var/happy-stage/current/REVISION)"
+              else print "DRIFT: live openclaw.json differs from the staged revision"; exit 1; fi ;;
+  logs)       /usr/bin/tail -n 200 Library/Logs/openclaw/openclaw.log ;;
+  logs-age)   /usr/bin/head -n 1 Library/Logs/openclaw/openclaw.log; /bin/ls -lT Library/Logs/openclaw ;;
+  logsize)    /usr/bin/du -h Library/Logs/openclaw/* Library/Logs/happy/* /var/log/happy-healthcheck.log ;;
+  colima)     colima status ;;
+  colima-log) /usr/bin/tail -n 60 Library/Logs/happy/colima.log ;;
+  versions)   print -n "openclaw "; openclaw --version
+              print -n "node "; node --version
+              colima version | /usr/bin/head -1
+              print -n "ollama "; /usr/bin/curl -fsS -m 3 http://127.0.0.1:11434/api/version; print ;;
+  no-claude)  # no Claude Code or Codex/ChatGPT login: OpenClaw would reuse it and bypass the capped key
+              # absolute path: security resolves relative names inside ~/Library/Keychains
+              kc=$(/usr/bin/security dump-keychain "$HOME/Library/Keychains/login.keychain-db" 2>/dev/null)
+              [[ -n $kc ]] || { print "cannot read happy's login keychain from this session"; exit 1; }
+              if command -v claude >/dev/null || command -v codex >/dev/null \
+                 || [[ -e .local/bin/claude || -e .local/share/claude || -e .claude || -e .claude.json || -e .config/anthropic || -e .codex ]] \
+                 || [[ ${(L)kc} == *claude* || ${(L)kc} == *codex* || ${(L)kc} == *chatgpt* ]]; then
+                print "FOUND a Claude Code or Codex binary or login for happy"; exit 1
+              fi
+              print "no Claude Code or Codex binary or login for happy" ;;
+  *)          print "usage: happy-inspect ready|status|posture|audit-json|sandbox|secrets|doctor|evidence|config|drift|logs|logs-age|logsize|colima|colima-log|versions|no-claude"
+              exit 2 ;;
+esac

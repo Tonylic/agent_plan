@@ -1,0 +1,479 @@
+[
+  {
+    "id": "F002",
+    "kind": "assumption",
+    "part": "'Decision 3 (9 Oct)' written as settled, and the wave A placement that follows from it",
+    "where": "depends_on, wave",
+    "problem": "The card lists sending family photos and PDFs to the cloud model as 'Decision 3', and its history calls the gate 'the condition Tony set'. The records show only that you agreed to apply for Zero Data Retention; switching attachments on before OpenAI approves is still the assistant's recommendation, and wave A assumes a yes.",
+    "checked": "Fact sheet: the only statement is that Tony agreed to apply to OpenAI for Zero Data Retention. The 9 Oct project note lists decision 3 among the decisions still open. frame.decisions 'Attachments to the cloud vision model' still shows options (a) and (b), with (b) as the assistant's recommendation. Config repo: includeAttachments is false, with the comment that voice memos and photos arrive in M5. Roadmap line 20 (private data only after local models) and line 428 (OpenAI's 30-day retention to be handled before a private agent uses OpenAI). G015's card accepts the 30-day log for wave B mail, but that sentence is the card's, not a recorded statement by Tony.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "While the Zero Data Retention application is pending, may the photos and PDFs you two send Happy go to OpenAI, where abuse-monitoring logs can keep them for up to 30 days? (a) No: attachments stay off until OpenAI approves. (b) Yes: switch them on now. Default if you do not answer: (a), which is what the live config does today; F002 stays in the catalog but is not switched on. The assistant still recommends (b). Either way the card's first prerequisite should read 'open decision' instead of 'Decision 3', and the history line 'the condition Tony set' is corrected."
+    },
+    "loses": "Nothing by asking. Under (a), photo and PDF reading waits on an approval that OpenAI does not guarantee.",
+    "saves": "none",
+    "severity": "high",
+    "upheld": true,
+    "challenge_note": "Looked in the fact sheet, the 9 Oct note and the roadmap for a statement by Tony that settles it and found only the agreement to apply for Zero Data Retention, so the finding stands."
+  },
+  {
+    "id": "F002",
+    "kind": "over-engineering",
+    "part": "Local privacy gate plugin for text PDFs (F084), with its later on-device classifier upgrade",
+    "where": "how, caveats, depends_on",
+    "problem": "Before attachments go on, an in-house plugin is built to refuse a PDF that looks like a bank statement or tax form. It cannot check photos or scans, nobody has tested whether it can see PDF text at all, and you never asked for it; the card also keeps a plan to swap it later for an on-device classifier that no card needs.",
+    "checked": "Roadmap: no rule asks for screening a parent's own attachments, and line 397 treats classifiers as tripwires, not limits. Fact sheet and the 9 Oct note: the gate is the assistant's proposed condition inside an open decision; Tony's answer on 11 Oct was to apply for Zero Data Retention. Card: caveats 1, 2, 6 and 7, unverified 5, safety ('a tripwire for text PDFs, not a guarantee'); its one source for input filtering (an OWASP page) is marked unchecked and is general advice. Dependents in r7.json: OCL-01 (wave D) names the gate with 'or uploads switched off' as the alternative, and CRT-11 only mentions it. G015 (wave B, decided 11 Oct) sends each parent's whole inbox, money and tax-form mail included, to the same model with no such screen. removed.json row OCL-14 ('a building block that no card needs yet').",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want Happy to refuse text PDFs that look like bank statements or tax forms before they reach OpenAI? It catches only PDFs with real text; a scan or a phone photo of the same page goes through. Default: no gate. When attachments go on, audio understanding stays off, one AGENTS.md line and a word to both parents say not to send statements, tax forms or (until Zero Data Retention is approved) medical bills, and the hidden-instructions eval case stays. If you say yes: name the kinds, say whether medical bills are refused and whether a parent may answer 'send it anyway', and the marker test in the next row runs before any gate code. Either way the caveat about a later on-device classifier is deleted."
+    },
+    "loses": "A tripwire that would catch a text-PDF statement or tax form sent by mistake while Zero Data Retention is pending. Photos and scans were never covered. OCL-01 (wave D) falls back to its other option, uploads switched off.",
+    "saves": "M",
+    "severity": "high",
+    "upheld": true,
+    "challenge_note": "Looked for a roadmap rule, a statement by Tony or a dependent card that needs the gate and found none; this merges the two reviewers' gate rows and the classifier-caveat row, and takes 'no gate' as the default because the wave B mail decision sends the same kinds of document unscreened."
+  },
+  {
+    "id": "F002",
+    "kind": "assumption",
+    "part": "the gate's seeded-PDF test: no stated outcome if the hook cannot see the PDF text, and no stated way to run it before the switch is on",
+    "where": "depends_on, caveats, unverified",
+    "problem": "If the gate is kept, photo and PDF reading is held behind a test that the gate can see a PDF's text, which the card says is untested. The card does not say what happens to photo reading if the test fails, nor how a test PDF reaches an agent while the iMessage attachment switch is still off.",
+    "checked": "Installed docs/plugins/hooks/prompt-and-session.md:149-153 (before_agent_run receives the current user input as `prompt` and, on the embedded path, runs before prompt-local image loading); docs/nodes/media-understanding.md:266-267 (extracted file text is appended to the media prompt as a file block). Neither page says that block is inside the hook's `prompt`. docs/channels/imessage/media.md:17 (attachment-only messages are dropped while the switch is off).",
+    "proposal": {
+      "action": "test-first",
+      "text": "Only if Tony keeps the gate. Before any gate code is written: a throwaway before_agent_run handler that only reports whether one marker word from a harmless text PDF is present in `prompt`, tried on an eval-only clone; if no path exists with the iMessage switch off, one supervised turn from Tony's handle with it on. Write both outcomes on the card: marker seen, build the gate; marker not seen, the gate cannot work and Tony chooses between attachments on with the house rule or attachments off."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Read the two installed pages the reviewer cited and they confirm the gap, so the test stands; it matters only if the gate survives the row above, so severity drops to low."
+  },
+  {
+    "id": "F002",
+    "kind": "assumption",
+    "part": "two fixed five-line 'explain this' reply formats, one with a 'which kid' line and one for medical bills",
+    "where": "adds",
+    "problem": "The card fixes two five-line answer layouts. Nobody asked for five lines or those headings, 'which kid' assumes more than one child, and the medical-bill layout sits beside a recommendation not to send medical bills yet.",
+    "checked": "Fact sheet (no reply-format preference; number of children never stated). Config repo: family.json5 lists two adults only. removed.json row F023 (the layout comes from a folded entry written by an agent). frame.decisions recommendation 'no medical bills until approval'; card caveat 6 says medical bills are 'still to settle'.",
+    "proposal": {
+      "action": "reword",
+      "text": "A suggested starting layout, to be changed after the first few real flyers: the dates, what to do, any money or form, the deadline, and which child if that matters. No line count is fixed. The medical-bill layout comes off the card until Tony says medical bills may be sent."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Checked the fact sheet and the registry for a format preference or a count of children and found neither; kept, with the medical-bill layout tied to the open question it contradicts."
+  },
+  {
+    "id": "F003",
+    "kind": "over-engineering",
+    "part": "Voice memos in and spoken replies out for the two adults, placed in wave A",
+    "where": "wave, value",
+    "problem": "Voice for the two adults sits in the first wave with three installs, a live privacy test and twelve open checks. The card itself scores it 2 out of 5 and says phone dictation already does the job, and nothing records that you or Jordan want it now.",
+    "checked": "Card caveat 1, value 2, depends_on (whisper.cpp, ffmpeg and a model file; a first live test) and the twelve unverified entries. Roadmap line 290 (voice memos are an M5b kids deliverable), line 496 ('Kids voice' is the only voice decision marked By: You), lines 109 and 214 (voice replies described as a component, with no milestone for the adults). Config repo: the includeAttachments comment says voice memos arrive in M5. Fact sheet: Tony's examples of wanted capabilities do not include voice, and Jordan's wishes are unstated. r7.json: F072 (kids) is 'later'; only optional parts of AUT-06 (wave B) and OCL-01 (wave D) use F003.",
+    "proposal": {
+      "action": "defer",
+      "text": "Do you or Jordan want to send Happy voice memos and get spoken replies in the first wave? Default: no. F003 moves to Later, next to the kids' voice work it was planned for. Wave A keeps two config lines: audio understanding off (already in F002) and the Microsoft online voice switched off. If you want it sooner, ship transcription only, with no spoken replies."
+    },
+    "loses": "Voice memos to Happy and spoken replies for the parents until then; the read-aloud option in the practice quiz (AUT-06) and the local speech option for Talk (OCL-01) wait too. Typing and phone dictation keep working.",
+    "saves": "M",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Looked for a roadmap line or a statement that puts adult voice in the first wave; the roadmap and the config comment both place voice with the kids' milestone, so the two reviewers' rows are merged and kept."
+  },
+  {
+    "id": "F003",
+    "kind": "over-engineering",
+    "part": "'Later step: a natural voice by one of three documented routes'",
+    "where": "how, caveats, depends_on",
+    "problem": "The card plans a second, nicer voice and keeps three ways to get it, one of them a local speech server with its own background job, plus a decision on which to pick. Nobody has asked for a nicer voice, and nobody has heard the built-in one yet.",
+    "checked": "Card how, caveat 6 (a third-party package from a 0.0.x project, a loopback server with its own launchd job, a model download; none installed), depends_on 3, unverified 5 and 8. Fact sheet: nothing on voice quality. Roadmap lines 72 and 109 name only the built-in say command, MLX and 'a local TTS command'. No other card depends on the natural voice.",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove the later step, its caveat and its decision from the card. Spoken replies, if built at all, use the built-in macOS voice; a nicer voice is researched only if a parent asks for one."
+    },
+    "loses": "nothing now; the three routes would be looked up again if ever wanted",
+    "saves": "S",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Checked the roadmap and the dependents for anything that needs a natural voice and found nothing, so the finding stands."
+  },
+  {
+    "id": "F003",
+    "kind": "assumption",
+    "part": "'Chinese or mixed-language speech'",
+    "where": "caveats, unverified",
+    "problem": "The card twice plans around transcribing Chinese or mixed-language speech. No record says anyone in the family talks to Happy in a language other than English.",
+    "checked": "Fact sheet ('any second language' is on the never-stated list). Config repo: family.json5 has no language field, and a search of the repo found no language setting. F041's test list (outside this part) makes the same assumption with 'one note saved in Chinese'.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Will either of you write or speak to Happy in a language other than English, and which one? Default if you do not answer: English only, and the line is removed. For this card the answer matters only if F003 is built."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Searched the config repo and the fact sheet for any recorded language and found none, so it stays a question with English as the default."
+  },
+  {
+    "id": "G009",
+    "kind": "over-engineering",
+    "part": "Granting the message tool, re-opening the same-channel send switch, then an in-house hook to pin recipients, so one parent's agent can text the other parent",
+    "where": "how, depends_on, wave, value, frame.decisions",
+    "problem": "Today no parent's agent can text anyone except the chat it is answering, by config alone. The card opens that up and then writes an in-house check to close it again, so Happy can pass notes between two adults who can text each other; saying yes also lets one parent's agent put what it holds in front of the other. The card says this needs your yes, but the question is not among the 11 decisions in the summary, and the card already sits in wave A with value 5.",
+    "checked": "Roadmap line 150 (Replies: no sends into other conversations; scheduled jobs deliver only to their owner), line 493 (Family data domains, By: You) and line 426 (the recipient test counts another family member as a wrong recipient). Config repo: both crossContext switches are false, each parent's agent denies group:messaging, and the deployed templates/person/AGENTS.md has the hard rule that Happy cannot send messages to anyone and offers a draft instead (signed off at M1). Installed tool-permissions.md:35-56. r7.json dependents: CRT-04's notice is a host script to pinned handles; the jobs registry (G003) writes each job's recipient from family.json5; CRT-10 and MKT-06 use only the optional relay; F072 and MAC-02 are Later; F020 and AUT-01 reuse only the hook pattern. frame.decisions has 11 entries, none on this. Fact sheet: Tony has not asked for note passing.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "May one parent's Happy send a text into the other parent's chat (pass a note, ask a question)? Default: no, which is the roadmap rule and today's config. No agent gets the message tool, both switches stay off, and 'tell Jordan...' keeps getting today's answer: a draft to send yourself. Notices and scheduled texts keep going out from jobs and host scripts whose recipients the generator writes from family.json5, and the separation check gains the line the roadmap already plans (line 157): every job's recipient is its owner. The fail-closed check is built only where an agent can name a destination: the scheduling tool if F007 is built, and the email tool in F049. If F007 is deferred as well, G009 leaves wave A."
+    },
+    "loses": "'Tell Jordan...' and 'ask Jordan...' through Happy, and any text an agent composes to the other parent or the parents' group from outside the chat it is in. The parents text each other directly.",
+    "saves": "M",
+    "severity": "high",
+    "upheld": true,
+    "challenge_note": "Looked for a wave A or B card, a roadmap rule or a statement by Tony that needs an agent to send into another chat; found none, and found the opposite rule in the roadmap and in the deployed AGENTS.md, so the two reviewers' rows are merged and kept."
+  },
+  {
+    "id": "G009",
+    "kind": "assumption",
+    "part": "the claim that Happy's own notices and later features 'all go through' the one coded limit",
+    "where": "caveats, how",
+    "problem": "The card says its real value is one coded family-only limit that Happy's own notices and later features 'all go through'. Notices from host jobs are sent with command-line calls, and nothing cited shows the tool-call check runs for those; their recipient is whatever the script passes.",
+    "checked": "Card sources hooks/reference.md:93 (the fail-closed check is on agent tool calls) and agent-send.md:80. Installed docs/cli/message.md 'Agent ownership' (the message command runs as the System Agent and takes no agent flag) and tool-permissions.md:56 (the send switches do not confine command-line calls without a bound source conversation). CRT-04's how in r7.json (the outage notice is a host script using `openclaw message send`). G003's unverified list asks the same question about scheduler failure alerts, and the card's own unverified list has a line on `openclaw message send`.",
+    "proposal": {
+      "action": "reword",
+      "text": "The hook limits only what a parent's agent can do with a tool that names a destination (the scheduling tool, later the email tool). Host jobs (the model-down line, briefs, watchers) do not pass through it: their recipients are written by the generator from family.json5 and checked after each deploy. The value score should be re-read with that in mind."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Looked for an installed page saying plugin tool hooks run for command-line sends or scheduler deliveries; none does, and two cards list the same point as unverified, so the claim stays unbacked."
+  },
+  {
+    "id": "G009",
+    "kind": "over-engineering",
+    "part": "Ask-and-relay step (G010): pending-requests table, a before_dispatch plugin for a bare yes or no, a one-shot reminder and an expiry",
+    "where": "description, how, depends_on",
+    "problem": "To carry 'can you do Thursday pickup?' to the other parent and bring back the yes, the card adds a database table, a second plugin that checks incoming texts for a bare yes or no, and timed jobs for a nudge and an expiry. The card itself says the gain over the parents texting each other is only tracking, one reminder and an expiry, and nothing says the two of you would ask each other things through Happy.",
+    "checked": "Card how, caveat 1, unverified 4 (no plugin-side send call was found, so the relay may not be buildable as written) and unverified 6 ('judgement, not sourced'). Its one outside source is listed as unchecked and, by the card's own summary, describes a co-parenting app's schedule change requests. Fact sheet: no such wish, and Jordan's wishes are unstated. Roadmap: nothing asks for it. r7.json: only optional add-ons in CRT-10 (wave B) and MKT-06 (wave C) use the step, and it pulls in F031 and F007.",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove the relay step from the card and the 'ask-and-relay' add-ons from CRT-10 and MKT-06. It goes automatically if the answer to the cross-parent sends question is no; if that answer is yes, it still stays out unless Tony says the two of you would use it. A parent who wants an answer from the other parent texts them."
+    },
+    "loses": "A tracked ask between the parents with one nudge and an expiry, relayed through Happy.",
+    "saves": "M",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Checked the dependents and the card's own open points: only optional add-ons use the relay and the card doubts it can be built as written, so the two reviewers' rows are merged and kept."
+  },
+  {
+    "id": "F007",
+    "kind": "over-engineering",
+    "part": "Scheduling tool granted to each parent's agent in wave A, plus a hook to police it, for 'remind me at 4:30'",
+    "where": "how, wave",
+    "problem": "To make 'remind me at 4:30' work, the agent that holds a parent's notes is given OpenClaw's scheduling tool, which OpenClaw says to keep away from agents that read outside content, and an in-house check is then needed to make that safe. As things stand only Tony could use it, the card grants the tool to both parents' agents anyway, and the phone already sets a timed reminder.",
+    "checked": "Installed tool-permissions.md:21-28 (deny cron by default where untrusted content is handled), hardened-baseline.md:38 (non-owner senders cannot use the scheduling tool whatever the config says), cron-jobs/delivery.md:19 (a job can deliver to a web address, so the check is a real need if the tool is granted) and managing-jobs.md:79-81 (chat creation is described for Control UI administrators; the card lists creation from an iMessage owner turn as untried). Config repo: one command owner; group:automation denied on both parents' agents; eval case BD-02 in evals/smoke.yaml already expects Happy to say it cannot set reminders and to point to the phone. Roadmap line 128 lists 'Reminders' as a skill of each parent's agent with no design, and line 150 has scheduled jobs created by the operator. Fact sheet: no statement that timed texts from Happy are wanted. r7.json: no wave A card needs F007 (G008 uses it only as a test subject); F010, F051, CRT-10, CRT-13 and G006 (wave B) use it for optional reminder offers.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Timed reminder texts from Happy would work for you only, and the phone already sets a timed reminder by voice. Build them in wave A anyway? Default: no. The scheduling tool stays off every agent, no check is built for it, and Happy keeps today's answer (it cannot set reminders; use the phone). Decide again with F010 (wave B), the first card where a reminder comes out of something Happy read. If yes: grant the tool to Tony's agent only, first prove with one supervised turn that an iMessage owner turn can create a job at all, then build the check."
+    },
+    "loses": "'Remind me' by text, and listing and cancelling reminders by text, in wave A. The day-before reminder offers in F010, F051, CRT-10, CRT-11 and CRT-13 wait on the later decision; if that answer is yes the same build happens in wave B.",
+    "saves": "M",
+    "severity": "high",
+    "upheld": true,
+    "challenge_note": "Checked whether the hook is needed once the tool is granted (it is: a job can deliver to a web address) and whether anything in wave A needs the tool (nothing does), so the row is kept as a question about timing, with 'Tony's agent only' and 'test creation before building the check' added."
+  },
+  {
+    "id": "F007",
+    "kind": "assumption",
+    "part": "'Decision: add Jordan to commands.ownerAllowFrom so she can set reminders'",
+    "where": "depends_on, caveats",
+    "problem": "The card still lists making Jordan a command owner as a decision to take, after you said there is no need to add her to the command list. Nothing records that Jordan wants timed reminders from Happy at all.",
+    "checked": "Fact sheet ('No need' to add Jordan to the command allowlist; whether Jordan wants any of this is unstated). The 11 Oct project note records the owner question for reminders as still open. Installed hardened-baseline.md:38 (non-owners cannot use the scheduling tool) and managing-jobs.md:79 (an owner's agent can change any job on the gateway). frame.decisions 'Calendar, and Jordan's command rights' keeps it open.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Should Jordan be able to set timed reminders by texting Happy? That needs her on the owner list, a bigger grant than the command list you declined, and it lets her agent manage every scheduled job on the gateway. Default: no. The owner question closes, any build of F007 is for Tony only, and Jordan uses the Reminders app or Siri on her own phone."
+    },
+    "loses": "Jordan cannot text Happy 'remind me at 4:30'.",
+    "saves": "S",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Checked whether 'No need' already answered this: it was said about the command list, and the project note records the owner question as still open, so it stays a question with 'no' as the default."
+  },
+  {
+    "id": "F007",
+    "kind": "over-engineering",
+    "part": "Refusing changes to jobs another agent created (a per-job ownership check), and trimming the job list",
+    "where": "safety, caveats",
+    "problem": "The card proposes a second layer in the check so one parent's agent cannot see or change the other's reminders or the generated jobs, using a per-job lookup nobody has tried and a list trimmer that may not be possible. With one command owner most of that buys nothing, but one part matters: without it a planted instruction could point another person's scheduled text at Tony.",
+    "checked": "Card safety (last three sentences) and caveat 3. Installed managing-jobs.md:79 (an owner's agent can list, update, run or remove any job on the gateway) and :87 (each such change is written to the scheduler's admin log, and management does not replace a job's own execution policy). Config repo: one command owner. Roadmap line 141 (Tony can read every person's data) and line 150 (scheduled jobs deliver only to their owner). The first reviewer's design checks add and update only for 'goes to the asker'; an update that re-points Jordan's digest job at Tony would pass that check and cross line 150.",
+    "proposal": {
+      "action": "simplify",
+      "text": "If reminders are built: the check allows add (text to the asker, no web address, an empty tool list), list and remove, and refuses update and run outright; a reminder is changed by cancelling it and setting a new one. No per-job creator lookup and no list trimming unless a second command owner is ever added."
+    },
+    "loses": "Editing a reminder in place. A planted instruction could still make Tony's agent delete a job; the scheduler's admin log records it and the generator's next run restores generated jobs.",
+    "saves": "S",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Tested the simpler design against the rule that scheduled jobs deliver only to their owner: dropping the guard entirely would let an update re-point another person's job, so the proposal is repaired to refuse update and run instead, which needs no lookup."
+  },
+  {
+    "id": "F009",
+    "kind": "assumption",
+    "part": "'the family Google Calendar', the iCloud fallback named beside it, and 'Jordan's work calendar'",
+    "where": "description, example, how, depends_on, unverified",
+    "problem": "The name, description and build are written for a shared family calendar on Google, and the example gives Jordan a work calendar. You have never said that the family keeps a shared calendar, or on which service; it is a fact to ask, not a choice to make, and ten other cards read the calendar through this one. The iCloud fallback named beside it has no proven route.",
+    "checked": "Fact sheet ('never stated': which calendar the family shares and whether both parents use it). Config repo: family.json5 records no calendar account. Card depends_on 1 and unverified 3 ('Google or iCloud is still Tony's open decision'). frame.decisions 'Calendar, and Jordan's command rights' and 'Install the OpenClaw Mac app' (recommendation: no). Installed docs/nodes/device-commands.md:133 lists calendar.events for iOS and Android nodes only while nodes/command-policy.md:34 lists it in the macOS row, so the docs do not settle the iCloud route. The card's gog source covers Google only. r7.json: F014, F010, MKT-06, CRT-10, CRT-11, CRT-13, F018, F028, F033 and F080 list F009.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Where do you and Jordan keep family events today: one shared Google calendar, one shared iCloud calendar, each on your own, or nowhere? Default if you do not answer: the card stays written for Google (both of you have Google accounts and gog is already the mail connector) but nothing is built, and the calendar parts of F014, F010 and MKT-06 are marked 'waits on this answer'. If the answer is iCloud or 'nowhere', the card says plainly that it has no proven route. Either way the iCloud branch that needs the Mac app comes off the card, and the example drops 'Jordan's work calendar'."
+    },
+    "loses": "Nothing by asking. If the answer is iCloud or 'nowhere', calendar answers and the briefs built on them cannot be built as written.",
+    "saves": "none",
+    "severity": "high",
+    "upheld": true,
+    "challenge_note": "Searched the fact sheet, the registry and the roadmap for any record of the family's calendar and found none; the two reviewers' rows and the 'work calendar' example row are merged into one question."
+  },
+  {
+    "id": "F009",
+    "kind": "assumption",
+    "part": "'Allow bundle-mcp in the sandbox gate' as the way each parent's agent reaches its own calendar server",
+    "where": "how, safety",
+    "problem": "The card opens the sandbox gate to every connected account server at once and leans on a second per-agent setting to keep Tony's calendar out of Jordan's agent and the reverse. The roadmap lists exactly that behaviour as not yet confirmed on this version; the card neither repeats that nor tests it, and in wave B the same gate would cover the mail servers.",
+    "checked": "Card source tool-policy.md:101 (`bundle-mcp` admits all OpenClaw-managed MCP servers; exact tool names or a server glob admit one server). Roadmap line 145 (a per-agent allow for one server's tools in both gates plus an explicit deny for everyone else's), line 147 (a code check that blocks a call to another person's server) and line 161 (that the minimal profile plus a per-agent allow exposes exactly one MCP server is 'not yet confirmed'). The card's unverified list has no such entry. G015 (wave B) puts each parent's mail server behind the same gate.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Use the roadmap's form: each parent's agent allows only its own calendar server's tools by name in both gates and denies the other parent's. First test after deploy: each parent's tool list shows one calendar tool, and an eval-only clone of one parent's agent asked to call the other's server is refused. Add the point to the card's unverified list until that passes."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Checked whether the roadmap backs the card's wider gate: it asks for the narrower per-server form and lists the behaviour as unconfirmed, so the test stands."
+  },
+  {
+    "id": "F019",
+    "kind": "over-engineering",
+    "part": "Etiquette (G014): 'on it', 'cancel that' through the subagents tool, concurrency caps",
+    "where": "how, description",
+    "problem": "The card specifies an acknowledgement, a cancel phrase and concurrency limits for slow lookups before any lookup has been seen to run slowly. The cancel phrase means giving each parent's agent one more tool, and two parents will not reach the default limit of eight lookups at once.",
+    "checked": "Card how and unverified 8-9 ('nothing on the current stack runs longer than about 20 seconds'; 'the model can skip them'). Installed subagents.md:14-19 (a helper runs in the background and reports back by default), nesting.md:24 (default caps and a spawn time-limit setting) and subagents/operations.md 'Stopping' (a stop on the parent run cancels its helpers). Config repo: the subagents tool is denied on both parents' agents today. Fact sheet and roadmap: nothing on this. r7.json: no other card depends on the etiquette; F028's example only quotes 'on it'.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Keep one setting, a time limit on the hand-off, and the built-in report when the helper finishes. No subagents tool on the parents' agents, no concurrency tuning, no scripted acknowledgement wording. Add an 'on it' line only if real lookups turn out slow enough to confuse."
+    },
+    "loses": "'Cancel that' in plain words for a running lookup. Tony's built-in stop still ends it; for Jordan the lookup ends at its time limit.",
+    "saves": "S",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Checked the installed pages and the dependents: the completion report and the caps are defaults and no card needs the cancel phrase, so the finding stands and its stated loss is accurate."
+  },
+  {
+    "id": "F019",
+    "kind": "over-engineering",
+    "part": "Answer rules (F022): the 30-day staleness flag and the four-way fact-check verdict with two or three dated sources",
+    "where": "how, adds",
+    "problem": "On top of 'give the link and when it was fetched', the helper's instructions carry a fixed fact-check format and a rule to flag pages older than 30 days. The card records the 30-day figure and the link cap as house choices with no source, and says nothing enforces any of it.",
+    "checked": "Card how, unverified 6-7 ('a prompt rule the model can ignore'; 'house choices with no source'), adds from F025 and F026. Card source docs/tools/web.md:186 backs showing a page's own date when there is one, not a 30-day threshold. Roadmap line 267 sets one answer rule only: prices from live tool results with a timestamp, links and not bookings. Fact sheet: nothing.",
+    "proposal": {
+      "action": "simplify",
+      "text": "One AGENTS.md rule for the helper: give the link and the time fetched, show the page's own date when it has one, give a price or date only if it came from a fetched page, and say 'could not verify' when a page could not be read. Drop the fixed verdict format, the 30-day threshold and the link cap; add a rule back when a real answer shows the need."
+    },
+    "loses": "A uniform true, false, mixed or unclear shape for fact checks, and an automatic 'older than 30 days' flag; the page's own date is still shown.",
+    "saves": "S",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Looked on the card and in the roadmap for a source behind the 30-day figure or the verdict format and found none; kept, with 'show the page's own date' retained because a card source supports it."
+  },
+  {
+    "id": "F019",
+    "kind": "over-engineering",
+    "part": "'host-side helpers that take a URL (... watcher scripts) need their own scheme, host and resolved-address checks'",
+    "where": "caveats",
+    "problem": "The card asks every host script that takes a web address to carry its own home-network checks, and names the watcher scripts. The watchers' addresses are written by Tony in config, not chosen by a model or a web page, so that check has nothing to stop.",
+    "checked": "Card caveat 4; F018 how in r7.json ('all are operator-created host command jobs' with no model call); roadmap section 5 (the risk is content a model reads steering a tool). The check does make sense for a script that fetches a link passed in from chat or by a model (the print download in F080, the summarize wrapper in F020).",
+    "proposal": {
+      "action": "reword",
+      "text": "'Host-side helpers that fetch an address supplied in chat or by a model (the summarize wrapper, the print download) need their own scheme, host and resolved-address checks; scripts whose addresses Tony writes in config (the watchers) do not.'"
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low",
+    "upheld": false,
+    "challenge_note": "Overturned: the watchers run on the host outside OpenClaw's fetch guardrails and F018's own caveat and safety text rely on each script checking its address; a page Tony registered can later redirect or resolve to a home-network address, and the same check function is needed anyway for the summarize wrapper and the print download, so dropping it for the watchers saves nothing and 'loses nothing' was not accurate."
+  },
+  {
+    "id": "F019",
+    "kind": "assumption",
+    "part": "the hand-off returning the helper's answer with session visibility 'self'",
+    "where": "depends_on, unverified",
+    "problem": "Everything on this card needs the helper's answer to come back to the parent's agent while session visibility is set to 'self'. That is untested here, the card is still marked ready now, and it does not say what happens if the test fails.",
+    "checked": "Roadmap line 161 (not yet confirmed on 2026.9.7) and line 505 (verify at M3). Installed docs/concepts/session-tool.md:323 (an announcing run returns a completion event to the requester) and :342 (child sessions stay reachable under `tree` or `all`); tools/multi-agent-sandbox-tools.md:372 (the visibility setting is gateway-wide and cannot be set per agent); card source subagents.md:14. Config repo: visibility is 'self' and sessions_spawn is denied on both parents' agents today.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Make this the first step of the card, before the answer rules and the eval cases are written. Put the fallback on the card: if the answer does not come back under 'self', the only documented alternative is `tree` for the whole gateway, which changes a roadmap baseline setting and needs Tony's yes plus a re-run of the separation check. Show the card as ready after this test, not ready now."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Read the installed pages: the completion report is described separately from session visibility, so the hand-off will probably work, but the roadmap lists it as unconfirmed and nothing was run here, so the test-first row stands."
+  },
+  {
+    "id": "F019",
+    "kind": "assumption",
+    "part": "the rule for what may go into a search or research task: 'ages yes, names and school no'",
+    "where": "unverified, adds",
+    "problem": "The card settles a privacy rule for what Happy may put into a public web search or hand to the research helper: children's ages yes, names and school no. You have not stated that rule, the registry holds no ages, and one example ('camps for a 9-year-old') writes an age in.",
+    "checked": "Fact sheet (number and ages of children never stated; no rule about searches). Config repo: family.json5 lists two adults and a town. Roadmap line 400 names the hand-off's task text as the one remaining leak path and sets an eval for it, but no rule on what a search may contain. Card unverified 2 ('a prompt rule; nothing mechanical enforces' it). removed.json row F026 (where the example comes from).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "What may Happy put into a public web search or hand to the research helper: the home town, a child's age, a child's name, the school's name? Default if you do not answer: town and ages yes, names and school no, written on the card as 'default, not yet confirmed', and the example loses its age."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Checked the roadmap for a rule on search content: it tests the hand-off but states no such rule, so this stays a question with the card's own rule as the default."
+  },
+  {
+    "id": "F030",
+    "kind": "assumption",
+    "part": "'the Reminders lists the family already shares', including 'the grocery list'",
+    "where": "description, example, value, wave",
+    "problem": "The card is built on shared Apple Reminders lists, a grocery list among them, that the family 'already shares'. Whether you and Jordan share any Reminders list, or use Reminders at all, has never been stated.",
+    "checked": "Fact sheet (whether the family uses Apple Reminders lists or a shared grocery list is on the never-stated list). Config repo: family.json5 has no such record. The card's Apple and remindctl sources describe the product, not this family. Roadmap: Apple Reminders does not appear in it.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you and Jordan share any Apple Reminders list today (groceries, errands) that you would want Happy to add to? If not, would you start one? Default if you do not answer: unknown, so F030 leaves wave A and nothing is built until there is a list both of you use."
+    },
+    "loses": "Nothing by asking. If there is no shared list, 'add it to the grocery list' waits.",
+    "saves": "M",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Searched the fact sheet, the registry and the roadmap for any record of a shared list and found none; the two reviewers' rows are merged, at medium because only two later cards build on this one."
+  },
+  {
+    "id": "F030",
+    "kind": "over-engineering",
+    "part": "In-house Reminders plugin in wave A, resting on an untested write from Happy's Apple Account to a list a parent owns",
+    "where": "wave, how, depends_on, unverified",
+    "problem": "A host-side plugin is planned for the first wave, but the one thing it rests on has not been tried: Happy's Apple Account adding an item from the Mac's command line to a list a parent owns. The card gives no plan if that fails, and nothing before wave C needs the plugin.",
+    "checked": "Card description ('the first thing to prove'), unverified 1-2, depends_on 3 and caveat 2 (Siri already adds a single item). r7.json: only F033 (wave C, value 2) and the undo in G006 (wave B) depend on F030. Installed skills/apple-reminders/SKILL.md (it drives remindctl from a shell, which the sandboxed agents do not have, so a small plugin is the right shape once the bridge is needed). The card's Apple Support source, as summarised on the card (accepted participants can create and edit items). Roadmap: no rule or milestone needs it.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Before any plugin code: in happy's desktop session, join one list shared from Tony's account, run remindctl by hand to add and tick off an item, and look at both phones. If it fails, try a list that Happy's account owns and shares to both parents; if that fails too, drop the card. If it passes, build the three-verb plugin with the first card that needs it (F033), or in wave A only if Tony says he wants 'add these to the grocery list' by text now."
+    },
+    "loses": "Adding several items to the shared list by text until the plugin is built; each parent can still tell their phone.",
+    "saves": "M",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Checked for a roadmap rule or an earlier-wave card that needs the plugin and found none, and the installed skill confirms a plugin is the right shape later; the wave row and the untested-write row are merged into one test with a fallback."
+  },
+  {
+    "id": "F030",
+    "kind": "assumption",
+    "part": "Saturday-morning text of the open shopping list, one per parent",
+    "where": "adds",
+    "problem": "A scheduled Saturday-morning text of the open shopping list, one per parent, is queued to be added to this card. Nobody has said the family shops on Saturday or that either parent wants that text.",
+    "checked": "owner-facts.md (no routines, no preferred times, Jordan's wishes unstated); removed.json F032 (the job comes from a folded entry).",
+    "proposal": {
+      "action": "reword",
+      "text": "Optional and off until a parent asks for it and names the day and time: a scheduled text of the open shopping list."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": false,
+    "challenge_note": "Overturned as not worth a change on its own: the card already calls the job optional, and under the jobs registry (G003, wave A) no scheduled text exists until Tony sets a per-person switch for it, so 'Saturday morning' is a placeholder that schedules nothing."
+  },
+  {
+    "id": "PLAN",
+    "kind": "assumption",
+    "part": "'her reminders can go through the shared Reminders list (F030)'",
+    "where": "frame.findings, frame.decisions",
+    "problem": "The summary tells you Jordan's reminders 'can go through the shared Reminders list' and recommends that route. F030 as specified sets no due dates, and neither Happy writing to a list shared from a parent's account nor an alert then reaching her phone has been tested.",
+    "checked": "frame.findings (the paragraph on Jordan and the built-in stop) and the recommendation under frame.decisions 'Calendar, and Jordan's command rights'. F030 how (list, add, complete only) and its unverified list. F007 caveat 4 ('F030 as specified sets no due dates, and that the alert reaches the asker's phone from a shared list would need a test'). Fact sheet: whether the family uses Reminders lists is unstated.",
+    "proposal": {
+      "action": "reword",
+      "text": "Jordan has no way to set a timed reminder through Happy for now; she uses the Reminders app or Siri on her own phone. A route through F030 would need due dates added to that tool and two tests passed first."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Read both cards the sentence leans on: F030 has no due dates and F007 itself says the route needs a test, so the summary's recommendation is unbacked as written."
+  },
+  {
+    "id": "PLAN",
+    "kind": "assumption",
+    "part": "'each wave ... adds one new kind of risk'",
+    "where": "frame.batch_intro",
+    "problem": "The summary says each wave 'adds one new kind of risk'. In the seven wave A cards read here, the cards' own safety text names six new kinds at once: family photos to the cloud model, a scheduling tool on the agent that holds a parent's memory, texts into another conversation, a Google account sign-in, a hand-off to a helper that reads the open web, and Happy's Apple Account joining shared lists.",
+    "checked": "frame.batch_intro; the safety fields of F002, F007, G009, F009, F019 and F030; roadmap line 20 (the 'one new kind of risk per milestone' rule the sentence echoes); r7.json (19 of 42 items are wave A).",
+    "proposal": {
+      "action": "reword",
+      "text": "The waves give a build order, not a risk order. Wave A alone opens several new kinds of risk, so its cards go live one at a time, each after its own first test and, where one is listed, after your answer."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Counted the new risks named in the safety text of the wave A cards in this part and found six, so the sentence does not hold; if the rows above are accepted the count drops, but not to one."
+  },
+  {
+    "id": "PLAN",
+    "kind": "assumption",
+    "part": "Jordan set up as a day-one user of every card: her own Google sign-in and scheduled texts to her",
+    "where": "depends_on (F009), example and who (F002, F003, F009, F019, F030)",
+    "problem": "Five of these seven cards show Jordan using the feature, and the builds include her own Google sign-in and scheduled texts to her. She is already admitted and has her own agent, but nothing records that she has asked for any of the new features or which she would use.",
+    "checked": "Fact sheet ('Whether Jordan wants any of this, and which features she would use' is on the never-stated list). Config repo: family.json5 and the M1 sign-off show her admitted and bound to her own agent, nothing more. Roadmap line 235 (M1 went 'you first, then your wife'). F009 depends_on ('each parent's account added'). Tony's own words about mail ('our personal Gmail') suggest he expects her mailbox to be read in wave B, which is not the same as her asking for wave A features.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Set each new feature up for you first, and for Jordan when she asks? Default: yes, the same order M1 used. Chat features that need nothing from her work for her from the start. Her Google sign-in (F009), owner rights (F007) and any scheduled text to her are set up only when she asks."
+    },
+    "loses": "Jordan's calendar questions do not work until she signs in herself.",
+    "saves": "S",
+    "severity": "medium",
+    "upheld": true,
+    "challenge_note": "Checked what is recorded about Jordan: she is an admitted user with her own agent, so examples that feature her are fine; the row is narrowed to builds that need her sign-in or text her unasked, with the roadmap's own M1 order as the default."
+  },
+  {
+    "id": "PLAN",
+    "kind": "assumption",
+    "part": "the 'Value N/5' and 'Effort S/M/L' chips on every card",
+    "where": "value, effort",
+    "problem": "Each card shows a value out of 5 and an effort letter as plain facts. All were assigned by agents, no scale is defined anywhere, and 29 of the 42 cards are 'M'; in this part G009 scores 5 while its own caveat calls the part a parent would see 'a small convenience'.",
+    "checked": "Fact sheet (value scores, wave placement and effort estimates were all assigned by agents). catalog-src/render.py lines 84-87 (the chips carry no qualifier). frame.json (no definition of either scale). Counts taken from r7.json: effort M on 29 cards, L on 8, S on 5.",
+    "proposal": {
+      "action": "reword",
+      "text": "Label both chips as the assistant's estimate, say in one line what S, M and L mean, and ask Tony to mark his own picks instead of reading the score as a ranking."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": true,
+    "challenge_note": "Opened render.py and counted the scores in r7.json: the chips are unqualified and the counts are as the reviewer said, so the finding stands."
+  },
+  {
+    "id": "PLAN",
+    "kind": "assumption",
+    "part": "the 'Adults and kids' chip on G009 and F030",
+    "where": "who",
+    "problem": "Two of these cards carry the chip 'Adults and kids'. No child can use either feature: the registry lists two adults only, the kids agent is parked under Later with no tools, and both cards describe things only the two parents do.",
+    "checked": "r7.json: G009 and F030 have who 'both'. catalog-src/render.py line 82 renders 'both' as 'Adults and kids'. Config repo: family.json5 lists two adults and no children. Roadmap lines 66 and 403 (the kids agent has no tools). F072 (kids) is 'later'. Five more cards outside this part carry the same value (F031, G005, CRT-04, G001, F083).",
+    "proposal": {
+      "action": "reword",
+      "text": "Set who to 'adult' on G009 and F030 so the chip reads 'Adults', and check the five other cards with the same chip the same way."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low",
+    "upheld": true,
+    "added": true,
+    "challenge_note": "Added: read the who field against the renderer and the registry; 'both' was meant as both parents but prints as 'Adults and kids', which nothing backs."
+  }
+]

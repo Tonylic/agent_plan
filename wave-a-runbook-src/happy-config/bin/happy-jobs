@@ -1,0 +1,199 @@
+#!/bin/zsh -f
+# happy-jobs: every text Happy sends by itself is one scheduled job, and every such job is declared
+# in this file, once. Runs as happy: `happy-deploy --jobs <command> [name]` from the admin account,
+# or ~/bin/happy-jobs in happy's Terminal.
+#   happy-jobs list              every job in the scheduler, disabled ones included (read-only)
+#   happy-jobs apply             create or update the jobs declared in apply() below; a new job starts DISABLED
+#   happy-jobs run <name>        run one job now and wait: prints its result, delivery and tool calls
+#   happy-jobs enable <name>     switch a job's schedule on
+#   happy-jobs disable <name>    switch it off (this is how a scheduled text is quietened)
+#   happy-jobs remove <name>     delete a job
+#   happy-jobs probe 1|2|silent  wave A steps C3-C4: a throwaway job that texts one fixed line to the
+#                                owner (line 1, then line 2 under the same key), or answers NO_REPLY
+#   happy-jobs failprobe         wave A step C5: a throwaway job that always fails, to see the alert
+# Rules every declared job follows (capability catalog, card G003):
+#   - its text goes to its owner alone; the handle is read from the deployed config, which
+#     gen-family.mjs wrote from family.json5 (session.identityLinks). No handle is typed here;
+#   - a time limit, and for a model job an explicit tool list and the full bootstrap files (no
+#     --light-context), so the agent's hard rules load on every run;
+#   - a stable key (--declaration-key happy:<name>): applying twice updates the job, it does not
+#     add a second one (OpenClaw 2026.9.7's code; tested on this Mac in wave A step C3).
+# A model job's reply is its text. A reply of exactly NO_REPLY sends nothing.
+# Reminders set in chat are jobs too; they are not declared here, but `list` shows them.
+set -uo pipefail
+[[ "$(/usr/bin/id -un)" == happy ]] || { print -u2 "happy-jobs: must run as happy"; exit 1; }
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+cd "$HOME"
+jq=/usr/bin/jq
+cfg=$HOME/.config/happy
+tz=America/New_York
+
+all() { openclaw automations list --all --json; }
+# The job id for a declared name: empty if there is none, AMBIGUOUS if the key is on two jobs.
+id_of() {
+  local js; js=$(all) || { print -u2 "happy-jobs: cannot list the scheduler's jobs"; return 1; }
+  print -r -- "$js" | $jq -r --arg k "happy:$1" \
+    '[.jobs[] | select(.declarationKey == $k) | .id] | if length == 1 then .[0] elif length == 0 then "" else "AMBIGUOUS" end'
+}
+need_id() {   # prints the id or fails with a message
+  local id; id=$(id_of "$1") || return 1
+  [[ -n $id && $id != AMBIGUOUS ]] || { print -u2 "happy-jobs: no single job is declared as $1 (run: happy-jobs list)"; return 1; }
+  print -r -- "$id"
+}
+# A person's first iMessage handle, and the owner's, from the deployed config.
+handle() { openclaw config get "session.identityLinks.$1" --json | $jq -r '.[0] | sub("^imessage:"; "")'; }
+owner_handle() { openclaw config get commands.ownerAllowFrom --json | $jq -r '.[0] | sub("^imessage:"; "")'; }
+gmail_tools() { print -r -- "$1__gmail_search,$1__gmail_get_message,$1__gmail_get_thread"; }
+sessionkeys() { openclaw sessions --agent "$1" --limit all --json 2>/dev/null | $jq -r '.sessions[].key'; }
+
+# declare <name> <agent> <cron> <message file in ~/.config/happy/jobs> <tool list> <person id | none>
+declare_job() {
+  local name=$1 agent=$2 cron=$3 msg=$cfg/jobs/$4 tools=$5 to=$6 id h
+  if ! openclaw config get "agents.entries.$agent.name" >/dev/null 2>&1; then
+    print "skip   $name: agent $agent is not deployed"; return 0
+  fi
+  [[ -r $msg ]] || { print -u2 "happy-jobs: missing message file $msg"; return 1; }
+  local -a args=(--name "$name" --declaration-key "happy:$name" --agent "$agent" --session isolated
+                 --cron "$cron" --tz "$tz" --exact --timeout-seconds 300 --tools "$tools"
+                 --message "$(<$msg)")
+  if [[ $to == none ]]; then
+    args+=(--no-deliver)
+  else
+    h=$(handle "$to") || return 1
+    [[ -n $h && $h != null ]] || { print -u2 "happy-jobs: no handle for $to in the deployed config"; return 1; }
+    args+=(--announce --channel imessage --to "$h")
+  fi
+  id=$(id_of "$name") || return 1
+  [[ $id == AMBIGUOUS ]] && { print -u2 "happy-jobs: more than one job has the key happy:$name; remove the extras first"; return 1; }
+  [[ -z $id ]] && args+=(--disabled)    # a new job waits for `enable`; an existing one keeps its on/off state
+  openclaw automations add "${args[@]}" --json > /dev/null || { print -u2 "happy-jobs: could not declare $name"; return 1; }
+  # Report what the scheduler now holds, read back from its own list.
+  all | $jq -r --arg k "happy:$name" --arg n "$name" --arg was "${id:+updated}" \
+    '[.jobs[] | select(.declarationKey == $k)] | "apply  \($n): \(if $was == "" then "created" else $was end), \(length) job(s) with this key, \(if .[0].enabled then "on" else "off" end)"'
+}
+
+apply() {
+  local rc=0
+  # Tony's weekday 07:00 mail text (America/New_York), school lines first. Tuesday to Friday it
+  # looks back one day; on Monday three, to cover the weekend.
+  declare_job mail-morning-tony     tony-mail "0 7 * * 2-5" mail-morning-tony-1d.txt "$(gmail_tools tony-gmail)" tony || rc=1
+  declare_job mail-morning-tony-mon tony-mail "0 7 * * 1"   mail-morning-tony-3d.txt "$(gmail_tools tony-gmail)" tony || rc=1
+  # The same text on the reader's eval copy over the test mailbox, looking back a year so that the
+  # planted mails never age out. It is never switched on and never delivered:
+  # `happy-jobs run mail-morning-test` starts it by hand.
+  declare_job mail-morning-test tony-mail-eval "0 7 * * 1" mail-morning-tony-test.txt "$(gmail_tools test-gmail)" none || rc=1
+  return $rc
+}
+
+# What a run leaves on disk: for an eval copy (planted mail only), its record and trajectory under
+# ~/Library/Logs/happy/jobs/. For a real reader, nothing: the record and the trajectory hold mail
+# text, so they are written to a scratch folder and deleted before this returns.
+run() {
+  local name=$1 id agent out rc k n evs tj calls offered
+  id=$(need_id "$name") || return 1
+  agent=$(all | $jq -r --arg i "$id" '.jobs[] | select(.id == $i) | .agentId')
+  local scratch=$HOME/Library/Logs/happy/jobs
+  if [[ $agent == *-eval ]]; then out=$scratch/$(/bin/date +%Y-%m-%d-%H%M%S)-$name
+  else
+    for k in $scratch/.run.*(N/); do /bin/rm -r -- "$k"; done    # what an interrupted earlier run left behind
+    out=$(/usr/bin/mktemp -d "$scratch/.run.XXXXXX") || return 1
+    trap '[[ -n ${out:-} && -d $out ]] && /bin/rm -r -- "$out"; exit 130' INT TERM HUP
+  fi
+  /bin/mkdir -p "$out/traj"
+  {
+  local -a before after
+  before=("${(@f)$(sessionkeys "$agent")}"); before=(${before:#})
+  openclaw automations run "$id" --wait --wait-timeout 10m --json > "$out/run.json" 2> "$out/run.err"; rc=$?
+  print "run    $name ($agent): exit $rc (0 = the run and its required delivery succeeded)"
+  if (( rc != 0 )) && ! $jq -e '(.status // .run.status) != null' "$out/run.json" >/dev/null 2>&1; then
+    # The run did not get as far as a result: say why, and show nothing from an earlier run.
+    print "error  $(/usr/bin/head -n 1 "$out/run.err" 2>/dev/null | /usr/bin/cut -c1-200)"
+    return $rc
+  fi
+  # Status fields only. The text itself is not printed for a real reader: it is on its owner's phone.
+  $jq -c '{status: (.status // .run.status), completionStatus: (.completionStatus // .run.completionStatus),
+           deliveryStatus: (.run.deliveryStatus // .deliveryStatus), deliverySuppressionReason: (.run.deliverySuppressionReason // .deliverySuppressionReason)}' "$out/run.json" 2>/dev/null
+  if [[ $agent == *-eval ]]; then        # eval copies read planted mail only
+    print "text   (eval copy):"; $jq -r '[.. | objects | select(has("summary")) | .summary][0] // "(no summary in the run record)"' "$out/run.json" 2>/dev/null
+  fi
+  # Tool calls: export the trajectory of this run's session. An isolated job keeps one stored session,
+  # agent:<agent>:cron:<job id>, which holds its latest run (OpenClaw 2026.9.7); the run record may
+  # name it too. Any other session that appeared during the run is exported as well. An export can
+  # list a call twice (once as recorded at run time, once rebuilt from the transcript), so read the
+  # names, and compare a count only with another count from this script.
+  after=("${(@f)$(sessionkeys "$agent")}")
+  after=(${after:#}); after=(${after:|before})
+  k=$($jq -r '.run.sessionKey // .sessionKey // empty' "$out/run.json" 2>/dev/null)
+  after+=("${k:-agent:${agent}:cron:${id}}" "agent:${agent}:cron:${id}")   # braces: zsh would read $agent:c as a modifier
+  after=(${(u)after})
+  for k in $after; do
+    n=$(print -rn -- "$k" | /usr/bin/shasum -a 256 | /usr/bin/cut -c1-12)
+    openclaw sessions export-trajectory --agent "$agent" --session-key "$k" --workspace "$out/traj" \
+      --output "$agent-$n" > /dev/null 2>> "$out/traj-export.log"
+  done
+  evs=("$out"/traj/.openclaw/trajectory-exports/*/events.jsonl(N))
+  if (( ! ${#evs} )); then print "calls  no trajectory export; cannot list tool calls"; return $rc; fi
+  calls=$(/bin/cat $evs | $jq -r 'select(.type == "tool.call") | .data.name' | /usr/bin/sort | /usr/bin/uniq -c | /usr/bin/sed 's/^ *//')
+  print "calls  ${${calls//$'\n'/, }:-none}"
+  # The tool definitions that were sent to the model, when the export captured them.
+  tj=("$out"/traj/.openclaw/trajectory-exports/*/tools.json(N))
+  if (( ${#tj} )); then
+    offered=$(/bin/cat $tj | $jq -r '.[] | (.name // .function.name // empty)' 2>/dev/null | /usr/bin/sort -u)
+    if [[ -n $offered ]]; then print "tools  ${offered//$'\n'/, }"
+    elif /bin/cat $tj | $jq -e -s 'all(.[]; length == 0)' >/dev/null 2>&1; then print "tools  none offered"
+    else print "tools  (tools.json has no names in the expected place)"; fi
+  else print "tools  (no tools.json in the export)"; fi
+  return $rc
+  } always {
+    if [[ $agent == *-eval ]]; then print "files  $out"; else [[ -d $out ]] && /bin/rm -r -- "$out"; fi
+  }
+}
+
+probe() {   # wave A steps C3-C4 (test T3): the same throwaway job declared with line 1, then line 2, then silence
+  local h; h=$(owner_handle) || return 1
+  local line
+  case $1 in
+    1|2)    line="Reply with exactly this one line and nothing else: Happy scheduler test $1." ;;
+    silent) line="Reply with exactly NO_REPLY and nothing else." ;;
+    *)      print -u2 "usage: happy-jobs probe 1|2|silent"; return 2 ;;
+  esac
+  # inbox has no tools at all and its own workspace; --light-context leaves its bootstrap files out,
+  # so the model only repeats the line. --tools "" is required: without it an operator's job gets the
+  # tool cap "*", and 2026.9.7 refuses a turn whose explicit tool list leaves nothing callable (inbox
+  # denies everything). The schedule (3 am on 1 January) never matters: the job is created disabled
+  # and only ever run by hand.
+  openclaw automations add --name wave-a-probe --declaration-key happy:wave-a-probe --agent inbox \
+    --session isolated --light-context --tools "" --cron "0 3 1 1 *" --tz "$tz" --timeout-seconds 120 --disabled \
+    --announce --channel imessage --to "$h" \
+    --message "$line" --json > /dev/null || { print -u2 "happy-jobs: could not declare wave-a-probe"; return 1; }
+  [[ -n $(id_of wave-a-probe) ]] && print "probe  wave-a-probe declared ($1)" || { print -u2 "happy-jobs: wave-a-probe was not created"; return 1; }
+}
+
+failprobe() {   # wave A step C5: fails every minute until removed; delivers nothing itself
+  openclaw automations add --name wave-a-failprobe --declaration-key happy:wave-a-failprobe \
+    --command-argv '["/usr/bin/false"]' --every 1m --timeout-seconds 30 --no-deliver --json > /dev/null \
+    || { print -u2 "happy-jobs: could not declare wave-a-failprobe"; return 1; }
+  [[ -n $(id_of wave-a-failprobe) ]] && print "probe  wave-a-failprobe declared; it fails every minute until removed" \
+    || { print -u2 "happy-jobs: wave-a-failprobe was not created"; return 1; }
+}
+
+case "${1:-help}" in
+  # One line per job: name, id, agent, on/off, status, last run (UTC), last delivery, schedule, where
+  # it delivers, key.
+  # Jobs declared here have a key that starts with "happy:". Others (a reminder set in chat, an
+  # OpenClaw system job) are listed too, so that nothing scheduled is out of sight.
+  list)     all | $jq -r '.jobs[] | [.name, .id, (.agentId // "-"), (if .enabled then "on" else "off" end), .status,
+                                      (if .state.lastRunAtMs then (.state.lastRunAtMs / 1000 | strftime("%m-%d %H:%MZ")) else "-" end),
+                                      (.state.lastDeliveryStatus // "-"), (.schedule | tojson),
+                                      ((.delivery // {}) | "\(.mode // "-") \(.to // "-")"),
+                                      (.declarationKey // "-")] | @tsv' ;;
+  apply)    apply ;;
+  run)      run "${2:?usage: happy-jobs run <name>}" ;;
+  enable)   id=$(need_id "${2:?usage: happy-jobs enable <name>}") && openclaw automations enable "$id" >/dev/null && print "on     $2" ;;
+  disable)  id=$(need_id "${2:?usage: happy-jobs disable <name>}") && openclaw automations disable "$id" >/dev/null && print "off    $2" ;;
+  remove)   id=$(need_id "${2:?usage: happy-jobs remove <name>}") && openclaw automations rm "$id" >/dev/null && print "gone   $2" ;;
+  probe)    probe "${2:-}" ;;
+  failprobe) failprobe ;;
+  *)        print "usage: happy-jobs list|apply|run <name>|enable <name>|disable <name>|remove <name>|probe 1|2|silent|failprobe"; exit 2 ;;
+esac

@@ -1,0 +1,343 @@
+[
+  {
+    "id": "F028",
+    "verdict": "keep",
+    "who_trigger_result": "A parent / asks 'plan Saturday for us' or for a longer trip / two outing options with hours, cost, weather and links; the parents do the booking.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+      "title": "5 ways Google parents are using Gemini",
+      "anchor": "kid-friendly activities",
+      "supports": "Google's own post shows parents using its assistant as a travel companion that finds kid-friendly activities and builds family trip itineraries."
+    },
+    "merge_hints": ["F027", "F021", "F026", "CRT-14", "AUT-01"]
+  },
+  {
+    "id": "F029",
+    "verdict": "edit",
+    "reason": "The name still promised price drops, which the item's own notes had dropped, and its trigger-script design needs a switch that the guardrails item (AUT-08) keeps off and that the OpenClaw docs call unattended code execution. Reworded as one model-free watcher for pages and feeds, taking in the feed watch (OCL-10). MKT-04 borrowed the trigger-state idea for remembering seen links and would keep them in a state file instead.",
+    "who_trigger_result": "A parent / a check a few times a day finds that a public page or feed they asked to have watched (camp registration, district or town site) shows something new / one text with the watch name and link, once.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://visualping.io/",
+      "title": "Visualping: #1 Website change detection, monitoring and alerts",
+      "anchor": "whenever a change is detected",
+      "supports": "A shipping consumer service sells this same function: it watches a web page for the user and sends an alert when the page changes."
+    },
+    "edits": {
+      "name": "Public page and feed watcher: registration opens, school, district or town site posts something new",
+      "description": "'Tell me when camp registration opens' or 'when the district page changes': Happy checks a short list of public pages and site feeds a few times a day and texts once when something new appears. Price drops are not covered.",
+      "how": "Operator-created host command job with no model call, the same pattern as the weather watch (F018): `--every 6h --command-argv '[\"node\",\"scripts/watch-page.mjs\",\"<watch name>\"]' --announce --to <parent>`. For each address Tony registered, the script uses the site's own RSS/Atom feed when there is one and otherwise a plain https GET; it keeps seen item ids or a text hash in a state file and prints one templated line (watch name, new title, link on the registered host only), or `NO_REPLY` when nothing is new. A one-shot watch marks itself done in the state file and stays silent afterwards. The script checks the address itself (https, public host), because a host command runs outside OpenClaw's fetch guardrails. The earlier design (`--trigger-script`, `--trigger-once`) needs `cron.triggers.enabled`, which AUT-08 keeps off.",
+      "depends_on": ["F018 command-job pattern", "G003 jobs registry", "G001 notification policy", "First check which of the family's school, town, library and camp sites publish a feed"],
+      "caveats": [
+        "Order of preference for every watch: the site's or town's own feed or reminder first, a plain fetch second; a browser is not available to a host command job, so pages that render only with JavaScript are out of reach.",
+        "Many school and town pages change for reasons that do not matter (a date, a banner), so a hash watch can fire falsely; a per-watch keyword that must appear cuts this down.",
+        "Many school portals and social pages publish no feed, and a feed reader app or search alerts already do the feed half for a parent who will open them.",
+        "Command jobs run on the Gateway host as the happy user, outside the sandbox and outside agent tool policy; the script is operator code reviewed like the rest of the config repo, with no third-party binary.",
+        "The text says that something changed and gives the link; reading the page is a separate ask to the research agent (F019)."
+      ],
+      "safety": "No model reads the page: the script relays only a fixed line, so page text cannot steer an agent. Requests go only to addresses Tony registered, and a watcher never runs on a logged-in profile.",
+      "unverified": [
+        "Which of the family's school, town and camp sites publish a feed, and which registration pages can be read without JavaScript.",
+        "The five-watchers-per-person cap is a convention; nothing enforces it.",
+        "Which agent's session transcript receives the mirrored announce line of a command job (see SRC-03); keep the line short and templated."
+      ]
+    },
+    "merge_hints": ["OCL-10", "SRC-09", "G012", "AUT-03", "MKT-04", "CRT-11"]
+  },
+  {
+    "id": "OCL-10",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "This is the same job as the page watcher (F029): tell the parents when a public school, town or library site posts something new. F029 already says to use a site's own feed first, so the two are one piece of work in the same wave.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "skills/blogwatcher/SKILL.md:27",
+        "title": "Bundled skill: blogwatcher",
+        "anchor": "RSS/Atom",
+        "supports": "The feed tool this item is built on is the same one already cited on the page watcher, whose order of preference starts with a site's own feed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:22",
+        "title": "Automation payloads",
+        "anchor": "no model call",
+        "supports": "Both watchers come down to one scheduled host command with no model in it, so they are one script and one job pattern."
+      }
+    ],
+    "fold_into": "F029",
+    "fold_note": "Carry over the feed-first check, the model-free command job that relays only new titles with links limited to the registered host, and the rule to first count how many of the family's sites publish a feed. Prefer a small in-house feed script over the third-party blogwatcher binary, which has no tagged releases and no machine-readable output.",
+    "merge_hints": ["F029", "G012", "SRC-09", "F056"]
+  },
+  {
+    "id": "F032",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "Texting 'add oat milk' is exactly what the shared Reminders bridge (F030) does, and the item's own Apple source says the iPhone already sorts a grocery list by itself. Only the Saturday list text is new, and it fits as one optional job under F030. WEB-11, MKT-05 and SRC-04 use the grocery list and should point to F030.",
+    "evidence": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105086",
+        "title": "Create grocery lists in Reminders on your iPhone - Apple Support",
+        "anchor": "Create grocery lists in Reminders",
+        "supports": "The iPhone's Reminders app already keeps a grocery list and sorts it into store sections, so capture and sorting need nothing beyond the list bridge."
+      }
+    ],
+    "fold_into": "F030",
+    "fold_note": "Give F030 the example 'add oat milk' and one optional Saturday-morning job per parent that texts the open shopping list. Note that Reminders exposes no purchase history, so 'not bought in three weeks' is out.",
+    "merge_hints": ["F030", "WEB-11", "F033", "MKT-05"]
+  },
+  {
+    "id": "WEB-11",
+    "verdict": "edit",
+    "reason": "The description promised to add 'what is missing', but the item's own caveat says Happy does not know what is in the kitchen. The grocery hand-off now points to the Reminders bridge (F030), and the browser fallback to F020, because F032 and WEB-02 are no longer separate items.",
+    "who_trigger_result": "A parent / texts a recipe link with a serving count / the ingredient list and steps, scaled, with the source link and an offer to put the ingredients on the shared grocery list.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://help.anylist.com/topics/recipes/",
+      "title": "Recipes - AnyList Help",
+      "anchor": "Scaling Recipes",
+      "supports": "A shipping family list app offers the same three steps: import a recipe from a website, scale it, and add its ingredients to the shopping list."
+    },
+    "edits": {
+      "description": "Text a recipe link and get the ingredient list and the steps without the life story and the ads, scaled to the number of people, with an offer to add the ingredients to the shared grocery list.",
+      "how": "Mechanism choice: plain `web_fetch`, which reduces a page to its main content; schema.org also defines a Recipe vocabulary (`recipeIngredient`, `recipeInstructions`, `recipeYield`) that recipe sites can embed. <p>-main hands the URL to research with `sessions_spawn` and `completionTarget: \"parent\"`; research fetches, makes one `llm-task` call with a small schema (title, yield, ingredients[], steps[], source URL, fetched-at) and returns that JSON as its result; <p>-main scales quantities and proposes items for the shared grocery list (F030), written only after a yes. The schema shapes the answer but is not an enforced gate: the result reaches <p>-main as ordinary sub-agent text. Fallbacks in order: the F020 sandboxed browser for script-rendered pages; a host-side `summarize --extract` wrapper for video recipes (the CLI is not installed; pin `--firecrawl off` in the wrapper).",
+      "depends_on": ["F019 research agent", "F082 llm-task", "F030 Reminders bridge for the grocery list"]
+    },
+    "merge_hints": ["F033", "F030", "F023", "MKT-05"]
+  },
+  {
+    "id": "F033",
+    "verdict": "edit",
+    "reason": "Kept. 'Adds missing ingredients' assumed Happy knows what is in the kitchen, which it does not, and the unbuilt items the plan rests on are now listed.",
+    "who_trigger_result": "The parent who cooks / a Sunday-afternoon schedule / five dinner ideas fitted to the week's calendar and allergies; a reply swaps a night or puts a dinner's ingredients on the grocery list.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+      "title": "5 ways Google parents are using Gemini",
+      "anchor": "create weekly meal plans",
+      "supports": "Google's own post shows a parent having its assistant create weekly meal plans, share recipes and create grocery lists."
+    },
+    "edits": {
+      "description": "On Sunday afternoon the cook gets five dinner ideas fitted to the week's calendar and allergies; a reply swaps a night or adds a dinner's ingredients to the grocery list.",
+      "depends_on": ["F009 calendar read", "F030 Reminders bridge for the grocery list", "F031 household store or F043 vault for the saved plan and recipe box"]
+    },
+    "merge_hints": ["WEB-11", "F030", "MKT-05", "AUT-06"]
+  },
+  {
+    "id": "F034",
+    "verdict": "keep",
+    "who_trigger_result": "A parent / sends a photo of an appliance's data plate once, and later asks 'what filter does the furnace take' or 'who fixed the boiler' / the stored model, part or provider.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.maine.gov/pfr/insurance/consumers/homeowners-or-renters-insurance/taking-a-home-inventory",
+      "title": "Taking a Home Inventory | PFR Insurance (Maine Bureau of Insurance)",
+      "anchor": "model and serial number",
+      "supports": "A state insurance regulator advises households to keep a record of what they own with brand, model and serial number and a picture of each item."
+    },
+    "merge_hints": ["F043", "F038", "SRC-03", "F031"]
+  },
+  {
+    "id": "F036",
+    "verdict": "keep",
+    "who_trigger_result": "A parent / asks 'make the sitter sheet for Friday' / one message with bedtimes, allergies, medicines and emergency contacts to forward or print.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.healthychildren.org/English/safety-prevention/at-home/Pages/babysitting-reminders.aspx",
+      "title": "Babysitting Reminders: Checklist for Parents & Sitters - HealthyChildren.org (American Academy of Pediatrics)",
+      "anchor": "Babysitting Reminders",
+      "supports": "The paediatricians' checklist tells parents to leave contact numbers, the home address and any allergies with the sitter, which is the content of this sheet."
+    },
+    "merge_hints": ["CRT-13", "CRT-03", "F043"]
+  },
+  {
+    "id": "F037",
+    "verdict": "remove",
+    "category": "vague",
+    "reason": "Asking Happy to word a text to the plumber or the coach is ordinary chat that works today with nothing to build. What the item really records is the rule that Happy never sends to anyone outside the family, which the family delivery item (G009) already states. CRT-10 mentions it for a draft absence note; that still works without this item.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:74",
+        "title": "Tool policy (OpenClaw docs)",
+        "anchor": "group:messaging",
+        "supports": "The only mechanism on the item is that the parent's agent is not granted the send tool, which is the family-only rule and not a feature of its own."
+      }
+    ],
+    "fold_into": "G009",
+    "fold_note": "Add one line to G009: for anyone outside the family Happy returns paste-ready wording and the parent sends it from their own phone.",
+    "merge_hints": ["G009", "F048", "CRT-10"]
+  },
+  {
+    "id": "F038",
+    "verdict": "edit",
+    "reason": "Kept. The car's inspection date is already in the renewals list (F063), so it is dropped here to avoid two reminders for one date, and the household store this item is built on is now named as a dependency.",
+    "who_trigger_result": "Both parents / a dated upkeep row comes due (filter, seasonal job, bins the night before pickup) / one short nudge; replying 'did the furnace filter' records it.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+      "title": "Maintenance Checklist | ENERGY STAR",
+      "anchor": "Maintenance Checklist",
+      "supports": "The government efficiency programme tells households to check heating and cooling filters monthly and book a yearly pre-season service, the kind of recurring upkeep these nudges track."
+    },
+    "edits": {
+      "description": "Nudges for filter changes, car care such as oil changes, seasonal jobs and bins the night before pickup; 'did the furnace filter' updates the record. Inspection and registration dates are in the renewals list (F063).",
+      "depends_on": ["F031 household store (schedule rows)", "F007 timed reminders", "The town's pickup calendar or a bins table entered once"]
+    },
+    "merge_hints": ["F063", "F069", "F012", "F031", "F007", "F034"]
+  },
+  {
+    "id": "F039",
+    "verdict": "remove",
+    "category": "advised-against",
+    "reason": "The kids are not users, so this board only texts the parents, and the item itself says a paper chart on the fridge may be less effort. The paediatric guidance it cites describes exactly that: a chart posted in the child's room or on the refrigerator.",
+    "evidence": [
+      {
+        "kind": "web",
+        "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+        "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+        "anchor": "posted in your child's room",
+        "supports": "The paediatricians' advice is a chore chart posted where the child sees it, in their room or on the refrigerator, as a visual reminder; that is a sheet of paper, not texts to a parent."
+      }
+    ],
+    "fold_into": "F080",
+    "fold_note": "Print the week's chore rota on the Sunday fridge sheet (F080, HOM-14) from the household store; no chore texts or tallies in chat.",
+    "merge_hints": ["F080", "HOM-14", "OCL-03", "F075"]
+  },
+  {
+    "id": "F044",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "The parts a parent would notice are already elsewhere: the reminder before a policy or warranty expires is the renewals program (F063, which already lists 'filed documents'), the short summary is a page in the family vault (F043), and appliance manuals belong to the home registry (F034). What is left is a new tool to copy the PDF onto the Mac, while the paperwork kit (CRT-12) already keeps scans in the phone's Files.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/wiki.md:104",
+        "title": "openclaw wiki CLI reference (OpenClaw docs)",
+        "anchor": "Rejects binary files",
+        "supports": "The vault cannot hold the PDF itself, only a text summary, so everything except a new file-copy tool is already covered by the vault and the renewals list."
+      }
+    ],
+    "fold_into": "F063",
+    "fold_note": "In F063, let 'file this as the car insurance policy' read the PDF once and add its expiry date and a one-line summary to the renewals table (summary page in F043); the PDF stays in the parent's Files. Keep the open question of whether a policy document may be read by the cloud model.",
+    "merge_hints": ["F063", "F043", "F034", "CRT-12", "F084"]
+  },
+  {
+    "id": "F052",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "This is what the read-only Gmail connection (F047) is for: a parent asks 'did the dentist confirm?' and their mail agent searches their own inbox. It is the same piece of work in the same wave, so it becomes F047's example instead of a second item.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:131",
+        "title": "Bundled gog skill",
+        "anchor": "gog gmail messages search",
+        "supports": "The lookup uses only the Gmail search and read commands that the read-only connection already gives the owner's mail agent."
+      }
+    ],
+    "fold_into": "F047",
+    "fold_note": "Give F047 the example ('did the dentist confirm?' returns sender, date and gist, or a five-line thread timeline) and the hand-off: <p>-main spawns <p>-mail through subagents.allowAgents and gets a bounded answer back.",
+    "merge_hints": ["F047", "G015", "F016"]
+  },
+  {
+    "id": "F053",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "This is the Gmail drafts connection (F048) described a second time: Happy writes a draft into the owner's Drafts folder and the owner sends it. Same tool, same wave, one piece of work.",
+    "evidence": [
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-gmail-drafts-reply.md",
+        "title": "gogcli command reference: gog gmail drafts reply",
+        "anchor": "Save a reply as a draft",
+        "supports": "The reply draft is made by the same gog drafts commands that F048 wraps, so there is no separate mechanism to build."
+      }
+    ],
+    "fold_into": "F048",
+    "fold_note": "Give F048 the example ('reply to the plumber: Tuesday after 3 works' becomes a threaded draft), the reply-threading command, and the caveat that a reply draft inherits the thread's recipients, so the owner checks the To line before sending.",
+    "merge_hints": ["F048", "G015", "F016"]
+  },
+  {
+    "id": "F060",
+    "verdict": "remove",
+    "category": "advised-against",
+    "reason": "Each part repeats something the parent's phone already does: Google Calendar adds flights, reservations and medical events from Gmail by itself, Apple Calendar suggests events it finds in Mail, and the pharmacy, clinic and airline emails are themselves the alerts. Happy's version would put a watcher on a private inbox, health mail included, to send them a second time. This also drops the bill-due line the item had absorbed; mail about money stays in the morning mail digest (F016). Nothing depends on this item.",
+    "evidence": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/calendar/answer/6084018",
+        "title": "Manage your events from Gmail - Google Calendar Help",
+        "anchor": "movies, shows, and medical events",
+        "supports": "Google Calendar already adds events from Gmail automatically: flights and other travel, hotel and restaurant reservations, and ticketed or registered events including medical ones."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/calendar/use-siri-suggestions-iclc121e66ee/mac",
+        "title": "Apple Support: Use Siri Suggestions in Calendar on Mac",
+        "anchor": "Siri Suggestions calendar",
+        "supports": "Apple's Calendar already picks up events it recognises in Mail and offers them as suggestions."
+      }
+    ],
+    "fold_into": "F016",
+    "fold_note": "If the morning mail digest (F016) is built, let its deadline lines mention appointment and travel-change mail, and keep the rule that mail from health senders is summarised from the subject line only.",
+    "merge_hints": ["F016", "F050", "F010", "F009"]
+  },
+  {
+    "id": "F061",
+    "verdict": "edit",
+    "reason": "Kept, but rated lower: it runs four months a year for a handful of forms, it only knows that a notice email arrived, and it rests on the personal-inbox watcher (F050), which is not placed in any wave.",
+    "who_trigger_result": "A parent / a Saturday-morning schedule from January to April / a short list of which expected tax forms have had an arrival email and which are still missing.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.irs.gov/filing/gather-your-documents",
+      "title": "IRS: Gather your documents",
+      "anchor": "Form 1095-A",
+      "supports": "The tax agency tells households to collect their W-2, 1099 and other forms before filing and says they arrive in January or February, which is what this checklist tracks."
+    },
+    "edits": {
+      "value": 2,
+      "depends_on": ["F050 personal-inbox watcher, which is not yet placed in a wave; a Saturday search by the owner's mail agent (G015 with F047) is the alternative", "An in-house note of which forms have been seen between runs", "The family's own list of expected forms and their sender domains"],
+      "caveats": [
+        "It only knows that a notice email arrived. Forms that come by post, or sit in a portal without an email, stay 'missing' until a parent ticks them off.",
+        "It is useful four months a year, and cron has no end date, so the job is switched off by hand after filing.",
+        "The F050 route uses a Google app password for the whole mailbox; the mail agent's read-only search is the narrower route if F050 is never built."
+      ]
+    },
+    "merge_hints": ["F016", "F050", "F063"]
+  },
+  {
+    "id": "F018",
+    "verdict": "edit",
+    "reason": "Kept; several other watches reuse its command-job pattern. One correction: the record says phones already get these alerts, but the Weather Service's own page on phone alerts (weather.gov/wrn/wea) lists only the most extreme warnings; winter storm, freeze and wind alerts are not among them, so for those this watch is the alert itself.",
+    "who_trigger_result": "Both parents / the Weather Service issues a new winter storm, wind, flood, freeze or air-quality alert for home / one three-line text, sent once per alert, with what and when, a school-night closure reminder and a short chore checklist.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.ready.gov/winter-weather",
+      "title": "Winter Weather | Ready.gov",
+      "anchor": "warnings of freezing weather",
+      "supports": "The federal preparedness site tells households to pay attention to warnings of freezing weather and winter storms and to sign up for a local warning system."
+    },
+    "edits": {
+      "caveats": [
+        "Phones receive Wireless Emergency Alerts only for the most extreme warnings (tornado, hurricane, snow squall, the worst flash floods and thunderstorms). Winter storm, freeze and wind alerts are not sent that way, so for those this watch is the alert and not only the school-night and chore framing.",
+        "Happy is down in a power cut or a network outage, so this is a convenience and not a warning system; the phones' own emergency alerts stay switched on."
+      ]
+    },
+    "merge_hints": ["F083", "F055", "SRC-03", "SRC-04", "SRC-05", "SRC-09", "CRT-13"]
+  },
+  {
+    "id": "SRC-03",
+    "verdict": "keep",
+    "who_trigger_result": "Both parents / the daily check finds a new safety recall naming a brand or product on the family's owned-items list / one templated text with the product, hazard, remedy and official link.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://www.cpsc.gov/Recalls",
+      "title": "Recalls & Product Safety Warnings | CPSC.gov",
+      "anchor": "Never miss a recall",
+      "supports": "The safety agency itself urges consumers to subscribe so they never miss a recall, and its emails, feed and app are the unfiltered baseline that this owned-items match improves on."
+    },
+    "merge_hints": ["SRC-04", "SRC-05", "F034", "F018"]
+  }
+]

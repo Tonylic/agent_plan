@@ -1,0 +1,271 @@
+[
+ {
+  "id": "F041",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw's memory guide presents 'remember that...' as the normal way to use memory. One thing the earlier rounds did not have, read in the installed docs and code and not yet tried live: OpenClaw keeps a trust label for each memory file, and a chat write from a parent who is not the command owner (Jordan today), a write after web content, or a second chat write after the family-facts generator has re-rendered the file marks the whole file untrusted, after which it is no longer loaded at the start of a chat. So the open question of where saved notes live now has a working default (the dated notes folder, found by search), the build note no longer lets the hook write to the two generated files, and a live test for each parent is listed as a prerequisite.",
+  "who_trigger_result": "Either parent / texts 'remember that...' / the fact is saved in that parent's own notes and found again in later one-to-one chats.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/memory.md:31",
+   "title": "Memory overview (OpenClaw docs)",
+   "anchor": "Remember that I",
+   "supports": "OpenClaw's memory guide presents asking the agent to remember a fact, which it then writes to its memory files, as the normal way to use memory."
+  },
+  "edits": {
+   "description": "A parent texts 'remember that...' and their own agent writes the fact to its notes and finds it again in later chats. Where those notes live is an open decision that settles two things: whether a saved note survives the next deploy, and whether it is in view at the start of a chat or found only when Happy searches.",
+   "how": "Allow write/edit (deny apply_patch) on <p>-main with rw workspace; an in-house before_tool_call hook limits write paths, by default to memory/*.md only (MEMORY.md and USER.md stay with the F042 generator unless a live test shows that a chat write does not stop them loading); memory_search FTS-only; session-memory hook.",
+   "caveats": [
+    "Where chat-saved notes live is undecided, and the installed version gives a reason to keep them out of MEMORY.md and USER.md. OpenClaw records, file by file, where a memory file's last write came from. A write made in a turn from a sender who is not the command owner (the roadmap makes Tony the only one, so every turn of Jordan's counts), or after web content in the same turn, marks the whole file untrusted; so does a second chat write to a file that the family-facts generator (F042) has re-rendered since the first. An untrusted MEMORY.md or USER.md is no longer loaded at the start of a chat, the generated family facts in it included, although search still finds it (memory-architecture.md:112 and :217; dist/agent-tools-D5UK6LHM.mjs:496; dist/memory-artifact-provenance-D8JQrziA.mjs:76). This was read in the installed docs and code and not tried on a live turn.",
+    "Keeping saved notes in memory/*.md only avoids that but has its own cost: of the dated notes only today's and yesterday's load at a fresh start, and older ones are found only when the agent searches (memory.md:22, memory-architecture.md:54). Until the choice is made and tested for both parents, a saved note is not guaranteed to come back, and F042 expects a chat edit to a generated file to be lost at the next deploy.",
+    "Search is by keyword only until local embeddings are added (F046), so a saved note is found by its words, not by its meaning.",
+    "MEMORY.md is loaded at the start of a parent's one-to-one chat but not in scheduled jobs, group chats or hand-offs to a helper (user-model.md:376), so a brief or a reminder does not know a saved note unless its job is given memory search.",
+    "The planned refusal of memory writes in a turn that carried web or research results is not something the platform does for a file write. OpenClaw does mark the rest of a turn as tainted once a tool result declares web content, and classifies memory from that turn as untrusted (memory-architecture.md:117), but the docs opened describe this as a label used for promotion and for loading, and their advice for preventing a write is to restrict the file tools (memory-provenance.md:182). No taint flag that a hook can read was found, so the hook would have to track web tool calls itself. Untested.",
+    "Notes belong to one parent. Something both parents should get the same answer to belongs in the household store (F031) or the family handbook (F043).",
+    "Later option if saved notes and search prove too weak: Active Memory's recall across conversations, which adds a blocking model call to each reply it runs on."
+   ],
+   "depends_on": [
+    "Decision: where chat-saved notes live. Working default: memory/*.md only, because a chat write to MEMORY.md or USER.md can stop that file, and the family facts F042 renders into it, from loading at the start of a chat (see caveats)",
+    "An in-house before_tool_call hook that limits write and edit to the chosen memory files, proven with a test write outside them; apply_patch denied by name",
+    "memory_search and memory_get allowed on each parent's agent, with keyword-only search",
+    "A live test for each parent before go-live: save a note, start a new chat, and check that the note is found and that the family facts still load. For Jordan the result may turn on whether she is made a command owner, the decision listed under timed reminders (F007)"
+   ],
+   "unverified": [
+    "Whether visibility 'self' already reaches the same chat's pre-reset history (the docs define self as the current session key) was not tested.",
+    "No taint flag that a plugin hook can read was found in the hook docs opened, although OpenClaw's memory design does mark a turn as tainted after web content (memory-architecture.md:117); so 'refuse writes after web results' means the hook tracking web tool calls itself. Untested.",
+    "How a direct agent write to a memory file is classified was read in the installed code, not seen on a live turn: the write is recorded as agent-written only in a command owner's turn with no web content, and only if the file has not changed since its last recorded write; otherwise the whole file is recorded as untrusted (dist/agent-tools-D5UK6LHM.mjs:496, dist/memory-artifact-provenance-D8JQrziA.mjs:76). MEMORY.md and USER.md load at the start of a chat only while their record counts as eligible (memory-architecture.md:215). Check on a live turn for each parent.",
+    "Whether a note saved in one of Jordan's turns (she is not the command owner) comes back from memory_search like any other note, or is shown to the model with an untrusted label, was not tested.",
+    "Whether the F042 generator keeps lines Happy saved by chat was not checked; the generator was not opened."
+   ]
+  },
+  "merge_hints": [
+   "F046",
+   "F042"
+  ]
+ },
+ {
+  "id": "F042",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw documents USER.md and MEMORY.md as the files that carry stable preferences and facts into each new chat. Two limits that round 3 wrote onto the memory card (F041) apply to the files this card renders and were missing here: the family facts load only in a parent's one-to-one chat, not in scheduled jobs, the group chat or hand-offs, and a chat write to a rendered file can stop it loading at all. The description now says 'one-to-one chat', and the build note says the two files stay generator-only.",
+  "who_trigger_result": "Both parents / every new one-to-one chat, and 'put this school note in Chinese for grandma' / Happy already knows the kids' school, routines and each adult's standing preferences and reply language, and returns a short version to forward.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/user-model.md:12",
+   "title": "User model (OpenClaw docs)",
+   "anchor": "stable preferences, communication style",
+   "supports": "OpenClaw documents USER.md as the place for stable preferences, relationships and context, loaded beside MEMORY.md at session start to guide later chats."
+  },
+  "edits": {
+   "description": "Both parents' agents start every one-to-one chat already knowing the kids' school, routines and activities and each adult's standing preferences, including the language to reply in. On request Happy also turns a school note into a short Chinese text a parent can forward to a grandparent.",
+   "how": "One generator, one file. From family.json5 the generator renders each adult's directives into USER.md (4,000-character cap), the per-person reply-language line among them (G011), and the kid and routine facts into MEMORY.md with trigger comments (F042); nothing is rendered into shared agents. A scheduled job does not infer a reply language from the chat and does not load MEMORY.md, so the language, and any family fact a job needs, is written into the job message or AGENTS.md. The two rendered files stay generator-only: what a parent asks Happy to remember in chat is saved elsewhere (F041). The grandparent version is a prompt-only request on the parent's own agent: no new tool and no send path, and the parent forwards the text.",
+   "caveats": [
+    "USER.md has a 4,000-character cap that all standing preferences share, so the list has to stay short.",
+    "Rendered facts change only when the family file is edited and redeployed, and a chat edit to a generated file is expected to be lost on the next deploy; things a parent says in chat go through the memory write path (F041).",
+    "The kid and routine facts sit in MEMORY.md, which loads at the start of a parent's one-to-one chat only: scheduled jobs, the group chat and hand-offs to a helper do not get it (user-model.md:376), so a brief that needs a routine carries it in AGENTS.md or in its job message.",
+    "Happy should not write to the two rendered files from chat. OpenClaw records where each memory file's last write came from, and a write in a turn from a sender who is not the command owner (Jordan today), a write after web content, or a second chat write after the generator has re-rendered the file marks the whole file untrusted, after which it is no longer loaded at the start of a chat (memory-architecture.md:112 and :217; dist/agent-tools-D5UK6LHM.mjs:496; dist/memory-artifact-provenance-D8JQrziA.mjs:76). Read, not tried on a live turn; the write hook in F041 is where this is enforced.",
+    "On supported iPhones Messages can already translate a conversation automatically and on device, so plain back-and-forth with a grandparent may need nothing from Happy; whether that covers Chinese on this family's phones is not confirmed.",
+    "Happy's distinct part on the language side is the shortened Chinese version of a school note, and its translation quality for school notices was not evaluated.",
+    "A per-language voice switch is documented only for the bundled Microsoft speech provider, which is an online service, so it does not help the offline say path, and whether the default say voice pronounces Chinese was not tested.",
+    "The generator script and the family registry were not opened in this review."
+   ],
+   "unverified": [
+    "The generator script and the family registry live in happy-config and were not opened in this run.",
+    "That a chat edit to a generated file is lost on the next deploy is a property of Tony's generator, not something an opened source states.",
+    "Translation quality into Chinese by gpt-6-sol for school notices was not evaluated.",
+    "Which iPhone models and languages Apple's Live Translation covers for this family was not confirmed; the Apple page defers to an availability list.",
+    "Whether the macOS say default voice pronounces Chinese text was not tested.",
+    "Whether a scheduled run loads USER.md was not tried on a live job: the installed code lists it among the files a scheduled run gets and leaves MEMORY.md out (dist/workspace-DmDIneFk.mjs:742), while the scheduler guide only says a job does not infer a reply language (cron-jobs/delivery.md:140)."
+   ]
+  },
+  "merge_hints": [
+   "F041",
+   "F043"
+  ]
+ },
+ {
+  "id": "F043",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw bundles a knowledge-vault plugin for exactly this, and five other entries list it as a prerequisite. One leftover overlap is removed: the description listed 'renewal dates' as handbook content, but dated items now live in the renewals table (F063) and the household store (F031), and the handbook keeps only the summary page. One open point about the shared folder is made more exact from the installed code.",
+  "who_trigger_result": "Both parents / one of them asks about the house, a provider or a family reference, or sends an appliance data-plate photo with 'save this' / the stored answer from one shared handbook that either parent's agent can search.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/plugins/memory-wiki.md:11",
+   "title": "Memory wiki (OpenClaw docs)",
+   "anchor": "compiles durable knowledge into a",
+   "supports": "OpenClaw bundles a plugin whose stated job is to turn lasting knowledge into a maintained, searchable wiki that sits beside the agent's ordinary memory."
+  },
+  "edits": {
+   "description": "One shared family handbook that both parents' agents can search: people, home systems, providers, policy and warranty summaries, sitter notes. Dates that need a reminder live in the renewals table (F063), not here. A photo of an appliance's data plate, sent once, fills in the home-systems page, so a later 'what filter does the furnace take?' or 'who fixed the boiler?' gets the stored answer.",
+   "unverified": [
+    "The two installed pages disagree on whether enabling memory-wiki needs a gateway restart (docs/plugins/memory-wiki.md:26 says it applies to a running gateway, docs/cli/wiki.md:15 shows a restart).",
+    "That memory_search in a sandboxed main can read a shared folder outside its workspace was not tested. The installed code labels files indexed from outside an agent's workspace as untrusted origin (dist/memory-path-provenance-BiFQlpIk.mjs:32); whether that changes how handbook pages come back from search was not tested either.",
+    "That gpt-6-sol accepts images on Tony's custom provider ids was not checked in this run.",
+    "The memory-wiki route needs that bundled plugin enabled (F043 step 2); with only the shared Markdown folder, the operator types the plate details in by hand."
+   ]
+  },
+  "merge_hints": [
+   "F031",
+   "F042"
+  ]
+ },
+ {
+  "id": "AUT-06",
+  "verdict": "edit",
+  "reason": "Kept: hand-written skills that the operator reviews are the vendor's supported way to teach an agent a routine. Two links to the memory card (F041) were wrong or missing: F041 grants write and edit, not the `read` tool this card needs, and once F041 makes the agent's workspace writable the skills folder inside it is writable too, so the promise that no model-written file reaches a skills folder rests on F041's path hook and needs its own test.",
+  "who_trigger_result": "Either parent / describes a family routine once, and Tony reviews and deploys it as a skill; or sends a study guide and asks for a quiz / Happy can load the same steps when a later request fits, and runs a ten-question quiz one question at a time.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/creating-skills.md:12",
+   "title": "Creating skills (OpenClaw docs)",
+   "anchor": "how and when to use tools",
+   "supports": "OpenClaw documents hand-written workspace skills as the supported way to teach an agent how and when to carry out a task."
+  },
+  "edits": {
+   "depends_on": [
+    "a skills step in happy-deploy and gen-family",
+    "automatic self-learning switched off in config (`skills.workshop.autonomous.mode: \"off\"`)",
+    "decision: who may request a new skill",
+    "`read` allowed on <p>-main in tools.alsoAllow and the sandbox tool allowlist (group:fs is denied today; per-person memory, F041, adds `write` and `edit` only, so `read` is a grant of its own)",
+    "F041's write-path hook refusing any write under skills/, proven with a test write (needed once F041 gives the same agent a read-write workspace)",
+    "F002 photo and PDF reading with inbound attachments switched on, for the quiz's photo route only",
+    "F007 automations tool on <p>-main, only for the optional re-quiz reminder",
+    "F003 voice over iMessage, its local spoken replies, only for reading spelling words aloud"
+   ],
+   "caveats": [
+    "Asking Happy to save a skill from iMessage does not work on this stack: sandboxed runs do not construct the `skill_workshop` tool, and the documented exception would publish with no pending draft and so skip Tony's review, which is one more reason to keep that tool off every family agent.",
+    "A skill is know-how: it cannot add tools or accounts, so 'learn to order the groceries' still ends at a list.",
+    "A skill is instruction text loaded into future sessions, so one written from a pasted web page or an email is a stored injection: author only from the parent's own words, and install no marketplace skills (an audit reported by The Hacker News found 341 malicious entries among 2,857 ClawHub skills in early 2026).",
+    "Turnaround is 'when Tony next deploys', and Happy does not run a skill every time: the prompt lists only each skill's name and one-line description, so that line has to be precise, and calling the skill by name (`/skill <name>`) is the sure route where that command is accepted from the sender.",
+    "The quiz is parent-run only: the kids are not users, the parent holds the phone and sends the answers, and a version a child uses alone waits for the kids agent (F072) and never uses a cloud model or cloud speech.",
+    "The ChatGPT or Gemini app on a parent's phone already makes a quiz from uploaded material, with hints and an end summary; Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+    "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state, so tell it to quiz only from what is on the page and spot-check.",
+    "A text quiz shows spelling words on screen, so spelling practice needs the words read aloud with the local voice (F003), whose quality for spelling words is untried, and the running score lives in the conversation and is gone after the daily session reset.",
+    "Once per-person memory (F041) gives a parent's agent `write` and `edit` on a read-write workspace, the workspace skills folder sits inside what the agent can write: for that mode the docs describe a read-only copy only for bundled, managed and plugin skills (workspace-access.md:91) and do not say the workspace skills folder is protected. 'No model-written file reaches a skills folder' then rests on F041's in-house path hook, so that hook's proof must include a refused write to skills/."
+   ],
+   "safety": "Operator review is the gate: `skill_workshop` stays denied on every family agent, a skill cannot widen tool policy, and no model-written file is meant to reach a skills folder. Once per-person memory (F041) lets the same agent write files in its workspace, that last point rests on F041's write-path hook and has to be proven with a refused write to skills/. The quiz is the riskier part: a photographed school worksheet is untrusted content, is not screened by the PDF privacy gate in F002, and goes to the cloud vision model under store:false. No child's account talks to a cloud model."
+  },
+  "merge_hints": [
+   "F041"
+  ]
+ },
+ {
+  "id": "F046",
+  "verdict": "keep",
+  "reason": "Kept as a later upgrade from keyword search to search by meaning: the vendor's memory guide describes it and the roadmap lists it. It has no use apart from the notes in F041 and the handbook in F043, and by its own correction it needs no local chat model, so it could ride as the optional second step of F041 instead of standing alone.",
+  "who_trigger_result": "Either parent / asks about a saved note in different words from the ones it was saved in / the right note is found by meaning, with the indexing done on the Mac mini.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/memory.md:151",
+   "title": "Memory overview: memory tools (OpenClaw docs)",
+   "anchor": "finds relevant notes using semantic search",
+   "supports": "OpenClaw describes memory search as finding the relevant note even when the wording differs from the original, which needs an embedding model; without one only keyword search is available."
+  },
+  "merge_hints": [
+   "F041",
+   "F043"
+  ]
+ },
+ {
+  "id": "G015",
+  "verdict": "edit",
+  "reason": "Kept, as in round 3: it is the roadmap's M4 milestone built on the vendor's restricted mail-reader pattern, Google's own assistant offers the same lookup, and the whole card still waits on Tony's decision about personal mail and the cloud model. Only the open-questions list changes: it said no read-only option had been found for the Google sign-in step, but the upstream command reference opened in this round lists one, which the card's own correction already relied on; two entries that appeared twice are merged.",
+  "who_trigger_result": "Each adult / asks from iMessage whether a mail arrived or what a thread says, and at 07:00 a scheduled job runs on the same reader / sender, date and gist from their own Gmail, and about ten lines on mail that needs action, read-only, through an agent with no way out except a text to its owner.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/15229592?hl=en",
+   "title": "Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "anchor": "get quick answers",
+   "supports": "Google's own assistant offers consumers summaries and quick answers drawn from their Gmail, the same read-only lookup this gives each adult's mail agent; opened in this run."
+  },
+  "edits": {
+   "unverified": [
+    "The per-person provider setting that sends store false was verified in M1 and not re-read here.",
+    "Whether this OpenAI account has zero retention; without it the 30-day abuse-monitoring log applies to mail text sent to the model.",
+    "Whether personal mail may go to the cloud model under store:false is Tony's open decision; no source settles it.",
+    "The promptfoo boundary and injection canaries are in-house tests, not OpenClaw features.",
+    "A before_tool_call hook reaching MCP tool calls is implied by the doc ('every tool call in the run', docs/plugins/hooks/tool-policy.md:222), but no sentence naming MCP tools was found.",
+    "gog is not installed on this Mac; its flags (`--gmail-scope readonly` and `--services` on `gog auth add`, `--allow-tool` on `gog mcp`) come from the upstream main-branch docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the version Homebrew installs.",
+    "Whether both adults' tokens would sit in one keyring under the happy user: upstream says tokens use the platform keyring by default with a file backend for headless hosts; splitting them with a per-adult GOG_HOME is an inference from the paths doc.",
+    "That publishing the self-made Google sign-in app to In production, as gog's quickstart describes, keeps a read-only Gmail token alive past seven days on a personal, unverified app was not tested; Google's scope page marks gmail.readonly as a Restricted scope.",
+    "Whether Gmail's AI Inbox is available on the parents' accounts in October 2026: Google's January 2026 announcement was read, and later press coverage tying it to paid Google AI plans was seen only in search results."
+   ]
+  },
+  "merge_hints": [
+   "F049"
+  ]
+ },
+ {
+  "id": "F049",
+  "verdict": "edit",
+  "reason": "Kept: it implements the roadmap's 'Email out' rule (a send tool only, the recipient always the owner of the sending agent, a hook that fails closed), and Google's assistant ships a similar step that puts a finished answer into the user's own Gmail. The example still said flatly that nobody else can be put on the To line, while the description and the caveats say that block is unproven; the example now matches them. The build note gains one option read in the upstream command reference: a send-only sign-in for the sender account.",
+  "who_trigger_result": "Either parent / texts 'email me this' after a long answer, table or plan / the full text arrives in the asker's own inbox from the family sender address.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/14184041",
+   "title": "Export responses from Gemini Apps - Gemini Apps Help",
+   "anchor": "Draft in Gmail",
+   "supports": "Google's assistant has a standard export step that puts a finished answer into the user's own Gmail as a new draft, the same 'get this long answer into my mail' convenience; opened in this run."
+  },
+  "edits": {
+   "example": "Jordan texts: 'Email me the camp comparison.' The full table arrives in her own inbox from the family sender address. A send with anyone else on the To, cc or bcc line is meant to be blocked by the hook, and that block is tested before go-live.",
+   "how": "A send-only mail tool on a dedicated family sender account: the gog MCP server with the write flag plus its separate `--allow-gmail-send` flag and only the send tool allowed, granted to `<p>-main` only. A `before_tool_call` hook blocks the call unless the recipient equals the owner address of the calling agent and cc and bcc are empty; a block is terminal and the hook fails closed. Do not rely on rewriting the recipient: the docs describe rewrites for host-owned tool parameters only. An in-house daily send cap. Sign the sender account in with a send-only grant if the installed gog supports it (the upstream command reference lists a `send` mode for `--gmail-scope` on `gog auth add`), so that the token cannot read that mailbox.",
+   "unverified": [
+    "That the hook sees every recipient field (to, cc, bcc) of the gog MCP send tool in its parameters; prove it with a seeded send to a non-owner address, which must be blocked.",
+    "A daily send cap is in-house code; no built-in cap was found in the pages read.",
+    "Creating the dedicated family sender account and granting its send scope is a manual step outside OpenClaw.",
+    "That `gog auth add --gmail-scope send` exists on the installed version and that the MCP send tool works under a send-only grant: the flag was read in the upstream command reference, and gog is not installed on this Mac."
+   ]
+  },
+  "merge_hints": [
+   "G015",
+   "F028"
+  ]
+ },
+ {
+  "id": "F072",
+  "verdict": "edit",
+  "reason": "Kept as blocked until a local model exists, and not re-argued. One overclaim is fixed: the safety note said no cloud call touches the children's content, while the card's own open questions say the nightly digest, once delivered into a parent's chat, may be copied into a session that runs on the cloud model. The safety note now says so, and a caveat records that the way the alert text gets sent is not settled.",
+  "who_trigger_result": "Each child, later / texts Happy from their own Apple account, or speaks to the kitchen speaker, once a local model exists / grade-level hints from a helper with no tools and no memory, while the parents get set chat hours, a safety alert and a nightly digest.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/16109150?hl=en",
+   "title": "Guide your child's Gemini Apps experience - Gemini Apps Help",
+   "anchor": "Family Link",
+   "supports": "Google ships a chat assistant for children under 13 that parents switch on and manage through Family Link, says it can give clues and explanations so a child works out schoolwork for themselves, and tells parents to explore it with the child and supervise; opened in this run."
+  },
+  "edits": {
+   "safety": "The design keeps the children's content off the cloud: the agent, its classifiers and the digest summariser are local, and with the classifier down the agent answers 'ask a grown-up'. Alerts carry a category, not the child's words. Two points are open. The nightly digest tells the parents what a child asked and is delivered into a parent's chat with Happy; OpenClaw copies a scheduled delivery into a session transcript, and if that session belongs to a parent's cloud-backed agent the child's words would reach the cloud model, so the delivery route has to be checked before the digest quotes anything. And the speaker's bridge: the chat endpoint is equivalent to an operator secret, so the speaker must reach only the tool-less kids agent.",
+   "caveats": [
+    "Blocked until a local model and local classifiers exist and the kid-safety evals pass, because kids' content never goes to a cloud model or cloud speech.",
+    "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven: false alarms will annoy, misses matter more, and a home system has no human reviewer between the flag and the parent notice.",
+    "Common Sense Media rated Google's supervised assistant for under-13s high risk and says chatbot use at ages 6 to 12 should happen only with close parent supervision and in moderation; an alert and an evening digest are a look afterwards, not supervision, so whether a child may chat alone is a decision to take before building.",
+    "'Refuse whole-worksheet answers' is a prompt rule, and no source shows a model holds to it when a child pushes.",
+    "The alert is a heads-up to parents and not a crisis service, and the parents should be told so.",
+    "The speaker has no interim adult version: nothing identifies who is speaking, so without a local model a child's question would reach OpenAI as text, and speech stays in the house only while Home Assistant's own cloud speech option is left off.",
+    "The hop from Home Assistant to Happy is unsolved: Home Assistant's official OpenAI integration only talks to OpenAI's own endpoint, and with token auth OpenClaw's chat endpoint gives the caller the full operator scope set and lets the request choose the agent, so the bridge would be a community integration or a self-written kids-only shim.",
+    "The speaker adds an always-on VM to patch and back up, Home Assistant itself calls the device a preview, and open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware.",
+    "How the safety plugin texts the parents from inside a hook is not settled: no plugin-side send path was found in the hook docs read, so an 'immediate' alert is the aim, not a tested behaviour."
+   ]
+  },
+  "merge_hints": [
+   "OCL-14",
+   "F076"
+  ]
+ },
+ {
+  "id": "G003",
+  "verdict": "keep",
+  "reason": "Kept: it implements the roadmap's 'Source of truth' rule (one family.json5 from which a script generates agent entries, bindings, allow lists and delivery targets, none of them edited by hand), and the vendor's standing-orders and scheduler docs give the mechanism. The failure thresholds, the auto-disable notice to the owning agent, the missed-run switch, the trigger switch and the 60-minute watchdog were re-read in the installed docs this round and match the card.",
+  "who_trigger_result": "Tony as operator / switches a scheduled feature on or off for one person in family.json5 and deploys / the job is generated with a time limit, a tool cap and a short written charter, and failure alerts are routed to Tony.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/standing-orders.md:10",
+   "title": "Standing orders (OpenClaw docs)",
+   "anchor": "permanent operating authority",
+   "supports": "OpenClaw's own guide describes giving each recurring program a written scope, trigger, approval gate and escalation rule in AGENTS.md, run on a schedule by automations."
+  },
+  "merge_hints": [
+   "G001",
+   "G008"
+  ]
+ }
+]

@@ -1,0 +1,1127 @@
+[
+ {
+  "id": "OCL-01",
+  "name": "OpenClaw iPhone app on Tony's phone: chat with files, tap approvals, then Talk mode (device commands denied first; operator only)",
+  "tier": 3,
+  "cluster": "Channels and surfaces",
+  "description": "Tony can also reach Happy in the free OpenClaw iPhone app, on his phone only: a native chat that takes photos, PDFs and other files, a native approval inbox and, as a second and experimental step, Talk mode, a spoken back-and-forth with his own agent. The Control UI already on his phone takes uploads and resolves approvals, so the app adds only the share sheet, an offline queue, the native inbox and Talk; realtime voice is a later option that swaps the Talk loop for a live call with an OpenAI voice model, with the raw audio going to OpenAI on its own key and budget.",
+  "example": "Tony attaches a 12-page camp packet PDF in the app with + -> File and asks 'what do I have to sign, and by when?'. With Talk set up, he presses the Action Button and says: 'what is on tomorrow, and do I need to pack anything for soccer?'",
+  "how": "1. Ceiling (HOM-08): the wave-A deny list (MAC-04) is deployed, with `gateway.nodes.pluginTools.enabled: false`. 2. Install and pair (OCL-01, IPH-01): the App Store app on Tony's iPhone, with a setup code from the Control UI or `openclaw qr` over the Tailscale Serve URL; one code issues a node session and an operator session, so read the approved command list afterwards. No agent gets the built-in nodes tool; uploads pass the F002 gate or `gateway.uploads.enabled: false`. 3. Talk (VOX-01, experimental): take the four push-to-talk commands off the deny list, set `talk.agentId` to a memory-less agent and a `talk.provider`, and leave `tts.modelOverrides.allowProvider` off; the loop is Apple Speech recognition, Gateway chat, then `talk.speak`. 4. Later (VOX-02): a `talk.realtime` block with `provider` openai, `transport` webrtc and `brain` agent-consult.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "OpenClaw iOS app from the App Store (iOS 18 or later) on Tony's iPhone",
+   "Tailscale on the phone (already needed for the Control UI)",
+   "MAC-04 deny list deployed before pairing (iOS data commands and push-to-talk denied, pluginTools off)",
+   "decision: Full or Limited operator access on Tony's phone (start Limited with `openclaw qr --limited`: the Control UI already on the phone keeps admin, so nothing is given up; Full is what lets the app itself review approvals in general and open its Talk settings pages)",
+   "the local privacy gate in F002 extended to Gateway client uploads, or uploads switched off",
+   "a written device-revocation step for a lost phone",
+   "for Talk: a Talk speech provider under `talk.provider` (the local speech engine from F003 if it works for Talk, which is untested), or accept the iPhone system-voice fallback",
+   "for the realtime option only: an OpenAI Platform key dedicated to voice with its own spend cap, and a decision on Zero Data Retention for the organisation that owns that key",
+   "decision (only if a second adult's phone is ever wanted): a verified per-person identity with gateway.roles, proven on a test device first"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "The app is a chat client, an operator console for the whole Gateway and a device node at once: Limited access drops only operator.admin and keeps Gateway-wide write, read and approvals scopes, and since Tony's phone already holds two Control UI entries with admin scope, what is new is the node role and the hosted push relay.",
+   "Tony's phone only: operator scopes are not a boundary between people, so on a second adult's phone the other adult's agent memory would be readable, and `gateway.roles`, the one feature that could narrow that, refuses the device and setup-code tokens that pairing issues.",
+   "iMessage with attachment intake (F002) and the Control UI already on the phone cover most of this, and voice over iMessage (F003) already gives both parents voice memos in and spoken replies out, so the app adds the share sheet, the offline queue, the native inbox and, for Tony alone, a hands-free loop he can interrupt.",
+   "App Store builds receive push through OpenClaw's hosted relay, a service outside the tailnet, and iOS suspends the app in the background, so node commands need the app in front and voice is best-effort.",
+   "Audio can leave the house even in the native Talk loop: the docs say Apple Speech recognition on iOS may use network services, and the transcript then goes to OpenAI as text like any typed message.",
+   "Talk playback uses the Talk speech provider and not the general tts block, a Limited pairing cannot open the app's Talk settings pages, and `--voice-node` is not an option because typed chat and the Listen action need the write scope; plan on the inline Talk control and expect the iPhone's own system voice.",
+   "Realtime option: raw audio goes to OpenAI for the whole call, under 30 days of abuse-monitoring retention unless the organisation has Zero Data Retention, it is billed separately from chat, and `talk.realtime` is one gateway-wide block that replaces the native loop instead of sitting beside it.",
+   "There is no speaker identification anywhere in the stack: whoever is near the microphone is the user, and the spoken yes that gates a high-impact action in realtime mode does not identify who said it, so a child must not use Talk."
+  ],
+  "safety": "Tony's phone only, treated as an admin-adjacent credential. The app adds no tool, but uploads reach <p>-main as files, so the F002 gate applies, and show_widget stays denied on memory-holding agents. Talk is the riskier step: Apple Speech may send audio to Apple, and realtime voice streams raw room audio to OpenAI. Never for a child or a kids agent.",
+  "unverified": [
+   "The exact command list the current App Store build declares at connect time (the app is not part of the installed package).",
+   "Whether the before_agent_run privacy gate (now in F002, formerly F084) sees files attached from the native app exactly as it sees iMessage attachments.",
+   "What the hosted push relay learns beyond a wake request.",
+   "Whether sessions started in the app and the iMessage DM for the same parent share one conversation or stay separate under session.dmScope per-channel-peer.",
+   "Whether the native iOS app raises a lock-screen alert for a pending approval or question; the docs name wake pushes for the app and approval alerts for Web Push and the macOS app.",
+   "Whether a PDF can be sent to the app from another app's share sheet; the docs list the share sheet for images and Files (+ -> File) for documents.",
+   "Whether anything can restrict which session a paired phone's own agent.request or voice.transcript events may target; the handler was read and no check was found.",
+   "Whether a per-person verified identity (gateway.roles) works with the iPhone app at all; this matters only if a second adult's phone is ever reconsidered.",
+   "Whether approval alerts by Web Push are switched on in the Control UI Home Screen app already on Tony's iPhone; if they are, tap approvals on the phone need no native app.",
+   "Whether <p>-main can read a file uploaded from the Control UI or the app today: its bootstrap file, written at M1 while iMessage attachment intake was off, tells it that it cannot see photos or files, and no upload was tried.",
+   "Whether Talk still runs on an iPhone paired with a `--voice-node` code. What is certain from the installed scope table is that such a phone loses typed chat and the Listen action (chat.send and tts.speak need the write scope).",
+   "Which speech providers pass the Talk-mode check inside `talk.speak`, and whether a local engine set up under tts (F003) can serve as the Talk provider on iOS. The installed code resolves `talk.provider` against the general speech-provider registry with fallback disabled.",
+   "Whether a Talk session can continue the same conversation as the person's iMessage thread, or only shares agent memory.",
+   "Whether the iOS app can connect its operator session at all once `gateway.roles` is configured.",
+   "Whether Tony and Jordan have separate tailnet logins, which a verified Tailscale identity per person would need.",
+   "Whether the M0 Tailscale Serve route is owned by OpenClaw (`gateway.tailscale.mode`), which `openclaw qr` requires before it will advertise a tailnet URL.",
+   "Whether in-app Talk still works while the phone's node surface is left unapproved.",
+   "Whether Talk starts from the inline control on a limited pairing without a first visit to the admin-only Talk settings page, and when exactly the iPhone falls back to its system voice.",
+   "Realtime option: whether an iPhone can stay on the native loop while `talk.realtime` is configured; whether this OpenAI organisation has Zero Data Retention; what the bounded session history handed to the voice model contains for an agent that holds personal memory; and whether Talk configuration read with operator.talk.secrets includes the realtime provider key."
+  ],
+  "overlaps_existing": [
+   "F001",
+   "F002",
+   "F010",
+   "F082",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:15",
+    "title": "iOS app",
+    "anchor": "App Store",
+    "supports": "The official iPhone app is distributed through the App Store.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "CHANGELOG.md:13",
+    "title": "OpenClaw 2026.9.7 changelog, highlights",
+    "anchor": "Native Apple chat",
+    "supports": "Release 2026.9.7 added file and audio attachments to the native macOS and iOS chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:104",
+    "title": "Operator scopes: named operator roles",
+    "anchor": "named operator roles",
+    "supports": "A Gateway can bind verified profiles to roles that limit which agents they may run, their access to other people's sessions and their maximum scopes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/multi-user.md:15",
+    "title": "Multi-user mode: trust boundary",
+    "anchor": "not security boundaries",
+    "supports": "Anyone who can operate an agent can use everything that agent can do; ownership and visibility are usability features only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:42",
+    "title": "Show widget",
+    "anchor": "inline-widgets",
+    "supports": "show_widget is offered only when the originating client declares inline widget support, which the Control UI and native apps do and plain channel runs do not.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:231",
+    "title": "Gateway config: disable file and image uploads",
+    "anchor": "gateway.uploads.enabled",
+    "supports": "One config key disables client file and image uploads to the Gateway.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/notifications.md:62",
+    "title": "Notifications",
+    "anchor": "Add to Home Screen",
+    "supports": "On iPhone and iPad the Control UI can receive Web Push only after it is installed to the Home Screen and opened from there.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://apps.apple.com/app/openclaw-ai-that-does-things/id6780396132",
+    "title": "OpenClaw on the App Store",
+    "anchor": "OpenClaw",
+    "supports": "The app is a free App Store listing that requires iOS 18 or later and includes an Apple Watch app.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/",
+    "title": "Web Push for Web Apps on iOS and iPadOS (WebKit blog)",
+    "anchor": "Home Screen web apps",
+    "supports": "Apple supports Web Push on iOS and iPadOS only for web apps added to the Home Screen.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/pairing.md:212",
+    "title": "Pairing: setup-code bootstrap profile",
+    "anchor": "openclaw qr --limited",
+    "supports": "Limited access removes only the admin scope and keeps the other operator scopes, which include write, read and approvals.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/trusted-proxy-auth.md:219",
+    "title": "Trusted proxy auth: device auto-approval",
+    "anchor": "clients in UI mode",
+    "supports": "Native iOS clients are named as able to enrol through a trusted identity proxy, the only documented identity-bearing route for the phone app.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/tailscale.md:112",
+    "title": "Tailscale: identity headers (Serve only)",
+    "anchor": "tailscale-user-login",
+    "supports": "Under Tailscale Serve, Control UI and WebSocket sign-in can use verified Tailscale identity headers in place of a token.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/control-ui/connect-and-pair.md:118",
+    "title": "Control UI: connect and pair",
+    "anchor": "also trigger Web Push",
+    "supports": "Pending exec and plugin approvals send Web Push to authorised Control UI subscriptions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:112",
+    "title": "Node command policy",
+    "anchor": "gateway.nodes.pluginTools.enabled",
+    "supports": "Paired nodes may publish agent-visible tools by default, and one key makes the Gateway ignore them.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:41",
+    "title": "QR",
+    "anchor": "--limited",
+    "supports": "A limited setup code omits administrative gateway access from the phone's operator token.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/nodes.md:100",
+    "title": "openclaw nodes",
+    "anchor": "system.notify",
+    "supports": "A local notification can be sent to any node that declares system.notify, including iOS.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:164",
+    "title": "Plugin hooks",
+    "anchor": "before_tool_call",
+    "supports": "A before_tool_call plugin hook can block a tool call or request an approval.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals-advanced.md:418",
+    "title": "Exec approvals (advanced)",
+    "anchor": "explicitly targeted",
+    "supports": "The mobile apps review approvals with an admin connection, or with an approvals-scoped device only when the request explicitly targets it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/device-bootstrap-profile-DV7lvW3L.mjs:28",
+    "title": "Gateway source: setup-code profiles",
+    "anchor": "PAIRING_SETUP_BOOTSTRAP_PROFILE",
+    "supports": "The limited setup-code profile still carries operator.approvals, operator.questions, operator.read, operator.talk.secrets and operator.write; only admin is dropped.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:279",
+    "title": "Computer use",
+    "anchor": "operator.write",
+    "supports": "An authenticated operator with write scope can invoke an enabled, paired node command through node.invoke with no per-action admin check.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:12",
+    "title": "Talk mode",
+    "anchor": "may use network services",
+    "supports": "Native Talk uses the platform speech recognizer, and on Apple devices that recognizer can send audio to a network service.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/session-ownership.md:17",
+    "title": "Talk session ownership",
+    "anchor": "talk.agentId",
+    "supports": "On a multi-agent gateway Talk needs an explicit owner: talk.agentId or an agent-prefixed session key.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/handlers-BfMgGTTj.mjs:5123",
+    "title": "Gateway Talk handlers (installed build)",
+    "anchor": "talk provider not configured",
+    "supports": "talk.speak returns an error when no Talk provider is configured and otherwise resolves the provider through the speech-provider registry.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.openclaw.ai/platforms/ios",
+    "title": "iOS app (public OpenClaw docs)",
+    "anchor": "Talk to Claw",
+    "supports": "The public documentation describes the same Watch companion flow and App Store availability.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102536",
+    "title": "Announce notifications with Siri on AirPods or Beats (Apple Support)",
+    "anchor": "Announce Notifications",
+    "supports": "Siri can read incoming notifications aloud on supported headphones and take a spoken reply while the iPhone is locked.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/voicewake.md:12",
+    "title": "Voice wake",
+    "anchor": "Requires macOS 26+",
+    "supports": "Wake words on a Mac need the macOS app's toggle and macOS 26 or newer.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "title": "Introducing Alexa+, the next generation of Alexa",
+    "anchor": "$19.99 per month",
+    "supports": "The commercial reference point: a conversational voice assistant sold as a monthly service, free with Prime.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "IPH-07",
+   "VOX-01",
+   "OCL-02",
+   "MKT-08"
+  ],
+  "adds": [
+   "The approval inbox, question cards and Apple Watch mirror of approval prompts; both reviewers limit it to Tony's phone because a paired app is a gateway-wide operator client.",
+   "From HOM-08 (Phone-node command ceiling: deny first, then pair): Make deny-first step 1 of pairing: before any phone is paired, put the iOS default data commands (location, contacts search, calendar events, reminders list, latest photos, motion) in gateway.nodes.commands.deny, allow a command only when a named feature needs it, and set gateway.nodes.pluginTools.enabled: false. Both lists are Gateway-wide, so the deny lines can go in early with the wave-A config change for MAC-04 even though the phone itself is paired in wave D.",
+   "From IPH-01 (Pair an iPhone as an OpenClaw node (official iOS app)): Carry the node facts: the iOS command ceiling (default reads versus the opt-in camera, screen, Health and write commands), that an administrator-minted setup code approves the device and its first command surface in one step, and that camera and screen commands need the app in the foreground while everything else is best-effort in the background. Carry the two trust warnings: a paired phone can itself start an agent turn on a session it names, and an agent should reach a phone only through an in-house plugin tool with node id and command fixed in code, not the built-in nodes tool.",
+   "The Start Live Voice shortcut for Siri or the Action Button; the vendor-free speech path on an iPhone is the app's on-device fallback, which is unverified for Talk.",
+   "Market context (Alexa+ and ChatGPT voice) and the same conclusion: it fits Tony's phone only, because every voice pairing carries read access to all sessions.",
+   "From VOX-03 (Voice guardrails pack (scoped devices, Talk owner, spoken confirmation)): Carry into VOX-01: set talk.agentId explicitly and point it at a memory-less agent before Talk is switched on, leave tts.modelOverrides.allowProvider off, and add a read-only listing of paired devices and their scopes to the operator's inspect script. Keep the plain statement that every pairing profile can read both adults' agents, so only the operator's own device qualifies. VOX-02 keeps the spoken-confirmation gate and should depend on VOX-01; VOX-04's safety line that cites VOX-03 should state the allowProvider rule itself.",
+   "From VOX-05 (Cooking companion by voice (hands-free kitchen session)): Carry the kitchen reply style (one step per turn, quantities repeated with units, no lists or links) into VOX-01 as an example use, working from recipe text the parent already sent. Keep the two cautions: use a Siri timer for timing, and push-to-talk rather than an open microphone when children are in the room.",
+   "From VOX-02 (Realtime voice conversation (OpenAI realtime or GPT-Live over WebRTC)): Carry realtime voice into VOX-01 as its later option: one gateway-wide `talk.realtime` switch (OpenAI, WebRTC, agent-consult) that needs a dedicated Platform key with its own budget and a Zero Data Retention decision. Keep the cautions: raw audio goes to OpenAI for the whole call with 30-day retention by default, the spoken yes does not identify the speaker, it stays out of rooms with children, and the vendor has not yet verified the iPhone GPT-Live path on a device."
+  ],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "D",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [
+   {
+    "id": "VOX-01",
+    "name": "Talk mode on Tony's iPhone (native speech loop first, realtime voice as a later option; operator only)"
+   }
+  ],
+  "history": [
+   "r1: edited name, description, how, who, risk, depends_on, unverified. Combined with the pairing step (IPH-01) and the phone command ceiling (HOM-08), which are the same install on the same phone, and narrowed to Tony's phone: OpenClaw says operator scopes do not separate people and the roadmap keeps the control plane with Tony. Risk rises to high because the merged entry pairs a device that is both a Gateway console and a node; OCL-03 depends on this entry.",
+   "r1: kept; credible mention: iOS app: What it does",
+   "r2: edited description, how, depends_on, caveats. Kept on the vendor's own description of the app. The phone deny lines were written out both here and in the wave-A deny entry (MAC-04) for one and the same config change, so they now live in MAC-04 and this entry checks for them before pairing; pointers to entries removed in round 1 are cleaned out.",
+   "r2: kept; credible mention: iOS app: What it does",
+   "r3: edited description, how, depends_on, caveats, safety, unverified, value. Kept on the vendor's own description of the app, at a lower value: the M1 sign-off shows OpenClaw's Control UI is already paired on Tony's iPhone as a Home Screen web app, and that surface takes file uploads and resolves approvals without the hosted relay, so the native app adds only the share sheet, an offline queue, the native inbox and Talk. Pointers to the merged privacy gate now name F002, and because Talk mode (VOX-01) is the same install, pairing, phone and wave, the two should be one card.",
+   "r3: kept; credible mention: iOS app: What it does",
+   "r3: merged with VOX-01 (same batch). Talk mode is a control inside the same App Store app on the same phone, behind the same single pairing, wave-A deny list and access-level decision, and after round 2's edits the two cards gave different instructions for that one pairing (Full or Limited left open on one, Limited on the other), so they become one wave D card with three steps: the app, the experimental native Talk loop, and realtime voice as a later option."
+  ],
+  "demand": {
+   "ref": "docs/platforms/ios.md:28",
+   "title": "iOS app: What it does",
+   "supports": "The vendor describes its official iPhone app as a native chat that accepts PDFs, Office documents and audio from Files, and the same page describes a native approval inbox."
+  },
+  "corrections": []
+ },
+ {
+  "id": "F020",
+  "origin": "9 Oct",
+  "name": "Research agent extra readers: read-only browser behind an action firewall hook, and summarize CLI",
+  "tier": 3,
+  "cluster": "research-summaries",
+  "description": "The research helper can also read public pages that need JavaScript, logged out, and pull the text out of long articles, of videos that have captions and of podcasts that publish a transcript. An in-house hook keeps the browser read-only in code (one profile, no typing, no form filling, no uploads, no page scripts); bot walls and logins stop it.",
+  "example": "Jordan texts: \"What does the rec centre page say about spring swim lessons?\" The page shows nothing without JavaScript, so research opens it in the logged-out browser and her own agent relays the dates with the link. Or Tony texts a link to a 40-minute video that has captions and asks for the main points.",
+  "how": "Two readers, on the research agent only. (1) The `browser` tool on the managed `openclaw` profile, with `headless: true` on that profile and `browser.evaluateEnabled: false`. Up to four switches come first: `browser.enabled` (off since M0, and possibly not needed, see below), the browser tool on research's sandbox tool allow list (it is on the sandbox default deny list), the per-agent tool allow, and a place for the browser to live. First choice is the roadmap's sandbox browser container with the LAN blocked, which has a switch of its own (`sandbox.browser.enabled`, off by default and off in today's config, to be turned on for research only); its image has to be built from a source checkout because the npm install does not include the Dockerfile. The sandbox reference says this container browser does not require the top-level `browser.enabled`, while the browser setup page says the agent tool needs it, so try it with `browser.enabled` left off first: if that works, the host's browser control service is never switched on. The fallback is the host's managed profile through `sandbox.browser.allowHostControl` and an explicit host target, which the docs say to keep off for sandboxed agents unless you trust them. (2) A host stdio MCP that wraps `summarize --extract --json` and returns extracted text from articles, and from YouTube videos and podcasts that publish captions or a transcript, without calling a model; the wrapper pins `--firecrawl off`, holds no third-party keys, sets up no transcription fallback and checks the address itself. The firewall (formerly WEB-03): an in-house plugin with `api.on(\"before_tool_call\", handler, { matcher: [\"browser\"] })`, default-deny and failing closed. It rejects any `profile`, `target` or `node` other than the one assigned to the agent (a missing profile is filled in or blocked, because an omitted profile means the default one) and rejects `systemProfile`, `into`, `domains` and `dashboard`. Of the tool's 24 actions it allows only a listed read-only subset (for example status, tabs, open, navigate, focus, close, snapshot, text, screenshot). `act` and `upload` are not on that list in this build, which blocks every act kind at once: `batch`, `evaluate`, `press`, `clickCoords`, `drag`, `wait`, `resize`, `type`, `fill`, `select` and `click`. If a page later proves unreadable without scrolling, `act` comes back only for kinds on an allowlist of its own (`scrollIntoView`, `hover`), each with an eval case. The hook reads the URL from `targetUrl` first and `url` second, looks inside a nested `request` object, and blocks any call whose top-level and nested kinds differ. Unknown agent, missing field, unknown action or kind, or a parse error returns a block; the runner itself blocks the call if the handler throws or times out. Research reads the open web, so there is no site allowlist here; navigation stays http and https under the private-network block in F019 (formerly WEB-01). Not built here: the exact-hostname allowlist and the ask-a-parent-before-typing approval branch, whose only consumer is the roadmap's M6 jobs agent.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "Bot walls, logins, CAPTCHAs and two-factor prompts stop it. The bundled browser skill tells the agent to report them as manual steps, and the docs say sandboxed browser sessions are more likely to be flagged as bots.",
+   "The sandbox browser image cannot be built from the npm install; it needs a source checkout. The host alternative needs allowHostControl, which the docs say to keep off for sandboxed agents unless you trust them.",
+   "The hook sees tool parameters, not page meaning: a click carries a snapshot ref, not the button's label, so code cannot tell 'Next' from 'Submit'. That is why clicks are blocked outright in this read-only build.",
+   "A navigation check in a hook sees the URL the agent asked for, not where redirects or page scripts go next; the private-network block in F019 is the backstop.",
+   "With open and navigate allowed, a link straight to a file is saved into the managed downloads directory without the download action ever being called.",
+   "The parameter names come from the installed 2026.9.7 browser tool schema and can change with any update. Default-deny keeps a new action blocked until someone allows it, but the hook needs a contract test after every OpenClaw update.",
+   "summarize runs on the host, outside the SSRF policy that covers web_fetch and the browser, and has its own third-party extraction fallbacks; the wrapper must switch those off and check the address itself.",
+   "An independent evaluation on live websites found web agents much less competent than earlier benchmarks suggested, so expect misses on complex pages.",
+   "The extractor uses published captions and podcast transcripts first; its README says transcription is a fallback that has to be configured. The wrapper holds no keys and sets none up, so expect nothing back for a video without captions or a podcast without a published transcript; local transcription would be a later add-on."
+  ],
+  "corrections": [
+   "The catalog says to 'use the host profile'; because research must stay sandboxed, the browser tool defaults to the sandbox browser, and the host profile needs `agents.defaults.sandbox.browser.allowHostControl: true` plus an explicit host target.",
+   "The catalog's install line names the tap formula steipete/tap/summarize (as the bundled skill does); the upstream README opened in this run gives `npm install --global @steipete/summarize` or `brew install summarize`."
+  ],
+  "unverified": [
+   "`--youtube auto` and the optional Apify token appear in the bundled skill but not on the upstream README; check `summarize --help` after install.",
+   "How often rec-portal and store pages block a headless, logged-out browser was not measured.",
+   "The hook contract was read, but the browser parameter names come from the tool's schema source and were not observed in a live hook event.",
+   "Whether `ctx.agentId` carries the sub-agent's id when research runs as a spawned session; every per-agent rule depends on it.",
+   "Whether the hook sees the browser call before the tool applies its own defaults (profile, target), so that 'must be present' can be enforced.",
+   "Whether script-rendered pages can be read with the `act` action off (no `wait`, `click` or scrolling); any kind allowed back needs its own eval case.",
+   "What summarize returns for a video without captions when no transcription engine is configured (an error or an empty result); the README does not say and the tool is not installed.",
+   "Whether the sandbox browser gives research a working `browser` tool with the top-level `browser.enabled` left false: the sandbox configuration page says it is not required, the browser setup page says the tool needs it."
+  ],
+  "safety": "The research agent holds no private data, no memory and no accounts, and this browser is a managed profile with none of the family's signed-in sessions, so an injected page has nothing to steal. What a real browser adds is a way to act, so the limits on profile, target and actions live in code and fail closed, page script evaluation is off in config, and the home network is out of reach (the egress guardrails in F019). The hook is in-house code on the security boundary: one parsing mistake is a bypass, so it gets its own injection eval cases before the browser is switched on. No profile on this browser ever holds a login, and CAPTCHAs are reported, never solved.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/profiles.md:10",
+    "title": "Browser profiles",
+    "anchor": "managed, isolated browser",
+    "supports": "The default browser profile is a separate managed browser with none of the family's signed-in sessions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:28",
+    "title": "Browser configuration",
+    "anchor": "evaluateEnabled",
+    "supports": "Arbitrary page JavaScript evaluation by the agent can be switched off in config.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/agent-tools.md:39",
+    "title": "Browser agent tools",
+    "anchor": "allowHostControl=true",
+    "supports": "A sandboxed agent may drive the host browser only when host control is explicitly enabled; otherwise it gets the sandbox browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/docker-backend.md:88",
+    "title": "Docker backend: sandboxed browser",
+    "anchor": "host-published CDP ports",
+    "supports": "The container browser cannot run with networking off, which is why it is the heavier option on this Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:71",
+    "title": "Bundled summarize skill",
+    "anchor": "--extract",
+    "supports": "The summarize CLI can print extracted content without calling a language model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/browser/skills/browser-automation/SKILL.md:41",
+    "title": "Bundled browser-automation skill",
+    "anchor": "captcha, 2FA",
+    "supports": "The bundled browser skill tells the agent to stop and report logins, captchas and two-factor prompts instead of working around them.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/summarize",
+    "title": "steipete/summarize README",
+    "anchor": "--extract",
+    "supports": "Upstream confirms extraction of web pages, YouTube and podcasts without an API key, installed through npm or Homebrew.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+    "title": "Cloudflare docs: Bot Fight Mode",
+    "anchor": "Bot Fight Mode",
+    "supports": "A widely deployed site-protection product challenges traffic that looks automated, so a headless browser will be turned away by some sites.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:187",
+    "title": "Multi-agent sandbox and tools: Sandbox config",
+    "anchor": "agents.entries.*.sandbox.browser.*",
+    "supports": "Sandbox browser settings, including host control, can be overridden for a single agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-login.md:19",
+    "title": "Browser login: Manual login",
+    "anchor": "trigger bot detection",
+    "supports": "Sandboxed browser sessions are documented as more likely to be flagged as bots than the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/images-and-setup.md:78",
+    "title": "Sandbox images and setup",
+    "anchor": "does not include the browser Dockerfile",
+    "supports": "The sandbox browser image cannot be built from the npm install; it needs a source checkout.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:16",
+    "title": "Browser control risks",
+    "anchor": "unless you trust them",
+    "supports": "Host browser control should stay disabled for sandboxed agents by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:84",
+    "title": "Browser setup: Agent guidance",
+    "anchor": "login/2FA/captcha",
+    "supports": "The bundled skill instructs the agent to report logins, 2FA and captchas as manual steps.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/help/faq/sessions-and-chats.md:179",
+    "title": "FAQ: sessions and chats",
+    "anchor": "anti-bot, CAPTCHAs, and MFA",
+    "supports": "The docs state plainly that browser automation can still be blocked by bot defenses and MFA.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "Sub-agents are hard-denied the message tool and other delivery surfaces regardless of allowlists.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2504.01382",
+    "title": "arXiv 2504.01382: An Illusion of Progress? Assessing the Current State of Web Agents",
+    "anchor": "Online-Mind2Web",
+    "supports": "An independent evaluation on 300 live-website tasks found web agents much less competent than earlier benchmark results suggested.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.chrome.com/blog/local-network-access",
+    "title": "Chrome for Developers: New permission prompt for Local Network Access",
+    "anchor": "Local Network Access",
+    "supports": "From Chrome 142, requests from public sites to private or loopback addresses need a user permission, aimed at request forgery against routers and other local devices; the page says nothing about automated or headless use.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/concepts/bot-detection-engines/",
+    "title": "Cloudflare docs: Bot detection engines",
+    "anchor": "headless browsers",
+    "supports": "A major bot-management vendor documents a detection engine that identifies headless browsers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandbox-vs-tool-policy-vs-elevated.md:69",
+    "title": "Sandbox vs tool policy vs elevated",
+    "anchor": "Sandbox tool policy",
+    "supports": "A sandboxed agent's tools must also pass the sandbox tool allow and deny lists.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/browser-tool-description-TgkJWaCu.mjs:372",
+    "title": "Browser tool description (installed source)",
+    "anchor": "action=profiles",
+    "supports": "The tool's built-in guidance tells the model to list the available profiles and pick one by name when logins matter.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser.md:38",
+    "title": "Browser (OpenClaw-managed): What you get",
+    "anchor": "direct attachment navigations",
+    "supports": "A navigation that resolves to a file is saved under the managed downloads directory.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:212",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "NETWORK_NAVIGATION_PROTOCOLS",
+    "supports": "Tool-requested navigation accepts only http and https addresses, so local file addresses are refused.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:36",
+    "title": "Sandbox constants (installed source)",
+    "anchor": "DEFAULT_TOOL_DENY",
+    "supports": "The built-in sandbox deny list begins with the browser tool, so a sandboxed agent does not get it unless the sandbox allow list names it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/sandbox.md:215",
+    "title": "Agent sandbox configuration: browser",
+    "anchor": "allowHostControl: false",
+    "supports": "By default a sandboxed session cannot target the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-control.md:178",
+    "title": "Browser control API: Playwright requirement",
+    "anchor": "require Playwright",
+    "supports": "navigate, act, AI snapshots and PDF export only work when Playwright is present in the gateway build.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "node_modules/playwright-core/package.json:3",
+    "title": "playwright-core package manifest (installed)",
+    "anchor": "1.63.0",
+    "supports": "The Playwright runtime is present inside the installed npm package.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-02"
+  ],
+  "adds": [
+   "The four switches this install needs before the research agent can use a browser (browser.enabled, the sandbox tool allow, host control or a sandbox browser image, the per-agent allow), a read-only action set, and a comparison of the three places a browser can live.",
+   "From WEB-03 (Browser action firewall hook (profile pin, site allowlist, approval before typing, no submit)): Carry the reviewed default-deny rule set into F020: pin profile, target and node; allow only a read-only subset of the 24 browser actions; keep act (batch, evaluate, typing, filling, clicking) and uploads off the list; read targetUrl, url and the nested request object; fail closed. Record that the site allowlist and approval branch wait for the M6 jobs agent, and carry WEB-03's sources (the two vendors' computer-use guidance and the hook reference)."
+  ],
+  "wave": "C",
+  "section": "The web",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, example, how, depends_on, caveats, safety, unverified, risk, effort. Kept, and the browser action firewall (WEB-03) is folded in, because that hook exists only to make this browser safe and is built in the same wave. Also fixed: the name said 'sandboxed browser' while the method used the host browser, which OpenClaw says to keep off for sandboxed agents unless you trust them; risk goes to medium and effort to L, and the empty example, safety, caveats and dependency fields are filled.",
+   "r1: kept; credible mention: Browser (OpenClaw-managed): What you get",
+   "r2: edited description, example, how, caveats, safety, depends_on, unverified. Kept. The description promised text from any video or podcast, but the extractor works from published captions and transcripts unless a transcription engine is set up, and this wrapper sets none up. Three pointers also still named WEB-01, which round 1 folded into the research agent (F019).",
+   "r2: kept; credible mention: Browser (OpenClaw-managed): What you get",
+   "r3: edited how, unverified. Kept: OpenClaw documents a separate, agent-only browser for reading pages, and the roadmap gives the research agent a sandboxed browser at M3. The build note listed the top-level browser switch as the first thing to turn on, but OpenClaw's sandbox reference says the container browser, the first choice here, has its own switch and does not require it, while another page says the tool does; the note now names that switch and says to try with the host's browser service left off, and the disagreement is listed as an open check.",
+   "r3: kept; credible mention: Browser (OpenClaw-managed): What you get"
+  ],
+  "demand": {
+   "ref": "docs/tools/browser.md:37",
+   "title": "Browser (OpenClaw-managed): What you get",
+   "supports": "OpenClaw documents a separate, agent-only browser whose supported uses include answering questions from a page's readable text."
+  },
+  "depends_on": [
+   "F019 research agent (web_fetch is the first reader; the browser is the second)",
+   "the web egress guardrails in F019, formerly WEB-01 (private-network block, evaluate off, no system profile import)",
+   "G009 hook pattern (fail-closed before_tool_call)",
+   "decision: sandbox browser container (image built from a source checkout) or the host's managed profile with allowHostControl",
+   "summarize CLI installed from the admin account",
+   "injection eval cases for the hook in the M3 exit test, rerun after every OpenClaw update"
+  ]
+ },
+ {
+  "id": "F076",
+  "origin": "9 Oct",
+  "name": "House devices by text: Hue and Sonos through a stateless home agent, with a read-only goodnight check (later option: Home Assistant as the single route, with Sonos announcements)",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "A parent texts Happy to switch Hue rooms and scenes by name, or to play a Sonos favourite, pause everything or set a room's volume, inside a room allowlist, a hard volume cap and quiet hours enforced in code. Separately, at 22:30 a parent gets a text only if lights or speakers are still on; that check switches nothing. The first build uses two command-line tools on the Mac mini. A later option replaces them and is not an addition: Home Assistant, running in a VM on the Mac mini and reached through its own MCP Server integration, puts Hue, Sonos and the LG TV on one list of devices a parent has exposed, and adds the one thing the command-line tools have no command for: a parent texts 'announce: ...' and the Sonos speakers say it over the music, which is turned down and then restored. OpenClaw 2026.9.7 has no Home Assistant, HomeKit, Matter or MQTT integration of its own, so that route goes through Home Assistant's MCP server. It is worth an always-on VM mainly if the announcements are wanted or the VM already exists for the kids' speaker (VOX-11).",
+  "example": "Jordan texts: 'Downstairs lights off and pause the music.' At 22:30, only if something is on: 'Still on: family room lights, living room Sonos.' With the later Home Assistant option: 'announce: the bus leaves in ten minutes', and the living room and family room speakers say it.",
+  "how": "Step 1, read-only (F081): a command payload with no model runs openhue and sonos status on the Gateway host at 22:30 and prints `NO_REPLY` when everything is off; nothing is actuated. Step 2, switching: a sandboxed, stateless home agent reached by `sessions_spawn` holds two in-house plugins. Hue (F076) wraps the openhue CLI on the host, with the bridge key in ~/.openhue/config.yaml, a room allowlist and quiet hours in code. Sonos (F077) wraps the sonos CLI: favourites and allowlisted scenes only, a volume cap and a lower night cap in code; it needs the macOS Local Network permission for the gateway's node process, or `--ip` per speaker. Scheduled bedtime scenes are left to the Hue app, and the other bundled device skills stay uninstalled. Later option, Home Assistant as the single route (a separate, large piece of work that replaces the two plugins; the home agent stays): run Home Assistant OS in a VM on the Mac mini (the roadmap already plans this VM for the kids' speaker, VOX-11). Add the Hue, Sonos and LG webOS integrations, then the 'Model Context Protocol Server' integration; turn off 'Expose all LLM APIs' and expose only the wanted entities. In OpenClaw add mcp.servers.<name> with url http://<ha-host>:8123/api/mcp, transport 'streamable-http' written out (when it is omitted OpenClaw uses sse), and the Home Assistant long-lived token in headers.Authorization, supplied through a secret reference and not a config literal (auth 'oauth' with openclaw mcp login is the documented alternative). This Gateway uses tools.profile 'minimal', which hides MCP tools, so grant them only to the stateless home agent by listing the <server>__<tool> names in that agent's alsoAllow and in its sandbox tool allow list (tools.sandbox.tools.alsoAllow); no other agent then sees the server. Write toolFilter.include after a live probe (openclaw mcp doctor <name> --probe), since it selects tools by name. The registry before_tool_call hook stays as the second, fail-closed gate and enforces quiet hours. Announcements: Home Assistant's Sonos integration plays speech with its `announce` option as an overlay, lowering the music and restoring the volume afterwards; it needs TCP port 1443 on each speaker to be reachable from the Home Assistant host. Because the MCP server offers intents and exposed scripts only, a parent writes one Home Assistant script that wraps the announce call and exposes it, and picks a local speech engine in Home Assistant, since its text-to-speech page also lists cloud engines. The trigger is deterministic: a `before_dispatch` claim on a fixed prefix such as `announce:` from an adult's handle, so no agent that reads web results decides to speak to the house. The code that claims the text then starts the Home Assistant script itself, with no model turn, through Home Assistant's REST API (`/api/services/<domain>/<service>` with the same host-side bearer token); that call path is a design choice and was not tried. The first version offers a short list of fixed phrases; the parent's own words, verbatim, come later, and model-written text never. Text length, volume, quiet hours (G001), a speaker allowlist and a daily cap are enforced in code.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "This switches things in the house, so the room allowlist, the volume caps and quiet hours are enforced in plugin code and not by the prompt.",
+   "Neither command-line tool is installed, and the bridge and the two speakers (living room and family room) come from the 9 Oct scan and were not re-checked.",
+   "Play-by-search is left out of this build: it would use the music service already linked in the Sonos app, so Happy would hold no music login, but auto-playing the first search hit has no content filter. Favourites and saved scenes only.",
+   "The Hue app can already switch lights at a set time and when you leave home, so Happy's part at night is the reminder and not the switching.",
+   "Home Assistant is a replacement route to the same devices, not an addition: running both doubles the paths to the same lamp. With only Hue, two Sonos speakers and one TV in the house, it pays off mainly if the announcements or the kids' speaker (VOX-11) are also wanted.",
+   "Home Assistant option: the VM is one more service to patch, back up and bring back after every reboot and FileVault unlock, and until it is up every home tool fails. Home Assistant's macOS page documents VirtualBox (UTM only as a fallback for people used to virtual machines) and points anyone not familiar with virtual machines to a dedicated board.",
+   "Home Assistant option: its MCP server offers Assist intents plus any scripts exposed to Assist, not arbitrary actions, and supports neither notifications nor sampling, so Happy can only ask and Home Assistant cannot push a state change. Because the tools are generic intents, toolFilter.include narrows verbs, not device classes; the exposure list in Home Assistant and a before_tool_call check on each call's target are the real limits.",
+   "Home Assistant option: 'Expose all LLM APIs' and 'Require an administrator account' are both on by default, and new entities in the cover domain (garage doors and gates) are exposed to Assist by default. Tighten the first before OpenClaw connects and review the exposure list after each device is added.",
+   "Home Assistant option: the long-lived token is a ten-year credential for Home Assistant's APIs as one user; the exposed-entity limit applies to the MCP tools, not to the token, so it stays host-side and is rotated by hand.",
+   "Home Assistant option: state text it returns (now-playing titles, device names) is third-party text read by an agent that can actuate; allowlists and caps in code have to bound the result.",
+   "Home Assistant option: a HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration. That brings 'TV off by text' (the integration's page lists turning the TV off; turning it on needs an extra automation); a fixed nightly cut-off stays with the TV's own Power Off Timer.",
+   "Announcements reach only the two Sonos speakers (living room and family room in the 9 Oct scan), and Home Assistant's Sonos page warns that older Sonos hardware or S1 firmware may not fully support them. A talking house at the wrong moment is worse than no feature: quiet hours and a low daily cap matter more than voice quality.",
+   "Without Home Assistant there is no good announcement route: Sonos documents its audio-clip command under the cloud Control API, which would put a Sonos account token on the gateway, and the sonos command-line tool has no announce command (its play-uri sets the speaker to the new audio and documents no way to bring the music back)."
+  ],
+  "corrections": [
+   "'sonoscli is go install only' is wrong: the project's install page recommends Homebrew (a steipete tap) and also offers prebuilt release archives; go install needs Go 1.26 or later. Only the bundled skill's metadata is limited to go install, so Go does not have to be installed on the Mac mini.",
+   "'Isolated runs cannot approve' is too strong: the exec approvals doc says approvals from scheduled runs are delivered to connected approval clients (Control UI, the apps) and the run waits, but they never go to chat channels and are denied at once when no such client is connected. For an iMessage-only household the conclusion is unchanged: use a dry-run period, not per-call approval."
+  ],
+  "unverified": [
+   "Philips Hue's own local API documentation sits behind a developer login and was not opened; only the OpenHue CLI pages were.",
+   "Whether the launchd-run gateway needs the Local Network switch for plain HTTPS to the bridge; the bundled skills document it only for Sonos discovery.",
+   "The bridge's presence on the LAN comes from the 9 Oct scan and was not re-checked (no LAN contact in this run).",
+   "The volume caps (35, and 10 at night) are design numbers, not sourced.",
+   "The two speakers and their room names come from the 9 Oct scan and were not re-checked.",
+   "Whether plugin-tool approvals raised inside a scheduled run follow the same delivery rule as exec approvals.",
+   "That the two CLIs report 'on' states in a form a short script can parse reliably was not tried (neither is installed).",
+   "Home Assistant option: whether Home Assistant OS runs cleanly under VirtualBox or UTM on macOS 27 with an M5 chip, which macOS account runs the VM, and how it comes back headless after a reboot (FileVault needs a manual unlock).",
+   "Home Assistant option: whether openclaw mcp login completes against Home Assistant's OAuth (both sides document OAuth but the pair was not tried, so the long-lived token path is assumed), and whether that token is confined to the MCP endpoint or carries its owner's full API rights.",
+   "Home Assistant option: the exact tool names its MCP server exposes, so the toolFilter list must be written after a live probe; and whether a non-administrator Home Assistant user can use the MCP endpoint once 'Require an administrator account' is turned off.",
+   "Home Assistant option: whether the Smokescreen egress proxy applies to MCP HTTP calls to a LAN address.",
+   "Announcements: whether the two Sonos speakers here support them, the delay from text to sound, and how the code that claims an 'announce:' text starts the Home Assistant script without a model turn (Home Assistant documents a REST call with a bearer token; the pair was not tried)."
+  ],
+  "safety": "Switching is the riskier part: the home agent can change lights and speakers, so it is stateless, holds no family data, has no web tool and no outbound message tool, is reached only by a bounded hand-off, and its limits live in code. The goodnight check is read-only, runs no model and switches nothing. Locks, garage, alarm and gate are never included. With the later Home Assistant option the same agent holds Home Assistant's MCP tools instead of the two plugins: only entities a parent has exposed are reachable; locks, garage, alarm, gate and cameras are never exposed in Home Assistant, and a fail-closed hook that inspects each call's target repeats that block on the OpenClaw side. The Home Assistant token is a wider credential than the MCP tools and is kept host-side only. An announcement is heard by everyone in the house, guests and children included, so it is an outbound channel in its own right: it is triggered only by a fixed prefix from an adult's handle that code claims before any model runs, it never speaks model-written or web-derived text, and it is never reachable from the research or mail agents.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/openhue/SKILL.md:84",
+    "title": "OpenHue CLI (bundled skill)",
+    "anchor": "openhue set room",
+    "supports": "The bundled skill documents the room, brightness and scene commands the plugin would wrap, plus the one-time bridge button pairing.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.openhue.io/cli/setup",
+    "title": "Setup",
+    "anchor": "openhue setup",
+    "supports": "The OpenHue setup command pairs by pressing the bridge button and saves the bridge address and key in a config file under the user's home folder, not the Keychain.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+    "title": "Thread-bound sub-agent sessions",
+    "anchor": "requester session is sandboxed",
+    "supports": "A sandboxed agent cannot hand off to an unsandboxed one, so the new home agent must be sandboxed like the parent agents that call it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/mac-help/control-access-to-your-local-network-on-mac-mchla4f49138/mac",
+    "title": "Control access to your local network on Mac",
+    "anchor": "Local Network",
+    "supports": "macOS gates each app's ability to find and talk to devices on the home network behind a Privacy and Security switch.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sonoscli/SKILL.md:34",
+    "title": "Sonos CLI (bundled skill)",
+    "anchor": "sonos volume set",
+    "supports": "The bundled skill documents status, play, pause and per-room volume commands for the sonos CLI.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh/install",
+    "title": "Install — sonoscli",
+    "anchor": "brew install steipete/tap/sonoscli",
+    "supports": "The project's own install page lists a Homebrew tap as the recommended route, with go install and prebuilt archives as alternatives.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/steipete/sonoscli/main/README.md",
+    "title": "sonoscli README (raw)",
+    "anchor": "sonos scene save",
+    "supports": "sonoscli saves, lists and applies scenes, searches linked services through Sonos without Spotify Web API credentials, and describes itself as unofficial.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh",
+    "title": "sonoscli",
+    "anchor": "brew install steipete/tap/sonoscli",
+    "supports": "A Homebrew formula exists, so the tool does not have to be built with Go.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads",
+    "anchor": "without starting a model-backed turn",
+    "supports": "A command job runs a script on the gateway host with no model call, so the nightly check costs no tokens and has no prompt to inject into.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:559",
+    "title": "Exec approvals",
+    "anchor": "chat channels never receive",
+    "supports": "Approvals raised by scheduled runs go only to connected approval clients such as the Control UI, never to chat, and are denied if none is connected.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/lobster.md:120",
+    "title": "Lobster",
+    "anchor": "disabled entirely for sandboxed tool",
+    "supports": "The Lobster workflow tool is switched off in sandboxed tool contexts, so it cannot gate a sandboxed home agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.amazon.com/en-US/blogs/alexa/device-makers/2020/12/Enable-Alexa-to-Proactively-Act-on-Hunches",
+    "title": "Now Available: Enable Alexa to Proactively Act on Hunches Without Customers Needing to Ask",
+    "anchor": "accidentally left on",
+    "supports": "Amazon's assistant offers the same household function: spotting lights left on by accident when nobody is home or the household is asleep (Alexa goes further and switches them off).",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F077",
+   "HOM-04",
+   "F081"
+  ],
+  "adds": [
+   "From HOM-02 (Bundled device skills: what each one controls and how it signs in): F076 and F077 already carry the Hue pairing and Sonos network-permission facts. Carry over one line only: the other bundled device skills stay uninstalled because they need a shell, a full account login (Eight Sleep, Spotify) or hardware the house does not have; places lookup is F021 and the in-house weather plugin (F083) replaces the bundled weather skill.",
+   "Named Sonos scenes from an allowlist and play-by-search through the music service already linked in the Sonos app, so Happy holds no music login; scenes must be saved in the happy account; a Homebrew install replaces the Go toolchain; auto-playing the first search hit has no content filter.",
+   "From HOM-01 (Home Assistant as the house hub over MCP: Hue, Sonos and the TV on one list, plus announcements on the Sonos speakers): Carry into F076 as its later option: Home Assistant in a VM on the Mac mini, reached through Home Assistant's MCP Server integration by the same stateless home agent, replaces the two command-line plugins, adds the LG TV, and adds 'announce: ...' on the Sonos speakers (fixed prefix claimed in code, fixed phrases first, a local speech engine, caps in code). Keep its limits: the exposure list plus a per-call target check, the ten-year token kept host-side, cover entities exposed by default, and the VM's upkeep. Pages opened this round: https://www.home-assistant.io/integrations/mcp_server/ , https://www.home-assistant.io/integrations/sonos/ , https://www.home-assistant.io/installation/macos , https://www.home-assistant.io/integrations/webostv/"
+  ],
+  "wave": "C",
+  "section": "The house",
+  "includes": [
+   {
+    "id": "F077",
+    "name": "Sonos: play, pause, volume, what is playing"
+   },
+   {
+    "id": "F081",
+    "name": "Goodnight check: a text only if lights or speakers are still on (read-only)"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: OpenHue CLI (bundled skill)",
+   "r1: merged with F077, F081 (same batch). The Hue plugin, the Sonos plugin and the goodnight check that reads both run through the same two command-line tools and the same stateless home agent in wave C, so they become one card that states the read-only check and the switching separately and carries high risk.",
+   "r2: edited effort, caveats. Kept. Round 1 merged three entries into this one but left the effort at M; two in-house plugins, a new sandboxed agent and a nightly script are a large piece of work, so it becomes L. Three caveats that only repeated the open-questions list are cut, and one caveat described play-by-search although the method allows favourites and saved scenes only.",
+   "r2: kept; credible mention: OpenHue CLI (bundled skill): When to Use",
+   "r3: edited name, description, example, how, depends_on, caveats, safety, unverified. Kept. It now also carries the Home Assistant hub (HOM-01) as its later option: both entries said they were two routes to the same lights and speakers and that only one should be built, so they are one card with the command-line route first. Spoken announcements on the Sonos speakers and the TV come along as what that later route adds.",
+   "r3: kept; credible mention: OpenHue CLI (bundled skill): When to Use"
+  ],
+  "demand": {
+   "ref": "skills/openhue/SKILL.md:33",
+   "title": "OpenHue CLI (bundled skill): When to Use",
+   "supports": "OpenClaw ships a Hue skill whose stated uses are switching lights on or off, dimming a room and setting a scene when someone asks; a bundled Sonos skill does the same for play, pause and volume."
+  },
+  "depends_on": [
+   "openhue CLI installed and the Hue bridge paired",
+   "sonos CLI installed (Homebrew tap or prebuilt archive; no Go toolchain needed)",
+   "macOS Local Network permission for the gateway's node process",
+   "sessions_spawn from each parent's agent to the home agent (the F019 hand-off pattern)",
+   "for the later Home Assistant option only: a Home Assistant OS VM on the Mac mini (2 GB RAM, 2 vCPU, bridged network adapter; the same VM the kids' speaker VOX-11 needs), an egress proxy exception for its LAN address, and the two command-line plugins retired so each device has one path",
+   "for announcements only: a Home Assistant script that wraps the Sonos announce call, a local speech engine chosen in Home Assistant, and the quiet hours from G001"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F080",
+  "origin": "9 Oct",
+  "name": "Printed pages from Happy: the Sunday fridge sheet and other pages it makes, plus 'print this' when away from home",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "Happy sends pages to the home printer: the ones it makes itself (the Sunday fridge sheet, the emergency card) and, when a parent texts 'print this', a PDF, photo or https link, with a copies cap. A phone on the home Wi-Fi can already print by itself, so the on-request part earns its keep mainly when the parent is away from home.",
+  "example": "On Sunday the week sheet prints by itself: the week's events and chore turns, first names and times only. Or Tony, still at work, texts a permission-slip PDF with 'print this, one copy', so it is on the printer when he gets home.",
+  "how": "Two parts over one print queue, which is added once on the Mac mini with lpadmin. (1) Pages Happy makes: a scheduled command job with no model call runs a reviewed script that renders the Sunday fridge sheet (the week's schedule and chore turns) from the household store (F031) and the family calendar (F009) and sends it with `lp -d <queue> -n 1`, with no chat message; the emergency card (CRT-13) goes to the same queue when a parent asks. (2) 'Print this': an in-house plugin calls `lp -d <queue> -n <copies>` on the host with a copies cap in code. It downloads an https link itself, because web_fetch returns text and not the file, and a texted file needs attachment intake first (`channels.imessage.includeAttachments`, F002).",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "Canon's spec sheet for the PIXMA PRO-100 lists AirPrint, so an iPhone on the same home network can already print a PDF or photo to it by itself. Happy's gain is printing pages it produces (the week sheet, formerly HOM-14 and now part of this entry, and the emergency card in CRT-13) and printing when nobody is on that Wi-Fi.",
+   "The one-time print queue on the Mac mini has not been added, and a driverless queue for this printer has not been tried.",
+   "The fridge sheet cannot run before the household store (F031) and the calendar read (F009) exist."
+  ],
+  "corrections": [],
+  "unverified": [
+   "Whether a driverless (IPP Everywhere) queue created with lpadmin works with this printer; Canon lists AirPrint, but the queue was not created.",
+   "The checks against private-network addresses in the download step are a design requirement, not an existing plugin feature.",
+   "'No destination configured' comes from the 9 Oct check and was not re-run.",
+   "How the no-model fridge-sheet script reads its data was not tried: F009 gives agents a read-only calendar tool and F031 an agent tool over a SQLite file, so the script needs its own read of both (the same read-only gog account from the command line, and the store's file) outside any agent turn."
+  ],
+  "safety": "Printing goes to one named queue with a copies cap enforced in code. The fridge sheet is made by a script with no model in the path and shows first names and times only, because guests read the fridge. 'Print this' acts only on a parent's own request. A link to print is fetched from the host at an address the agent passes in, which is a way out for an agent that holds memory and reads search results; the plugin should accept only an https link that appears word for word in the parent's own message and must refuse private-network addresses. Both checks are design requirements to build and test, not existing features.",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/man-lp.html",
+    "title": "lp(1)",
+    "anchor": "number of copies",
+    "supports": "The CUPS lp command prints a file to a named printer and takes a copies count, the two options the plugin needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/man-lpadmin.html",
+    "title": "lpadmin(8)",
+    "anchor": "lpadmin",
+    "supports": "The CUPS lpadmin command creates a print queue, including a driverless IPP Everywhere queue, the one-time setup step.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:11",
+    "title": "Web fetch",
+    "anchor": "plain HTTP GET",
+    "supports": "The built-in fetch tool returns readable text from a page, not the original file, so the plugin must download a PDF itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Printing a file someone just texted requires inbound attachments to be switched on first.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/options.html",
+    "title": "Command-Line Printing and Options (OpenPrinting CUPS)",
+    "anchor": "lpstat -p -d",
+    "supports": "The standard printing commands take a destination and a copy count and can list available printers.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108963",
+    "title": "How to scan documents on your iPhone or iPad (Apple Support)",
+    "anchor": "Scan Documents",
+    "supports": "The Notes app on iPhone scans paper to a document with automatic capture and corner adjustment.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102895",
+    "title": "About AirPrint (Apple Support)",
+    "anchor": "AirPrint",
+    "supports": "An iPhone prints without drivers to an AirPrint-enabled printer on the same Wi-Fi network; whether this printer is one was not confirmed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://epson.com/epson-connect-wireless-printing?pg=1",
+    "title": "Epson Email Print",
+    "anchor": "Email Print",
+    "supports": "A printer maker sells the same function to households: send a photo or file to the home printer from any device, wherever you are.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+    "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+    "anchor": "on the refrigerator",
+    "supports": "The paediatricians' body recommends a chore list or chart posted in the child's room or on the refrigerator as a visual reminder for the family, which is the printed Sunday sheet this entry leads with. Opened in this run.",
+    "check": "unchecked",
+    "added_round": 3
+   }
+  ],
+  "absorbs": [
+   "MAC-14"
+  ],
+  "adds": [
+   "States plainly that printing and scanning need no screen control: printing is one lp command once a print queue exists, scanning is the iPhone's document scanner sent as an attachment (F001, F002). Whether this printer supports AirPrint from the phones is unconfirmed.",
+   "From HOM-14 (Week sheet on paper as a no-model job): Carry over the no-model way to make the Sunday fridge sheet: a scheduled command job runs a reviewed script that renders one page from the household store and a shared family calendar and sends it with lp, one copy, with no model call and no chat message. Carry the two limits: first names and times only because guests read the fridge, and it cannot run before F031 and F009 exist.",
+   "From F075 (Kid-safe weekly card baked into the kids agent): Nothing new to build: the Sunday fridge sheet already carries the week's schedule and chore turns with first names only, which is all this card would have held.",
+   "From F039 (Kids' chore rota and after-school routine board (parent-run)): Keep the chore rota as rows in the household store (F031) and print the week's rota on the Sunday fridge sheet (F080); no chore texts or tallies in chat. The blocked kids' items that mention chores (F075, G018) would read the same rows later."
+  ],
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": [
+   "r1: edited description, value, caveats, depends_on, unverified. Kept: the printed week sheet (HOM-14) and the emergency card (CRT-13) both rely on it. Canon's own spec sheet lists AirPrint for this printer, so a phone on the home network can already print a PDF or photo by itself; the entry now leads with pages Happy makes, and value drops to 2.",
+   "r1: kept; credible mention: Epson Email Print",
+   "r2: edited name, example, how, safety, caveats, depends_on. Kept. Round 1 said the entry should lead with the pages Happy makes, but the name still led with 'print this', which a phone on the home Wi-Fi already does. The name and method now match, the empty example and safety fields are filled, and pointers to the folded entries F001 and HOM-14 are fixed.",
+   "r2: kept; credible mention: Epson Email Print",
+   "r3: edited unverified. Kept. The card leads with the pages Happy makes, so its credible mention is now the paediatricians' advice to post the chore list on the refrigerator, which is what the Sunday sheet is; the printer maker's email-print page stays on the source list for the 'print this' half. One open question is added: how a script with no model reads the calendar and the household store.",
+   "r3: kept; credible mention: Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)"
+  ],
+  "demand": {
+   "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+   "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+   "supports": "The paediatricians' body recommends a chore list or chart posted in the child's room or on the refrigerator as a visual reminder for the family, which is the printed Sunday sheet this entry leads with. Opened in this run."
+  },
+  "depends_on": [
+   "a print queue added once on the Mac mini with lpadmin (not done yet)",
+   "F002 attachment intake (formerly F001), to print a file someone just texted",
+   "F009 calendar read and F031 household store, for the fridge sheet only"
+  ]
+ },
+ {
+  "id": "AUT-01",
+  "name": "Multi-day family project with check-ins",
+  "tier": 3,
+  "cluster": "long-running projects",
+  "description": "A parent hands Happy a project with an end date (birthday party, weekend trip, garage clean-out). Happy keeps one project note with decisions and open items, texts a check-in every few days listing what is still open (it picks the gap itself, inside limits set when the project starts), and stops when the date passes. Research happens only when the parent asks for it in chat: a check-in can remind and list, not browse. The one-shot plan in F028 keeps no state and sends no check-ins.",
+  "example": "Plan our 10-year-old's birthday party for Saturday the 14th: 10 kids, indoor, under 300 dollars. Check in with me every few days until it is sorted.",
+  "how": "Held by the asking parent's <p>-main. State: one project note (memory/projects/<slug>.md through the F041 write path, or home-store rows from F031) with goal, end date, decisions, open items and a review date. The note records only what the parent typed or confirmed, written in a turn that carried no web or research results. Check-ins: one isolated automation per project, created through the `automations` tool on <p>-main with a `pacing` object (`min`, `max`; `--pacing-min` and `--pacing-max` are the CLI spelling), so each run can call `automations(action: \"next_check\")` and be clamped to those bounds. The job's tool cap holds the note or home-store read tools plus `automations` (inside an automation run that tool is limited to the run's own job) and never `sessions_spawn` or a web tool; announce to the owner; NO_REPLY when nothing is due; the run removes its own job after the end date. Hard prerequisites before `automations` is allowed on <p>-main: the fail-closed before_tool_call pin must also match `automations`/`cron` add and update and refuse webhook delivery, completion and failure destinations, and any recipient other than the asking parent; and `cron.triggers.enabled: false`, so the tool does not offer script payloads, trigger scripts or stream commands. Research legs: `sessions_spawn` to the stateless `research` agent with `runTimeoutSeconds` and `completionTarget: \"parent\"`, in interactive turns only, so <p>-main reviews the result privately before it texts anything. Decisions are plain proposals in chat. `/goal` is not the durable state here: the 04:00 reset wipes it.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F041 memory write path or F031 home-store",
+   "F007 automations tool on <p>-main",
+   "F019 research agent",
+   "G009 delivery pin, extended to cover automations/cron add and update and to refuse webhook delivery",
+   "G001 notification policy",
+   "decision: Jordan as a command owner",
+   "cron.triggers.enabled: false (set in G003, which absorbed AUT-08)"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Scheduled runs do not get MEMORY.md injected, so a check-in must read the project note with a tool or carry the state in the job message.",
+   "A job created from chat is capped to the tools the creating turn had and cannot be widened later, so a check-in can never do more than the parent's own main agent.",
+   "The conversation resets every morning at 04:00 and that also wipes any /goal; the project note is the only continuity between days.",
+   "Every check-in is a cloud model turn. Pace in days, not minutes, and cap active projects per person (three is plenty).",
+   "No bookings, purchases or invitations sent: the output is options, links and drafts. A static checklist is still easier in a shared Notes or Reminders list; Happy adds the nudging and the research.",
+   "Command-owner status is gateway-wide: an owner can ask their agent to list, inspect, update, run or remove any job on the gateway, whoever created it. Once Jordan is an owner, each parent's agent can read and change the other's check-in jobs, so job messages must not carry private detail.",
+   "The F041 plan refuses memory writes in a turn tainted by web results, and a turn that received a research result is tainted. Research findings therefore cannot be saved into the project note in that turn: they stay in the chat thread, and the note holds only what the parent states or confirms afterwards.",
+   "OpenClaw's own guidance is to deny the scheduling tool by default on any agent that handles untrusted content (docs/gateway/security/tool-permissions.md). <p>-main reads search snippets, so granting it `automations` is a deliberate exception that rests on the delivery pin and on triggers staying off."
+  ],
+  "safety": "<p>-main holds the note and never browses; `research` does every web leg, has no memory, and as a sub-agent can never get the message, cron or gateway tools. The `automations` tool is itself a send path: a job can name any chat as its delivery target or post its result to a webhook URL. <p>-main holds memory and reads search snippets, so the recipient pin must cover `automations`/`cron` calls, not only `message`, and must refuse webhook mode before the tool is granted. Check-in runs carry no web tool and no `sessions_spawn`; that is the hard limit. The rule that handoff text carries dates, ages and budget only (never names, school or address) is prompt text, not enforcement. With the pin in place nothing on the never list is reachable: there is no payment, booking or outbound-to-strangers tool anywhere in the chain.",
+  "unverified": [
+   "Whether a custom-session job (`--session session:<id>`) is exempt from the daily reset policy, which would let check-ins keep conversational context.",
+   "Whether memory read tools can be named in a job tool cap for a sandboxed agent on 2026.9.7; test at build time.",
+   "That research handoffs return results with agent-to-agent off and session visibility self (already an open item in the roadmap).",
+   "Whether the gateway accepts webhook delivery or an arbitrary recipient on a job that an agent creates from an iMessage owner turn. The tool description offers both; it was not tested.",
+   "Whether next_check and self-removal stay callable when the job's tool cap leaves out `automations`.",
+   "Whether the F041 path hook, written for memory/*.md, admits a memory/projects/ subfolder."
+  ],
+  "overlaps_existing": [
+   "F028",
+   "G014",
+   "F007",
+   "F041",
+   "F031",
+   "F082"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:67",
+    "title": "Automation schedules: dynamic cadence (pacing)",
+    "anchor": "pacing.min",
+    "supports": "Recurring jobs can carry minimum and maximum pacing bounds set with the pacing flags.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads: agent-turn options",
+    "anchor": "capped to the tools available",
+    "supports": "Jobs an agent creates are limited to the creating turn's tools and the agent cannot widen the stored list.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:30",
+    "title": "How automations work: isolated run hardening",
+    "anchor": "may remove only their own job",
+    "supports": "An isolated run can see and remove only its own job, which is how a finished project ends itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model: keep it compact",
+    "anchor": "omit root memory",
+    "supports": "Cron, sub-agent, group and channel sessions do not get MEMORY.md injected.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:22",
+    "title": "Standing intents: choose the right intention tier",
+    "anchor": "Put aspirations",
+    "supports": "Long-running aims belong in a maintained Markdown note with a review date, not in clock jobs or triggers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/announce.md:55",
+    "title": "Sub-agent announce: private parent completion",
+    "anchor": "completionTarget",
+    "supports": "A child result can be returned privately to the parent turn with no automatic channel delivery.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "Sub-agents are hard-denied the gateway, cron, message and session-send tools regardless of allowlists.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2503.14499",
+    "title": "Measuring AI Ability to Complete Long Software Tasks (arXiv 2503.14499)",
+    "anchor": "time horizon",
+    "supports": "Frontier models at the time of the paper finished only about half of tasks that take a human roughly an hour, which argues for short runs with human check-ins.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:19",
+    "title": "Automation delivery: delivery modes",
+    "anchor": "POST finished event payload",
+    "supports": "A job's delivery mode can be a webhook that posts the finished run to a URL.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-tool-DAgRmVx6.mjs:1020",
+    "title": "OpenClaw 2026.9.7 compiled source: automations tool description (delivery)",
+    "anchor": "webhook posts finished-run event",
+    "supports": "The text shown to the model says a job's delivery can name a specific chat or post the finished run to a webhook URL.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:79",
+    "title": "Manage automations: owner and administrator authority",
+    "anchor": "regardless of its creator",
+    "supports": "A channel sender listed as a command owner can have the agent list, inspect, update, run or remove any automation on the gateway, whoever created it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baseline: chat-driven agent turns",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Senders who are not owners cannot use the cron or gateway tools whatever the config says.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/system-prompt.md:58",
+    "title": "System prompt: long-running-work guidance",
+    "anchor": "use cron for future follow-up",
+    "supports": "OpenClaw's built-in guidance tells an agent to handle future follow-up, such as checking back later and recurring work, with scheduled jobs; together with the vendor's advice to keep a longer aim in a project note with a review date (already on the item) this is the feature's pattern.",
+    "check": "unchecked",
+    "added_round": 2
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [
+   "From AUT-03 (Self-paced watch loop (/loop and paced automations)): The /loop command runs on the same scheduling tool and needs the same prerequisites as AUT-01's check-ins: the delivery pin extended to automations add and update with webhooks refused, cron.triggers.enabled false, and owner status. If that grant is ever made, /loop works for an owner too; house rule is an explicit interval of 15 minutes or more and a stop condition, and since it sees only search snippets, page watching stays with F029. The round-1 review of OCL-06 takes /loop out of that entry, so this note is where /loop is described."
+  ],
+  "review_notes": [
+   "All nine sources check out, but the safety case has a hole: the `automations` tool this feature depends on can set a job's delivery to any chat or to a webhook URL, and command-owner status lets either parent's agent read and edit the other's jobs. The project note also collides with the F041 rule that tainted turns cannot write memory. Value lowered to 3."
+  ],
+  "reviewed_by": 1,
+  "wave": "D",
+  "section": "Longer-running autonomy",
+  "includes": [],
+  "history": [
+   "r1: edited description, caveats, how, depends_on. Kept. Removed a sentence about catalog history, one caveat that overstated a research finding, and a pointer to a removed entry. Added the vendor's own warning: OpenClaw says to keep the scheduling tool off agents that read web content by default, so this feature is a deliberate exception that rests on the delivery pin.",
+   "r1: kept; credible mention: Standing intents: choose the right intention tier",
+   "r2: edited description, depends_on. Kept. The description said Happy 'runs research legs in the background', but the entry's own safety rule is that a check-in has no web tool and cannot hand off to research, so research happens only when the parent asks in chat; the wording now says so. A pointer to AUT-08, which round 1 folded into G003, is fixed.",
+   "r2: kept; credible mention: System prompt: long-running-work guidance",
+   "r3: edited caveats, how. Kept on the vendor's own guidance for follow-up work; it stays apart from the one-shot planner (F028) and plain reminders (F007) because only this entry keeps a project note and reads it at each check-in. One caveat described a 2025 study of software tasks and then said it tells us nothing about family planning, so it is cut, and the build note no longer names the ask_user tool, whose entry (F082) round 2 removed.",
+   "r3: kept; credible mention: System prompt: long-running-work guidance"
+  ],
+  "demand": {
+   "ref": "docs/concepts/system-prompt.md:58",
+   "title": "System prompt: long-running-work guidance",
+   "supports": "OpenClaw's built-in guidance tells an agent to handle future follow-up, such as checking back later and recurring work, with scheduled jobs; together with the vendor's advice to keep a longer aim in a project note with a review date (already on the item) this is the feature's pattern."
+  }
+ }
+]

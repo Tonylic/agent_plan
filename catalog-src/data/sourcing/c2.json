@@ -1,0 +1,1146 @@
+[
+  {
+    "id": "F013",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Each parent gets one short weekday 07:00 text: weather and alerts, today's calendar, items due, trash day and sunset; mail stays in a separate digest.",
+    "how_short": "Isolated automation per parent on <p>-main: `\"0 7 * * 1-5\" --tz`, explicit `--tools home_weather,<p>-calendar__*`, no `--light-context`, no web tools, `--announce --to imessage:<owner>`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:36",
+        "title": "CLI reference: automations (cron)",
+        "anchor": "openclaw automations create",
+        "supports": "The installed CLI creates a scheduled agent job from a cron expression such as 07:00 daily, pinned to one agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:54",
+        "title": "Automation payloads",
+        "anchor": "Skip workspace bootstrap file injection",
+        "supports": "The light-context flag stops AGENTS.md from loading, so a brief that relies on a standing order must not use it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "omit root memory",
+        "supports": "Scheduled sessions do not get MEMORY.md, so the brief's facts must live in the job prompt or AGENTS.md."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:101",
+        "title": "Tool policy: MCP and plugin tools inside sandbox tool policy",
+        "anchor": "bundle-mcp",
+        "supports": "With sandbox mode all, MCP tools such as a calendar server need a second allow entry in the sandbox tool list."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:82",
+        "title": "Automation delivery",
+        "anchor": "imessage:<handle>",
+        "supports": "An announce target may be written as an iMessage handle, so each parent's job can deliver to that parent only."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-api",
+        "title": "National Weather Service API Web Service documentation",
+        "anchor": "A User Agent is required",
+        "supports": "The weather and alert data comes from a free US government API that asks only for an identifying User-Agent."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/mcp",
+        "title": "gog documentation: MCP server",
+        "anchor": "calendar_events",
+        "supports": "gog's own MCP server registers a read-only tool that lists Calendar events, which is the calendar leg the brief waits for."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/mourner/suncalc",
+        "title": "mourner/suncalc README",
+        "anchor": "SunCalc.getTimes",
+        "supports": "Sunset can be computed locally by a small dependency-free library, since the weather plugin does not return it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/gemini/answer/16316416",
+        "title": "Gemini Apps Help: Schedule actions in Gemini Apps",
+        "anchor": "scheduled actions",
+        "supports": "A mainstream assistant already ships recurring daily digests of calendar, to-dos and email, so the pattern is established rather than speculative."
+      },
+      {
+        "kind": "web",
+        "ref": "https://techcrunch.com/2025/09/25/openai-launches-chatgpt-pulse-to-proactively-write-you-morning-briefs/",
+        "title": "TechCrunch: OpenAI launches ChatGPT Pulse to proactively write you morning briefs",
+        "anchor": "ChatGPT Pulse",
+        "supports": "OpenAI launched an overnight personalised morning-brief product in September 2025 that could read connected Gmail and Google Calendar."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The 9 Oct note names ChatGPT Pulse as a current peer; a search summary in this run said OpenAI retired Pulse in favour of scheduled tasks in June 2026, but OpenAI's release-notes page returned HTTP 403, so its current status is unconfirmed.",
+      "The catalog passes `home-store__*` in `--tools`; the installed docs document the `<server>__<tool>` prefix only for MCP servers, and home-store is planned as a native plugin, so that glob is untested.",
+      "That the NWS forecast endpoints carry no sunrise or sunset field: the opened documentation page does not list one, absence was not proven.",
+      "The weather plugin's current fields (12-hour periods, alerts without id, no sunset) were read in ~/src/happy-config/plugins/home-weather/nws.js, which is not one of the two citable source kinds.",
+      "Alexa+ as a peer product was not opened in this run."
+    ]
+  },
+  {
+    "id": "F014",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Sunday to Thursday at 19:30 each parent gets tomorrow's events, who drives, what to pack and the weather, and hears nothing when the day is unremarkable.",
+    "how_short": "Isolated job per parent, `--cron \"30 19 * * 0-4\" --tz`, tools `home_weather` plus the read-only calendar MCP, routines table in AGENTS.md, reply `NO_REPLY` to stay silent.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads: unattended run contract",
+        "anchor": "NO_REPLY",
+        "supports": "An unattended scheduled turn is expected to answer with the silent token when nothing needs doing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:284",
+        "title": "CLI reference: silent token suppression",
+        "anchor": "NO_REPLY",
+        "supports": "When an isolated run returns only the silent token, nothing is posted to chat, which gives the quiet-night behaviour."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:81",
+        "title": "Automation schedules",
+        "anchor": "croner",
+        "supports": "Cron expressions are parsed by the croner library, so its day-of-week numbering applies."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-workspace.md:80",
+        "title": "Agent workspace",
+        "anchor": "4,000-character budget",
+        "supports": "USER.md is capped, so the per-kid routines and gear table belongs in AGENTS.md instead."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/Hexagon/croner",
+        "title": "Hexagon/croner README",
+        "anchor": "0 to 6 are Sunday",
+        "supports": "Day-of-week 0 is Sunday, so the range 0-4 means Sunday through Thursday evenings."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/mcp",
+        "title": "gog documentation: MCP server",
+        "anchor": "calendar_events",
+        "supports": "The calendar input is a read tool that gog's MCP server registers by default; write tools stay hidden."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/calendar/api/auth",
+        "title": "Google Calendar API: choose scopes",
+        "anchor": "calendar.events.readonly",
+        "supports": "Google offers an events-only read scope, so the brief's calendar token does not need write access."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The 'tight gaps' line: gog's MCP page lists a single Calendar tool (list events), so overlaps and gaps must be worked out by the model or a custom wrapper; no conflict tool was found.",
+      "The [T]/[S] driver tag is a family habit the brief depends on, not a product feature; no source can vouch that both adults will keep it up.",
+      "gog is not installed, so its flags were checked only against its website, not a binary."
+    ]
+  },
+  {
+    "id": "F015",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Sunday 18:00 each parent gets the week ahead: early releases, activities, drivers, packing, weather outlook and open school deadlines.",
+    "how_short": "Isolated job per parent, `--cron \"0 18 * * 0\" --tz`, tools `home_weather` and calendar MCP; email-derived dates come from a separate <p>-mail job using `llm-task`, never the same run.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:26",
+        "title": "Automation schedules",
+        "anchor": "--tz America/New_York",
+        "supports": "A cron schedule can be evaluated in a named IANA timezone, so Sunday 18:00 stays local across daylight-saving changes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads",
+        "anchor": "--tools exec,read",
+        "supports": "Each job can carry its own tool allowlist, which keeps web tools out of a run that reads the private calendar."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:9",
+        "title": "LLM task",
+        "anchor": "optional plugin tool",
+        "supports": "A bundled optional tool returns schema-validated JSON, usable for pulling dates out of mail in the later inbox leg."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:105",
+        "title": "Automation delivery: failure notifications",
+        "anchor": "2 consecutive failures",
+        "supports": "A job with an announce target alerts that target after two failed runs in a row, so a broken brief does not fail silently."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/calendar/api/v3/reference/events/list",
+        "title": "Google Calendar API reference: Events: list",
+        "anchor": "singleEvents",
+        "supports": "The Calendar API lists events inside a time window and expands recurring events, with read-only scopes accepted."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-api",
+        "title": "National Weather Service API Web Service documentation",
+        "anchor": "A User Agent is required",
+        "supports": "The same free government API supplies the multi-day forecast used for the outlook line."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "How many days the NWS gridpoint forecast covers was not read on the opened page.",
+      "The deadlines input (home-store rows or a sheet) does not exist yet; its shape is a design choice, not a sourced fact."
+    ]
+  },
+  {
+    "id": "F016",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Each adult gets a 07:00 text of about ten lines listing mail that needs a reply, has a deadline or involves money, with optional reply drafts left in Gmail.",
+    "how_short": "Isolated job on tool-restricted <p>-mail, `--tools \"<p>-gmail__*,<p>-gmail-drafts__*,llm-task\"`; gog MCP is read-only by default, the drafts server adds `--allow-write` with `--gmail-no-send`; no web tools.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:53",
+        "title": "Bundled gog skill",
+        "anchor": "gog gmail search",
+        "supports": "The bundled skill documents Gmail search with query operators through the gog CLI."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/gmail.md:47",
+        "title": "Gmail PubSub triggers: restricted reader",
+        "anchor": "group:web",
+        "supports": "OpenClaw's own recommended mail-reader agent denies web, file, runtime and browser tools, the same shape as <p>-mail."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/gmail.md:21",
+        "title": "Gmail PubSub triggers: prerequisites",
+        "anchor": "HTTPS push endpoint",
+        "supports": "Push-based Gmail triggers need an internet-reachable endpoint, which the house rules forbid, so a scheduled poll is used instead."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:28",
+        "title": "Automations: how it works",
+        "anchor": "bundled MCP runtime instances",
+        "supports": "Isolated scheduled runs start and tear down their own MCP server instances, so a per-person Gmail server works in a cron job."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/mcp",
+        "title": "gog documentation: MCP server",
+        "anchor": "--allow-write",
+        "supports": "gog's MCP server registers only read tools unless write is explicitly allowed, and sending needs a further flag."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/gmail/api/auth/scopes",
+        "title": "Gmail API: choose scopes",
+        "anchor": "gmail.readonly",
+        "supports": "Google classes read-only Gmail access as a restricted scope, the most sensitive tier."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.drafts/create",
+        "title": "Gmail API reference: users.drafts.create",
+        "anchor": "gmail.compose",
+        "supports": "Creating a draft needs the compose or modify scope, both of which also permit sending, so 'no send' must be enforced by gog flags and a hook, not by scope."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/mail/answer/7190",
+        "title": "Gmail Help: refine searches in Gmail",
+        "anchor": "category:promotions",
+        "supports": "Gmail search supports relative-time and category operators, so a last-day, no-promotions query is valid."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/identity/protocols/oauth2",
+        "title": "Google Identity: Using OAuth 2.0 to Access Google APIs",
+        "anchor": "refresh token expiring in 7 days",
+        "supports": "An OAuth app left in Testing status gets refresh tokens that expire after seven days, which would break a daily digest weekly."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether personal mail may go to the cloud model under store:false is Tony's open decision; no source settles it.",
+      "A read-only scope flag on `gog auth add`: the opened gog pages name a runtime `--readonly` flag and a baked read-only build, not an auth-time scope flag.",
+      "`--reply-to-message-id` on draft creation appears in the bundled skill only for send, so threaded drafts are unconfirmed."
+    ]
+  },
+  {
+    "id": "F017",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Friday 16:00 text with a handful of kid-friendly weekend events nearby plus the weekend forecast; the weekly topic brief half was dropped because Google Alerts already does it.",
+    "how_short": "Isolated job owned by stateless research (`--agent research`), `--cron \"0 16 * * 5\"`, `--tools web_fetch,web_search,home_weather`, fixed list of public event pages in the job message; folded into F028.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:11",
+        "title": "Web fetch",
+        "anchor": "plain HTTP GET",
+        "supports": "The fetch tool reads static HTML only and runs no JavaScript, so script-rendered event calendars will come back empty."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:449",
+        "title": "CLI reference: automations (cron)",
+        "anchor": "--agent <id>",
+        "supports": "A job must be pinned to an agent at creation, otherwise it falls back to the default agent rather than research."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/brave-search.md:86",
+        "title": "Brave search",
+        "anchor": "`day` is 24 hours",
+        "supports": "The search tool has a freshness filter, which the topic-brief variant would have used."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/websearch/answer/4815696",
+        "title": "Google Search Help: Create an alert",
+        "anchor": "Google Alerts",
+        "supports": "Google already emails new search results for saved topics, which is why the Sunday topic brief was judged redundant."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/mozilla/readability",
+        "title": "mozilla/readability README",
+        "anchor": "Firefox Reader View",
+        "supports": "The extractor behind page fetching is the Firefox Reader View library, built for article-style HTML rather than feeds or calendars."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct note said goplaces cannot give drive time; its upstream README now lists a `directions` command returning distance and duration (needs the Routes API), so 'within 30 minutes' could be checked if that version is installed."
+    ],
+    "unverified": [
+      "Whether the local town, library and family-site event pages render without JavaScript was not tested (and the town is deliberately not named here).",
+      "Feeding RSS or Atom XML through web_fetch is not described in the installed docs.",
+      "Depends on the research agent (F019) existing; until then it cannot run as designed."
+    ]
+  },
+  {
+    "id": "F018",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Both parents get a three-line heads-up once per new winter storm, wind, flood or freeze alert for home, with a school-night closure reminder and a chore checklist.",
+    "how_short": "Host command job, `--command-argv '[\"node\",\"scripts/nws-alerts.mjs\"]'` every 30 minutes, polls api.weather.gov `/alerts/active?point=`, dedups on alert `id`, prints `NO_REPLY` otherwise; zero model calls.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:22",
+        "title": "Automation payloads",
+        "anchor": "--command-argv <json>",
+        "supports": "A command payload runs a process on the Gateway host with no model call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:191",
+        "title": "Automation payloads: command payloads",
+        "anchor": "NO_REPLY",
+        "supports": "A command whose only output is the silent token posts nothing, so the watch stays quiet until an alert is new."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:176",
+        "title": "Automation payloads: command payloads",
+        "anchor": "operator.admin",
+        "supports": "Only an operator with admin scope can create command jobs, so the model cannot add or alter this script job."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-alerts",
+        "title": "NWS Alerts Web Service documentation",
+        "anchor": "point=39,-90",
+        "supports": "Active alerts can be requested for a single latitude and longitude, and the service asks clients not to poll more often than every 30 seconds."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-api",
+        "title": "National Weather Service API Web Service documentation",
+        "anchor": "A User Agent is required",
+        "supports": "The alert API is free and open, needing only an identifying User-Agent header."
+      },
+      {
+        "kind": "web",
+        "ref": "https://api.weather.gov/alerts?limit=1",
+        "title": "api.weather.gov /alerts response (live sample)",
+        "anchor": "messageType",
+        "supports": "Each alert record carries an id plus references, message type, event, severity, headline and end time, enough for once-only delivery and a three-line text."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102516",
+        "title": "Apple Support: Government, Emergency, and Enhanced Safety Alerts on iPhone",
+        "anchor": "AMBER alerts",
+        "supports": "iPhones already receive government extreme-weather alerts, so the added value is the school-night and chore framing, not the alert itself."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That an NWS update to an existing alert arrives under a new id pointing back through `references`: the fields were seen, their semantics were not read, so the dedup rule needs a test.",
+      "The current weather plugin returns alerts without an id (read in ~/src/happy-config, not a citable source kind), which is why the script calls the API directly.",
+      "The Apple Weather app's own severe-weather notification switch: Apple's page loaded only its table of contents in this run."
+    ]
+  },
+  {
+    "id": "G002",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Either parent texts 'mute until 3' or 'we are away next week' and briefs, bin reminders and routines pause for that window while urgent alerts still arrive.",
+    "how_short": "Paused-until row in the planned home-store plugin that each job reads first, answering `NO_REPLY`; or `openclaw automations disable|enable <job-id>` from a host helper; `cron.enabled: false` pauses everything.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:284",
+        "title": "CLI reference: silent token suppression",
+        "anchor": "NO_REPLY",
+        "supports": "A job that answers only the silent token sends nothing, which is how a paused window is honoured per job."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:115",
+        "title": "Managing automations",
+        "anchor": "openclaw automations disable <jobId>",
+        "supports": "A job can be switched off without deleting it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:220",
+        "title": "CLI reference: manual runs",
+        "anchor": "openclaw automations enable <job-id>",
+        "supports": "A disabled job resumes its schedule when re-enabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-automation.md:32",
+        "title": "Configuration: automations (cron)",
+        "anchor": "pause all automation execution",
+        "supports": "One config switch pauses every stored job without deleting any, a whole-house vacation fallback."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:79",
+        "title": "Managing automations: conversational management",
+        "anchor": "commands.ownerAllowFrom",
+        "supports": "A chat sender on the owner list can ask the agent to update or disable any existing automation."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct note said switching jobs off needs operator.admin and so cannot be done from <p>-main; the installed docs also let a sender listed in `commands.ownerAllowFrom` ask the agent to disable an existing automation by chat."
+    ],
+    "unverified": [
+      "The home-store plugin does not exist yet; the paused-until row is a design, not an installed feature.",
+      "Keeping 'urgent classes' on during a mute depends on the planned notification-policy plugin (G001); no built-in quiet hours or priority classes were found.",
+      "Switching the brief to trip context (destination weather) is a prompt idea with no source."
+    ]
+  },
+  {
+    "id": "F019",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "Happy can read any public web page: a memory-less research helper fetches the page and the parent's own agent relays the answer.",
+    "how_short": "New `research` agent, memory search off, tools `web_search` + `web_fetch`; <p>-main gains `sessions_spawn` and `subagents.allowAgents: [\"research\"]`; research stays sandboxed, its rules live in AGENTS.md.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:17",
+        "title": "Web fetch",
+        "anchor": "Enabled by default",
+        "supports": "Page fetching is built in and needs no key or plugin, so granting it is configuration only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+        "title": "Sub-agents: allowlist",
+        "anchor": "agents.entries.*.subagents.allowAgents",
+        "supports": "A person's agent may hand work to another configured agent only if that agent id is on its allowlist."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-policy.md:23",
+        "title": "Sub-agents: tool policy",
+        "anchor": "session_status",
+        "supports": "A spawned helper always loses messaging, scheduling and status tools, so research cannot text anyone or create jobs."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+        "title": "Sub-agents: allowlist",
+        "anchor": "rejects targets",
+        "supports": "A sandboxed caller cannot spawn a helper that would run unsandboxed, so research must keep the sandbox on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/security/THREAT-MODEL-ATLAS/execution.md:35",
+        "title": "Threat model: T-EXEC-002 indirect prompt injection",
+        "anchor": "Separate execution contexts",
+        "supports": "OpenClaw's own threat model recommends a separate context for fetched content, which is what the research agent provides."
+      },
+      {
+        "kind": "web",
+        "ref": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+        "title": "Simon Willison: The lethal trifecta for AI agents",
+        "anchor": "The lethal trifecta",
+        "supports": "Private data, untrusted content and a way to send data out are dangerous in one agent; keeping page reading away from the memory-holding agent removes one leg."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2510.09023",
+        "title": "arXiv 2510.09023: The Attacker Moves Second",
+        "anchor": "The Attacker Moves Second",
+        "supports": "Adaptive attacks defeated most published prompt-injection defences, so isolation and tool limits are used instead of trusting the model."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct verifier notes advised turning the sandbox off for research; the installed docs say a sandboxed requester cannot spawn an unsandboxed target, so the catalog's final wording (keep mode all) is the only workable one.",
+      "A verifier note asked for research rules in AGENTS.md and SOUL.md; the installed docs say sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file."
+    ],
+    "unverified": [
+      "That a cross-agent handoff returns its result with agent-to-agent messaging off: the roadmap lists this as untested on 2026.9.7 and the CLI was not run here.",
+      "The handoff privacy rule (ages yes, names and school no) is a prompt rule; nothing mechanical enforces what <p>-main writes into the task text."
+    ]
+  },
+  {
+    "id": "F020",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "The research helper can also read pages that need JavaScript, logged out, and pull text from long articles, videos and podcasts; bot walls and logins stop it.",
+    "how_short": "`browser` tool on research only (managed `openclaw` profile, per-profile `headless: true`, `browser.evaluateEnabled: false`, `sandbox.browser.allowHostControl` for the host target) plus a host stdio MCP wrapping `summarize --extract --json`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser/profiles.md:10",
+        "title": "Browser profiles",
+        "anchor": "managed, isolated browser",
+        "supports": "The default browser profile is a separate managed browser with none of the family's signed-in sessions."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser/configuration.md:28",
+        "title": "Browser configuration",
+        "anchor": "evaluateEnabled",
+        "supports": "Arbitrary page JavaScript evaluation by the agent can be switched off in config."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser/agent-tools.md:39",
+        "title": "Browser agent tools",
+        "anchor": "allowHostControl=true",
+        "supports": "A sandboxed agent may drive the host browser only when host control is explicitly enabled; otherwise it gets the sandbox browser."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/sandboxing/docker-backend.md:88",
+        "title": "Docker backend: sandboxed browser",
+        "anchor": "host-published CDP ports",
+        "supports": "The container browser cannot run with networking off, which is why it is the heavier option on this Mac."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/summarize/SKILL.md:71",
+        "title": "Bundled summarize skill",
+        "anchor": "--extract",
+        "supports": "The summarize CLI can print extracted content without calling a language model."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/extensions/browser/skills/browser-automation/SKILL.md:41",
+        "title": "Bundled browser-automation skill",
+        "anchor": "captcha, 2FA",
+        "supports": "The bundled browser skill tells the agent to stop and report logins, captchas and two-factor prompts instead of working around them."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/summarize",
+        "title": "steipete/summarize README",
+        "anchor": "--extract",
+        "supports": "Upstream confirms extraction of web pages, YouTube and podcasts without an API key, installed through npm or Homebrew."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+        "title": "Cloudflare docs: Bot Fight Mode",
+        "anchor": "Bot Fight Mode",
+        "supports": "A widely deployed site-protection product challenges traffic that looks automated, so a headless browser will be turned away by some sites."
+      }
+    ],
+    "corrections": [
+      "The catalog says to 'use the host profile'; because research must stay sandboxed, the browser tool defaults to the sandbox browser, and the host profile needs `agents.defaults.sandbox.browser.allowHostControl: true` plus an explicit host target.",
+      "The catalog's install line names the tap formula steipete/tap/summarize (as the bundled skill does); the upstream README opened in this run gives `npm install --global @steipete/summarize` or `brew install summarize`."
+    ],
+    "unverified": [
+      "`--youtube auto` and the optional Apify token appear in the bundled skill but not on the upstream README opened here; check `summarize --help` after install.",
+      "How often rec-portal and store pages block a headless, logged-out browser was not measured.",
+      "Blocking form-fill and typing by a before_tool_call hook is a design; the hook contract was read, the specific browser action names were not tested."
+    ]
+  },
+  {
+    "id": "F021",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Happy can answer 'is it open now, is it any good, what is the phone number' from Google Places and return a Maps link.",
+    "how_short": "`goplaces` CLI wrapped as a host-side stdio MCP for research; `GOOGLE_PLACES_API_KEY` supplied by the wrapper or Gateway environment, home coordinates fixed in the wrapper; Google Cloud billing must be on.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:41",
+        "title": "Bundled goplaces skill",
+        "anchor": "--open-now --min-rating 4",
+        "supports": "The bundled skill documents text search with open-now and minimum-rating filters."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:10",
+        "title": "Bundled goplaces skill",
+        "anchor": "GOOGLE_PLACES_API_KEY",
+        "supports": "The CLI needs a Google Places API key in its environment."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/mcp.md:54",
+        "title": "MCP servers",
+        "anchor": "openclaw mcp add local-tools",
+        "supports": "A local stdio MCP server is registered with one CLI command, the route for exposing a network CLI to a sandboxed agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/secretref-credential-surface.md:131",
+        "title": "SecretRef credential surface",
+        "anchor": "acpx.config.mcpServers",
+        "supports": "The supported SecretRef list has an MCP environment entry only for the acpx plugin, none for ordinary configured MCP servers."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/goplaces",
+        "title": "steipete/goplaces README",
+        "anchor": "GOOGLE_PLACES_API_KEY",
+        "supports": "Upstream describes a client for Places API (New) with search, details and, in the current version, route and directions commands."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+        "title": "Places API (New): Text Search",
+        "anchor": "openNow",
+        "supports": "Google's Text Search accepts open-now, minimum-rating and location-bias parameters and can return hours, rating, phone and a Maps link."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/places/web-service/usage-and-billing",
+        "title": "Places API usage and billing",
+        "anchor": "enable billing",
+        "supports": "The Places API works only on a project with billing enabled, so a budget alert is a real requirement."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/ai/grounding-lite",
+        "title": "Google Maps Platform: Grounding Lite",
+        "anchor": "search_places",
+        "supports": "Google's own Maps MCP server is the alternative: a hosted endpoint with place search, weather and route tools."
+      }
+    ],
+    "corrections": [
+      "The catalog says goplaces returns straight-line distance, not drive time; the upstream README now lists a `directions` command returning distance and duration through the Routes API. Check `goplaces --help` on the installed version.",
+      "Install line: upstream now gives `brew install openclaw/tap/goplaces`; the catalog and the bundled skill say steipete/tap/goplaces.",
+      "'Key as SecretRef': the installed SecretRef surface lists no `mcp.servers.*.env` target, so the key must be loaded by the wrapper (for example from Keychain) or set in the Gateway process environment."
+    ],
+    "unverified": [
+      "Current Places and Routes prices and free allowances were not read; the billing page points to separate price lists.",
+      "goplaces is not installed, so its flags were checked against the bundled skill and upstream README only.",
+      "Whether Grounding Lite is generally available or preview: the opened page did not label it."
+    ]
+  },
+  {
+    "id": "F022",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "Every factual, price or schedule answer carries a link and the time it was fetched; stale or conflicting sources are flagged and 'could not verify' is allowed.",
+    "how_short": "AGENTS.md rule on <p>-main and research: quote `web_fetch` `fetchedAt`, use `web_search` `published` when present, flag pages with no visible date or older than 30 days.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:44",
+        "title": "Web fetch: result",
+        "anchor": "fetchedAt",
+        "supports": "Every fetch result carries the time it was fetched, so quoting it is mechanical."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:45",
+        "title": "Web fetch: result",
+        "anchor": "cached: true",
+        "supports": "A cache hit is marked, so the agent can tell a 15-minute-old copy from a fresh read."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web.md:186",
+        "title": "Web search: result shape",
+        "anchor": "published?: string",
+        "supports": "Search hits carry a publication date only sometimes and no fetch time, so search-only claims need the weaker stamp."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:20",
+        "title": "Standing orders",
+        "anchor": "AGENTS.md",
+        "supports": "Rules placed in AGENTS.md are injected into every session, the right home for a citation rule."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2304.09848",
+        "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+        "anchor": "51.5%",
+        "supports": "A peer-reviewed audit found that only about half of generated search-engine sentences were fully backed by their citations, so the rule needs evals, not trust."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Nothing in the installed stack enforces citations; this is a prompt rule the model can ignore, and Tony's promptfoo evals are the only check.",
+      "The 30-day staleness threshold and the three-links-per-text cap are house choices with no source."
+    ]
+  },
+  {
+    "id": "F023",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "A parent pastes text, a screenshot, a PDF or a link and gets five fixed lines back: dates, what to do, money or forms, which kid, deadline.",
+    "how_short": "AGENTS.md prompt program on <p>-main; attachments need `channels.imessage.includeAttachments: true` (PDF text arrives as an untrusted file block); links are handed to research via `sessions_spawn`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage: media",
+        "anchor": "channels.imessage.includeAttachments: true",
+        "supports": "Inbound photos and files are dropped until this switch is turned on, so screenshots and PDFs do not reach the agent today."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:266",
+        "title": "Media understanding: file-attachment extraction",
+        "anchor": "model-visible file block",
+        "supports": "Once attachments are on, an inbound document is extracted and shown to the model as a file block."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:267",
+        "title": "Media understanding: file-attachment extraction",
+        "anchor": "untrusted external content",
+        "supports": "Extracted document text is wrapped and labelled as untrusted, which matters because it lands in the memory-holding agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/private-api.md:84",
+        "title": "iMessage: when SIP stays enabled",
+        "anchor": "text + media + receive only",
+        "supports": "The current Basic mode still receives media, so no system-protection change is needed for this feature."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:10",
+        "title": "PDF tool",
+        "anchor": "Anthropic and Google",
+        "supports": "The separate pdf tool reads PDFs natively only on two providers and falls back to text and image extraction on the current OpenAI model."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Pasted text works today; the screenshot and PDF path waits on the attachment switch and, by Tony's own rule, the planned privacy gate (F084), which is a plugin still to be built.",
+      "How OpenAI handles school documents under store:false was not opened in this run.",
+      "The 'explain homework the way the school teaches it' half has no source beyond the model's own ability."
+    ]
+  },
+  {
+    "id": "F024",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Paste any public link and get a five-bullet summary with key dates, amounts and anything you need to do, sized for a text message.",
+    "how_short": "Folded into F023: <p>-main passes the URL to research; `web_fetch` (Readability, 20,000-character default cap) returns the text; template in AGENTS.md; the Firecrawl fallback stays off.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:74",
+        "title": "Web fetch: how it works",
+        "anchor": "Runs Readability",
+        "supports": "Fetched HTML goes through main-content extraction before the model sees it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:120",
+        "title": "Web fetch: config",
+        "anchor": "maxChars: 20000",
+        "supports": "Output is capped at 20,000 characters by default, so very long pages are summarised from a truncated copy."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/firecrawl.md:41",
+        "title": "Firecrawl",
+        "anchor": "also keyless",
+        "supports": "A hosted fallback for blocked pages works without a key once explicitly selected, at the cost of sending those URLs to a third party."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/messaging.md:16",
+        "title": "iMessage: messaging",
+        "anchor": "coalesces",
+        "supports": "A command and its pasted link arrive as one message, so 'summarize this' plus a URL is not split."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.firecrawl.dev/introduction",
+        "title": "Firecrawl documentation: introduction",
+        "anchor": "anti-bot",
+        "supports": "The fallback is a hosted scraping API that handles JavaScript rendering and anti-bot measures on its own servers."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That the phone's own Safari summary already covers this: Apple's page for it loaded only a table of contents in this run.",
+      "The Firecrawl plugin is not installed; the keyless fallback was read in the docs only."
+    ]
+  },
+  {
+    "id": "F025",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "'Is it true that...?' gets true, false, mixed or unclear with two or three dated sources, and admin questions are answered from official sites.",
+    "how_short": "Research runs `web_search` (`count` up to 10) then `web_fetch` on the top hits; rubric folded into the F022 AGENTS.md section; a hostname allowlist would need a `before_tool_call` plugin hook.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web.md:541",
+        "title": "Web search: tool parameters",
+        "anchor": "1-10, default: 5",
+        "supports": "The search tool returns at most ten results per call, so a count of eight is valid."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:288",
+        "title": "Web fetch: limits and safety",
+        "anchor": "blockedHostnames",
+        "supports": "The only hostname control in config is a denylist, so 'official sites only' cannot be set by a config key."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:17",
+        "title": "Plugin hooks: tool call policy",
+        "anchor": "before_tool_call",
+        "supports": "A plugin hook sees each tool call's parameters and can block it, which is how an allowlist mode would be built."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cdc.gov/vaccines/hcp/imz-schedules/child-adolescent-age.html",
+        "title": "CDC: Child and Adolescent Immunization Schedule by Age",
+        "anchor": "Immunization Schedule by Age",
+        "supports": "A government health page was readable by a plain fetch and shows its own published and updated dates, the kind of dated primary source the rubric asks for."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2304.09848",
+        "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+        "anchor": "51.5%",
+        "supports": "Generated answers with citations are often not supported by them, so 'unclear' has to remain an accepted verdict."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That other official sites named in the catalog (state DMV, IRS, State Department) are plain-fetchable was not tested.",
+      "Ending health answers with 'confirm with your pediatrician' is a house rule, not a sourced requirement."
+    ]
+  },
+  {
+    "id": "F026",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Best kids bike helmet under $60' or 'summer camps for a 9-year-old' returns three to five options with price, dates and links; the parent does the buying.",
+    "how_short": "Research composes `web_search`, `web_fetch` and, for JavaScript pages, the F020 browser; prices only from tool results with `fetchedAt`; no payment or booking tool is granted.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:301",
+        "title": "Web fetch: limits and safety",
+        "anchor": "best-effort",
+        "supports": "The docs themselves say plain fetching fails on some sites and a browser is needed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:68",
+        "title": "PDF tool",
+        "anchor": "rejected when the tool runs sandboxed",
+        "supports": "A sandboxed agent cannot open a PDF by web address with the pdf tool, which affects camp brochures."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+        "title": "Sub-agents: allowlist",
+        "anchor": "rejects targets",
+        "supports": "Research cannot be run unsandboxed to get round that, because its sandboxed caller could then not spawn it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+        "title": "Cloudflare docs: Bot Fight Mode",
+        "anchor": "Bot Fight Mode",
+        "supports": "Retail and ticketing sites commonly sit behind bot challenges, so live prices will often come back as 'could not verify'."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2304.09848",
+        "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+        "anchor": "51.5%",
+        "supports": "Unsupported claims are common in generated answers, which is why prices must come only from tool results."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct notes resolved brochure PDFs by running research unsandboxed; the installed docs forbid a sandboxed caller from spawning an unsandboxed target, so remote PDFs need another path (the parent forwards the file, or the answer says it could not read it)."
+    ],
+    "unverified": [
+      "How often shop pages block a plain fetch was not measured; one large retailer's help page returned HTTP 503 to this run's fetch tool, which is an observation, not a citable source.",
+      "Whether web_fetch returns usable text for a PDF address is not stated in the installed docs.",
+      "The long-table email leg depends on the mailout server (F049), which is not built."
+    ]
+  },
+  {
+    "id": "F027",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Dinner tonight, open now, kids menu, nearby' or 'nearest late pharmacy' returns three picks with rating, hours, phone and a Maps link; no reservations.",
+    "how_short": "Research calls the F021 Places MCP (`goplaces search --open-now --min-rating --lat --lng --radius-m`, `details --reviews`) and `web_fetch` for menus; real drive time needs the Routes API.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:41",
+        "title": "Bundled goplaces skill",
+        "anchor": "--open-now --min-rating 4",
+        "supports": "The open-now and minimum-rating filters named in the feature are documented flags."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:42",
+        "title": "Bundled goplaces skill",
+        "anchor": "--radius-m 3000",
+        "supports": "Search can be biased to a point and radius, the documented way to express 'nearby'."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:45",
+        "title": "Bundled goplaces skill",
+        "anchor": "--reviews",
+        "supports": "Place details can include reviews."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+        "title": "Places API (New): Text Search",
+        "anchor": "minRating",
+        "supports": "The underlying Google API supports the same filters and returns hours, phone and a Maps link."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/routes/compute_route_directions",
+        "title": "Routes API: get a route",
+        "anchor": "TRAFFIC_AWARE",
+        "supports": "Google's Routes API returns a traffic-aware driving duration, the piece needed for 'under 20 minutes'."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/goplaces",
+        "title": "steipete/goplaces README",
+        "anchor": "directions",
+        "supports": "The current upstream CLI has a directions command that returns distance and duration."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct note said Places lookups give no drive time so 'under 20 minutes' must be a radius; upstream goplaces now has `directions` (Routes API), so drive time is possible if that version is installed and the Routes API is enabled."
+    ],
+    "unverified": [
+      "'Kids menu' is not a filter found in the opened Places page; it would come from reading the menu page, which may be an image or PDF.",
+      "Ordering errand stops depends on the Reminders bridge (F030), not built.",
+      "Phone maps apps already answer these questions with live traffic; no source measures whether a text-based answer is used more."
+    ]
+  },
+  {
+    "id": "F028",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Plan Saturday for us, kids 8 and 10, rain likely' returns two options with hours, cost, weather and links; a longer plan can be emailed; parents book.",
+    "how_short": "One research sub-agent run via `sessions_spawn` with `runTimeoutSeconds`, composing `web_fetch`, the Places MCP and `home_weather`; calendar free time crosses as date ranges only; the Friday 16:00 job reuses it.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-reference.md:178",
+        "title": "Sub-agents: sessions_spawn parameters",
+        "anchor": "runTimeoutSeconds",
+        "supports": "A long planning run can be given its own time limit."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-reference.md:198",
+        "title": "Sub-agents: sessions_spawn parameters",
+        "anchor": "completionTarget",
+        "supports": "The helper's result can return privately to the parent's agent, which then relays it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:301",
+        "title": "Web fetch: limits and safety",
+        "anchor": "best-effort",
+        "supports": "Booking and transport sites often need a browser, so price snapshots are best effort."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-api",
+        "title": "National Weather Service API Web Service documentation",
+        "anchor": "A User Agent is required",
+        "supports": "The government weather API also offers an hourly forecast endpoint, the basis for a rain window once the weather plugin exposes it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/ai/grounding-lite",
+        "title": "Google Maps Platform: Grounding Lite",
+        "anchor": "compute_routes",
+        "supports": "Google's Maps MCP includes a route tool, one of two sourced ways to add drive time."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+        "title": "Places API (New): Text Search",
+        "anchor": "openNow",
+        "supports": "Opening hours and ratings for each stop come from the Places API."
+      }
+    ],
+    "corrections": [
+      "Drive time was dropped from the 9 Oct wording because goplaces was thought to lack it; upstream goplaces `directions` or Grounding Lite `compute_routes` can supply it."
+    ],
+    "unverified": [
+      "Hotel and train price snapshots: no opened source shows these sites are readable logged-out; expect links instead of prices.",
+      "The weather plugin returns 12-hour periods today (read in ~/src/happy-config, not citable), so an hourly rain window needs the plugin change in F083.",
+      "The emailed long version depends on the mailout server (F049), not built."
+    ]
+  },
+  {
+    "id": "F029",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Tell me when camp registration opens' or 'when the district page changes': Happy checks a public page a few times a day and texts once when it happens.",
+    "how_short": "Operator-created job owned by research: `--every 6h --trigger-script watch-page.js --trigger-once --session isolated --announce`; the script calls `web_fetch` and keeps a hash in `trigger.state` (16 KB cap).",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:109",
+        "title": "Automation schedules: event triggers",
+        "anchor": "once: true",
+        "supports": "A condition script returns fire, message and state; state is capped at 16 KB and a one-shot watcher disables itself after firing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:116",
+        "title": "Automation schedules: event triggers",
+        "anchor": "5 tool calls",
+        "supports": "Each check gets 30 seconds and at most five tool calls, enough for one or two page fetches."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:123",
+        "title": "Automation schedules: event triggers",
+        "anchor": "full tool policy",
+        "supports": "Condition scripts run unattended with all of the owning agent's tools, so the owner must be the exec-less research agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/cron-cli-BE7bR0yR.mjs:30",
+        "title": "Installed CLI source: automations options",
+        "anchor": "--trigger-once",
+        "supports": "The installed CLI has a flag that disables the watcher after its first successful triggered run."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:61",
+        "title": "Automation payloads",
+        "anchor": "capped to the tools available",
+        "supports": "A job created by an agent in chat is limited to that agent's tools, so a watcher made from <p>-main could not fetch pages."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.rfc-editor.org/rfc/rfc9309.html",
+        "title": "RFC 9309: Robots Exclusion Protocol",
+        "anchor": "Robots Exclusion Protocol",
+        "supports": "The robots standard is the published etiquette for automated page reads, and it states its rules are not access control."
+      }
+    ],
+    "corrections": [
+      "The catalog's needs used `--once` and the verifier said no CLI flag exists (JSON or Control UI only); the installed CLI source defines `--trigger-once`."
+    ],
+    "unverified": [
+      "That trigger scripts run while `tools.codeMode` is false: the docs say they are on by default and gated by `cron.triggers.enabled`; not tested because the CLI was not run.",
+      "Registration portals that render with JavaScript need the F020 browser, and five tool calls in 30 seconds may not be enough for it.",
+      "The five-watchers-per-person cap is a convention; nothing enforces it.",
+      "Price-drop watching was dropped; no opened source shows retail pages are reliably readable."
+    ]
+  },
+  {
+    "id": "G014",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "For slow jobs Happy says 'on it', works in the background, sends one message when done, and stops if a parent texts 'cancel that'.",
+    "how_short": "`sessions_spawn` with `runTimeoutSeconds`, automatic completion announce to the requester, `subagents` `action: \"cancel\"`, caps via `agents.defaults.subagents.maxConcurrent` and `maxChildrenPerAgent`; ack wording in AGENTS.md.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-reference.md:178",
+        "title": "Sub-agents: sessions_spawn parameters",
+        "anchor": "runTimeoutSeconds",
+        "supports": "Each background run can carry its own time limit."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-reference.md:394",
+        "title": "Sub-agents: subagents tool",
+        "anchor": "action: \"cancel\"",
+        "supports": "The parent agent can stop a running helper and its children by run id."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/nesting.md:24",
+        "title": "Sub-agents: nesting",
+        "anchor": "maxConcurrent: 8",
+        "supports": "Concurrent child runs per session are capped by config, default eight, and can be lowered."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents.md:14",
+        "title": "Sub-agents",
+        "anchor": "announces",
+        "supports": "A finished helper reports its result back to the requester by default, giving the single completion message."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/private-api.md:18",
+        "title": "iMessage: Private API mode",
+        "anchor": "typing indicators and read receipts",
+        "supports": "Typing indicators exist only in the mode that needs system protection off, so in today's Basic mode a text acknowledgement is the only progress signal."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Nothing on the current stack runs longer than about 20 seconds, so the convention has no user until the research hand-off (F019) exists.",
+      "The acknowledgement wording and the 'about three minutes' estimate are prompt conventions; the model can skip them."
+    ]
+  }
+]

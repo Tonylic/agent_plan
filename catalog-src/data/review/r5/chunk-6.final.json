@@ -1,0 +1,218 @@
+[
+ {
+  "id": "MAC-02",
+  "verdict": "keep",
+  "who_trigger_result": "Tony as operator (no family chore is approved for it yet) / he hands the desk agent one bounded test task on a clean, resettable Mac VM / a short text result, and evidence on whether screen control is usable and safe enough for a real chore later.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/computer-use.md:11",
+   "title": "Computer use",
+   "anchor": "paired node's desktop",
+   "supports": "OpenClaw documents an agent seeing and controlling a paired Mac's desktop through one built-in tool as a supported capability, and the same page (line 94) says to treat everything on screen as untrusted; the vendor's macOS VM page, also opened, describes a resettable Lume guest as a supported way to get isolation."
+  },
+  "merge_hints": [
+   "MAC-04"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "OCL-01",
+  "verdict": "keep",
+  "who_trigger_result": "Tony only, as operator / he opens the OpenClaw app on his iPhone, attaches a file or starts Talk / a native chat that takes files, an approval inbox and, as an experimental second step, a hands-free spoken exchange with his own agent.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/platforms/ios.md:28",
+   "title": "iOS app: What it does",
+   "anchor": "Office documents from Files",
+   "supports": "The vendor describes its official iPhone app as a chat that accepts PDFs, Office documents, audio and other files from the Files picker; the same page describes the native approval inbox (line 50), the inline Talk control (line 25) and the Start Live Voice shortcut for Siri or the Action Button."
+  },
+  "merge_hints": [
+   "MAC-04",
+   "F003"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F020",
+  "verdict": "keep",
+  "who_trigger_result": "A parent / asks about a public page that shows nothing without JavaScript, or sends a link to a long article, a captioned video or a podcast with a published transcript / the research helper reads it logged out in a browser held read-only by code, and the parent's own agent relays the answer with the link.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/browser.md:37",
+   "title": "Browser (OpenClaw-managed): What you get",
+   "anchor": "readable page text",
+   "supports": "OpenClaw documents a separate, agent-only browser and lists answering questions from a page's readable text among what it gives; the vendor's security pages, opened in this run, recommend exactly this shape (a dedicated profile, a tool-limited reader agent, host browser control left off for sandboxed agents), and the roadmap gives the research agent a sandboxed browser at its third milestone."
+  },
+  "merge_hints": [
+   "F019"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F076",
+  "verdict": "edit",
+  "reason": "Kept on OpenClaw's own bundled Hue and Sonos skills. One clash with another card had been missed: the goodnight check sends its one text at 22:30, and the notification policy (G001) drops a non-urgent scheduled text that falls outside its allowed hours, so the card now lists that policy as a dependency and says the check time has to sit inside those hours.",
+  "who_trigger_result": "A parent / texts 'downstairs lights off and pause the music', or nothing at all for the nightly check / Hue rooms and Sonos speakers switch inside a room list, a volume cap and quiet hours set in code, and one text in the late evening only if something is still on.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/openhue/SKILL.md:33",
+   "title": "OpenHue CLI (bundled skill): When to Use",
+   "anchor": "Turn on/off the lights",
+   "supports": "OpenClaw ships a Hue skill whose stated uses are switching lights on or off, dimming a room and setting a scene when someone asks; the bundled Sonos skill, also opened, lists status, play, pause and per-room volume commands."
+  },
+  "edits": {
+   "depends_on": [
+    "openhue CLI installed and the Hue bridge paired",
+    "sonos CLI installed (Homebrew tap or prebuilt archive; no Go toolchain needed)",
+    "macOS Local Network permission for the gateway's node process",
+    "sessions_spawn from each parent's agent to the home agent (the F019 hand-off pattern)",
+    "for the later Home Assistant option only: a Home Assistant OS VM on the Mac mini (2 GB RAM, 2 vCPU, bridged network adapter; the same VM the kids' kitchen speaker in F072 needs), an egress proxy exception for its LAN address, and the two command-line plugins retired so each device has one path",
+    "for announcements only: a Home Assistant script that wraps the Sonos announce call, a local speech engine chosen in Home Assistant, and the quiet hours from G001",
+    "G001 notification policy, for the 22:30 goodnight text: the policy drops a non-urgent scheduled text sent outside its allowed hours instead of sending it later, so the check has to run inside those hours (22:30 is a house choice, not a fixed part of the design)"
+   ],
+   "caveats": [
+    "This switches things in the house, so the room allowlist, the volume caps and quiet hours are enforced in plugin code and not by the prompt.",
+    "Neither command-line tool is installed, and the bridge and the two speakers (living room and family room) come from the 9 Oct scan and were not re-checked.",
+    "Play-by-search is left out of this build: it would use the music service already linked in the Sonos app, so Happy would hold no music login, but auto-playing the first search hit has no content filter. Favourites and saved scenes only.",
+    "The Hue app can already switch lights at a set time and when you leave home, so Happy's part at night is the reminder and not the switching.",
+    "Home Assistant is a replacement route to the same devices, not an addition: running both doubles the paths to the same lamp. With only Hue, two Sonos speakers and one TV in the house, it pays off mainly if the announcements or the kids' kitchen speaker (F072) are also wanted.",
+    "Home Assistant option: the VM is one more service to patch, back up and bring back after every reboot and FileVault unlock, and until it is up every home tool fails. Home Assistant's macOS page documents VirtualBox (UTM only as a fallback for people used to virtual machines) and points anyone not familiar with virtual machines to a dedicated board.",
+    "Home Assistant option: its MCP server offers Assist intents plus any scripts exposed to Assist, not arbitrary actions, and supports neither notifications nor sampling, so Happy can only ask and Home Assistant cannot push a state change. Because the tools are generic intents, toolFilter.include narrows verbs, not device classes; the exposure list in Home Assistant and a before_tool_call check on each call's target are the real limits.",
+    "Home Assistant option: 'Expose all LLM APIs' and 'Require an administrator account' are both on by default, and new entities in the cover domain (garage doors and gates) are exposed to Assist by default. Tighten the first before OpenClaw connects and review the exposure list after each device is added.",
+    "Home Assistant option: the long-lived token is a ten-year credential for Home Assistant's APIs as one user; the exposed-entity limit applies to the MCP tools, not to the token, so it stays host-side and is rotated by hand.",
+    "Home Assistant option: state text it returns (now-playing titles, device names) is third-party text read by an agent that can actuate; allowlists and caps in code have to bound the result.",
+    "Home Assistant option: a HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration. That brings 'TV off by text' (the integration's page lists turning the TV off; turning it on needs an extra automation); a fixed nightly cut-off stays with the TV's own Power Off Timer.",
+    "Announcements reach only the two Sonos speakers (living room and family room in the 9 Oct scan), and Home Assistant's Sonos page warns that older Sonos hardware or S1 firmware may not fully support them. A talking house at the wrong moment is worse than no feature: quiet hours and a low daily cap matter more than voice quality.",
+    "Without Home Assistant there is no good announcement route: Sonos documents its audio-clip command under the cloud Control API, which would put a Sonos account token on the gateway, and the sonos command-line tool has no announce command (its play-uri sets the speaker to the new audio and documents no way to bring the music back).",
+    "The goodnight text is an unprompted, non-urgent text late in the evening. The notification policy (G001) drops such a text outside its allowed hours and does not send it later, so either the allowed hours reach 22:30 or the check runs earlier; otherwise the check runs every night and nobody hears from it."
+   ]
+  },
+  "merge_hints": [
+   "F072",
+   "G001"
+  ],
+  "overturned": false,
+  "challenge_note": "Changed keep to edit: the 22:30 goodnight text was never checked against the notification policy (G001), which drops non-urgent texts outside its allowed hours, so a dependency and a caveat are added; nothing else changes."
+ },
+ {
+  "id": "F080",
+  "verdict": "edit",
+  "reason": "Kept on the paediatricians' advice to post the chore list on the refrigerator. That advice is about chores, and the card promises chore turns on the Sunday sheet, but nothing in the catalog says how the chore rota gets in: the entry that held it was removed in round 1 and the household store's first version has no place for it. The build note, the dependencies and the open checks now say so.",
+  "who_trigger_result": "Both parents and the kids who read the fridge / the Sunday schedule, or a parent away from home who texts a PDF or photo with 'print this' / the week's events and chore turns on paper, or the file waiting on the home printer, one copy unless asked.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+   "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+   "anchor": "on the refrigerator",
+   "supports": "The paediatricians' body advises posting a chore list or star chart in the child's room or on the refrigerator so that expectations are clear, which is the chore half of the printed Sunday sheet; the page says nothing about a posted calendar. Opened in this run, as was Epson's Email Print page (already on the item), which sells printing to the home printer from wherever you are."
+  },
+  "edits": {
+   "how": "Two parts over one print queue, which is added once on the Mac mini with lpadmin. (1) Pages Happy makes: a scheduled command job with no model call runs a reviewed script that renders the Sunday fridge sheet (the week's schedule and chore turns) from the household store (F031) and the family calendar (F009) and sends it with `lp -d <queue> -n 1`, with no chat message; the emergency card (CRT-13) goes to the same queue when a parent asks. Where the chore turns come from has to be built with this entry: the household store's first version has only its schedule and fact tools and no chore rota, so either a parent sets the rota by text as a fact in that store and the script steps through it week by week, or this entry adds a rota table and tool of its own; until one of the two exists the sheet prints the calendar week only. (2) 'Print this': an in-house plugin calls `lp -d <queue> -n <copies>` on the host with a copies cap in code. It downloads an https link itself, because web_fetch returns text and not the file, and prints the download only when it is a PDF or an image, both of which the print system takes directly; a link to an ordinary web page is refused. A texted file needs attachment intake first (`channels.imessage.includeAttachments`, F002).",
+   "depends_on": [
+    "a print queue added once on the Mac mini with lpadmin (not done yet)",
+    "F002 attachment intake (formerly F001), to print a file someone just texted",
+    "F009 calendar read and F031 household store, for the fridge sheet only; the chore turns also need a rota kept in that store, which F031's first version has no table or tool for (a fact a parent sets by text, or a rota table added with this entry)"
+   ],
+   "unverified": [
+    "Whether a driverless (IPP Everywhere) queue created with lpadmin works with this printer; Canon lists AirPrint, but the queue was not created.",
+    "The checks against private-network addresses in the download step are a design requirement, not an existing plugin feature.",
+    "'No destination configured' comes from the 9 Oct check and was not re-run.",
+    "How the no-model fridge-sheet script reads its data was not tried: F009 gives agents a read-only calendar tool and F031 an agent tool over a SQLite file, so the script needs its own read of both (the same read-only gog account from the command line, and the store's file) outside any agent turn.",
+    "How the chore rota is entered and stored was never specified. The chore-rota entry removed in round 1 (F039) left only a note to keep the rota as rows in the household store, and the store's first version (F031) has schedule and fact tools only; the single-fact route was not tried."
+   ]
+  },
+  "merge_hints": [
+   "F014",
+   "CRT-13",
+   "F031"
+  ],
+  "overturned": false,
+  "challenge_note": "Changed keep to edit: the credible mention rests on the chore list, yet the build note had no source for the chore turns (F039 was removed in round 1 and F031's first version holds no rota), so the build note, one dependency and one open check are corrected."
+ },
+ {
+  "id": "AUT-01",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw's own guidance is to run follow-ups as scheduled jobs and to keep a longer aim in a project note with a review date, and a family-product maker's page (Skylight Assistant, opened this round) describes the same check-ins by text. One build step was missing: every Happy agent runs in a sandbox whose built-in deny list includes the scheduling tool, so the tool needs a second allow entry before a parent's agent or a check-in can use it; the reminders entry (F007) needs the same line.",
+  "who_trigger_result": "A parent / hands Happy a project with an end date and asks for check-ins / one project note of decisions and open items, a text every few days listing what is still open, research only when asked in chat, and check-ins that stop after the date.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/system-prompt.md:58",
+   "title": "System prompt: long-running-work guidance",
+   "anchor": "use cron for future follow-up",
+   "supports": "OpenClaw's built-in guidance tells an agent to handle checking back later, reminders and recurring work with scheduled jobs, which is how this card's check-ins run; the standing-intents page (line 22) adds that a longer aim belongs in a project note with an explicit review date, which is the project-note half."
+  },
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:36",
+    "title": "Sandbox constants (installed source)",
+    "anchor": "DEFAULT_TOOL_DENY",
+    "supports": "The built-in sandbox deny list names the automations tool (line 42) next to browser and computer, so a sandboxed agent does not get it unless the sandbox allow list names it."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/sandbox.md:105",
+    "title": "Agent sandbox configuration: sandbox tool defaults",
+    "anchor": "\"cron\"",
+    "supports": "The documented default sandbox tool policy denies the scheduling tool together with browser, canvas, nodes and gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:32",
+    "title": "Computer use: Requirements",
+    "anchor": "tools.sandbox.tools.alsoAllow",
+    "supports": "For another tool on the same deny list the vendor says a sandboxed agent needs a second entry in the sandbox tool allow list, which is the gate this card had not listed."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:22",
+    "title": "Standing intents: choose the right intention tier",
+    "anchor": "Put aspirations",
+    "supports": "The vendor says a longer aim belongs in a project note with an explicit review date, which is the project-note half of this card."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/tool-policy-DdImvcDJ.mjs:56",
+    "title": "Sandbox tool policy (installed source)",
+    "anchor": "filterDefaultDenyForExplicitAllows",
+    "supports": "The built-in sandbox deny for a tool is dropped only when the sandbox allow or alsoAllow list names that tool, which is why the second entry is needed and why one entry is enough; read in the source, not run."
+   },
+   {
+    "kind": "web",
+    "ref": "https://assistant.myskylight.com/",
+    "title": "Skylight Assistant | AI Family Scheduling & Coordination",
+    "anchor": "Let Us Do the Follow-up",
+    "supports": "A family-product maker's own page describes the check-in half of this card: an assistant that works over text messages, follows up with each family member on their tasks with reminders and check-ins, and lets a task be marked complete in the chat. The page as opened in this run showed no price or sign-up, so it is corroboration and not the credible mention."
+   }
+  ],
+  "edits": {
+   "how": "Held by the asking parent's <p>-main. State: one project note (memory/projects/<slug>.md through the F041 write path, or home-store rows from F031) with goal, end date, decisions, open items and a review date. The note records only what the parent typed or confirmed, written in a turn that carried no web or research results. Check-ins: one isolated automation per project, created through the `automations` tool on <p>-main with a `pacing` object (`min`, `max`; `--pacing-min` and `--pacing-max` are the CLI spelling), so each run can call `automations(action: \"next_check\")` and be clamped to those bounds. The job's tool cap holds the note or home-store read tools plus `automations` (inside an automation run that tool is limited to the run's own job) and never `sessions_spawn` or a web tool; announce to the owner; NO_REPLY when nothing is due; the run removes its own job after the end date. Hard prerequisites before `automations` is allowed on <p>-main: the fail-closed before_tool_call pin must also match `automations`/`cron` add and update and refuse webhook delivery, completion and failure destinations, and any recipient other than the asking parent; and `cron.triggers.enabled: false`, so the tool does not offer script payloads, trigger scripts or stream commands. The grant itself has a second gate: every Happy agent runs sandboxed and `automations` is on the sandbox default deny list (beside `browser` and `computer`), so it must also be named in <p>-main's sandbox tool allow list (`tools.sandbox.tools.alsoAllow`), or a sandboxed turn never gets the tool; the reminders entry (F007) needs the same line. Research legs: `sessions_spawn` to the stateless `research` agent with `runTimeoutSeconds` and `completionTarget: \"parent\"`, in interactive turns only, so <p>-main reviews the result privately before it texts anything. Decisions are plain proposals in chat. `/goal` is not the durable state here: the 04:00 reset wipes it.",
+   "depends_on": [
+    "F041 memory write path or F031 home-store",
+    "F007 automations tool on <p>-main, allowed twice: in the per-agent tool allow and in the sandbox tool allow list (`tools.sandbox.tools.alsoAllow`), because `automations` is on the sandbox default deny list",
+    "F019 research agent",
+    "G009 delivery pin, extended to cover automations/cron add and update and to refuse webhook delivery",
+    "G001 notification policy",
+    "decision: Jordan as a command owner",
+    "cron.triggers.enabled: false (set in G003, which absorbed AUT-08)",
+    "decision: how a check-in job gets past the F007 hook rule that a reminder job created by a parent's agent carries an empty tool list (one more exact tool list admitted by the hook, or the open items carried in the job message)"
+   ],
+   "unverified": [
+    "Whether a custom-session job (`--session session:<id>`) is exempt from the daily reset policy, which would let check-ins keep conversational context.",
+    "Whether memory read tools can be named in a job tool cap for a sandboxed agent on 2026.9.7; test at build time.",
+    "That research handoffs return results with agent-to-agent off and session visibility self (already an open item in the roadmap).",
+    "Whether the gateway accepts webhook delivery or an arbitrary recipient on a job that an agent creates from an iMessage owner turn. The tool description offers both; it was not tested.",
+    "Whether next_check and self-removal stay callable when the job's tool cap leaves out `automations`.",
+    "Whether the F041 path hook, written for memory/*.md, admits a memory/projects/ subfolder.",
+    "That an isolated check-in run of a sandboxed agent is filtered by the same sandbox tool list as a chat turn, so that one `tools.sandbox.tools.alsoAllow` entry for `automations` covers both. The installed source drops a built-in sandbox deny for a tool that the allow list names; this was read, not run."
+   ]
+  },
+  "merge_hints": [
+   "F007",
+   "F041",
+   "F028"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict and edits stand (the sandbox deny list and the alsoAllow gate were re-read in the installed docs and source); the credible mention goes back to OpenClaw's own follow-up guidance because the Skylight page, opened again, showed no price or sign-up, so 'on sale today' could not be confirmed."
+ }
+]

@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+# Keeps private values (addresses, names, network details) out of the public repo while the
+# local pages keep them. Wired up as a git filter and a pre-commit check (see README.md):
+#   redact clean   stdin -> stdout, real values -> placeholders (git add)
+#   redact smudge  stdin -> stdout, placeholders -> real values (git checkout)
+#   redact check   exit 1 if any staged path or file still holds a real value, a denied term,
+#                  a personal mail address or a real phone number
+# The values live outside the repo, in $AGENT_PLAN_PRIVATE (default ~/.config/agent_plan):
+#   redact.tsv  "real<TAB>placeholder" per line; "phrase<TAB>=" leaves that phrase alone
+#   deny.txt    one term per line that must never be published (matched case-insensitively)
+use strict;
+use warnings;
+
+my $dir  = $ENV{AGENT_PLAN_PRIVATE} // "$ENV{HOME}/.config/agent_plan";
+my $mode = shift // '';
+die "usage: redact clean|smudge|check\n" unless $mode =~ /^(clean|smudge|check)$/;
+
+my (%to_public, %to_local, @keep);
+open my $tsv, '<:raw', "$dir/redact.tsv" or die "redact: cannot read $dir/redact.tsv: $!\n";
+while (<$tsv>) {
+    chomp;
+    next if /^\s*(#|$)/;
+    my ($real, $public) = split /\t/, $_, 2;
+    die "redact: $dir/redact.tsv line $.: expected two tab-separated columns\n"
+        unless defined $public && length $real && length $public;
+    if ($public eq '=') { push @keep, $real; next }
+    $to_public{$real}  = $public;
+    $to_local{$public} = $real;
+}
+close $tsv;
+
+# A value matches only as a whole token, so "XXX1" inside a longer string is left alone.
+# Kept phrases are tried first and replaced by themselves.
+sub pattern {
+    my ($map, @phrases) = @_;
+    my @alts = ((map { quotemeta } sort { length $b <=> length $a } @phrases),
+                (map { quotemeta($_) . '(?![A-Za-z0-9_])' } sort { length $b <=> length $a } keys %$map));
+    return undef unless @alts;
+    my $alt = join '|', @alts;
+    return qr/(?<![A-Za-z0-9_])(?:$alt)/;
+}
+my $to_public_re = pattern(\%to_public, @keep);
+my $to_local_re  = pattern(\%to_local);
+
+sub swap {
+    my ($text, $re, $map) = @_;
+    $text =~ s/$re/exists $map->{$&} ? $map->{$&} : $&/ge if $re;
+    return $text;
+}
+
+if ($mode ne 'check') {
+    binmode STDIN;
+    binmode STDOUT;
+    local $/;
+    my $in = <STDIN> // '';
+    print $mode eq 'clean' ? swap($in, $to_public_re, \%to_public) : swap($in, $to_local_re, \%to_local);
+    exit 0;
+}
+
+my @deny;
+if (open my $fh, '<:raw', "$dir/deny.txt") {
+    while (<$fh>) { chomp; push @deny, lc $_ unless /^\s*(#|$)/ }
+}
+my $mail_re  = qr/[A-Za-z0-9._%+-]+@(?:gmail|googlemail|icloud|me|mac|yahoo|outlook|hotmail)\.com\b/i;
+my %mail_ok  = map { $_ => 1 } qw(you@gmail.com);
+my $phone_re = qr/\+1(?!555)(?!\d{3}555)[2-9]\d{9}\b/;    # 555 numbers are made up
+
+my @problems;
+sub inspect {
+    my ($where, $text) = @_;
+    push @problems, "$where: holds a value listed in redact.tsv (the filter did not run?)"
+        if swap($text, $to_public_re, \%to_public) ne $text;
+    my $lc = lc $text;
+    for my $i (0 .. $#deny) {
+        push @problems, "$where: holds denied term #" . ($i + 1) . " of deny.txt" if index($lc, $deny[$i]) >= 0;
+    }
+    while ($text =~ /($mail_re)/g) {
+        push @problems, "$where: personal mail address $1" unless $mail_ok{lc $1};
+    }
+    push @problems, "$where: phone number $1" while $text =~ /($phone_re)/g;
+}
+
+# Every path and blob in the index, i.e. exactly what the next commit will hold.
+open my $ls, '-|', 'git', 'ls-files', '-s', '-z' or die "redact: git ls-files: $!\n";
+my @entries = do { local $/ = "\0"; map { chomp; /^\d+ ([0-9a-f]+) \d+\t(.*)$/s ? [$1, $2] : () } <$ls> };
+close $ls;
+inspect("path $_->[1]", $_->[1]) for @entries;
+
+use IPC::Open2;
+my $pid = open2(my $out, my $in, 'git', 'cat-file', '--batch');
+binmode $out;
+for my $e (@entries) {
+    print $in "$e->[0]\n";
+    $in->flush;
+    my $header = <$out>;
+    my (undef, $type, $size) = split ' ', $header;
+    read($out, my $blob, $size) == $size or die "redact: short read for $e->[1]\n";
+    read($out, my $nl, 1);
+    inspect($e->[1], $blob) if $type eq 'blob';
+}
+close $in;
+waitpid $pid, 0;
+
+if (@problems) {
+    print STDERR "redact check: not committing; private data is staged:\n", map("  $_\n", @problems);
+    exit 1;
+}
+print STDERR "redact check: ", scalar(@entries), " staged files clean\n";

@@ -1,0 +1,751 @@
+[
+  {
+    "id": "F047",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Each adult's own mail agent can search and read that adult's Gmail; nothing is changed, labelled or sent.",
+    "how_short": "`gog mcp` as a host-side stdio entry under `mcp.servers`, read tools only, allowed per agent as `<p>-gmail__*`; authorize with `--gmail-scope readonly`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/mcp.md:10",
+        "title": "Connect MCP servers",
+        "anchor": "mcp.servers",
+        "supports": "MCP server definitions live in gateway config and the tools they expose pass through the same tool profile and policy controls as built-in tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+        "title": "Multi-agent sandbox and tools",
+        "anchor": "<safe-server>__<safe-tool>",
+        "supports": "MCP tools get server-prefixed names that per-agent allow and deny lists can target, deny always wins, and a server with no allowed tool is omitted for that agent."
+      },
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+        "title": "gogcli docs: MCP server",
+        "anchor": "gmail_search",
+        "supports": "gog ships its own typed stdio MCP server (`gog mcp`); by default it registers read tools only (Gmail search, get message, get thread) and hides every write tool."
+      },
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-auth-add.md",
+        "title": "gogcli command reference: gog auth add",
+        "anchor": "--gmail-scope",
+        "supports": "The authorization command takes a Gmail scope mode of full, readonly, send or read-send, and its --readonly flag requests read-only OAuth scopes."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct verifier note says gogcli has no read-only-only Gmail scope. The upstream command reference lists `--gmail-scope full|readonly|send|read-send` and says `--readonly` on `gog auth add` requests read-only OAuth scopes, so a read-only grant can be requested; the catalog's hedge 'if the installed version supports it' can be firmed up, pending a check on the installed binary.",
+      "The 9 Oct text treats the `<p>-gmail` wrapper as new code. Upstream gogcli ships a stdio MCP server (`gog mcp`) that exposes only read tools unless `--allow-write` is passed, so the config entry can run gog directly with an `--allow-tool` list and no wrapper.",
+      "The 9 Oct needs list stops at the per-agent allow list. With sandbox mode 'all' (Happy's setting) the installed docs add a second gate: MCP tools are filtered out unless `tools.sandbox.tools` also names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130)."
+    ],
+    "unverified": [
+      "gog is not installed on this Mac; the flags come from the upstream main-branch docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the version Homebrew installs.",
+      "Whether both adults' tokens would sit in one keyring under the happy user: upstream says tokens use the platform keyring by default with a file backend for headless hosts; splitting them with a per-adult GOG_HOME is my inference from the paths doc.",
+      "Refresh-token lifetime for a self-made Google OAuth client left in testing status was not checked in this run; Google's scope page does mark gmail.readonly as a Restricted scope.",
+      "The promptfoo injection canary is an in-house test, not an OpenClaw feature."
+    ]
+  },
+  {
+    "id": "F048",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Happy writes drafts into the owner's own Gmail Drafts folder; the owner reviews and sends from Gmail, and Happy has no way to send.",
+    "how_short": "`gog --gmail-no-send mcp --allow-write --allow-tool gmail_create_draft,gmail_update_draft`; fail-closed `before_tool_call` block on any send tool; CLI drafts thread with `--reply-to-message-id`.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+        "title": "gogcli docs: MCP server",
+        "anchor": "gmail_create_draft",
+        "supports": "In gog's MCP mode the draft tools appear only with the write flag, the send tools need a separate send flag on top, and the no-send policy blocks sending while drafts still work."
+      },
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-gmail-drafts-create.md",
+        "title": "gogcli command reference: gog gmail drafts create",
+        "anchor": "--reply-to-message-id",
+        "supports": "The draft-create command accepts a reply-to message id (and a thread id), which sets the reply headers and thread so the draft lands inside the conversation."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/gmail/api/auth/scopes",
+        "title": "Gmail API: Choose scopes",
+        "anchor": "gmail.compose",
+        "supports": "Google offers no drafts-only scope: the compose scope covers managing drafts and sending, and modify also includes sending, so the token itself can always send."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:67",
+        "title": "Tool call policy hooks",
+        "anchor": "block: true",
+        "supports": "A plugin's before_tool_call handler that returns a block is terminal, so a send tool can be denied in code the model cannot argue with."
+      }
+    ],
+    "corrections": [
+      "The catalog says 'verify `--reply-to-message-id` on drafts create, else drafts are unthreaded'. The upstream command reference documents `--reply-to-message-id` and `--thread-id` on `gog gmail drafts create`, plus a separate `gog gmail drafts reply <messageId>`; the installed SKILL.md (line 59) merely omits them.",
+      "The catalog describes a custom MCP around `gog gmail drafts create` with the hook as the only send barrier. Upstream gog's own MCP server already keeps `gmail_send_message` and `gmail_send_draft` behind a separate `--allow-gmail-send` flag, so the hook is a second layer, not the only one."
+    ],
+    "unverified": [
+      "Whether gog's MCP tool `gmail_create_draft` exposes the reply and thread parameters that the CLI command has; if not, threaded drafts need a thin wrapper over the CLI.",
+      "gog is not installed here; confirm the tool names with `gog mcp --allow-write --list-tools` after install.",
+      "The promptfoo 'send attempt is blocked' test is in-house."
+    ]
+  },
+  {
+    "id": "F049",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "'Email me this': long answers, tables and plans land in the asker's own inbox from a dedicated family sender; nobody else can be a recipient.",
+    "how_short": "Send-only tool over `gog gmail send` from a dedicated account; `before_tool_call` hook pins `to` to the requester's owner address, rejects cc/bcc, fails closed; `<p>-main` only.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:57",
+        "title": "Bundled gog skill",
+        "anchor": "gog gmail send",
+        "supports": "The gog CLI sends mail with explicit to, subject and a body read from a file or stdin, which is the primitive the mailout tool wraps."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:69",
+        "title": "Tool call policy hooks",
+        "anchor": "to rewrite host-owned tool parameters",
+        "supports": "A before_tool_call handler may return replacement parameters, which is how a recipient can be forced to the owner's address in code."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:36",
+        "title": "Tool call policy hooks",
+        "anchor": "ctx.requester",
+        "supports": "The hook receives a host-derived requester (channel, sender id) for the run, and the doc says to fail closed when a required field is missing, so the owner can be resolved from who asked."
+      },
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+        "title": "gogcli docs: MCP server",
+        "anchor": "--allow-gmail-send",
+        "supports": "In gog's MCP mode, sending is off unless a dedicated send flag is passed in addition to write access and tool selection."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That a parameter rewrite from before_tool_call is honoured for MCP-sourced tools: the doc states it for host-owned parameters and notes some native relays reject rewrites. Blocking is documented as terminal, so the safer build blocks unless the recipient equals the owner, or uses an in-house tool with no recipient parameter at all.",
+      "A daily send cap is in-house code; I found no built-in cap in the pages read.",
+      "Creating the dedicated family sender account and granting its send scope is a manual step outside OpenClaw."
+    ]
+  },
+  {
+    "id": "F050",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Mail from a short list of trusted senders in an adult's Gmail is summarized per message by an isolated reader; other mail never reaches the model.",
+    "how_short": "Bundled `imap` plugin, `allowedSenders`, `senderAuth.min: verified`, tool-less `<p>-mail-reader`; Google app password as SecretRef; texting the owner needs a hook-pinned `message` tool or a cron sweep.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger",
+        "anchor": "allowedSenders",
+        "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/extensions/imap/openclaw.plugin.json:228",
+        "title": "IMAP plugin manifest and config schema",
+        "anchor": "\"deliver\"",
+        "supports": "The account schema has a boolean deliver (default false) and a password, but no channel or recipient field and no OAuth option, so the plugin cannot address an iMessage by itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:169",
+        "title": "Automation webhooks",
+        "anchor": "deliver: true",
+        "supports": "For hook agent turns with no destination, deliver true only allows a completion system event on the target agent's main session; it does not send a chat message to a person."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/accounts/answer/185833",
+        "title": "Google Account Help: Sign in with app passwords",
+        "anchor": "2-Step Verification",
+        "supports": "A Google app password needs 2-Step Verification on the account, is described by Google as not recommended, can be unavailable under some account protections, and is revoked when the account password changes."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Using Gmail labels as IMAP folders for per-topic watches (one account entry per mailbox) was not checked against a Google page.",
+      "Gmail IMAP IDLE support was not confirmed on a Google page; the plugin doc says it sweeps every pollSeconds in either mode.",
+      "Whether each allowlisted sender's mail passes aligned DMARC has to be tested sender by sender.",
+      "An app password is a whole-mailbox credential, broader than a read-only OAuth grant; this is my reading of Google's description, not a quoted statement."
+    ]
+  },
+  {
+    "id": "F051",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "A separate mailbox registered with school, PTA, coaches and the lunch system, read by an isolated reader, so no parent's private inbox is touched; parents can forward mail to it.",
+    "how_short": "Bundled `imap` plugin on a new mailbox (iCloud needs `watch.mode: \"interval\"`), allowlist includes both parents for forwards, tool-less reader; same delivery caveat as F050.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:166",
+        "title": "IMAP email trigger",
+        "anchor": "XAPPLEPUSHSERVICE",
+        "supports": "Some iCloud servers do not advertise standard IDLE, so forcing interval polling (15 second minimum) is the supported path for an iCloud mailbox."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:150",
+        "title": "IMAP email trigger",
+        "anchor": "follow this link and run",
+        "supports": "The doc's own boundary check is a test email telling the reader to follow a link and run a command; anything beyond a summary is a failed check."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/extensions/imap/index.js:55735",
+        "title": "IMAP plugin source: renderImapPrompt",
+        "anchor": "Attachments:",
+        "supports": "The prompt handed to the reader contains From, Subject, a snippet, attachment file names and the capped text body; attachment contents are never included."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102525",
+        "title": "Apple Support: iCloud Mail server settings for other email client apps",
+        "anchor": "imap.mail.me.com",
+        "supports": "iCloud Mail is reachable over IMAP with SSL on port 993 and requires an app-specific password for third-party clients."
+      }
+    ],
+    "corrections": [
+      "'IMAP passes body text only' is slightly off: the plugin's prompt also lists attachment file names (dist/extensions/imap/index.js:55735). Contents of attached PDFs or images are still not passed, so flyer attachments remain unread."
+    ],
+    "unverified": [
+      "Whether the district, PTA, coaches and lunch system each accept an extra or shared guardian address; this is a manual chore per system.",
+      "Auto-forwarding school mail from a parent's Gmail by filter may fail the plugin's aligned-DMARC check (Google's forwarding guidance says forwarded mail often fails SPF); DKIM survival was not tested, so registering the address directly is the safe route.",
+      "An iCloud+ custom-domain address with this plugin was not tested; Apple documents the IMAP host and app-specific passwords, not this combination.",
+      "The catalog marks this 'now' because it needs no private-inbox decision; I rate it 'build' because it needs a new mailbox, an app password and a reader agent entry."
+    ]
+  },
+  {
+    "id": "F052",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Did the dentist confirm?' returns sender, date and gist, or a five-line thread timeline, from the asker's own inbox.",
+    "how_short": "`<p>-main` calls `sessions_spawn` with `agentId` `<p>-mail` (allowed by `subagents.allowAgents`); the child searches with the read-only Gmail MCP and returns a bounded answer.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+        "title": "Sub-agents: thread-bound sessions",
+        "anchor": "subagents.allowAgents",
+        "supports": "A per-agent allowlist names which other configured agents may be targeted by an explicit agent id; the default is only the requester itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-reference.md:155",
+        "title": "Sub-agents: tool reference",
+        "anchor": "another configured agent id",
+        "supports": "The spawn tool takes an agent id so the child runs as the mail agent with that agent's own tool policy."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-policy.md:23",
+        "title": "Sub-agent tool policy",
+        "anchor": "Sub-agents always lose",
+        "supports": "A spawned child can never use the message or scheduling tools, so the mail child cannot send anything itself and can only hand its answer back to the parent."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:131",
+        "title": "Bundled gog skill",
+        "anchor": "gog gmail messages search",
+        "supports": "gog has a per-thread search and a per-message search, which cover both 'find the email' and 'walk the thread' lookups."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That `<p>-main` currently lacks `sessions_spawn` in its allow list is taken from the 9 Oct notes; I did not re-read the live config.",
+      "'Quote only what was asked' is a prompt rule in AGENTS.md, not an enforced limit; the summary text does cross into the memory-holding agent.",
+      "Depends on F047 and G015, which are not built."
+    ]
+  },
+  {
+    "id": "F053",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Reply to the plumber: Tuesday after 3 works' becomes a threaded draft in the owner's Gmail Drafts; the owner edits and sends.",
+    "how_short": "F048 drafts tool; `gog gmail drafts reply <messageId>` or `--reply-to-message-id` keeps the thread; absence and pickup templates in `AGENTS.md`; send stays blocked by hook.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-gmail-drafts-reply.md",
+        "title": "gogcli command reference: gog gmail drafts reply",
+        "anchor": "Save a reply as a draft",
+        "supports": "gog has a dedicated command that stages a reply to a given message as a draft, with an option to leave out the quoted original."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:15",
+        "title": "Ask user",
+        "anchor": "only in the main session",
+        "supports": "The structured question tool exists only in the main session, so a tone question must be asked by the person's main agent before the hand-off, not by the mail child."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:20",
+        "title": "Standing orders",
+        "anchor": "AGENTS.md",
+        "supports": "Standing instructions such as reply templates belong in the agent's workspace file that is injected into every session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:67",
+        "title": "Tool call policy hooks",
+        "anchor": "block: true",
+        "supports": "A plugin's before_tool_call handler that returns a block is terminal, so a send tool can be denied in code the model cannot argue with."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct caveat that reply drafts may land unthreaded is resolved upstream: gogcli documents `gog gmail drafts reply <messageId>` and `--reply-to-message-id` on `drafts create`."
+    ],
+    "unverified": [
+      "Whether gog's MCP draft tool exposes reply threading; if not, a thin wrapper around the CLI command is needed.",
+      "A reply draft inherits recipients from the thread, so an injected email could steer the To line; the owner must check it before sending. Design caveat, no source.",
+      "Per-adult voice and sign-off quality is model-dependent; not measured."
+    ]
+  },
+  {
+    "id": "F054",
+    "tier": 2,
+    "readiness": "not-recommended",
+    "one_line": "A weekday list of people waiting on your reply and of your own unanswered emails; Gmail already shows both as nudges at the top of the inbox.",
+    "how_short": "If built: isolated `automations` job at 17:30 weekdays on `<p>-mail`, Gmail searches via F047, `NO_REPLY` when empty. Gmail's Nudges setting already covers it.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/mail/answer/6585?hl=en&co=GENIE.Platform%3DDesktop",
+        "title": "Gmail Help: Reply to messages in Gmail",
+        "anchor": "Nudges",
+        "supports": "Gmail has two built-in nudge settings, one surfacing received mail you have not answered and one surfacing sent mail that may need a follow-up, both shown at the top of the inbox."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads",
+        "anchor": "NO_REPLY",
+        "supports": "Isolated automation and hook agent turns are unattended and return the silent token when nothing needs doing, so an empty run sends nothing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:20",
+        "title": "Automation schedules",
+        "anchor": "5-field or 6-field cron expression",
+        "supports": "Recurring jobs accept standard cron expressions with an optional time zone flag."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/mail/answer/7190",
+        "title": "Gmail Help: Refine searches in Gmail",
+        "anchor": "newer_than:",
+        "supports": "Gmail's documented search operators (sender, subject, label, age such as newer_than) are what the read tool's queries are written in."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "False-positive rate on newsletters and no-reply senders was not measured.",
+      "Nudges require conversation view per the Gmail page; whether both adults have nudges switched on is unknown."
+    ]
+  },
+  {
+    "id": "F055",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "A school closure, delay or early-dismissal email reaches both parents as one line; routine school mail stays quiet until the afternoon digest.",
+    "how_short": "F051 reader answers with an URGENT line or `NO_REPLY`; `deliver: true` texts nobody, so use a hook-pinned `message` tool (fast) or a 15-minute cron sweep.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:169",
+        "title": "Automation webhooks",
+        "anchor": "deliver: true",
+        "supports": "For hook agent turns with no destination, deliver true only allows a completion system event on the target agent's main session; it does not send a chat message to a person."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads",
+        "anchor": "NO_REPLY",
+        "supports": "Isolated automation and hook agent turns are unattended and return the silent token when nothing needs doing, so an empty run sends nothing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:157",
+        "title": "Tool call policy hooks",
+        "anchor": "event.toolName === \"message\"",
+        "supports": "The doc's own example hook inspects calls to the message tool and blocks disallowed ones, the pattern needed to admit only the two parents as recipients."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.parentsquare.com/blog/2020-7-15-help-please-frequently-asked-parent-questions/",
+        "title": "ParentSquare: Help Please! Frequently Asked Parent Questions",
+        "anchor": "Urgent alerts",
+        "supports": "A widely used school messaging vendor states that urgent alerts always reach parents by its own email, text and app channels, so the headline closure case is usually pushed already."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Which notification system this district uses; ParentSquare is cited only as an example of a vendor that pushes urgent alerts itself.",
+      "End-to-end time from email arrival to iMessage was not measured; the plugin doc says the watcher sweeps every pollSeconds (default 60) and on IDLE notifications.",
+      "Accuracy of the URGENT versus ROUTINE split on real district mail is untested; a missed closure is the costly error."
+    ]
+  },
+  {
+    "id": "F056",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Weekday afternoons both parents get a five-line text of the day's school and activity mail with dates spelled out, plus a dated to-do list with day-before reminders offered.",
+    "how_short": "`automations create '0 16 * * 1-5' --agent school-mail --session isolated --announce --to <chat>`, `--tools school-mail-ro__*`; read MCP is `gog mcp` (Gmail) or a himalaya wrapper (iCloud).",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:29",
+        "title": "Managing automation jobs",
+        "anchor": "openclaw automations create",
+        "supports": "A recurring isolated job is created from a cron expression and prompt with a time zone, announce delivery, a channel and one explicit target."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads",
+        "anchor": "--tools",
+        "supports": "Each job can be restricted to a named tool list, so the digest run sees only the mailbox read tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:42",
+        "title": "iMessage: media and delivery targets",
+        "anchor": "chat_id:123",
+        "supports": "iMessage delivery accepts a stable chat id target, the recommended way to address one group thread holding both parents."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/pimalaya/himalaya",
+        "title": "Himalaya: CLI to manage emails",
+        "anchor": "himalaya envelope list",
+        "supports": "Himalaya is an IMAP command-line client installable with Homebrew that lists envelopes and reads messages, the read path for a non-Gmail school mailbox."
+      }
+    ],
+    "corrections": [
+      "'school-mail-ro MCP is gog (Gmail)' needs no wrapper code on the Gmail path: upstream gogcli ships a read-only stdio MCP server (`gog mcp`).",
+      "The built-in scheduling tool is listed as `automations`, with `cron` kept as an alias (docs/gateway/config-tools/tool-policy.md:73)."
+    ],
+    "unverified": [
+      "Whether himalaya has an MCP mode; its README does not mention one, so the iCloud path likely needs an in-house wrapper. The README also says native keyring support was removed in v2, so its password comes from a command.",
+      "That one job takes exactly one delivery target (hence two jobs or one group chat for two parents); I saw single-target examples only.",
+      "Groups are off today, so a family group chat target needs the iMessage group allowlist switched on first.",
+      "The home-store checklist, the F007 reminder path and the promptfoo newsletter eval are in-house pieces.",
+      "PDF or image newsletters are not read: the IMAP path passes attachment names only."
+    ]
+  },
+  {
+    "id": "F057",
+    "tier": 2,
+    "readiness": "not-recommended",
+    "one_line": "Dated school items appended to a shared Google Sheet both parents can open; folded into the digest's checklist because a sheet is one more place to look.",
+    "how_short": "`gog sheets append <sheetId> ... --insert INSERT_ROWS` behind a hook that pins the sheet id; the Sheets scopes cover the whole account, not one sheet.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:71",
+        "title": "Bundled gog skill",
+        "anchor": "gog sheets append",
+        "supports": "The gog CLI appends rows to a spreadsheet range from a JSON array."
+      },
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-sheets-append.md",
+        "title": "gogcli command reference: gog sheets append",
+        "anchor": "--values-json",
+        "supports": "The append command takes a spreadsheet id, a range, values as a JSON 2D array and an insert mode."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append",
+        "title": "Google Sheets API: spreadsheets.values.append",
+        "anchor": "auth/spreadsheets",
+        "supports": "The append method is authorized by account-wide Sheets or Drive scopes (or drive.file); no scope on that page is limited to one named sheet, so the sheet-id pin has to be enforced locally."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "gog's MCP mode appears to offer a sheet read tool and a range update tool but no append tool, so an append-only tool would be an in-house wrapper; confirm with `gog mcp --allow-write --list-tools`.",
+      "Rows written from untrusted school mail and later read by a memory-holding agent are an injection path; design caveat from the 9 Oct notes, no source.",
+      "Absorbed into F056 in the final catalog ('No Google Sheet'); kept here only for completeness."
+    ]
+  },
+  {
+    "id": "F058",
+    "tier": 2,
+    "readiness": "not-recommended",
+    "one_line": "A morning 'arriving today' line and delivered pings built from carrier emails; USPS Informed Delivery, carrier apps and Gmail's own package tracking already do this.",
+    "how_short": "If built: F050 watch with carrier domains in `allowedSenders`; mail failing aligned DMARC is dropped at the default `verified` floor; tracking links are never fetched.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:103",
+        "title": "IMAP email trigger",
+        "anchor": "The default minimum is",
+        "supports": "By default only mail with locally verified, aligned DMARC is admitted, so each carrier's notification mail must pass that check or be silently rejected."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/mail/answer/13073650?hl=en&co=GENIE.Platform%3DDesktop",
+        "title": "Gmail Help: Package tracking in Gmail",
+        "anchor": "Package tracking",
+        "supports": "Gmail can read tracking numbers from order emails and show arrival date and delivery status in the inbox for participating US carriers."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.usps.com/manage/informed-delivery.htm",
+        "title": "USPS: Informed Delivery",
+        "anchor": "Informed Delivery",
+        "supports": "USPS offers a free service with a daily digest of incoming mail and optional text or email package status notifications."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether each carrier's and shop's notification mail passes aligned DMARC; must be tested per sender.",
+      "UPS, FedEx and Amazon app notifications were not checked on vendor pages in this run.",
+      "Return-window extraction from order mail is model-dependent; no source."
+    ]
+  },
+  {
+    "id": "F059",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "A weekly line of bills due with a two-day nudge for anything not on autopay, plus pings on new subscriptions; Happy never pays or opens pay links.",
+    "how_short": "Gmail search via F047, `llm-task` JSON extraction {biller, amount, due, autopay}, one-shot `--at` nudge; owner confirmation happens in chat, not inside the unattended run.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:9",
+        "title": "LLM task",
+        "anchor": "llm-task",
+        "supports": "A bundled optional plugin tool runs one JSON-only model call and can validate the result against a schema, which suits pulling amount and due date out of a statement email."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads",
+        "anchor": "no one is present",
+        "supports": "Scheduled isolated runs are unattended, so a step such as 'owner confirms this is a subscription' cannot happen inside the job and belongs in the chat session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:18",
+        "title": "Automation schedules",
+        "anchor": "--at",
+        "supports": "A one-shot schedule at a timestamp or relative delay is available for the two-day-before nudge."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/mail/answer/7190",
+        "title": "Gmail Help: Refine searches in Gmail",
+        "anchor": "newer_than:",
+        "supports": "Gmail's documented search operators (sender, subject, label, age such as newer_than) are what the read tool's queries are written in."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That banks and billers already push due-date reminders for this family; no source.",
+      "Detecting price increases and trial endings from email text is model-dependent; no benchmark.",
+      "The known-subscriptions table lives in an in-house store (F031) that does not exist yet.",
+      "Only the non-autopay due nudge survives in the final catalog, folded into F060."
+    ]
+  },
+  {
+    "id": "F060",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Appointment confirmations become a calendar file plus an evening-before reminder; pharmacy, results and flight-change emails become one-line pings; rebooking stays with a human.",
+    "how_short": "F050 watch for clinic, pharmacy and airline senders, `includeBody: false` for health senders; in-house .ics maker; `--at` reminder; file sent from `channels.imessage.attachmentRoots`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:21",
+        "title": "iMessage: media and delivery targets",
+        "anchor": "channels.imessage.attachmentRoots",
+        "supports": "Outbound files are sent through the iMessage channel only from allowed attachment roots, which is where a generated calendar file must be written."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:160",
+        "title": "IMAP email trigger",
+        "anchor": "maxBytes",
+        "supports": "Email bodies handed to the reader are capped by a per-account byte limit, and new messages are de-duplicated across gateway restarts."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+        "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+        "anchor": "VEVENT",
+        "supports": "The open iCalendar standard defines the event and alarm components a generated calendar file must contain."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/calendar/use-siri-suggestions-iclc121e66ee/mac",
+        "title": "Apple Support: Use Siri Suggestions in Calendar on Mac",
+        "anchor": "Siri Suggestions calendar",
+        "supports": "Apple's own Calendar already picks up events it recognizes in Mail and offers them as suggestions, so part of this feature duplicates the phone and Mac."
+      }
+    ],
+    "corrections": [
+      "'Keep PHI senders subject-only (small maxBytes)': the plugin has an exact switch for this, `includeBody: false` per account entry (dist/extensions/imap/openclaw.plugin.json:232; index.js:55727), which drops body and snippet. `maxBytes` has a floor of 256, so a small value alone still passes the start of the body.",
+      "The 9 Oct note that the plugin 'already de-dups' needs a caveat: the doc says this path does not promise exactly-once processing after a crash (docs/automation/imap.md:158), so an occasional repeat or miss is possible."
+    ],
+    "unverified": [
+      "That a .ics file sent through imsg Basic mode arrives as a tap-to-add calendar attachment; the installed docs describe outbound files in general and have no .ics handling.",
+      "Whether two IMAP account entries with different settings can watch the same mailbox (needed to treat health senders differently in one inbox).",
+      "Airline, pharmacy and clinic apps already push most of these alerts; not checked on vendor pages.",
+      "The .ics maker (F010) is in-house and not built."
+    ]
+  },
+  {
+    "id": "F061",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "January to April, a Saturday digest of which expected tax forms have arrived by email and which are still missing; form contents are never opened.",
+    "how_short": "F050 watch on payroll, broker and bank senders; `automations create '0 9 * 1-4 6'` with `--tools \"\"`, checklist text injected into the job prompt.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads",
+        "anchor": "--tools \"\"",
+        "supports": "An empty tool list disables every agent tool for the job, so the digest run cannot read files or fetch anything and its checklist must be in the prompt."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:20",
+        "title": "Automation schedules",
+        "anchor": "5-field or 6-field cron expression",
+        "supports": "Recurring jobs accept standard cron expressions with an optional time zone flag."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger",
+        "anchor": "allowedSenders",
+        "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/filing/gather-your-documents",
+        "title": "IRS: Gather your documents",
+        "anchor": "Form 1095-A",
+        "supports": "The IRS lists the records a household collects before filing (W-2, 1099 variants, 1095-A, childcare, mortgage, property tax and donation records) and says information returns arrive in January or February."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The family's own expected-forms list (Form 1098, 529 and childcare statements) is theirs to write; the IRS page fetched does not name Form 1098.",
+      "Where the reader records 'form X available' between runs; needs an in-house store.",
+      "Sender domains for payroll, brokerage and the 529 plan, and whether their mail passes aligned DMARC.",
+      "Cron has no end date; the job must be disabled by hand after filing (from the 9 Oct notes)."
+    ]
+  },
+  {
+    "id": "G015",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "One locked-down mail agent per adult: it can read that adult's mail and write drafts, cannot browse or run code, and can only message its owner.",
+    "how_short": "Agent entry with `profile: \"minimal\"`, explicit `<p>-gmail__*` allow plus the `tools.sandbox.tools` gate, deny web/fs/runtime/browser, owner-pinned send hook; checked with `openclaw sandbox explain --agent`.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:32",
+        "title": "IMAP email trigger",
+        "anchor": "profile: \"minimal\"",
+        "supports": "The doc's restricted reader template uses the minimal tool profile with an explicit allow list, denies file, runtime, web and browser tools, and runs fully sandboxed with no workspace access."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/sandbox.md:73",
+        "title": "CLI: sandbox",
+        "anchor": "openclaw sandbox explain --agent",
+        "supports": "A CLI report shows an agent's effective sandbox mode, tool policy and elevated gates, usable as a deploy-time check."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:101",
+        "title": "Tool policy configuration",
+        "anchor": "bundle-mcp",
+        "supports": "Configured MCP servers surface as plugin-owned tools, and sandboxed sessions need an extra sandbox-layer allow entry before those tools are visible."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.openai.com/api/docs/guides/your-data",
+        "title": "OpenAI API: Data controls in the OpenAI platform",
+        "anchor": "Zero Data Retention",
+        "supports": "OpenAI states API data is not used for training by default, but abuse-monitoring logs can be kept up to 30 days unless the account is approved for zero retention, so store-off is not the same as nothing retained."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct needs list omits the sandbox-layer gate: with sandbox mode 'all', MCP tools stay hidden unless `tools.sandbox.tools` names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130). The minimal profile does not allow MCP tools implicitly either (same file, lines 36 and 41).",
+      "'Memory off' is not one switch in the installed docs: memory search has a per-agent override (`agents.entries.*.memory.search`, `enabled`, docs/reference/memory-config.md:31 and :102), dreaming is plugin-wide (docs/concepts/memory.md:275), and `excludeSessions.hookExternalContentSources` only matches hook sessions (docs/reference/memory-config.md:667).",
+      "'Send pinned to owner' only applies when the mail agent runs its own scheduled or hook turn: when spawned from `<p>-main` it always loses `message` and `session_status` (docs/tools/subagents/tool-policy.md:23), so its allow list must not consist of `session_status` alone.",
+      "The 9 Oct needs list puts `openclaw models status --agent --probe` in the deploy checks; the installed doc says a direct probe needs the Gateway stopped (docs/cli/models.md:121)."
+    ],
+    "unverified": [
+      "The per-person provider setting that sends store false was verified in M1 and not re-read here.",
+      "Whether this OpenAI account has zero retention; without it the 30-day abuse-monitoring log applies to mail text sent to the model.",
+      "The promptfoo boundary canary is in-house.",
+      "A before_tool_call hook reaching MCP tool calls is implied by the doc ('every tool call in the run', docs/plugins/hooks/tool-policy.md:222) but I found no sentence naming MCP tools."
+    ]
+  },
+  {
+    "id": "G016",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "'Trust mail from the new coach' produces a proposed allowlist change that the mailbox owner approves in chat, so the lists stay current without hand-editing config.",
+    "how_short": "In-house tool proposes a diff; `requireApproval` gate answered with `/approve`; host code regenerates `plugins.entries.imap.config.accounts.*.allowedSenders`, which hot-applies without a restart.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger",
+        "anchor": "allowedSenders",
+        "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/configuration/hot-reload.md:124",
+        "title": "Config hot reload",
+        "anchor": "plugins.entries.*",
+        "supports": "Plugin configuration changes apply without a Gateway restart by reloading the plugin runtime."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/plugin-permission-requests.md:13",
+        "title": "Plugin permission requests",
+        "anchor": "plugin.approval.*",
+        "supports": "Plugin code can pause an operation until a user approves or denies it through chat approval buttons or the approve command."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:325",
+        "title": "Slash commands",
+        "anchor": "/approve <id> <decision>",
+        "supports": "A chat command resolves pending plugin and change approval prompts."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct needs list names `openclaw config reload`; no such command appears in the installed docs, and `plugins.entries.*` changes hot-apply without a Gateway restart (docs/gateway/configuration/hot-reload.md:124)."
+    ],
+    "unverified": [
+      "Limiting who may approve to the mailbox owner, rather than any allowlisted family member, is in-house logic; I found no built-in per-approver rule in the pages read.",
+      "'Digest categories' and the weekly 'senders I ignored' line are prompt or home-store ideas, not plugin features; the plugin logs rejections without subjects or bodies (docs/automation/imap.md:170), so that line would have to be built from gateway logs.",
+      "Useless until a mailbox (F051 or the personal-inbox path) is connected."
+    ]
+  }
+]

@@ -1,0 +1,25 @@
+#!/bin/zsh -f
+# happy-backup: nightly OpenClaw backup, run as happy by local.happy.backup.
+# Archives hold credentials and are not encrypted by OpenClaw; they sit on the FileVault volume in a
+# 700 folder and reach Time Machine only on the encrypted backup disk. Keeps 14 days.
+set -uo pipefail
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+dest=$HOME/Backups/openclaw
+ping=""
+[[ -r $HOME/.config/happy/backup-ping-url ]] && ping=$(<"$HOME/.config/happy/backup-ping-url")
+report() {   # $1 = ping URL; sent on stdin so it stays out of the process list
+  [[ -n $ping ]] && printf 'url = "%s"\n' "$1" | /usr/bin/curl -fsS -m 10 --retry 5 -o /dev/null -K -
+}
+
+print "== $(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) backup start"
+if openclaw backup create --output "$dest" --verify; then
+  /usr/bin/find "$dest" -name '*.tar.gz' -mtime +14 -delete
+  report "$ping"
+  print "== backup ok"
+else
+  rc=$?
+  report "$ping/fail"
+  print "== backup FAILED ($rc)"
+  exit $rc
+fi

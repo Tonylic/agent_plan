@@ -1,0 +1,1409 @@
+[
+ {
+  "id": "G014",
+  "origin": "9 Oct",
+  "name": "Long-running task etiquette: acknowledge, background, notify, cancel",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "For slow jobs Happy says 'on it', works in the background, sends one message when done, and stops if a parent texts 'cancel that'.",
+  "example": "",
+  "how": "`sessions_spawn` with `runTimeoutSeconds`, automatic completion announce to the requester, `subagents` `action: \"cancel\"`, caps via `agents.defaults.subagents.maxConcurrent` and `maxChildrenPerAgent`; ack wording in AGENTS.md.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "M3-research",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Nothing on the current stack runs longer than about 20 seconds, so the convention has no user until the research hand-off (F019) exists.",
+   "The acknowledgement wording and the 'about three minutes' estimate are prompt conventions; the model can skip them."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "Each background run can carry its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/nesting.md:24",
+    "title": "Sub-agents: nesting",
+    "anchor": "maxConcurrent: 8",
+    "supports": "Concurrent child runs per session are capped by config, default eight, and can be lowered.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:14",
+    "title": "Sub-agents",
+    "anchor": "announces",
+    "supports": "A finished helper reports its result back to the requester by default, giving the single completion message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:18",
+    "title": "iMessage: Private API mode",
+    "anchor": "typing indicators and read receipts",
+    "supports": "Typing indicators exist only in the mode that needs system protection off, so in today's Basic mode a text acknowledgement is the only progress signal.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F030",
+  "origin": "9 Oct",
+  "name": "Shared Apple Reminders lists and Family Notes folder bridge",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "Happy can read, add to and tick off items on the Reminders lists the family already shares, so changes show up on both parents' iPhones.",
+  "example": "",
+  "how": "In-house host-side tool plugin wrapping remindctl (list/add/complete, named lists only, no delete); happy's Apple Account joins the shared lists; Reminders permission granted in the gateway's own process context.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "No opened source confirms that remindctl can add to or complete items on a shared iCloud list owned by another family member; its README only says reminders sync through the normal iCloud path.",
+   "Which binary macOS records the Reminders permission against when the launchd gateway spawns remindctl is not documented in any opened source; it needs one test on happy's logged-in desktop.",
+   "The Notes half (appending to a shared folder with osascript) has no first-party Apple scripting reference opened in this run; the memo CLI page only confirms it relies on AppleScript and an editor."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "OpenClaw has a supported way to build a small plugin that only adds typed agent tools, which is the shape of the planned home-reminders bridge.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/remindctl",
+    "title": "steipete/remindctl README",
+    "anchor": "remindctl complete",
+    "supports": "The CLI lists, adds, completes and deletes Apple Reminders with JSON output, needs macOS 14 or later, and needs Reminders access granted to the app that runs it on that Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/device-commands.md:134",
+    "title": "Device commands (OpenClaw docs)",
+    "anchor": "reminders.list",
+    "supports": "The node reminders commands are offered by iOS and Android nodes only, and adding a reminder is a dangerous command that needs an explicit gateway allow, so a macOS node is not an alternative path.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/reminders/share-a-reminder-list-remnd509c0d9/mac",
+    "title": "Share a reminder list on Mac - Apple Support",
+    "anchor": "Share a reminder list",
+    "supports": "A shared list lives in iCloud Reminders, invitees must accept and also use iCloud Reminders, and accepted participants can create and edit items from any of their devices.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F031",
+  "origin": "9 Oct",
+  "name": "Household structured store (home-store MCP: schedules, ledgers, lists)",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "A small household database for dated schedules and simple facts (filter every 90 days, last oil change) that both parents' agents can read and update.",
+  "example": "",
+  "how": "In-house defineToolPlugin over node:sqlite with schedule_get/upsert/mark_done and fact_get/set; allowlisted on both mains and in tools.sandbox.tools; secret check inside execute or via definePluginEntry.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct verifier note says the secret-rejecting before_tool_call hook can live in the same plugin as the defineToolPlugin store. docs/plugins/tool-plugins.md:11 says defineToolPlugin adds tools only, and :233 points to definePluginEntry when tools are combined with hooks.",
+   "The catalog chooses defineToolPlugin for the store but still names its tools home-store__schedule_* in the automations. docs/tools/multi-agent-sandbox-tools.md:242 gives that server__tool form to MCP servers only; a plugin's tools carry the names it declares, so job tool lists must use those."
+  ],
+  "unverified": [
+   "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "A defineToolPlugin plugin adds agent-callable tools only (no hooks or services), which fits a local store with a handful of typed tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nodejs.org/api/sqlite.html",
+    "title": "SQLite | Node.js documentation",
+    "anchor": "node:sqlite",
+    "supports": "Node ships a built-in synchronous SQLite module (added in 22.5.0, release-candidate stability), so the store needs no extra database dependency on the installed Node 26.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools (OpenClaw docs)",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "The double-underscore server__tool name belongs to configured MCP servers; a native plugin tool is addressed by the name it declares.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G013",
+  "origin": "9 Oct",
+  "name": "Contacts lookup (Google or Apple Contacts, read-only)",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "Ask for a number from the parent's own Google address book, mainly so sitter sheets and vendor drafts carry the right contact.",
+  "example": "",
+  "how": "gog on the host with the contacts service consented; a thin read-only stdio MCP wrapper around gog's contacts listing, registered per person with openclaw mcp add.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "later",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct note says gog is a CLI and not an MCP server. gogcli.sh/mcp documents `gog mcp`, a stdio MCP server; its listed tools include no Contacts tool, so the planned contacts wrapper is still needed."
+  ],
+  "unverified": [
+   "gog is not installed on the Mac, so its version, its contacts subcommands and the exact scope it requests were not checked locally.",
+   "The Apple Contacts through a Shortcut alternative was not sourced in this cluster."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:68",
+    "title": "gog skill (bundled with OpenClaw)",
+    "anchor": "gog contacts list",
+    "supports": "The bundled Google Workspace skill documents a contacts listing command and lists contacts among the services chosen at sign-in.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/people/api/rest/v1/people.connections/list",
+    "title": "Method: people.connections.list - People API (Google for Developers)",
+    "anchor": "contacts.readonly",
+    "supports": "Google offers a read-only contacts scope that is enough to list a user's contacts.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/quickstart",
+    "title": "Quickstart - gog documentation",
+    "anchor": "--force-consent",
+    "supports": "gog authorises an account for a chosen list of services that includes contacts, re-authorising uses a forced consent with the full service list repeated, and refresh tokens from a Google app left in Testing expire after a week.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp",
+    "title": "MCP server - gog documentation",
+    "anchor": "sheets_read_range",
+    "supports": "gog now ships its own stdio MCP server, but its documented tool list covers Gmail, Drive, Docs, Sheets and Calendar only, so contacts still need a small wrapper.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-08",
+  "name": "Notes and task apps as a filing target (Apple Notes, Obsidian, Things, Bear, Notion, Trello)",
+  "tier": 1,
+  "cluster": "Lists and notes",
+  "description": "Six bundled skills teach an agent to file things into a notes or task app the parents already open on their phones. On this stack only two are worth building, and only as host-side wrappers: appending to a shared Apple Note, and opening the household vault in Obsidian as a reader.",
+  "example": "'Add the plumber's quote to the House note' or 'put the packing list in Notes so I can tick it off at the store'.",
+  "how": "The bundled skills are instruction packs for command-line tools (memo, obsidian, things, grizzly, ntn, curl) and assume exec, which no Happy agent has; an eligible skill grants no tool. Follow the F030 pattern instead: a small in-house plugin on <p>-main that runs a fixed command host-side. Apple Notes: not through memo, whose add and edit are interactive; the wrapper would be a few lines of AppleScript with Automation permission for Notes granted in happy's session, exposing only append-to-named-note and read-named-note (unverified, see below). Obsidian: the bundled memory-wiki plugin is described as an Obsidian-friendly vault, so the F043 folder can be opened in Obsidian with no agent tool at all. Things and Bear only if a parent already lives in them. Notion and Trello are API-token cloud services and are skipped.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "experimental",
+  "depends_on": [
+   "F030 Reminders bridge (same wrapper pattern)",
+   "F043 household knowledge vault",
+   "A shared Apple Note or folder that happy's Apple Account is invited to"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "memo adds and edits notes through an interactive editor and its skill warns that prompts may need a terminal, so a non-interactive append may have to use AppleScript directly.",
+   "The skill says notes that contain images or attachments cannot be edited.",
+   "The official obsidian CLI needs Obsidian 1.12.7 or later running in happy's desktop session.",
+   "Things database reads need Full Disk Access, updates need a Things auth token, and its CLI cannot delete.",
+   "Bear needs the app installed and running.",
+   "Shared Reminders (F030) already gives both phones a tick-off list; Notes adds free-form pages only.",
+   "Notion and Trello would be two more stores of family details outside the house.",
+   "memo adds and edits notes through $EDITOR and documents no flag or stdin input for note content, so it cannot drive an unattended append; the wrapper would be hand-written AppleScript, which no opened source covers.",
+   "memo needs Python 3.13 or later and its own README lists the project as under development."
+  ],
+  "safety": "A notes target is a write path for private data, so it belongs only on <p>-main, with the note or folder name fixed in plugin code, no delete, and the F041 rule that tainted runs cannot write. A note shared through iCloud is visible only to invited family members. Notion and Trello would send household content to third-party clouds under a token the Gateway holds, so they stay out.",
+  "unverified": [
+   "Whether memo can append to an existing note without an interactive editor",
+   "Whether Automation permission for Notes can be granted to the launchd-run node process the same way as for Reminders",
+   "Which sync method for an Obsidian vault the family would accept on their phones",
+   "Whether an AppleScript append to a shared iCloud note works unattended from the Gateway's launchd session and preserves checklists and formatting"
+  ],
+  "overlaps_existing": [
+   "F030",
+   "F043",
+   "F044",
+   "F034"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/apple-notes/SKILL.md:71",
+    "title": "apple-notes skill: limitations",
+    "anchor": "Interactive prompts",
+    "supports": "The Apple Notes skill warns that the memo CLI's interactive prompts may need terminal access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/obsidian/SKILL.md:17",
+    "title": "obsidian skill: requirements",
+    "anchor": "Obsidian app running",
+    "supports": "The official Obsidian CLI connects to a running desktop app and needs a recent Obsidian version.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/things-mac/SKILL.md:33",
+    "title": "things-mac skill: setup",
+    "anchor": "Full Disk Access",
+    "supports": "Reading the Things database needs Full Disk Access for the calling process.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/bear-notes/SKILL.md:32",
+    "title": "bear-notes skill: requirements",
+    "anchor": "Bear app installed and running",
+    "supports": "The Bear skill needs the Bear app running on the Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/notion/SKILL.md:41",
+    "title": "notion skill: setup",
+    "anchor": "NOTION_API_TOKEN",
+    "supports": "The Notion skill authenticates to Notion's cloud API with a token.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/trello/SKILL.md:10",
+    "title": "trello skill: metadata",
+    "anchor": "TRELLO_API_KEY",
+    "supports": "The Trello skill needs curl, jq and Trello API credentials in the environment.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills.md:270",
+    "title": "Skills: plugins and skills",
+    "anchor": "does not grant tool access",
+    "supports": "A skill being eligible gives an agent instructions only, never the tools to carry them out.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-inventory.md:127",
+    "title": "Plugin inventory: memory-wiki",
+    "anchor": "Obsidian-friendly knowledge vault",
+    "supports": "The bundled memory-wiki plugin produces a vault meant to be readable in Obsidian.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/antoniorodr/memo",
+    "title": "memo: CLI for Apple Notes and Apple Reminders (GitHub)",
+    "anchor": "Apple Notes",
+    "supports": "memo is a macOS command-line tool that manages Apple Notes and Reminders through AppleScript and edits notes in the user's editor.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Skill requirements and limits are all confirmed, but the one path offered as buildable (append to a shared Apple Note) rests on an unsourced AppleScript wrapper: memo's README documents only editor-based add and edit. Downgrade to experimental; the Obsidian half is just opening the F043 folder and is not an agent capability."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "MKT-05",
+  "name": "Grocery list to an Instacart link, parent checks out",
+  "tier": 1,
+  "cluster": "lists and household",
+  "description": "Commercial assistants hand the grocery list to a delivery service. Happy can turn the Saturday list or the week's meal plan into one Instacart shopping-list link; a parent opens it, picks the store and pays. Happy never touches a cart.",
+  "example": "Jordan texts: 'make the Instacart link for this week's list.'",
+  "how": "Gate first: Instacart must approve a production API key (see caveats). Then the shape is a small host-side tool plugin `home-cart` with one tool that takes no free-text arguments. It reads the grocery list itself (Reminders bridge F030 or home-store), calls Instacart's `POST /idp/v1/products/products_link` and returns `products_link_url`. Held by `<p>-main`. Not advised: adding Instacart's own remote MCP server to `<p>-main` (`openclaw mcp add ... --transport streamable-http --include 'create-shopping-list'`), because that tool takes model-written text and would be a third-party egress path on an agent that holds memory. The result is a URL.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "blocked",
+  "depends_on": [
+   "F030 or F031 grocery list",
+   "an Instacart Developer Platform API key",
+   "the family actually ordering through Instacart",
+   "an approved Instacart production API key (Instacart review required)"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "Zero value if the family's store is not on Instacart or they shop in person.",
+   "Instacart matches items by search term, so brand and size are approximate; the parent still edits the cart.",
+   "Needs a developer key; the application process was not checked.",
+   "A shared Reminders grocery list plus the store's own app is what most families use and needs no build.",
+   "Needs an Instacart production API key. Per Instacart's docs the key does not work until Instacart has reviewed the integration (terms, API usage, error handling, a help-desk account), and the average time from access request to production key is about 30 to 40 days. The process is written for apps and websites; a development key only reaches the development servers."
+  ],
+  "safety": "No purchase, cart or checkout happens on Happy's side; the never-list holds because the tool can only produce a link. The risk is egress: a tool that posts model-written text to a third party is a way to send data out from an agent that holds memory. Close it by having the tool read the list itself and accept no free-text arguments; do not put Instacart's MCP server on a memory-holding agent. Item names still reach Instacart, and the returned link is shareable, so anyone holding it can see the list.",
+  "unverified": [
+   "Ohai's Instacart connection: seen only on a non-canonical Ohai subdomain, so not cited.",
+   "How Instacart approves developer keys and whether a household can get one.",
+   "Whether the family uses Instacart.",
+   "Whether Instacart would approve a production key for one household's private tool.",
+   "Whether a link created with a development key opens a real, orderable Instacart page."
+  ],
+  "overlaps_existing": [
+   "F032",
+   "F033",
+   "F030"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page",
+    "title": "Create shopping list page | Instacart Docs",
+    "anchor": "products_link_url",
+    "supports": "The endpoint builds a shopping list page from named line items and returns a link where the user selects a store and completes the order themselves.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/guide/tutorials/mcp",
+    "title": "Connect your AI agent to Instacart with MCP | Instacart Docs",
+    "anchor": "create-shopping-list",
+    "supports": "Instacart runs an official MCP server whose tools create recipe and shopping list pages, authenticated with a developer API key.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "title": "Introducing Alexa+, the next generation of Alexa",
+    "anchor": "Amazon Fresh",
+    "supports": "Alexa+ orders groceries from a delivery service on the user's behalf, the commercial version of this hand-off.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:66",
+    "title": "MCP: add a server from the CLI",
+    "anchor": "streamable-http",
+    "supports": "A remote MCP server can be added by URL and limited to selected tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:164",
+    "title": "Plugin hooks: task table",
+    "anchor": "before_tool_call",
+    "supports": "A plugin hook can block a tool call or require approval before it runs.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/guide/concepts/launch_activities/approval_process",
+    "title": "Approval process | Instacart Docs",
+    "anchor": "Production API key",
+    "supports": "Creating a production key starts an Instacart review of the integration, and the key does not work until it is approved.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.instacart.com/developer_platform_api/get_started/overview",
+    "title": "Get started | Instacart Docs",
+    "anchor": "production key access",
+    "supports": "Instacart puts the average time from access request to an approved production key at roughly 30 to 40 days.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The endpoint and the MCP server are real, but a working key is not a given: Instacart's docs describe a production key that stays pending until Instacart reviews the integration, a process aimed at apps and websites and averaging 30 to 40 days. Readiness 'build' and effort S were optimistic; the alternative of putting Instacart's free-text MCP tool on a memory-holding agent should be dropped."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F041",
+  "origin": "9 Oct",
+  "name": "Durable per-person memory: 'remember this' write path, recall tools, and memory scopes",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "'Remember this' actually sticks: each parent's agent can save a fact to its own notes and find it again later.",
+  "example": "",
+  "how": "Allow write/edit (deny apply_patch) on <p>-main with rw workspace; in-house before_tool_call hook limits paths to MEMORY.md, USER.md, memory/*.md; memory_search FTS-only; session-memory hook.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog relies on `sessions_search` with visibility `agent` to find pre-reset conversations. docs/gateway/config-tools/sessions-and-subagents.md:58 says a sandboxed session stays limited to sessions it spawned while agents.defaults.sandbox.sessionToolsVisibility is 'spawned' (the default); the mains run with sandbox mode all, so that key must change as well. docs/tools/multi-agent-sandbox-tools.md:372 adds that tools.sessions.visibility is gateway-wide, not per agent."
+  ],
+  "unverified": [
+   "Whether visibility 'self' already reaches the same chat's pre-reset history (the docs define self as the current session key) was not tested.",
+   "The opened hook docs expose no taint flag, so 'refuse writes after web results' means the hook plugin tracking web tool calls itself; untested.",
+   "'Most-asked family-assistant request' has no source opened in this run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:149",
+    "title": "Memory overview (OpenClaw docs)",
+    "anchor": "three tools",
+    "supports": "The memory plugin gives the agent search, read and intent tools but no write tool, so saving a fact needs the general file tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:189",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "apply_patch",
+    "supports": "Allowing write also enables apply_patch, and denying write does not deny it, so apply_patch has to be denied by name when only narrow file writes are wanted.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "A plugin hook sees each tool call's name and parameters and can block it, which is the mechanism for limiting writes to the memory files.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/sessions-and-subagents.md:58",
+    "title": "Sessions and subagents config (OpenClaw docs)",
+    "anchor": "sessionToolsVisibility",
+    "supports": "A sandboxed session can only reach sessions it spawned unless the sandbox session-tools setting is widened, whatever the gateway-wide visibility says.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F042",
+  "origin": "9 Oct",
+  "name": "Family facts and preferences baked into USER.md from family.json5",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "Both parents' agents start every chat already knowing the kids' school, routines and activities and each adult's standing preferences.",
+  "example": "",
+  "how": "Generator renders adult directives into USER.md (4,000-character cap) and kid and routine facts into MEMORY.md with trigger comments; nothing is rendered into shared agents.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "The generator script and the family registry live in happy-config and were not opened in this run.",
+   "That a chat edit to a generated file is lost on the next deploy is a property of Tony's generator, not something an opened source states."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:367",
+    "title": "User model (OpenClaw docs)",
+    "anchor": "4,000-character bootstrap cap",
+    "supports": "USER.md has a fixed small budget that config can only lower, so it cannot hold a full family fact sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "USER.md and MEMORY.md are among the files injected at the start of every session, which is why generated facts are known without re-typing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-architecture.md:239",
+    "title": "Memory architecture (OpenClaw docs)",
+    "anchor": "trigger:",
+    "supports": "A fact line can carry trailing trigger phrases so it is pulled in when a message is about that topic.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F043",
+  "origin": "9 Oct",
+  "name": "Household knowledge vault (memory-wiki) with shared notes folder",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "One shared family handbook both parents' agents can search: people, home systems, providers, renewal dates, sitter notes.",
+  "example": "",
+  "how": "Step 1: shared Markdown folder added to each main's memory.search.extraPaths. Step 2: enable bundled memory-wiki, vault.scope global, own vault dir; wiki_search/get/apply/lint on mains only.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "The two installed pages disagree on whether enabling memory-wiki needs a gateway restart (docs/plugins/memory-wiki.md:26 says it applies to a running gateway, docs/cli/wiki.md:15 shows a restart).",
+   "That memory_search in a sandboxed main can read a shared folder outside its workspace was not tested."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:381",
+    "title": "Memory configuration reference (OpenClaw docs)",
+    "anchor": "agents.entries.<id>.memory.search.extraPaths",
+    "supports": "Extra folders to index can be set per agent and are combined with the global list, so only the two parent agents need to see the shared folder.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/memory-wiki.md:23",
+    "title": "Memory wiki (OpenClaw docs)",
+    "anchor": "openclaw plugins enable memory-wiki",
+    "supports": "The knowledge-vault plugin ships with OpenClaw and is switched on with one command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-architecture.md:232",
+    "title": "Memory architecture (OpenClaw docs)",
+    "anchor": "0.72",
+    "supports": "A fact line tagged with trigger phrases is injected automatically when a message matches strongly, at most three per turn, which is how an allergy line surfaces in a recipe chat.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F035"
+  ],
+  "adds": [],
+  "wave": "A",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-06",
+  "name": "Teach Happy a routine (operator-reviewed skills)",
+  "tier": 1,
+  "cluster": "skills and learning",
+  "description": "A parent describes once how the family does something; it becomes a named skill Happy follows every time (party plan, ski-trip packing, school-form explainer). A skill goes live only after Tony has read it.",
+  "example": "Happy, learn our ski-trip packing routine: ask how many nights and who is coming, then list by person, and always include the kids' helmets.",
+  "how": "Happy answers with the drafted procedure as plain text (no tool needed). Tony turns it into `skills/<name>/SKILL.md` (a `name` and a one-line `description`, optionally `user-invocable`) in happy-config under that person's template, reviews it, and happy-deploy copies it into that agent's workspace `skills/` folder, the highest-precedence skill root. To use a skill the model must load its SKILL.md with the `read` tool; the system prompt lists only each skill's name, description and location. So <p>-main needs `read` in `tools.alsoAllow` and in the sandbox tool allowlist (group:fs is denied today). With `workspaceAccess: \"none\"` OpenClaw mirrors eligible skills into the sandbox workspace as read-only copies and `read` is rooted there. Keep `skill_workshop` denied on every family agent. Alternative for agent-scoped Workshop skills: `openclaw skills workshop propose-create --agent <p>-main --proposal ./PROPOSAL.md`, then inspect and apply, run as the happy user from the deploy path. Per-agent visibility through `agents.entries.<id>.skills`; inbox keeps `skills: []`. Held by the asking parent's <p>-main; shared stateless agents get only skills meant for everyone. A routine of a few lines can instead live as a section of AGENTS.md, which needs no tool.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "a skills step in happy-deploy and gen-family",
+   "AUT-07 (self-learning switched off)",
+   "decision: who may request a new skill",
+   "`read` allowed on <p>-main in tools.alsoAllow and the sandbox tool allowlist (group:fs is denied today; arrives with F041)"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Asking Happy to save a skill from iMessage does not work on this stack by default: sandboxed runs do not construct the `skill_workshop` tool even when it is allowlisted, so `/learn` cannot stage a draft. The M1 doctor baseline in the config repo already shows this warning for every agent. The documented exception is a human turn with host-granted library-authoring authority, and personal-library authoring publishes with no pending draft, which would skip Tony's review. That is one more reason to keep `skill_workshop` off every family agent's allowlist.",
+   "A skill is know-how. It cannot add tools or accounts, so \"learn to order the groceries\" still ends at a list.",
+   "A skill is instruction text loaded into future sessions. One written from a pasted web page or an email is a stored injection, so author only from the parent's own words.",
+   "No marketplace skills: an audit reported by The Hacker News found 341 malicious entries among 2,857 ClawHub skills in early 2026.",
+   "A running session keeps the skill list it started with; a new skill appears after /new or the next morning's reset.",
+   "Turnaround is \"when Tony next deploys\", not instant.",
+   "A new or changed workspace skill is picked up on the next turn after the skills watcher sees the file change, or after the gateway restart that a deploy performs. No /new is needed."
+  ],
+  "safety": "Operator review is the gate: no model-written file ever reaches a skills root. A skill cannot widen tool policy, so the trifecta split between <p>-main, research and the mail readers is unchanged. Per-person skills live in that person's workspace, so nothing crosses data domains.",
+  "unverified": [
+   "Whether a user-invocable skill command typed by an allowlisted non-owner iMessage sender is accepted on 2026.9.7.",
+   "That skill sync into the sandbox works with `workspaceAccess: \"none\"` (the docs say sandboxed runs read materialized copies).",
+   "That a `read`-only grant on a sandboxed <p>-main reaches the mirrored skills and nothing private; check at build time.",
+   "Whether an iMessage owner turn is ever given library-authoring authority on this configuration. If it is, an allowlisted `skill_workshop` could publish a skill with no review."
+  ],
+  "overlaps_existing": [
+   "F023",
+   "F033",
+   "F036"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/creating-skills.md:20",
+    "title": "Creating skills",
+    "anchor": "Skills live in your workspace",
+    "supports": "Hand-written skills are directories under the agent workspace's skills folder.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/troubleshooting.md:61",
+    "title": "Skill Workshop troubleshooting: tool-policy diagnostic",
+    "anchor": "library-authoring authority",
+    "supports": "Sandboxed runs do not get the skill authoring tool even when an allowlist names it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/authoring.md:88",
+    "title": "Skill Workshop: CLI authoring",
+    "anchor": "propose-create",
+    "supports": "The operator CLI can create, inspect and apply proposals for a named agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/how-it-works.md:21",
+    "title": "How Skill Workshop works",
+    "anchor": "Apply is the only live write",
+    "supports": "A proposal changes nothing live until it is applied.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills.md:41",
+    "title": "Skills: loading order",
+    "anchor": "Workspace skills",
+    "supports": "Workspace skills take precedence over every other skill source.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills-config.md:343",
+    "title": "Skills config: agent allowlists",
+    "anchor": "agents.entries.*.skills",
+    "supports": "A per-agent list controls which skills an agent can see, and an empty list exposes none.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html",
+    "title": "Researchers Find 341 Malicious ClawHub Skills Stealing Data from OpenClaw Users (The Hacker News, 2 Feb 2026)",
+    "anchor": "341",
+    "supports": "A security audit of the public skill marketplace found hundreds of malicious skills, most installing a macOS credential stealer.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/system-prompt.md:199",
+    "title": "System prompt: skills",
+    "anchor": "available_skills",
+    "supports": "The prompt lists each skill with a file path and tells the model to load SKILL.md with the read tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/context.md:140",
+    "title": "Context: skills injected vs loaded on demand",
+    "anchor": "only when needed",
+    "supports": "Skill instructions are not in the prompt; the model is expected to read a skill's SKILL.md when it needs it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/workspace-access.md:91",
+    "title": "Sandbox workspace access: skills",
+    "anchor": "read-only instruction roots",
+    "supports": "With workspace access none, eligible skills are mirrored into the sandbox workspace read-only and the read tool is rooted in the sandbox.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/personal-library.md:38",
+    "title": "Personal library authoring",
+    "anchor": "no pending-draft action",
+    "supports": "Personal-library create and update publish directly; there is no pending draft to review.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/15146780",
+    "title": "Use Gems in Gemini Apps - Gemini Apps Help",
+    "anchor": "transition to skills",
+    "supports": "Gems are saved custom versions of Gemini that can be shared, and on personal accounts they become skills from November 2026.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://poke.com/",
+    "title": "Poke - Chat with Poke",
+    "anchor": "Poke Recipes",
+    "supports": "Poke, a messaging-based assistant, ships pre-built reusable setups it calls recipes.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.claude.com/en/articles/12512176-what-are-skills",
+    "title": "What are skills? | Claude Help Center",
+    "anchor": "progressive disclosure",
+    "supports": "Claude skills are folders of instructions loaded only when a task needs them, available on all plans.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:386",
+    "title": "Slash commands: skill commands",
+    "anchor": "/skill <name> [input]",
+    "supports": "Any user-invocable skill can be run by name through a generic command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:68",
+    "title": "Tool policy: tool groups",
+    "anchor": "group:fs",
+    "supports": "The read tool belongs to the file-system tool group, the group the person agents deny today.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MKT-03"
+  ],
+  "adds": [
+   "Starting a routine with a short slash command and pinning the visible skills per agent; the person agents need the read tool before any skill body can load."
+  ],
+  "review_notes": [
+   "All ten sources check out, but a prerequisite is missing: the model loads a skill by reading its SKILL.md with the `read` tool, and <p>-main has every file tool denied today. Two caveats are corrected (when a new skill appears, and the personal-library exception to the sandbox block), and the sandbox-sync question is now answered by the docs."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F045",
+  "origin": "9 Oct",
+  "name": "Google Sheets and Drive read-only lookup",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "Ask about the family's existing Google Sheets and Docs (chore chart, house projects) without moving them anywhere.",
+  "example": "",
+  "how": "Install gog, per-person OAuth; register `gog mcp` (write tools hidden by default; --allow-tool drive_search,drive_get,docs_get,sheets_read_range) with openclaw mcp add; allow only on that person's main.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "later",
+  "value": 2,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog plans a custom `<p>-drive-ro` wrapper because gog was taken to be CLI-only. gogcli.sh/mcp documents `gog mcp`, a typed stdio MCP server exposing drive_search, drive_get, docs_get and sheets_read_range, so this feature needs no custom wrapper.",
+   "The 9 Oct note says no read-only option is documented for gog. The same upstream page documents that write tools stay hidden unless --allow-write is passed and that a read-only policy cannot be widened by it, and the gog README shows a global --readonly flag; the bundled skill file simply does not mention them."
+  ],
+  "unverified": [
+   "gog is not installed, so which version ships `gog mcp` and which OAuth scopes it requests for Drive and Sheets were not checked locally; no first-party page opened here shows a read-only Drive scope choice at consent time.",
+   "Whether the family keeps anything useful in Sheets is unknown."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:69",
+    "title": "gog skill (bundled with OpenClaw)",
+    "anchor": "gog sheets get",
+    "supports": "The bundled Google Workspace skill documents read commands for Sheets, Drive search and Docs, and also write commands, so access must be narrowed outside the skill.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp",
+    "title": "MCP server - gog documentation",
+    "anchor": "sheets_read_range",
+    "supports": "gog ships its own stdio MCP server with fixed read tools for Drive, Docs and Sheets; write tools stay hidden unless explicitly allowed, and the tool set can be narrowed by name.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/drive/api/guides/api-specific-auth",
+    "title": "Choose Google Drive API scopes (Google for Developers)",
+    "anchor": "drive.readonly",
+    "supports": "Google has a view-and-download-only Drive scope, and classes it as restricted, so even read-only Drive access is a high-sensitivity grant.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:54",
+    "title": "Connect MCP servers (OpenClaw docs)",
+    "anchor": "openclaw mcp add",
+    "supports": "A local stdio MCP server is registered with a command and arguments and then probed, and its tools go through the normal per-agent tool policy.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F046",
+  "origin": "9 Oct",
+  "name": "Semantic and multimodal memory search (local embeddings)",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "Search notes by meaning ('the kid's nut thing' finds 'tree-nut allergy') with embeddings computed on the Mac mini; photo search stays unavailable locally.",
+  "example": "",
+  "how": "Install @openclaw/llama-cpp-provider, run the embedding-only setup, set memory.search.provider local with fallback none, reindex; image indexing still requires gemini-embedding-2 (cloud).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M2-local",
+  "value": 2,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog ties this to M2 (local models). docs/plugins/llama-cpp.md:123 documents an embedding-only setup that adds no chat model, so the text leg does not depend on M2 and can be done on the installed stack.",
+   "The 9 Oct reason for dropping photo search is that no local multimodal embedder exists. Google's EmbeddingGemma page now describes EmbeddingGemma 2 as multimodal and local; the actual block is that OpenClaw 2026.9.7 only indexes images with gemini-embedding-2 (docs/reference/memory-config.md:495)."
+  ],
+  "unverified": [
+   "Whether the managed llama.cpp server in 2026.9.7 can load EmbeddingGemma 2 was not checked.",
+   "The gain over keyword search for a few hundred family notes is a judgement, not a sourced figure."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-builtin.md:96",
+    "title": "Builtin memory engine (OpenClaw docs)",
+    "anchor": "@openclaw/llama-cpp-provider",
+    "supports": "Local embeddings come from an installable official plugin plus a local provider setting pointing at a small GGUF embedding model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/llama-cpp.md:123",
+    "title": "llama.cpp provider (OpenClaw docs)",
+    "anchor": "Set up only local embeddings",
+    "supports": "There is an embedding-only setup that installs the managed server and embedding model without adding or changing any chat model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:495",
+    "title": "Memory configuration reference (OpenClaw docs)",
+    "anchor": "gemini-embedding-2",
+    "supports": "Image and audio indexing works only with Google's cloud embedding model and only for files in the extra paths.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://ai.google.dev/gemma/docs/embeddinggemma",
+    "title": "EmbeddingGemma - Google AI for Developers",
+    "anchor": "EmbeddingGemma 2",
+    "supports": "Google describes the first EmbeddingGemma as a small text-only model that runs on-device, and a newer version as a multimodal model that also runs locally.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-14",
+  "name": "Deep recall of earlier conversations (Active Memory)",
+  "tier": 1,
+  "cluster": "memory autonomy",
+  "description": "When a parent asks about something from an earlier day, a short blocking recall step searches that same agent's own past private conversations and gives the answer a small summary to work from. It earns its keep on this stack because the conversation resets every morning.",
+  "example": "What did we decide about the summer camp deposit last week?",
+  "how": "Per agent: `agents.entries.<p>-main.memory.search.rememberAcrossConversations: true` with the active-memory plugin enabled in its default `escalate` mode, which runs the recall sub-agent only when the message asks about the past and the cheap deterministic lookup found nothing strong. Direct chats only, same agent only. Held by each <p>-main; never on research, the readers, or inbox.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "experimental",
+  "depends_on": [
+   "F041 memory path and memory tools on <p>-main",
+   "a check that the keyword-only memory provider supports transcript recall",
+   "decision: index session transcripts or not",
+   "a staging test that a pre-reset transcript of the same DM is recalled"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "It defaults to off on Happy because per-sender DM isolation is configured; it must be set explicitly per agent.",
+   "It adds a blocking model call to the replies it runs on: slower answers and extra cost.",
+   "It does not run for scheduled jobs, heartbeat or sub-agents, so the briefs get nothing from it.",
+   "Recalled excerpts come from transcripts that include search-tool output, and hidden personalization can surprise (\"how did it know that\").",
+   "A cheaper first step is already in the catalog: the session-memory hook plus memory search from F041. Try that before this.",
+   "Each parent has one private conversation with their agent (the iMessage DM). Recall reads the same agent's other private conversations and excludes the one being answered. Whether the pre-reset transcript of that same DM counts as another conversation is not documented; if it does not, this feature returns nothing on Happy. Test that before anything else."
+  ],
+  "safety": "Recall stays inside one agent, which is one person: another agent's transcripts are never eligible and groups are excluded. The recall sub-agent can call only memory recall tools and nothing leaves the gateway beyond the model call the agent already makes. Treat recalled text as possibly tainted by earlier search results and keep the F041 rule that tainted turns cannot write memory.",
+  "unverified": [
+   "Whether protected transcript recall works with `memory.search.provider: \"none\"` (keyword only, no embeddings).",
+   "Whether yesterday's pre-reset transcript of the same DM counts as another private conversation for recall.",
+   "The added latency and cost per recall on the models Happy uses."
+  ],
+  "overlaps_existing": [
+   "F041",
+   "F046",
+   "F085"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/active-memory.md:11",
+    "title": "Active memory",
+    "anchor": "blocking recall sub-agent",
+    "supports": "In the default mode the recall sub-agent runs only for questions about the past that the deterministic lane could not answer.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/active-memory/enabling.md:21",
+    "title": "Enabling active memory: remember across conversations",
+    "anchor": "rememberAcrossConversations: true",
+    "supports": "One per-agent setting turns on bounded recall across that agent's other private conversations.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/active-memory/how-it-works.md:39",
+    "title": "How active memory works: surfaces",
+    "anchor": "Heartbeat/background runs",
+    "supports": "Background, heartbeat and sub-agent runs do not use active memory.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/dreaming.md:14",
+    "title": "Dreaming",
+    "anchor": "enabled by default",
+    "supports": "Dreaming is on by default and is disabled with one memory-core config key.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:741",
+    "title": "Memory configuration reference: dreaming",
+    "anchor": "Enable or disable dreaming entirely",
+    "supports": "The documented dreaming switch is a single plugin-level enable flag.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "OCL-07"
+  ],
+  "adds": [
+   "Why recall is off today (session.dmScope is set) and the Dreaming half, which stays off because it is one gateway-wide switch."
+  ],
+  "review_notes": [
+   "All six sources confirmed, but the stated payoff rests on behaviour nobody has tested: each parent has exactly one private conversation with their agent and recall excludes the conversation being answered. Unless yesterday's pre-reset transcript counts as another conversation there is nothing to recall, so readiness becomes experimental and value 2 until that test passes."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "Memory, knowledge and skills",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F051",
+  "origin": "9 Oct",
+  "name": "Dedicated school mailbox with isolated reader (school-mail) and forward-to-Happy",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "A separate mailbox registered with school, PTA, coaches and the lunch system, read by an isolated reader, so no parent's private inbox is touched; parents can forward mail to it.",
+  "example": "",
+  "how": "Bundled `imap` plugin on a new mailbox (iCloud needs `watch.mode: \"interval\"`), allowlist includes both parents for forwards, tool-less reader; same delivery caveat as F050.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'IMAP passes body text only' is slightly off: the plugin's prompt also lists attachment file names (dist/extensions/imap/index.js:55735). Contents of attached PDFs or images are still not passed, so flyer attachments remain unread."
+  ],
+  "unverified": [
+   "Whether the district, PTA, coaches and lunch system each accept an extra or shared guardian address; this is a manual chore per system.",
+   "Auto-forwarding school mail from a parent's Gmail by filter may fail the plugin's aligned-DMARC check (Google's forwarding guidance says forwarded mail often fails SPF); DKIM survival was not tested, so registering the address directly is the safe route.",
+   "An iCloud+ custom-domain address with this plugin was not tested; Apple documents the IMAP host and app-specific passwords, not this combination.",
+   "The catalog marks this 'now' because it needs no private-inbox decision; I rate it 'build' because it needs a new mailbox, an app password and a reader agent entry."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:166",
+    "title": "IMAP email trigger",
+    "anchor": "XAPPLEPUSHSERVICE",
+    "supports": "Some iCloud servers do not advertise standard IDLE, so forcing interval polling (15 second minimum) is the supported path for an iCloud mailbox.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/imap/index.js:55735",
+    "title": "IMAP plugin source: renderImapPrompt",
+    "anchor": "Attachments:",
+    "supports": "The prompt handed to the reader contains From, Subject, a snippet, attachment file names and the capped text body; attachment contents are never included.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102525",
+    "title": "Apple Support: iCloud Mail server settings for other email client apps",
+    "anchor": "imap.mail.me.com",
+    "supports": "iCloud Mail is reachable over IMAP with SSL on port 993 and requires an app-specific password for third-party clients.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G016",
+  "origin": "9 Oct",
+  "name": "Sender allowlist and mail-rule management by chat",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "'Trust mail from the new coach' produces a proposed allowlist change that the mailbox owner approves in chat, so the lists stay current without hand-editing config.",
+  "example": "",
+  "how": "In-house tool proposes a diff; `requireApproval` gate answered with `/approve`; host code regenerates `plugins.entries.imap.config.accounts.*.allowedSenders`, which hot-applies without a restart.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct needs list names `openclaw config reload`; no such command appears in the installed docs, and `plugins.entries.*` changes hot-apply without a Gateway restart (docs/gateway/configuration/hot-reload.md:124)."
+  ],
+  "unverified": [
+   "Limiting who may approve to the mailbox owner, rather than any allowlisted family member, is in-house logic; I found no built-in per-approver rule in the pages read.",
+   "'Digest categories' and the weekly 'senders I ignored' line are prompt or home-store ideas, not plugin features; the plugin logs rejections without subjects or bodies (docs/automation/imap.md:170), so that line would have to be built from gateway logs.",
+   "Useless until a mailbox (F051 or the personal-inbox path) is connected."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:86",
+    "title": "IMAP email trigger",
+    "anchor": "allowedSenders",
+    "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:124",
+    "title": "Config hot reload",
+    "anchor": "plugins.entries.*",
+    "supports": "Plugin configuration changes apply without a Gateway restart by reloading the plugin runtime.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:13",
+    "title": "Plugin permission requests",
+    "anchor": "plugin.approval.*",
+    "supports": "Plugin code can pause an operation until a user approves or denies it through chat approval buttons or the approve command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:325",
+    "title": "Slash commands",
+    "anchor": "/approve <id> <decision>",
+    "supports": "A chat command resolves pending plugin and change approval prompts.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F050",
+  "origin": "9 Oct",
+  "name": "IMAP mailbox watch on a personal Gmail (allowlisted senders, per-message reader)",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "Mail from a short list of trusted senders in an adult's Gmail is summarized per message by an isolated reader; other mail never reaches the model.",
+  "example": "",
+  "how": "Bundled `imap` plugin, `allowedSenders`, `senderAuth.min: verified`, tool-less `<p>-mail-reader`; Google app password as SecretRef; texting the owner needs a hook-pinned `message` tool or a cron sweep.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Using Gmail labels as IMAP folders for per-topic watches (one account entry per mailbox) was not checked against a Google page.",
+   "Gmail IMAP IDLE support was not confirmed on a Google page; the plugin doc says it sweeps every pollSeconds in either mode.",
+   "Whether each allowlisted sender's mail passes aligned DMARC has to be tested sender by sender.",
+   "An app password is a whole-mailbox credential, broader than a read-only OAuth grant; this is my reading of Google's description, not a quoted statement."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:86",
+    "title": "IMAP email trigger",
+    "anchor": "allowedSenders",
+    "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/imap/openclaw.plugin.json:228",
+    "title": "IMAP plugin manifest and config schema",
+    "anchor": "\"deliver\"",
+    "supports": "The account schema has a boolean deliver (default false) and a password, but no channel or recipient field and no OAuth option, so the plugin cannot address an iMessage by itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/webhooks.md:169",
+    "title": "Automation webhooks",
+    "anchor": "deliver: true",
+    "supports": "For hook agent turns with no destination, deliver true only allows a completion system event on the target agent's main session; it does not send a chat message to a person.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/accounts/answer/185833",
+    "title": "Google Account Help: Sign in with app passwords",
+    "anchor": "2-Step Verification",
+    "supports": "A Google app password needs 2-Step Verification on the account, is described by Google as not recommended, can be unavailable under some account protections, and is revoked when the account password changes.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "unplaced",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G015",
+  "origin": "9 Oct",
+  "name": "Per-person mail reader agent (<p>-mail): isolated, memory-off, no web, deliver-to-owner only",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "One locked-down mail agent per adult: it can read that adult's mail and write drafts, cannot browse or run code, and can only message its owner.",
+  "example": "",
+  "how": "Agent entry with `profile: \"minimal\"`, explicit `<p>-gmail__*` allow plus the `tools.sandbox.tools` gate, deny web/fs/runtime/browser, owner-pinned send hook; checked with `openclaw sandbox explain --agent`.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct needs list omits the sandbox-layer gate: with sandbox mode 'all', MCP tools stay hidden unless `tools.sandbox.tools` names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130). The minimal profile does not allow MCP tools implicitly either (same file, lines 36 and 41).",
+   "'Memory off' is not one switch in the installed docs: memory search has a per-agent override (`agents.entries.*.memory.search`, `enabled`, docs/reference/memory-config.md:31 and :102), dreaming is plugin-wide (docs/concepts/memory.md:275), and `excludeSessions.hookExternalContentSources` only matches hook sessions (docs/reference/memory-config.md:667).",
+   "'Send pinned to owner' only applies when the mail agent runs its own scheduled or hook turn: when spawned from `<p>-main` it always loses `message` and `session_status` (docs/tools/subagents/tool-policy.md:23), so its allow list must not consist of `session_status` alone.",
+   "The 9 Oct needs list puts `openclaw models status --agent --probe` in the deploy checks; the installed doc says a direct probe needs the Gateway stopped (docs/cli/models.md:121)."
+  ],
+  "unverified": [
+   "The per-person provider setting that sends store false was verified in M1 and not re-read here.",
+   "Whether this OpenAI account has zero retention; without it the 30-day abuse-monitoring log applies to mail text sent to the model.",
+   "The promptfoo boundary canary is in-house.",
+   "A before_tool_call hook reaching MCP tool calls is implied by the doc ('every tool call in the run', docs/plugins/hooks/tool-policy.md:222) but I found no sentence naming MCP tools."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:32",
+    "title": "IMAP email trigger",
+    "anchor": "profile: \"minimal\"",
+    "supports": "The doc's restricted reader template uses the minimal tool profile with an explicit allow list, denies file, runtime, web and browser tools, and runs fully sandboxed with no workspace access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/sandbox.md:73",
+    "title": "CLI: sandbox",
+    "anchor": "openclaw sandbox explain --agent",
+    "supports": "A CLI report shows an agent's effective sandbox mode, tool policy and elevated gates, usable as a deploy-time check.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Tool policy configuration",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers surface as plugin-owned tools, and sandboxed sessions need an extra sandbox-layer allow entry before those tools are visible.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API: Data controls in the OpenAI platform",
+    "anchor": "Zero Data Retention",
+    "supports": "OpenAI states API data is not used for training by default, but abuse-monitoring logs can be kept up to 30 days unless the account is approved for zero retention, so store-off is not the same as nothing retained.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F047",
+  "origin": "9 Oct",
+  "name": "Per-person read-only Gmail (<p>-gmail MCP)",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "Each adult's own mail agent can search and read that adult's Gmail; nothing is changed, labelled or sent.",
+  "example": "",
+  "how": "`gog mcp` as a host-side stdio entry under `mcp.servers`, read tools only, allowed per agent as `<p>-gmail__*`; authorize with `--gmail-scope readonly`.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct verifier note says gogcli has no read-only-only Gmail scope. The upstream command reference lists `--gmail-scope full|readonly|send|read-send` and says `--readonly` on `gog auth add` requests read-only OAuth scopes, so a read-only grant can be requested; the catalog's hedge 'if the installed version supports it' can be firmed up, pending a check on the installed binary.",
+   "The 9 Oct text treats the `<p>-gmail` wrapper as new code. Upstream gogcli ships a stdio MCP server (`gog mcp`) that exposes only read tools unless `--allow-write` is passed, so the config entry can run gog directly with an `--allow-tool` list and no wrapper.",
+   "The 9 Oct needs list stops at the per-agent allow list. With sandbox mode 'all' (Happy's setting) the installed docs add a second gate: MCP tools are filtered out unless `tools.sandbox.tools` also names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130)."
+  ],
+  "unverified": [
+   "gog is not installed on this Mac; the flags come from the upstream main-branch docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the version Homebrew installs.",
+   "Whether both adults' tokens would sit in one keyring under the happy user: upstream says tokens use the platform keyring by default with a file backend for headless hosts; splitting them with a per-adult GOG_HOME is my inference from the paths doc.",
+   "Refresh-token lifetime for a self-made Google OAuth client left in testing status was not checked in this run; Google's scope page does mark gmail.readonly as a Restricted scope.",
+   "The promptfoo injection canary is an in-house test, not an OpenClaw feature."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:10",
+    "title": "Connect MCP servers",
+    "anchor": "mcp.servers",
+    "supports": "MCP server definitions live in gateway config and the tools they expose pass through the same tool profile and policy controls as built-in tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "MCP tools get server-prefixed names that per-agent allow and deny lists can target, deny always wins, and a server with no allowed tool is omitted for that agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+    "title": "gogcli docs: MCP server",
+    "anchor": "gmail_search",
+    "supports": "gog ships its own typed stdio MCP server (`gog mcp`); by default it registers read tools only (Gmail search, get message, get thread) and hides every write tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-auth-add.md",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--gmail-scope",
+    "supports": "The authorization command takes a Gmail scope mode of full, readonly, send or read-send, and its --readonly flag requests read-only OAuth scopes.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Mail access",
+  "includes": [],
+  "history": []
+ }
+]

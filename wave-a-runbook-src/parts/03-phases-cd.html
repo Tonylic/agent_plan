@@ -1,0 +1,169 @@
+
+<!-- ============================== C ============================== -->
+<section class="sec" id="phase-C">
+  <div class="phase-hd"><span class="pid">Phase C</span><h2>Scheduler switches and the jobs script</h2><span class="when">about 2.5 hours, during the eight-day wait</span></div>
+  <p class="phase-intro">Test T3, on throwaway jobs. It goes live when the job list can be read through the deploy path (or the by-hand fallback is in use and written down), a job declared twice has shown whether it is updated or doubled, a fixed line has arrived on your phone and nowhere else, and a failing job has alerted you and nobody else. No real job is scheduled yet.</p>
+
+  <article class="step" id="s-C1" data-id="C1" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C1" aria-label="Mark step C1 done"><div>
+      <div class="st-top"><span class="st-id">C1</span><h3 class="st-title">Confirm the three switches are live</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">Admin Terminal</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+I=/usr/local/libexec/happy-inspect
+sudo -n -u happy $I posture | grep -E '^cron'
+sudo -n -u happy $I separation | grep -E 'failed-job|FAIL'
+sudo -n -u happy $I config | grep -A7 '"failureAlert"' | grep -c '"to"'    # 1: a destination is set (your handle, from the family file)
+@@END</pre></div>
+      <p class="why">These were deployed in B3 and must be in force before any job exists: script triggers would run unattended with the owning agent's full tool policy; without <code>skipMissedJobs</code> a text missed in a power cut would arrive hours late; without the global alert target a failed job's alert would go to the job's own chat. The <code>cron</code> block is strict, so a misspelt key would have failed validation in B3.</p>
+      <p class="done-when"><strong>Done when</strong><code>cron.skipMissedJobs = true</code>, <code>cron.triggers.enabled = false</code>, <code>cron.failureAlert.enabled = true</code> and <code>cron.failureAlert.after = 2</code> print, <code>separation</code> prints "ok   failed-job alerts go to the command owner" and no <code>FAIL</code>, and the last line prints 1.</p>
+      <p class="src"><strong>Source</strong><a href="https://docs.openclaw.ai/gateway/config-automation">OpenClaw: automation config</a> (<code>docs/gateway/config-automation.md</code>) · <a href="https://docs.openclaw.ai/automation/cron-jobs">OpenClaw: automations</a> (<code>docs/automation/cron-jobs/delivery.md</code>: failure-notification route order; <code>managing-jobs.md</code>: missed runs) · catalog card <a href="home-agent-capability-catalog.html#G003">G003</a></p>
+    </div>
+  </article>
+
+  <article class="step" id="s-C2" data-id="C2" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C2" aria-label="Mark step C2 done"><div>
+      <div class="st-top"><span class="st-id">C2</span><h3 class="st-title">T3, part 1: can the deploy path reach the scheduler?</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">Admin Terminal</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+sudo -n -u happy /usr/local/libexec/happy-inspect jobs; echo "inspect exit $?"
+sudo -n -u happy /usr/local/libexec/happy-deploy --jobs list; echo "deploy exit $?"
+@@END</pre></div>
+      <p>Both run <code>openclaw automations list --all --json</code> as happy and print one line per job: name, id, agent, on or off, status, last run (UTC), last delivery, schedule, destination and key. Happy has declared none yet, so success is exit 0 and no line whose last column starts with <code>happy:</code>. OpenClaw's own review jobs from A1 may be listed, switched off since B3.</p>
+      <ul>
+        <li><strong>Both exit 0:</strong> the deploy path reaches the scheduler. From here on, "JOBS" means Claude runs <code>happy-deploy --jobs</code>.</li>
+        <li><strong>They fail</strong> (for example, the gateway token cannot be read outside happy's login session): you run <code>~/bin/happy-jobs list</code> in happy's Terminal. If that exits 0, "JOBS" means you run it there, as M1 did for plugin installs, and Claude writes that into the log. If it fails there too, stop: the jobs design is not buildable as written (T3), and Claude summarises the error before anything else is tried.</li>
+      </ul>
+      <p class="why">Job changes need the gateway's admin scope. Nothing in your account calls the gateway today except the two installed scripts, and M1's sign-off left "can the admin session read happy's gateway token" unrecorded.</p>
+      <p class="done-when"><strong>Done when</strong>one of the two routes lists the job table with exit 0, it holds no <code>happy:</code> job and no job that is "on", and the execution log says which route "JOBS" is. If one of OpenClaw's review jobs still reads "on" although B3 switched the workshop off, stop before C5: a failing job would now text you. Claude finds out why the setting did not take (the deployed config, the gateway's log) before anything else.</p>
+      <p class="src"><strong>Source</strong><a href="https://docs.openclaw.ai/cli/cron">OpenClaw: automations CLI</a> (<code>docs/cli/cron.md</code>: mutations need <code>operator.admin</code>; <code>list --all</code> includes disabled jobs; the commands need a running gateway) · catalog test <a href="home-agent-review-confirmation.html#T3">T3</a> · M1 sign-off, "Tested in M1"</p>
+    </div>
+  </article>
+
+  <article class="step" id="s-C3" data-id="C3" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C3" aria-label="Mark step C3 done"><div>
+      <div class="st-top"><span class="st-id">C3</span><h3 class="st-title">T3, part 2: one throwaway job, declared twice; Happy's first text by itself</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">JOBS</span><span class="who you">You</span><span class="where">your iPhone</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+JOBS probe 1            # declares wave-a-probe: agent inbox, tool list empty, disabled, to the owner's handle
+JOBS list               # one line: wave-a-probe ... off
+JOBS run wave-a-probe   # your phone: "Happy scheduler test 1."
+JOBS probe 2            # the same key, a changed message
+JOBS list               # still ONE wave-a-probe line
+JOBS run wave-a-probe   # your phone: "Happy scheduler test 2."
+@@END</pre></div>
+      <p class="why">The job runs on <code>inbox</code>, the one agent with no tools at all, with <code>--light-context</code> so that it only repeats the line, and with an explicitly empty tool list (<code>--tools ""</code>): without that an operator's job gets the cap "any tool", and this version refuses a turn whose explicit tool list leaves nothing callable, which <code>inbox</code>'s deny-all would cause. It is created disabled and only ever started by hand. It answers three open questions at once: whether a text Happy sends by itself is delivered on this version (M1 needed a workaround for replies), whether the handle read from the deployed config is the right target, and whether declaring a job twice under one <code>--declaration-key</code> updates it. The installed scheduler code updates; if this Mac shows two jobs, the jobs script needs a name-keyed comparison before any real job is declared, which is about an hour that the plan does not count, and the lookup (phase H) then opens wave B, as the catalog says.</p>
+      <p class="done-when"><strong>Done when</strong>each <code>run</code> prints exit 0 with <code>"completionStatus":"succeeded"</code> and "calls  none"; your phone shows both lines from Happy's address, in order; the second <code>list</code> shows exactly one <code>wave-a-probe</code>; and Jordan confirms she got nothing. If a <code>run</code> exits non-zero with <code>"status":"error"</code>, the turn itself failed: you read the cause in happy's Terminal (<code>openclaw automations runs &lt;id&gt; --limit 1</code>, the id from <code>list</code>) before anyone suspects delivery. If the calls line says "no trajectory export", the job's stored session (<code>agent:inbox:cron:&lt;id&gt;</code>, as the installed code names it) could not be exported: Claude corrects the key in <code>bin/happy-jobs</code> now, because G2 and G3 rely on that line. If the second <code>list</code> shows two <code>wave-a-probe</code> lines, the job was doubled: the jobs script refuses to act on a doubled key, so you remove each in happy's Terminal with <code>openclaw automations rm &lt;id&gt;</code> (the id is the second column of <code>list</code>), and Claude stops and summarises before C4. If a run says it succeeded but no text arrives, stop: that is the delivery fault of OpenClaw #161976 in a new place, and Claude summarises it before trying anything.</p>
+      <p class="src"><strong>Source</strong><code>openclaw automations add --help</code> on this Mac (<code>--declaration-key</code>, <code>--light-context</code>, <code>--tools</code>, <code>--disabled</code>, <code>--announce</code>, <code>--channel</code>, <code>--to</code>) · <code>docs/automation/cron-jobs/payloads.md</code> (a job without <code>--tools</code> stores an unrestricted policy; <code>--tools ""</code> is an empty allowlist; an isolated job's session is <code>cron:&lt;jobId&gt;</code>) · installed code <code>dist/service-*.mjs</code>, <code>add()</code> (an existing declaration key is updated) and <code>dist/cron-cli-*.mjs</code> (a re-declared job keeps its on/off state unless <code>--disabled</code> is given) · <a href="https://docs.openclaw.ai/cli/cron">OpenClaw: automations CLI</a> (<code>run --wait</code> exits 0 only when the run and its delivery succeeded; a disabled job can be run by hand) · catalog test <a href="home-agent-review-confirmation.html#T3">T3</a> · <code>bin/happy-jobs</code>, <code>probe()</code></p>
+    </div>
+  </article>
+
+  <article class="step" id="s-C4" data-id="C4" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C4" aria-label="Mark step C4 done"><div>
+      <div class="st-top"><span class="st-id">C4</span><h3 class="st-title">A job with nothing to say sends nothing</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">JOBS</span><span class="who you">You</span><span class="where">your iPhone</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+JOBS probe silent       # the same job, now told to answer exactly NO_REPLY
+JOBS run wave-a-probe
+@@END</pre></div>
+      <p class="why">The morning text answers <code>NO_REPLY</code> on an empty morning. The docs say that such a run sends nothing and is not counted as a failed delivery; this has not been tried on iMessage.</p>
+      <p class="done-when"><strong>Done when</strong>the run prints exit 0 with <code>"status":"ok"</code> and a <code>deliverySuppressionReason</code> of <code>"silent"</code>, nothing arrives on your phone, and no failure alert follows in the next five minutes.</p>
+      <p class="src"><strong>Source</strong><a href="https://docs.openclaw.ai/cli/cron">OpenClaw: automations CLI</a> (<code>docs/cli/cron.md</code>, "Silent token suppression") · <code>docs/automation/cron-jobs/managing-jobs.md</code> (intentional silence triggers no delivery-failure alert) · catalog card <a href="home-agent-capability-catalog.html#G003">G003</a>, "Not verified"</p>
+    </div>
+  </article>
+
+  <article class="step" id="s-C5" data-id="C5" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C5" aria-label="Mark step C5 done"><div>
+      <div class="st-top"><span class="st-id">C5</span><h3 class="st-title">A failing job alerts you, and nobody else</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">JOBS</span><span class="who you">You</span><span class="where">your iPhone</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+JOBS failprobe                  # wave-a-failprobe: runs /usr/bin/false every minute, delivers nothing itself
+# wait about three minutes: two failures in a row, then the alert
+JOBS list                       # wave-a-failprobe ... on  error
+JOBS remove wave-a-failprobe
+@@END</pre></div>
+      <p class="why">The job has no destination of its own, so the alert can only come through the global <code>cron.failureAlert</code> target. It also shows that a command job still runs with script triggers switched off; the docs list it as a separate kind of job. The alert comes after two consecutive failures, with a one-hour cooldown per incident; remove the job at once so that it does not run on. What this does not show: that a failed job of Jordan's alerts you and not her. That is the documented route order, and it is tried in wave B when her first job exists.</p>
+      <p class="done-when"><strong>Done when</strong>one text from Happy tells you that <code>wave-a-failprobe</code> failed, with a tidied cause and no file paths or raw error text; Jordan confirms she got nothing; and after <code>remove</code> the list no longer shows the job.</p>
+      <p class="src"><strong>Source</strong><a href="https://docs.openclaw.ai/automation/cron-jobs">OpenClaw: automations</a> (<code>docs/automation/cron-jobs/delivery.md</code>, "Failure notifications": the global object activates the policy for a job with no route; chat notices show normalised causes only) · <code>docs/cli/cron.md</code> (command jobs: a non-zero exit records an error; <code>--command-argv</code>) · <code>docs/automation/cron-jobs/payloads.md</code> (what <code>triggers.enabled: false</code> switches off) · <code>bin/happy-jobs</code>, <code>failprobe()</code></p>
+    </div>
+  </article>
+
+  <article class="step" id="s-C6" data-id="C6" data-phase="C" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-C6" aria-label="Mark step C6 done"><div>
+      <div class="st-top"><span class="st-id">C6</span><h3 class="st-title">Clean up, apply the (still empty) jobs script, record T3</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">JOBS · Admin Terminal</span></div>
+    </div></div>
+    <div class="st-body">
+      <div class="cmd"><pre>@@CMD
+JOBS remove wave-a-probe
+JOBS apply               # three "skip" lines: the readers are not deployed yet
+JOBS list                # no line with a happy: key
+@@END</pre></div>
+      <p>Claude writes T3's results into the execution log: which route JOBS is; updated or doubled; whether the first scheduled text arrived; whether silence was silent; who got the failure alert.</p>
+      <p class="why">The jobs script is the only place a scheduled text is declared: the owner's handle is read from the deployed config (which the generator wrote from the family file), every job has a time limit, a model job has an explicit tool list and loads its agent's full rules, and a new job starts switched off. Given up with this short form, as the catalog records: per-person switches in the family file, automatic removal of jobs that no longer match, and any enforced daily cap or quiet hours. To quieten a text you switch its job off.</p>
+      <p class="done-when"><strong>Done when</strong><code>apply</code> prints three lines starting with "skip", the list has no <code>happy:</code> job, and the log holds the five T3 results.</p>
+      <p class="src"><strong>Source</strong>catalog card <a href="home-agent-capability-catalog.html#G003">G003</a> ("How", "Limits") · <code>bin/happy-jobs</code> in <a href="#files">Repo files</a></p>
+    </div>
+  </article>
+</section>
+
+<!-- ============================== D ============================== -->
+<section class="sec" id="phase-D">
+  <div class="phase-hd"><span class="pid">Phase D</span><h2>The gate before mail, checked</h2><span class="when">about 45 minutes</span></div>
+  <p class="phase-intro">The connector's two limits were set and first proven on day one (B5, B6). This phase measures in which screen states each one holds, checks that nothing else changed, and puts the posture and the rule on record. It is done before any agent is connected to mail.</p>
+
+  <article class="step" id="s-D1" data-id="D1" data-phase="D" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-D1" aria-label="Mark step D1 done"><div>
+      <div class="st-top"><span class="st-id">D1</span><h3 class="st-title">Refused and blocked, in each state of the screen</h3></div>
+      <div class="st-chips"><span class="who cc">Claude</span><span class="where">Admin Terminal</span><span class="who you">You</span><span class="where">the Mac's screen</span></div>
+    </div></div>
+    <div class="st-body">
+      <p><strong>Claude</strong> starts an eight-minute series of probes in the background. Each line tests both limits with a host that is not Google's, and says who owns the screen at that moment:</p>
+      <div class="cmd"><pre>@@CMD
+cd ~/src/happy-config
+( end=$((SECONDS+480)); while (( SECONDS < end )); do sudo -n -u happy /usr/local/libexec/happy-inspect fwprobe; sleep 10; done ) > baseline/firewall-console-wave-a.txt 2>&1 &
+@@END</pre></div>
+      <p><strong>You</strong>, during those eight minutes: stay on the admin desktop for the first minute; switch to happy's desktop (menu bar, fast user switching) for three minutes; choose <strong>Login Window…</strong> from the same menu and wait two minutes; then log back in to the admin account and wait for the series to end. A probe can take most of a minute when a connection is blocked, hence the long stays.</p>
+      <div class="cmd"><pre>@@CMD
+cat ~/src/happy-config/baseline/firewall-console-wave-a.txt
+@@END</pre></div>
+      <p class="why">Each line has three results. "via proxy: refused, allowed host ok" must hold in every line: the proxy does not care whose desktop is on the screen. "direct: blocked" is LuLu's rule, and by LuLu's source it holds only while the user it recorded (happy) owns the screen: expect "NOT BLOCKED" on the admin desktop and at the login window (where macOS reports the console user as <code>loginwindow</code> or <code>root</code>). Those lines are also the probe's control: if "direct" read "blocked" on the admin desktop too, the probe would be failing for another reason and prove nothing. A line that shows the console user changing during the probe ("happy-&gt;root") was measured across two states and is ignored. The series can be repeated straight away: the "direct" tries that get through ask GitHub's API without a login, which GitHub limits to 60 requests an hour for one address, and when that answer fails gog asks GitHub's release page instead, so a used-up limit does not by itself turn "NOT BLOCKED" into "blocked".</p>
+      <p class="done-when"><strong>Done when</strong>every line says "control: curl ok" and "via proxy: refused, allowed host ok"; there are at least two lines with <code>console user happy</code> and each of them also says "direct: blocked"; and Claude has written into the execution log what "direct" said on the admin desktop and at the login window. If the admin-desktop lines also read "direct: blocked", stop and find out why before trusting any of it: by LuLu's source they should not. If any line says "NOT REFUSED" or "ALLOWED HOST NOT REACHED", or a <code>console user happy</code> line says "NOT BLOCKED", the gate has failed: stop, and do not start phase E.</p>
+      <p class="src"><strong>Source</strong>LuLu source at v4.5.1, <a href="https://github.com/objective-see/LuLu/blob/v4.5.1/LuLu/Extension/FilterDataProvider.m">FilterDataProvider.m</a> (lines 399–410: the console-user check comes before any rule), <a href="https://github.com/objective-see/LuLu/blob/v4.5.1/LuLu/Extension/XPCListener.m">XPCListener.m</a> (recorded when the app connects, cleared when it disconnects) · <a href="https://github.com/objective-see/LuLu/issues/783#issuecomment-3225866502">LuLu issue 783</a> and <a href="https://github.com/objective-see/LuLu/issues/780#issuecomment-3333552558">issue 780</a> (the author on other users and on nobody logged in) · <a href="https://developer.apple.com/library/archive/qa/qa1133/_index.html">Apple QA1133</a> (the console user at the login window) · <code>system/happy-inspect</code>, <code>fwprobe</code> · gog source at v0.44.0, <a href="https://github.com/openclaw/gogcli/blob/v0.44.0/internal/cmd/update.go">update.go</a> (the API first, then the release page) · <a href="https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api">GitHub: REST API rate limits</a> · catalog, wave A: "a test connection from the connector to a host that is not Google's is refused and logged"</p>
+    </div>
+  </article>
+
+  <article class="step" id="s-D2" data-id="D2" data-phase="D" data-done="2026-10-18">
+    <div class="st-hd"><input type="checkbox" id="cb-D2" aria-label="Mark step D2 done"><div>
+      <div class="st-top"><span class="st-id">D2</span><h3 class="st-title">Everything else still works; the posture and the rule on record</h3></div>
+      <div class="st-chips"><span class="who you">You</span><span class="where">your iPhone · happy session</span><span class="who cc">Claude</span><span class="where">Admin Terminal</span></div>
+    </div></div>
+    <div class="st-body">
+      <p><strong>You</strong>, with the screen on happy: text Happy three things, one after another: "hello", "what's the weather tomorrow?" and "search the web for the tallest building in the world and give me the link". In LuLu's menu choose <strong>Rules › Export…</strong>, tick <strong>Only export user created rules</strong>, and save as <code>/Users/Shared/lulu-rules.json</code>. In happy's Terminal run <code>/usr/local/libexec/happy-inspect firewall &gt; /Users/Shared/firewall-wave-a.txt</code>. Open <a href="https://healthchecks.io/checks/">healthchecks.io</a>: the <code>gateway</code>, <code>backup</code> and <code>agent-mini alerts</code> checks must all be up, each with a ping newer than the LuLu install. Then switch back to the admin account.</p>
+      <p><strong>Claude</strong>:</p>
+      <div class="cmd"><pre>@@CMD
+I=/usr/local/libexec/happy-inspect
+sudo -n -u happy $I ready && sudo -n -u happy $I channel && sudo -n -u happy $I o1 | grep -E 'target|sandbox|grafana'
+cd ~/src/happy-config
+cat /Users/Shared/firewall-wave-a.txt
+grep -c -i 'gog' /Users/Shared/lulu-rules.json                                    # at least 1: the rule of B5 is in the export
+cp /Users/Shared/firewall-wave-a.txt baseline/firewall-posture-wave-a.txt
+cp /Users/Shared/lulu-rules.json baseline/lulu-rules-wave-a.json
+sudo -n -u happy $I egress 20 > baseline/egress-d2-wave-a.txt
+git add -A && git commit -m "Wave A evidence: firewall console states, posture, rule and proxy record"
+@@END</pre></div>
+      <p class="why">In passive mode LuLu stops only what a rule names, and the proxy serves only gog, so Happy's own traffic (OpenAI, Brave, the weather service, Tailscale, ntfy, healthchecks.io) should be untouched; this step shows it. The nightly backup's ping is the next morning's: look at the <code>backup</code> check again then. <code>happy-inspect firewall</code> is the posture line the catalog asks for: who owns the screen, LuLu's extension and app, whether the proxy is listening, whether its config is the deployed one, and the hosts it allows. You run it on happy's desktop, because that is the state it has to record. The two files in <code>/Users/Shared</code> are happy's; delete them there once Claude has copied them (<code>rm /Users/Shared/lulu-rules.json /Users/Shared/firewall-wave-a.txt</code> in happy's Terminal). That an ntfy push still gets through is shown by the next eval push (E5) and by F2's alert; Claude notes it there.</p>
+      <p class="done-when"><strong>Done when</strong>Happy answers all three texts (the weather one with a forecast, the search one with a link); the three healthchecks.io checks are up; <code>ready</code> prints HTTP 200; the posture file says <code>console user: happy</code>, LuLu's extension <code>activated enabled</code>, its app running, the proxy listening, "loopback only, port 443 only, default deny" and the three hosts; the export holds gog's rule and no other user-created rule; and the evidence is committed.</p>
+      <p class="src"><strong>Source</strong><a href="https://objective-see.org/products/lulu.html">LuLu product page</a> ("Exporting / Importing Rules"; Passive Mode) · M1 runbook F7 (the two alert senders) · catalog, wave A: "the gate before mail, checked"</p>
+    </div>
+  </article>
+</section>

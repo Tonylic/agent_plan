@@ -1,0 +1,127 @@
+#!/bin/zsh
+# happy-o1-drill: M1 F7, the O1 alert drill, end to end. Run it in happy's own Terminal (GUI session):
+#   ~/bin/happy-o1-drill
+# It stops and restarts macmon, then Grafana, then Colima, and watches Grafana's alert states and the
+# sandbox metric instead of fixed timers, printing ">>> PUSH" when a push should have reached your
+# phone. Only part 2 waits on the clock: reading healthchecks.io's status needs an API key this Mac
+# doesn't hold. On any exit (Ctrl-C included) it starts the three services again.
+# About 45 minutes. Don't text Happy during part 3: tools fail while the sandbox is down.
+setopt err_exit pipe_fail no_unset
+
+uid=$(id -u)
+la=$HOME/Library/LaunchAgents
+G=http://127.0.0.1:3000
+VM=http://127.0.0.1:8428
+jq=/usr/bin/jq
+colima=/opt/homebrew/bin/colima
+pwfile=$HOME/.config/happy/grafana-admin-password
+typeset -a pushes
+
+say() { print -r -- "[$(/bin/date +%H:%M:%S)] $*"; }
+loaded() { launchctl print "gui/$uid/local.happy.$1" >/dev/null 2>&1; }
+stop_svc() { if loaded $1; then launchctl bootout "gui/$uid/local.happy.$1"; fi; say "stopped $1"; }
+start_svc() { if ! loaded $1; then launchctl bootstrap "gui/$uid" "$la/local.happy.$1.plist"; fi; say "started $1"; }
+restore() {
+  local s
+  for s in macmon grafana colima; do
+    loaded $s || launchctl bootstrap "gui/$uid" "$la/local.happy.$s.plist" 2>/dev/null || true
+  done
+}
+trap 'print; say "exit: making sure macmon, grafana and colima are running"; restore' EXIT
+trap 'exit 130' INT TERM
+
+# Grafana API as admin; the password goes to curl on stdin, never on a command line.
+gapi() { printf 'user = "admin:%s"\n' "$(<$pwfile)" | /usr/bin/curl -fsS -m 10 -K - "$G$1"; }
+
+# State of a Grafana-managed rule: firing, pending, inactive (normal) or missing. Source: the
+# Prometheus-compatible rules API; if that can't be read, the Alertmanager's active alerts.
+rule_state() {
+  local s
+  s=$(gapi /api/prometheus/grafana/api/v1/rules 2>/dev/null | $jq -r --arg n "$1" \
+        '[.data.groups[]?.rules[]? | select(.name == $n) | (.state // "unknown" | ascii_downcase)] | first // "missing"' 2>/dev/null) || s=""
+  if [[ -z $s || $s == missing || $s == unknown ]]; then
+    s=$(gapi /api/alertmanager/grafana/api/v2/alerts 2>/dev/null | $jq -r --arg n "$1" \
+          'if any(.[]; .labels.alertname == $n and .status.state == "active") then "firing" else "inactive" end' 2>/dev/null) || s=unreachable
+  fi
+  print -r -- "$s"
+}
+is_firing() { [[ $(rule_state "$1") == firing ]]; }
+is_clear() { local s; s=$(rule_state "$1"); [[ $s == inactive || $s == normal || $s == ok ]]; }
+sandbox_metric() {
+  /usr/bin/curl -fsS -m 5 "$VM/api/v1/query" --data-urlencode 'query=last_over_time(happy_sandbox_ready[3m])' \
+    | $jq -r '.data.result[0].value[1] // "none"' 2>/dev/null || print none
+}
+sandbox_is() { [[ $(sandbox_metric) == $1 ]]; }
+grafana_up() { /usr/bin/curl -fsS -m 3 "$G/api/health" 2>/dev/null | $jq -e '.database == "ok"' >/dev/null 2>&1; }
+colima_running() { $colima status >/dev/null 2>&1; }
+
+# wait_until <what> <limit in minutes> <command ...>: polls every 15 s; stops the drill on timeout.
+wait_until() {
+  local what=$1 limit=$(( $2 * 60 )) t0=$SECONDS
+  shift 2
+  say "waiting (up to $(( limit / 60 )) min): $what"
+  until "$@"; do
+    if (( SECONDS - t0 >= limit )); then say "TIMEOUT: $what. Drill stopped; tell Claude."; exit 1; fi
+    sleep 15
+  done
+  say "  done after $(( (SECONDS - t0) / 60 ))m$(( (SECONDS - t0) % 60 ))s"
+}
+expect_push() { pushes+=("$(/bin/date +%H:%M)  $1"); say ">>> PUSH expected about now: $1"; }
+
+# --- preflight: nothing is stopped unless all of this holds
+grafana_up || { say "Grafana isn't healthy; nothing was stopped"; exit 1; }
+[[ -r $pwfile ]] || { say "can't read $pwfile; run this as happy"; exit 1; }
+for r in "Metrics exporter down" "Sandbox runtime down"; do
+  s=$(rule_state "$r")
+  case $s in
+    inactive|normal|ok) ;;
+    unreachable|missing|unknown) say "can't read the state of \"$r\" ($s); nothing was stopped; tell Claude"; exit 1 ;;
+    *) say "\"$r\" is $s right now; wait until it clears, then run again"; exit 1 ;;
+  esac
+done
+sandbox_is 1 || { say "the sandbox check doesn't read 1; fix Colima first; nothing was stopped"; exit 1; }
+say "preflight ok. About 45 minutes; keep your iPhone near. Ctrl-C at any time restores the services."
+
+# --- part 1: a Grafana alert reaches ntfy
+say "PART 1 of 3: metrics exporter down (macmon)"
+stop_svc macmon
+wait_until '"Metrics exporter down" firing (scrapes every 30 s, then 5 min pending)' 10 is_firing "Metrics exporter down"
+sleep 45                                   # notification policy: group_wait 30 s
+expect_push "ntfy  FIRING: Metrics exporter down"
+start_svc macmon
+wait_until '"Metrics exporter down" back to normal' 5 is_clear "Metrics exporter down"
+say "Grafana sends RESOLVED at its next group interval: up to 5 min"
+sleep 300
+expect_push "ntfy  RESOLVED: Metrics exporter down (may have come up to 5 min earlier)"
+
+# --- part 2: a dead Grafana still reaches you, through healthchecks.io
+say "PART 2 of 3: Grafana down; healthchecks.io must notice the missing watchdog pings (21 min)"
+stop_svc grafana
+for m in {1..21}; do
+  sleep 60
+  if (( m % 5 == 0 )); then say "  $m of 21 min"; fi
+done
+expect_push "healthchecks.io  \"agent-mini alerts\" is DOWN (expected 14 to 20 min after the stop)"
+start_svc grafana
+wait_until "Grafana healthy" 3 grafana_up
+sleep 150                                  # rule evaluation every minute, then the watchdog's first ping
+expect_push "healthchecks.io  \"agent-mini alerts\" is UP again"
+
+# --- part 3: the sandbox check
+say "PART 3 of 3: Colima down. Don't text Happy until the drill ends."
+stop_svc colima
+wait_until 'sandbox check reads 0' 4 sandbox_is 0
+wait_until '"Sandbox runtime down" firing (3 min pending)' 8 is_firing "Sandbox runtime down"
+sleep 45
+expect_push "ntfy  FIRING: Sandbox runtime down"
+start_svc colima
+wait_until 'Colima running' 6 colima_running
+wait_until 'sandbox check reads 1' 4 sandbox_is 1
+wait_until '"Sandbox runtime down" back to normal' 5 is_clear "Sandbox runtime down"
+say "Grafana sends RESOLVED at its next group interval: up to 5 min"
+sleep 300
+expect_push "ntfy  RESOLVED: Sandbox runtime down (may have come up to 5 min earlier)"
+
+say "DRILL COMPLETE. You can text Happy again. The six pushes that should have arrived:"
+for p in $pushes; do print -r -- "  $p"; done
+say "Tell Claude which arrived, and paste this output."

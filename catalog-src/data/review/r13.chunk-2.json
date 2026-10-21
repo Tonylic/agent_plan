@@ -1,0 +1,1067 @@
+[
+ {
+  "id": "F031",
+  "origin": "9 Oct",
+  "name": "Household database: shared rows for the dose log and the coverage planner",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "A small database on the Mac mini that both parents' agents read and write, so either parent gets the same answer whoever entered the row. It is built only as far as two planned features need it: one table for the sick-day dose log (CRT-10) and one for the childcare coverage grid (CRT-11). It has no general 'save a fact' tools: reference text both parents look up lives in the family handbook (F043), and each parent's own notes stay with that parent (F041).",
+  "example": "One parent texts Happy what they gave the kindergartner and when. Later the other parent asks 'when was the last dose logged?' and gets the same row, with who logged it. In the same way, one parent texts that a no-school week is covered, and the other parent's 'which weeks are still open?' no longer lists it.",
+  "how": "One in-house tool plugin over Node's built-in `node:sqlite`, with one database file on the Mac mini. It sits in the config repo's `plugins/` folder like the weather plugin: the ordinary deploy copies it and it loads from `plugins.load.paths` after a restart. No general tools: no schedule tools and no `fact_get` or `fact_set`. Each feature adds one table and its own typed tools: the dose log (CRT-10) and the coverage grid (CRT-11). Every input is typed and short in the tool's own schema (a date or time, a whole number, a choice from a fixed list, a label of at most about 40 characters); no separate secret detector. The tools are allowed by name on the two parents' own agents (`tools.alsoAllow` and the sandbox gate `tools.sandbox.tools`) and on no shared agent or mail reader. A scheduled job that reads a table lists the tool by the name the plugin declares. No house-rules rule is added.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "Everything in it is shared between the two adults on purpose: neither table filters by person. That steps outside 'one data domain per person', by Tony's pick of the two features on 12 Oct. Something meant for one parent belongs in that parent's own notes (F041).",
+   "Only two tables are planned. There is no general upkeep or 'when is the filter due?' table: a repeating date is a calendar event or a reminder.",
+   "A later feature that needs rows both parents' agents write adds its own table and typed tools here; it does not start a second store.",
+   "Inputs are short and typed, with no secret detector, so a short secret typed as a label would be stored; the standing instruction never to ask for or reveal passwords, keys or codes is the only guard against that.",
+   "The dose table holds what was given to a child, and that text goes to the cloud model whenever a parent's agent reads it back. Tony picked the dose log knowing this, and its card (CRT-10) carries his confirm step at execution.",
+   "The rows can be read only through Happy: when the Mac mini or the cloud model is down, neither parent can get at them."
+  ],
+  "corrections": [
+   "The 9 Oct verifier note says the secret-rejecting before_tool_call hook can live in the same plugin as the defineToolPlugin store. docs/plugins/tool-plugins.md:11 says defineToolPlugin adds tools only, and :233 points to definePluginEntry when tools are combined with hooks.",
+   "The catalog chooses defineToolPlugin for the store but still names its tools home-store__schedule_* in the automations. docs/tools/multi-agent-sandbox-tools.md:242 gives that server__tool form to MCP servers only; a plugin's tools carry the names it declares, so job tool lists must use those."
+  ],
+  "unverified": [
+   "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done.",
+   "That a tool in this plugin is told which agent called it, so a row can carry who wrote it without asking the model: the installed tool-context type lists the calling agent's id and the sender's id (dist/agent-harness-runtime-BbN1SctJ.d.ts), and the docs show that context reaching a tool built through a factory (plugins/tool-plugins.md:138); not tried on a live turn.",
+   "Which plugin form is used: the card named `defineToolPlugin`, which the installed docs describe as a TypeScript package with a build step (plugins/tool-plugins.md:20), while the one plugin in the config repo is plain JavaScript written with `definePluginEntry` and `api.registerTool`. Settled at execution.",
+   "Where the database file is kept so that the nightly backup includes it and a restore brings it back: not tried.",
+   "That the tools are offered to the two parents' agents and to no other agent or its eval-only copy: the separation check is extended to them at execution. The parents' own eval-only copies are generated with the same tool list as the parents' agents, so what a test run may write into the real file is settled then."
+  ],
+  "safety": "Both parents' agents read and write the same rows, so the store is shared between the two adults on purpose. Its tools are allowed by name on those two agents only. The tool's own schema keeps every input short and typed, which leaves a planted instruction little room to persist. No send and no web access is added.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "A defineToolPlugin plugin adds agent-callable tools only (no hooks or services), which fits a local store with a handful of typed tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nodejs.org/api/sqlite.html",
+    "title": "SQLite | Node.js documentation",
+    "anchor": "node:sqlite",
+    "supports": "Node ships a built-in synchronous SQLite module (added in 22.5.0, release-candidate stability), so the store needs no extra database dependency on the installed Node 26.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools (OpenClaw docs)",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "The double-underscore server__tool name belongs to configured MCP servers; a native plugin tool is addressed by the name it declares.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+    "title": "Maintenance Checklist | ENERGY STAR",
+    "anchor": "change air filters once a month",
+    "supports": "A US government energy programme tells households to check or change heating and cooling filters on a fixed interval and book yearly check-ups, the kind of dated upkeep schedule this store keeps.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "E",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": [
+   "r1: edited name. Kept: about a dozen other items keep their dates and facts here (upkeep calendar, chore rota, sick-day log, coverage planner and more), so it stays as the one shared store instead of being folded into any single one of them. The name is corrected: it is an in-house tool plugin, not an MCP server, and shopping-style lists live in the Reminders bridge (F030).",
+   "r1: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r2: edited name, description, caveats, safety. Kept as the one shared store that fourteen other entries build on; its credible mention is the same upkeep guidance as the upkeep calendar (F038), its first user. The name's 'ledgers' had nothing behind it, and the description now says where this store stops and the family handbook (F043) and personal memory (F041) begin, since all three were described as places for facts.",
+   "r2: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r3: edited description, example. Kept as the one shared store that fifteen other entries build on, with the government upkeep guidance as its credible mention (opened again in this round). The description still spoke of 'the upkeep nudges' although round 2 folded the upkeep calendar into the renewals look-ahead (F063); it now names that entry, and an example is added.",
+   "r3: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r4: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r5: edited caveats, safety. Kept as the one shared store that fourteen other entries list as a prerequisite, with the government upkeep guidance as its credible mention (opened again in this round). One safety line overclaimed: it said anything stored here is shared between the two adults by design, but round 4 gave the change journal (G006) a table in this store that holds each parent's own rows, including a copy of the text of every saved memory note, so the note now says which tools are shared and which table is not.",
+   "r5: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Later plan 'shared household data': nothing placed in A to C needs the household database (S8), so it is built with the first picked feature that does.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony's 'All features' brings in the dose log and the coverage planner, which both need rows that either parent's agent can write and the other can read, so the database is planned in exactly that size: one in-house plugin, one file, one table per feature, and none of the general schedule or fact tools. The dinner plan and the form kit, in their simplified forms, need no table.",
+   "r10: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave E."
+  ],
+  "demand": {
+   "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+   "title": "Maintenance Checklist | ENERGY STAR",
+   "supports": "A US government energy programme tells households to inspect, clean or change heating and cooling filters every month and to book yearly pre-season check-ups, the kind of dated upkeep schedule this store keeps for both parents; opened again in this round."
+  },
+  "depends_on": [
+   "No other planned card is needed first. It is built in the same plan as its first user, the dose log (CRT-10) or the coverage planner (CRT-11), whichever comes first; the other adds its own table when it is built",
+   "Node's built-in SQLite module on the installed Node, so no new package",
+   "The config repo's plugins folder and the ordinary deploy with a gateway restart, the way the weather plugin is deployed, plus one more path in `plugins.load.paths`"
+  ]
+ },
+ {
+  "id": "F041",
+  "origin": "9 Oct",
+  "name": "Saved notes: 'remember this' goes to that parent's own notes and is found again by keyword",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "A parent texts 'remember that...' and their own agent saves the line to that parent's own notes and says what it saved. In a later chat the note is found by searching for its words; it is not in view at the start of a chat, and Happy saves nothing a parent did not ask it to save. Each parent's notes stay with that parent: the other parent's agent cannot find them.",
+  "example": "A parent texts: 'Remember that the library books are due back on the 20th.' A week later, in a new chat, the same parent asks 'when are the library books due?' and Happy finds the note and answers. The other parent's agent cannot find it.",
+  "how": "T6 runs first, on Tony's eval-only copy. Then the generator gives each parent's agent `write` and `edit` (also in the sandbox tool gate), with `apply_patch` denied by name and `read` left denied, plus `memory_search` and `memory_get`, keyword-only (`memory.search.provider: \"none\"`, already set). The sandbox stays closed to the agent folder (`workspaceAccess: \"none\"`), so a note lands in a notes folder inside the agent's own sandbox workspace; that folder is added to that agent's own search paths (`agents.entries.<id>.memory.search.extraPaths`, never the global list). Instructions: save only what the parent asked, in the parent's words; say what was saved; do not save a child's health details. Not built: a read-write workspace, tracking of web tool calls, the session-memory hook, any copy of notes outside the agent, search by meaning. House-rules plugin: no rule when T6 passes. The separation canaries are extended to memory search.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "A saved note is found only when the agent searches for it: it is not in view at the start of a chat, and a scheduled text or a hand-off to a helper does not know it.",
+   "Notes are found by their words, not their meaning, so a question worded differently from the note may miss it. Search by meaning (an embedding model on the Mac mini, a deliverable of the roadmap's local-models milestone, which Tony has put off) and OpenClaw's Active Memory recall stay later options that are Tony's call; neither is part of this build.",
+   "Notes belong to one parent. A fact both parents should get the same answer to goes into the family file (F042) or the family handbook (F043), both typed by Tony.",
+   "No refusal is built for a 'remember' in a turn that also carried web results. OpenClaw is expected to label such a note untrusted by itself, T6 records what actually happens, and a prompt rule plus a behaviour test are what stand against a planted 'remember this'.",
+   "There is no undo and no copy of note text anywhere else. A parent asks 'what did you save about me?' to read their notes back; the weekly text (G006) only lists which note files changed.",
+   "The design rests on T6, which has not been run, and it has to pass for Jordan as she is, a non-owner. If it fails for her, notes go live for Tony first while a fix is found. If it fails outright, the fallback left is the original design (a read-write agent folder plus one house-rules rule that keeps writes inside the notes folder), which reverses two signed-off settings; Tony says yes or no to it at execution."
+  ],
+  "corrections": [
+   "The catalog relies on `sessions_search` with visibility `agent` to find pre-reset conversations. docs/gateway/config-tools/sessions-and-subagents.md:58 says a sandboxed session stays limited to sessions it spawned while agents.defaults.sandbox.sessionToolsVisibility is 'spawned' (the default); the mains run with sandbox mode all, so that key must change as well. docs/tools/multi-agent-sandbox-tools.md:372 adds that tools.sessions.visibility is gateway-wide, not per agent.",
+   "The catalog ties this to M2 (local models). docs/plugins/llama-cpp.md:123 documents an embedding-only setup that adds no chat model, so the text leg does not depend on M2 and can be done on the installed stack.",
+   "The 9 Oct reason for dropping photo search is that no local multimodal embedder exists. Google's EmbeddingGemma page now describes EmbeddingGemma 2 as multimodal and local; the actual block is that OpenClaw 2026.9.7 only indexes images with gemini-embedding-2 (docs/reference/memory-config.md:495)."
+  ],
+  "unverified": [
+   "T6 has not been run: that `write` and `edit`, with the sandbox closed to the agent folder, can save a note into a folder inside the sandbox workspace; that memory search finds it there through a per-agent extra path; and that it survives a sandbox rebuild and is in the nightly backup.",
+   "Whether a note saved in one of Jordan's turns (she is not the command owner) comes back from memory search like any other note, or is shown to the model with an untrusted label: the installed code records a non-owner's write as untrusted (dist/agent-tools-D5UK6LHM.mjs:496); not seen on a live turn.",
+   "How a note saved in a turn that carried web content is recorded, and whether it is then found only by search: read in the installed docs and code (memory-architecture.md:117 and :215), not tried.",
+   "That a long chat writes no note by itself while the sandbox has no workspace access: concepts/memory.md says the automatic memory flush is skipped then; checked once in T6.",
+   "That the file tools can be split as planned: they are denied as one group today and a deny wins over an allow, so the generator names them one by one; whether `edit` works on a note while `read` stays denied is seen in T6.",
+   "Notes kept outside the agent folder carry the platform's 'untrusted' origin label; T6 has to show that this does not hide them from search.",
+   "For the fallback after a failed T6: whether a plugin's blocking check is given the path of a file write (the file-write turn of T5)."
+  ],
+  "safety": "Notes stay in the parent's own agent. The write tools reach only that agent's own sandbox folder, so they cannot change its rules file or the rendered family facts; shared agents and mail readers have no memory search. A note is where a planted instruction could persist, so a planted 'remember this' must save nothing in five runs of five.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:149",
+    "title": "Memory overview (OpenClaw docs)",
+    "anchor": "three tools",
+    "supports": "The memory plugin gives the agent search, read and intent tools but no write tool, so saving a fact needs the general file tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:189",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "apply_patch",
+    "supports": "Allowing write also enables apply_patch, and denying write does not deny it, so apply_patch has to be denied by name when only narrow file writes are wanted.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "A plugin hook sees each tool call's name and parameters and can block it, which is the mechanism for limiting writes to the memory files.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/sessions-and-subagents.md:58",
+    "title": "Sessions and subagents config (OpenClaw docs)",
+    "anchor": "sessionToolsVisibility",
+    "supports": "A sandboxed session can only reach sessions it spawned unless the sandbox session-tools setting is widened, whatever the gateway-wide visibility says.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-builtin.md:96",
+    "title": "Builtin memory engine (OpenClaw docs)",
+    "anchor": "@openclaw/llama-cpp-provider",
+    "supports": "Local embeddings come from an installable official plugin plus a local provider setting pointing at a small GGUF embedding model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/llama-cpp.md:123",
+    "title": "llama.cpp provider (OpenClaw docs)",
+    "anchor": "Set up only local embeddings",
+    "supports": "There is an embedding-only setup that installs the managed server and embedding model without adding or changing any chat model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:495",
+    "title": "Memory configuration reference (OpenClaw docs)",
+    "anchor": "gemini-embedding-2",
+    "supports": "Image and audio indexing works only with Google's cloud embedding model and only for files in the extra paths.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://ai.google.dev/gemma/docs/embeddinggemma",
+    "title": "EmbeddingGemma - Google AI for Developers",
+    "anchor": "EmbeddingGemma 2",
+    "supports": "Google describes the first EmbeddingGemma as a small text-only model that runs on-device, and a newer version as a multimodal model that also runs locally.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F046"
+  ],
+  "adds": [
+   "From AUT-14 (Deep recall of earlier conversations (Active Memory)): Add to F041 as a later option: if saved notes plus memory search prove too weak, test Active Memory's cross-conversation recall per agent, starting with whether yesterday's pre-reset transcript of the same DM is recalled at all. It adds a blocking model call to the replies it runs on."
+  ],
+  "wave": "C",
+  "section": "Memory, knowledge and skills",
+  "includes": [
+   {
+    "id": "F046",
+    "name": "Semantic memory search with local embeddings (text only)"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: Memory overview",
+   "r2: edited name, safety. Kept. The name promised 'memory scopes' that the entry never describes, and the safety note was empty for the one place where an injected instruction could persist; both are fixed from the record's own notes.",
+   "r2: kept; credible mention: Memory overview",
+   "r3: edited caveats, depends_on, safety, example, description, unverified. Kept: OpenClaw's memory guide presents 'remember that...' as the normal way to use memory. But a value-5 entry carried no caveats and no prerequisites, and one conflict had gone unrecorded: the family-facts generator (F042) writes the same MEMORY.md and USER.md files and expects a chat edit to a generated file to be lost at the next deploy, so a saved note may not survive unless that is settled first; the description no longer says a note 'actually sticks'. That, keyword-only search and the fact that scheduled jobs do not load saved notes are now stated, with an example. One correction to the earlier notes: OpenClaw does track web content within a turn for its own memory handling, so the entry now says what that covers and what it does not.",
+   "r3: kept; credible mention: Memory overview",
+   "r4: edited description, how, caveats, depends_on, unverified. Kept: OpenClaw's memory guide presents 'remember that...' as the normal way to use memory. The installed version labels each memory file by who last wrote it, and a chat write from Jordan (who is not the command owner), a write after web content, or a write after the family-facts generator has re-rendered the file can stop that file loading at the start of a chat; so saved notes now default to the dated notes folder, and a live test for each parent, with one note in Chinese, is a prerequisite.",
+   "r4: kept; credible mention: Memory overview (OpenClaw docs)",
+   "r4: merged with F046 (same purpose). Search by meaning is one setting on the same memory search that the per-person memory card switches on (the provider key moves from keyword-only to an embedding model on the Mac mini); its 'later' wave rested on priority and not on a dependency or a new kind of risk, and no earlier merge pass ruled on the pair, so it becomes a named later, optional step on the wave A memory card, which ships on keyword search and keeps the medium risk.",
+   "r5: edited safety. Kept: OpenClaw's memory guide presents 'remember that...' as the normal way to use memory. The safety note said notes stay in each parent's own agent, but round 4 gave the change journal (G006) a copy of the text of every saved note, kept in the household store (F031), so that one planned copy outside the agent is now named here.",
+   "r5: kept; credible mention: Memory overview (OpenClaw docs)",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave C. Saved notes are the first thing Happy writes, a kind of risk of its own, and they rest on T6.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The card opened each parent's whole agent folder for writing and then needed its own hook to close it again. The decided form tries the smaller design first (T6): notes in a folder inside the agent's own sandbox, found by keyword search, for both parents, with no guard unless the test shows a need; the journal copy, the web-call tracking and the overnight chat excerpts are out, and the lines that waited on Tony's answers are gone.",
+   "r10: kept; credible mention: Memory overview (OpenClaw docs)"
+  ],
+  "demand": {
+   "ref": "docs/concepts/memory.md:31",
+   "title": "Memory overview (OpenClaw docs)",
+   "supports": "OpenClaw's memory guide presents asking the agent to remember a fact, which it then writes to its memory files, as the normal way to use memory."
+  },
+  "depends_on": [
+   "A generator change in happy-config: `write`, `edit`, `memory_search` and `memory_get` allowed on each parent's own agent and in its sandbox tool gate, with `apply_patch` denied by name",
+   "The line in each parent's agent instructions that says Happy cannot write files is reworded for notes",
+   "Tony provides at execution: one harmless fact saved from his phone and one from Jordan's phone, for the two-day recall test"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F042",
+  "origin": "9 Oct",
+  "name": "Family facts from the family file, known to each parent's agent in every chat",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "Tony types the family facts he wants Happy to know into the family file: to start with, the two children, their school years and the school district. After the next deploy both parents' agents begin every one-to-one chat already knowing them, so nobody has to explain who 'the third-grader' is. The facts are not rendered into the web helper, the mail readers or any shared agent.",
+  "example": "In a fresh chat a parent texts: 'write a two-line absence note for our third-grader for Friday.' Happy drafts it with the child's first name and the school district, which nobody typed in that chat, and the parent sends it themselves.",
+  "how": "One generator step. New fields in family.json5 hold the facts Tony types; gen-family.mjs renders them through new template placeholders into files it already writes for each parent's own agent: USER.md while they fit under its 4,000-character cap, otherwise a section of AGENTS.md. The generator does not start writing MEMORY.md, which stays with OpenClaw and the eval marker (the deploy script never touches it), and no trigger comments are used. Nothing is rendered into the bootstrap files of the web helper, the mail readers or any shared agent; a scheduled job that needs a fact carries it in its own message. No reply-language line is rendered. No tool, no send path and no house-rules rule is added. Once the web helper (F019) exists, its hand-off canary is run with the real facts present.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "USER.md has a 4,000-character cap that everything rendered into it shares, so the list has to stay short; what does not fit goes into a section of AGENTS.md and takes prompt space in every session of that parent's agent.",
+   "Rendered facts change only when Tony edits the family file and redeploys; a parent cannot change one by text. What a parent tells Happy in chat goes to that parent's own saved notes (F041).",
+   "The typed facts, the children's names and school among them, are sent to the cloud model at the start of every chat of each parent's own agent.",
+   "Children's health details are not typed into the family file: that is the default Tony kept, and the dose log (CRT-10) is the one planned feature that holds any.",
+   "Each parent's agent can search the web today. The default Tony kept (a search may use the town and the children's ages, never their names or the school) is a prompt rule, not an enforced limit.",
+   "Whether a scheduled run loads the rendered file has not been tried on a live job, so a scheduled text that needs a fact carries it in its own message."
+  ],
+  "corrections": [
+   "A 9 Oct verifier note says there is no per-language voice switch. tts/output.md:56 documents one for the bundled Microsoft provider, which is an online service; it does not help the offline say path."
+  ],
+  "unverified": [
+   "Whether a scheduled run loads USER.md was not tried on a live job: the installed code lists it among the files a scheduled run gets and leaves MEMORY.md out (dist/workspace-DmDIneFk.mjs:742), while the scheduler guide only says a job does not infer a reply language (cron-jobs/delivery.md:140).",
+   "Whether the facts Tony wants fit under USER.md's 4,000-character cap is unknown until he types them, and the overflow route into a section of AGENTS.md has not been tried.",
+   "That a parent's agent keeps a child's name and the school out of a web search and out of a task for the web helper is a behaviour, tested by the hand-off canary; it has never been run with real facts present."
+  ],
+  "safety": "The rendered files go only into the two parents' own agents, never into the web helper, a mail reader or a shared agent. They hold the children's names and school and go to the cloud model with every chat; children's health details stay out. No tool or send path is added, and the hand-off canary is re-run with real facts present.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:367",
+    "title": "User model (OpenClaw docs)",
+    "anchor": "4,000-character bootstrap cap",
+    "supports": "USER.md has a fixed small budget that config can only lower, so it cannot hold a full family fact sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "USER.md and MEMORY.md are among the files injected at the start of every session, which is why generated facts are known without re-typing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-architecture.md:239",
+    "title": "Memory architecture (OpenClaw docs)",
+    "anchor": "trigger:",
+    "supports": "A fact line can carry trailing trigger phrases so it is pulled in when a message is about that topic.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:140",
+    "title": "Automation delivery",
+    "anchor": "do not infer a reply language",
+    "supports": "Scheduled jobs do not pick up a language from the chat, so each digest or reminder must state its language in the job text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:56",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "zh-CN-XiaoxiaoNeural",
+    "supports": "Only the online Microsoft speech provider switches to a Chinese voice automatically for mostly-Chinese text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/123720",
+    "title": "Use Live Translation on iPhone - Apple Support",
+    "anchor": "Live Translation",
+    "supports": "On supported iPhones Messages can translate a conversation automatically and on device, which overlaps with the grandparent-translation use.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "G011"
+  ],
+  "adds": [
+   "From VOX-06 (In the car: Siri plus iMessage, with a driving reply style): Carry one standing reply-style line: when a parent says they are driving, answer in at most two short sentences with no links or lists, hold back private detail, and offer the rest once parked (Apple says Siri announces a long message without reading it). Keep the no-build tip that Siri on the phone, in the car or on a Watch can dictate a text to Happy's contact, without presenting it as an invitation to chat at the wheel."
+  ],
+  "wave": "C",
+  "section": "Memory, knowledge and skills",
+  "includes": [
+   {
+    "id": "G011",
+    "name": "Bilingual replies and grandparent-facing translations"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: User model",
+   "r1: merged with G011 (same batch). The reply-language line is one of the standing preferences the same generator renders into each adult's USER.md, so bilingual replies and the grandparent-facing translation join the family-facts card.",
+   "r2: kept; credible mention: User model",
+   "r3: kept; credible mention: User model",
+   "r4: edited description, how, caveats, unverified. Kept: OpenClaw documents USER.md and MEMORY.md as the files that carry stable preferences and facts into each new chat. Two limits were missing from this card: the family facts load only in a parent's one-to-one chat (not in scheduled jobs, the group chat or hand-offs), and a chat write to a rendered file can stop it loading, so the two files stay generator-only.",
+   "r4: kept; credible mention: User model (OpenClaw docs)",
+   "r5: kept; credible mention: User model (OpenClaw docs)",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave C. Nothing is rendered until Tony types the facts himself (Q2), and it is built with notes because the two share the same files.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The card said Happy already knew the children's school, routines and a reply language, when the family file held two adults and a home town and the generator rendered no facts. Tony has now given the facts, so the card is one generator step that renders what he types into files the generator already owns; the second-language and grandparent half is out, because no second language was stated.",
+   "r10: kept; credible mention: User model (OpenClaw docs)"
+  ],
+  "demand": {
+   "ref": "docs/concepts/user-model.md:12",
+   "title": "User model (OpenClaw docs)",
+   "supports": "OpenClaw documents USER.md as the place for stable preferences, relationships and context, loaded beside MEMORY.md at session start to guide later chats."
+  },
+  "depends_on": [
+   "family.json5 and the gen-family generator in happy-config: new fields, new template placeholders and a few lines in the generator (today it renders four files per person, with the person's name and the home town and no other fact)",
+   "Tony provides at execution: the two children's first names, their school years and the school district's name, entered into the family file and nowhere else, and any routine or standing preference he wants known"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F043",
+  "origin": "9 Oct",
+  "name": "Family handbook: shared pages Tony types that both parents' agents can search",
+  "tier": 1,
+  "cluster": "memory-knowledge",
+  "description": "One shared family handbook that both parents' agents can search: plain pages Tony types, such as appliance details and who services what, plus the reference pages other planned cards read. Either parent asks and gets the same stored answer. Happy does not write or change pages; a parent who wants something added tells Tony.",
+  "example": "Made up to show the feature: suppose Tony has typed a page listing appliance model numbers and repair contacts. Jordan asks 'who do we call about the dishwasher?' and gets the contact from that page; Tony would get the same answer.",
+  "how": "One shared Markdown folder on the Mac mini, outside both parents' workspaces. Tony types the pages in the config repo, and the ordinary deploy, which already copies Markdown files under its shared folder, puts them in place. The generator adds the folder to each parent's own agent (`agents.entries.<id>.memory.search.extraPaths`, never the global list); the agents find pages with `memory_search` and `memory_get`, keyword-only (`memory.search.provider: \"none\"`, already set). No agent gets a tool that writes to the folder, and shared agents and the mail readers keep memory search off. Not built: the memory-wiki plugin and its four tools, saving a page from a photo, manuals by link. The shared-folder part of T6 runs first, on an eval-only copy. No house-rules rule is needed.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "Only Tony adds or changes a page, by typing or pasting it and deploying; that includes a page another planned card produces, such as the emergency page of CRT-13. A parent cannot save a page by text or by sending a photo.",
+   "Pages are found by their words when the agent searches; they are not in view at the start of a chat, and a scheduled text or a hand-off to a helper does not know them.",
+   "The folder is shared on purpose, which steps outside 'one data domain per person' by Tony's choice of 12 Oct. It holds household reference only: no copy of either parent's own notes, and by the default he kept, no child's health details.",
+   "The text of a page goes to the cloud model whenever a search returns it.",
+   "A date that needs a reminder does not belong here: it is a calendar event or a reminder.",
+   "The card rests on a search that has not been tried. If a sandboxed agent cannot find pages in a shared folder, the few facts go into the rendered family facts (F042) instead of a searched folder."
+  ],
+  "corrections": [],
+  "unverified": [
+   "The shared-folder part of T6: that a search from a sandboxed parent's agent finds a page kept in a folder outside both workspaces, through a per-agent extra path. Not tried.",
+   "The installed code labels files indexed from outside an agent's workspace as untrusted origin (dist/memory-path-provenance-BiFQlpIk.mjs:32); whether that hides handbook pages or brings them back with a warning label was not tested.",
+   "That the same folder listed as an extra path on two agents is indexed for both and for no other agent: the multi-agent page describes a shared extra-path folder for reference material; not tried here.",
+   "That the deploy's existing copy step for shared Markdown files is a workable home for the pages: read in the deploy script, not tried with a handbook folder."
+  ],
+  "safety": "Shared between the two adults on purpose, for household reference only. No agent can write a page: only Tony does, through the reviewed deploy, so a planted instruction cannot be saved into it from a chat. The folder is added to the two parents' agents alone; shared agents and mail readers keep memory search off. No send path is added.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:381",
+    "title": "Memory configuration reference (OpenClaw docs)",
+    "anchor": "agents.entries.<id>.memory.search.extraPaths",
+    "supports": "Extra folders to index can be set per agent and are combined with the global list, so only the two parent agents need to see the shared folder.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/memory-wiki.md:23",
+    "title": "Memory wiki (OpenClaw docs)",
+    "anchor": "openclaw plugins enable memory-wiki",
+    "supports": "The knowledge-vault plugin ships with OpenClaw and is switched on with one command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-architecture.md:232",
+    "title": "Memory architecture (OpenClaw docs)",
+    "anchor": "0.72",
+    "supports": "A fact line tagged with trigger phrases is injected automatically when a message matches strongly, at most three per turn, which is how an allergy line surfaces in a recipe chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments (OpenClaw docs)",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Photos sent over iMessage reach the agent only after inbound attachments are enabled; today they are dropped.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding (OpenClaw docs)",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, the original photo is passed to it directly, so reading a data plate needs no extra tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/wiki.md:195",
+    "title": "openclaw wiki CLI reference (OpenClaw docs)",
+    "anchor": "apply synthesis",
+    "supports": "The agent's only wiki write is creating or refreshing a synthesis page or editing metadata, so one synthesis page per appliance is the write shape; entity pages are seeded by the operator.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:68",
+    "title": "PDF tool (OpenClaw docs)",
+    "anchor": "rejected when the tool runs sandboxed",
+    "supports": "A sandboxed agent cannot hand the pdf tool a remote URL, so fetching a manual from the web is a job for the separate research agent, not the parent's main agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.maine.gov/pfr/insurance/consumers/homeowners-or-renters-insurance/taking-a-home-inventory",
+    "title": "Taking a Home Inventory | PFR Insurance (Maine Bureau of Insurance)",
+    "anchor": "model and serial number",
+    "supports": "A state insurance regulator advises households to keep a record of what they own with brand, model and serial number and a picture of each item.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F035",
+   "F034"
+  ],
+  "adds": [],
+  "wave": "E",
+  "section": "Memory, knowledge and skills",
+  "includes": [
+   {
+    "id": "F034",
+    "name": "Home systems and service-provider registry with lookup"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: Memory wiki",
+   "r1: merged with F034 (same purpose). The home systems and service-provider registry is the home-systems section of the shared family handbook plus a way to fill it from a data-plate photo, so it joins the vault card in wave A.",
+   "r2: edited depends_on. Kept. One missing prerequisite is written in: the handbook's first step is searched with the memory search tool, and the parents' agents do not hold that tool today (it arrives with the per-person memory item, F041).",
+   "r2: kept; credible mention: Memory wiki (OpenClaw docs)",
+   "r3: kept; credible mention: Memory wiki (OpenClaw docs)",
+   "r4: edited description, unverified. Kept: OpenClaw bundles a knowledge-vault plugin for exactly this, and five other entries list the handbook as a prerequisite. The description no longer lists 'renewal dates' as handbook content, because dated items live in the renewals table (F063) and the household store (F031); one open point about the shared folder is made more exact from the installed code.",
+   "r4: kept; credible mention: Memory wiki (OpenClaw docs)",
+   "r5: edited how, depends_on, safety. Kept: OpenClaw bundles a knowledge-vault plugin for exactly this, and other entries build on the handbook. The safety note left out what keeps a shared handbook to the two parents. The vendor page says to use one vault per agent when agents must not share pages; the two parents have to share one, so the other agents are kept out by tool policy alone, and because the pages can also be reached through ordinary memory search, that search has to stay off on the shared agents and the mail readers. The plugin also has a second mode that, on a shared vault, could pull each parent's own notes into the handbook, so the build note now says to leave the default mode. The handbook is also a place where a hidden instruction could persist, and the first step should use keyword-only search so handbook text is not sent to a cloud embedding service.",
+   "r5: kept; credible mention: Memory wiki (OpenClaw docs)",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Next in line for wave C: a shared folder that both parents' agents read steps outside Tony's own rule of one data domain per person and was never put to him (Q10), so its plain-folder first step, about 1.5 hours, joins wave C's notes phase only if he says yes, the shared-folder search in T6 passes and another phase of C has dropped out.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony picked the shared family handbook on 12 Oct, so it is planned in the form the review described: a plain folder of pages Tony types, searched by both parents' agents, with no wiki plugin, no saving a page from a photo and no agent that can write to it.",
+   "r10: kept; credible mention: Memory wiki (OpenClaw docs)",
+   "r12 (Wave definition, 12 Oct): moved from wave none to wave E."
+  ],
+  "demand": {
+   "ref": "docs/plugins/memory-wiki.md:11",
+   "title": "Memory wiki (OpenClaw docs)",
+   "supports": "OpenClaw bundles a plugin whose stated job is to turn lasting knowledge into a maintained, searchable wiki that sits beside the agent's ordinary memory."
+  },
+  "depends_on": [
+   "F041 saved notes, which grants the two search tools (`memory_search` and `memory_get`, keyword-only) to each parent's agent; a plan that builds this card before F041 grants them here, about half an hour more",
+   "Tony provides at execution: the first pages, typed by him (which page comes first is his choice)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "AUT-06",
+  "name": "Teach Happy a routine (operator-reviewed skills), with a parent-run practice quiz as the first skill",
+  "tier": 1,
+  "cluster": "skills and learning",
+  "description": "A parent describes once how the family does something (party plan, ski-trip packing, school-form explainer); Tony turns it into a named skill, and after the next deploy Happy can load it when a later request fits the skill's one-line description. The first skill is a practice quiz that a parent runs from a study-guide photo, a pasted spelling list or a request for math facts: ten questions, one at a time, hint first, a running score and the answer key at the end.",
+  "example": "'Happy, learn our ski-trip packing routine: ask how many nights and who is coming, then list by person, and always include the kids' helmets.' Or Jordan sends a photo of the science study guide and texts: 'quiz us on this, 10 questions, one at a time.'",
+  "how": "Pipeline (AUT-06): Happy answers with the drafted procedure as plain text; Tony turns it into `skills/<name>/SKILL.md` in happy-config, reviews it, and happy-deploy copies it into that agent's workspace `skills/` folder. The model loads a skill by reading its SKILL.md, so `<p>-main` needs `read` in `tools.alsoAllow` and the sandbox tool allowlist; `skill_workshop` stays denied on every family agent. A routine of a few lines can live in AGENTS.md instead. Quiz (MKT-02): one such skill fixes the format (one question per message, one hint before revealing, a running score, the answer key at the end, no web lookups); a photo needs attachment intake (F002) and is read by the reply model's own vision; an optional one-shot reminder offers a re-quiz the night before.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "a skills step in happy-deploy and gen-family",
+   "automatic self-learning switched off in config (`skills.workshop.autonomous.mode: \"off\"`)",
+   "decision: who may request a new skill",
+   "`read` allowed on <p>-main in tools.alsoAllow and the sandbox tool allowlist (group:fs is denied today; per-person memory, F041, adds `write` and `edit` only, so `read` is a grant of its own)",
+   "F041's write-path hook refusing any write under skills/, proven with a test write (needed once F041 gives the same agent a read-write workspace)",
+   "F002 photo and PDF reading with inbound attachments switched on, for the quiz's photo route only",
+   "F007 automations tool on <p>-main, only for the optional re-quiz reminder",
+   "F003 voice over iMessage, its local spoken replies, only for reading spelling words aloud"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Asking Happy to save a skill from iMessage does not work on this stack: sandboxed runs do not construct the `skill_workshop` tool, and the documented exception would publish with no pending draft and so skip Tony's review, which is one more reason to keep that tool off every family agent.",
+   "A skill is know-how: it cannot add tools or accounts, so 'learn to order the groceries' still ends at a list.",
+   "A skill is instruction text loaded into future sessions, so one written from a pasted web page or an email is a stored injection: author only from the parent's own words, and install no marketplace skills (an audit reported by The Hacker News found 341 malicious entries among 2,857 ClawHub skills in early 2026).",
+   "Turnaround is 'when Tony next deploys', and Happy does not run a skill every time: the prompt lists only each skill's name and one-line description, so that line has to be precise, and calling the skill by name (`/skill <name>`) is the sure route where that command is accepted from the sender.",
+   "The quiz is parent-run only: the kids are not users, the parent holds the phone and sends the answers, and a version a child uses alone waits for the kids agent (F072) and never uses a cloud model or cloud speech.",
+   "The ChatGPT or Gemini app on a parent's phone already makes a quiz from uploaded material, with hints and an end summary; Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+   "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state, so tell it to quiz only from what is on the page and spot-check.",
+   "A text quiz shows spelling words on screen, so spelling practice needs the words read aloud with the local voice (F003), whose quality for spelling words is untried, and the running score lives in the conversation and is gone after the daily session reset.",
+   "Once per-person memory (F041) gives a parent's agent `write` and `edit` on a read-write workspace, the workspace skills folder sits inside what the agent can write: for that mode the docs describe a read-only copy only for bundled, managed and plugin skills (workspace-access.md:91) and do not say the workspace skills folder is protected. 'No model-written file reaches a skills folder' then rests on F041's in-house path hook, so that hook's proof must include a refused write to skills/."
+  ],
+  "safety": "Operator review is the gate: `skill_workshop` stays denied on every family agent, a skill cannot widen tool policy, and no model-written file is meant to reach a skills folder. Once per-person memory (F041) lets the same agent write files in its workspace, that last point rests on F041's write-path hook and has to be proven with a refused write to skills/. The quiz is the riskier part: a photographed school worksheet is untrusted content, is not screened by the PDF privacy gate in F002, and goes to the cloud vision model under store:false. No child's account talks to a cloud model.",
+  "unverified": [
+   "Whether a user-invocable skill command typed by an allowlisted non-owner iMessage sender is accepted on 2026.9.7.",
+   "That skill sync into the sandbox works with `workspaceAccess: \"none\"` (the docs say sandboxed runs read materialized copies).",
+   "That a `read`-only grant on a sandboxed <p>-main reaches the mirrored skills and nothing private; check at build time.",
+   "Whether an iMessage owner turn is ever given library-authoring authority on this configuration. If it is, an allowlisted `skill_workshop` could publish a skill with no review.",
+   "Whether a spoken reply arrives as a playable voice message or as a file in iMessage Basic mode.",
+   "The quality of the macOS say voice for spelling words was not tried."
+  ],
+  "overlaps_existing": [
+   "F023",
+   "F033",
+   "F036"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/creating-skills.md:20",
+    "title": "Creating skills",
+    "anchor": "Skills live in your workspace",
+    "supports": "Hand-written skills are directories under the agent workspace's skills folder.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/troubleshooting.md:61",
+    "title": "Skill Workshop troubleshooting: tool-policy diagnostic",
+    "anchor": "library-authoring authority",
+    "supports": "Sandboxed runs do not get the skill authoring tool even when an allowlist names it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/authoring.md:88",
+    "title": "Skill Workshop: CLI authoring",
+    "anchor": "propose-create",
+    "supports": "The operator CLI can create, inspect and apply proposals for a named agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/how-it-works.md:21",
+    "title": "How Skill Workshop works",
+    "anchor": "Apply is the only live write",
+    "supports": "A proposal changes nothing live until it is applied.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills.md:41",
+    "title": "Skills: loading order",
+    "anchor": "Workspace skills",
+    "supports": "Workspace skills take precedence over every other skill source.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skills-config.md:343",
+    "title": "Skills config: agent allowlists",
+    "anchor": "agents.entries.*.skills",
+    "supports": "A per-agent list controls which skills an agent can see, and an empty list exposes none.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html",
+    "title": "Researchers Find 341 Malicious ClawHub Skills Stealing Data from OpenClaw Users (The Hacker News, 2 Feb 2026)",
+    "anchor": "341",
+    "supports": "A security audit of the public skill marketplace found hundreds of malicious skills, most installing a macOS credential stealer.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/system-prompt.md:199",
+    "title": "System prompt: skills",
+    "anchor": "available_skills",
+    "supports": "The prompt lists each skill with a file path and tells the model to load SKILL.md with the read tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/context.md:140",
+    "title": "Context: skills injected vs loaded on demand",
+    "anchor": "only when needed",
+    "supports": "Skill instructions are not in the prompt; the model is expected to read a skill's SKILL.md when it needs it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/workspace-access.md:91",
+    "title": "Sandbox workspace access: skills",
+    "anchor": "read-only instruction roots",
+    "supports": "With workspace access none, eligible skills are mirrored into the sandbox workspace read-only and the read tool is rooted in the sandbox.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/skill-workshop/personal-library.md:38",
+    "title": "Personal library authoring",
+    "anchor": "no pending-draft action",
+    "supports": "Personal-library create and update publish directly; there is no pending draft to review.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/15146780",
+    "title": "Use Gems in Gemini Apps - Gemini Apps Help",
+    "anchor": "transition to skills",
+    "supports": "Gems are saved custom versions of Gemini that can be shared, and on personal accounts they become skills from November 2026.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://poke.com/",
+    "title": "Poke - Chat with Poke",
+    "anchor": "Poke Recipes",
+    "supports": "Poke, a messaging-based assistant, ships pre-built reusable setups it calls recipes.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.claude.com/en/articles/12512176-what-are-skills",
+    "title": "What are skills? | Claude Help Center",
+    "anchor": "progressive disclosure",
+    "supports": "Claude skills are folders of instructions loaded only when a task needs them, available on all plans.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:386",
+    "title": "Slash commands: skill commands",
+    "anchor": "/skill <name> [input]",
+    "supports": "Any user-invocable skill can be run by name through a generic command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:68",
+    "title": "Tool policy: tool groups",
+    "anchor": "group:fs",
+    "supports": "The read tool belongs to the file-system tool group, the group the person agents deny today.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "title": "Introducing Alexa+, the next generation of Alexa",
+    "anchor": "turn them into a quiz",
+    "supports": "Alexa+ lets a user upload study materials and have them turned into a quiz.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16316416",
+    "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+    "anchor": "practice quizzes",
+    "supports": "Google lists daily practice quizzes as an example of a scheduled action in Gemini.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media: attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Inbound photos are dropped until this config key is set to true.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16275879",
+    "title": "Create quizzes, flashcards, practice tests & more in Gemini Apps - Gemini Apps Help",
+    "anchor": "Create a quiz about",
+    "supports": "Gemini Apps builds a quiz from a prompt, and the user can attach files as the source material.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MKT-03",
+   "MKT-02"
+  ],
+  "adds": [
+   "Starting a routine with a short slash command and pinning the visible skills per agent; the person agents need the read tool before any skill body can load.",
+   "From F074 (Practice drills: spelling lists, math facts, reading buddy and bedtime story): MKT-02's edit in this review already carries the spelling-list and math-facts modes, the running score, the read-aloud note for spelling words (local voice only, VOX-04) and the two unverified points. Still to move across: F074's three sources. The version the kids use themselves goes with homework hints (F073) on the kids agent (F072) once a local model exists, with local speech only; 'reading buddy' and 'bedtime story' were names with no description and are not carried."
+  ],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "parked",
+  "section": "Memory, knowledge and skills",
+  "includes": [
+   {
+    "id": "MKT-02",
+    "name": "Practice quiz from a study-guide photo or a word list, run by a parent"
+   }
+  ],
+  "history": [
+   "r1: edited caveats, depends_on. Kept. Two fixes: a caveat about when a new skill appears contradicted the corrected caveat beside it and is dropped, and the dependency on an item removed in an earlier round is restated as the config rule it stood for.",
+   "r1: kept; credible mention: Creating skills",
+   "r2: edited description, caveats. Kept. The description said Happy follows a skill 'every time', but the vendor docs say the model sees only each skill's name and one-line description and reads the full text when it judges it relevant, so the wording and one caveat now say so.",
+   "r2: kept; credible mention: Creating skills (OpenClaw docs)",
+   "r3: kept; credible mention: Creating skills (OpenClaw docs)",
+   "r3: merged with MKT-02 (same batch). The parent-run practice quiz builds nothing but one operator-reviewed skill, which travels through the same skills step, review and `read` grant that the routines card sets up on the same agent in the same wave, so it becomes that card's first worked skill; the card carries the quiz's medium risk because a photographed worksheet goes to the cloud vision model unscreened.",
+   "r4: edited depends_on, caveats, safety. Kept: hand-written skills that the operator reviews are the vendor's supported way to teach an agent a routine. Two links to the memory card (F041) are corrected: F041 grants write and edit but not the `read` tool this card needs, and once F041 makes the agent's workspace writable, the promise that no model-written file reaches a skills folder rests on F041's path hook and needs its own test.",
+   "r4: kept; credible mention: Creating skills (OpenClaw docs)",
+   "r5: kept; credible mention: Creating skills (OpenClaw docs)",
+   "r8 (Wave definition, 12 Oct): moved from wave B to not in a wave yet. Waits for a named need: there is nothing to build until a parent describes a first routine, and then it is a few reviewed lines in an ordinary deploy (S12).",
+   "r10: parked. S12 defers the skills pipeline (no skills step in the deploy, no file-read grant on the agents that hold private notes, no skills-folder write proof, no practice quiz as a fixed first deliverable), and no parent has described a routine, so there is nothing to build. Skills inside each agent stay the roadmap's long-term home for know-how: this is a deferral, not a reversal."
+  ],
+  "demand": {
+   "ref": "docs/tools/creating-skills.md:12",
+   "title": "Creating skills (OpenClaw docs)",
+   "supports": "OpenClaw documents hand-written workspace skills as the supported way to teach an agent how and when to carry out a task."
+  },
+  "corrections": [],
+  "park_note": "Teaching Happy how the family does something it does often: a parent describes the routine once and Tony reviews it. It comes back when either parent names a first routine, and it is then a few reviewed lines in that parent's agent instruction file, added in an ordinary deploy with nothing new granted."
+ },
+ {
+  "id": "G015",
+  "origin": "9 Oct",
+  "name": "Read-only Gmail for each parent: a 07:00 weekday mail text and 'did I get an email about X?'",
+  "tier": 1,
+  "cluster": "inbox-monitors",
+  "description": "Each parent approves read-only access to their own Gmail once, on Google's own screen; the token stays on the Mac mini, Happy never holds a password, and nothing in Gmail is changed, labelled, drafted or sent. Each weekday at 07:00 Eastern a locked-down mail reader texts its owner a short list of what needs a reply, has a deadline or involves money, with the school lines first and no links. A parent can also ask 'did I get an email about X?' and get the sender, the date and the gist from their own inbox.",
+  "example": "07:00, text to Tony: 'Mail. School: a form for the third-grader is due back on Friday 16 October. Needs you: the plumber asks you to confirm Thursday's visit by tomorrow; a bill is due on Tuesday 20 October.' Later Jordan texts her own Happy 'did I get an email about class photo day?' and gets the sender, the date and one line of gist from her own inbox.",
+  "how": "Connector: `gog mcp`, gog's own MCP server, as one host-side stdio entry under `mcp.servers` per parent, started with only that parent's token and narrowed with `--allow-tool` to the Gmail read tools; a read-only token each from `gog auth add` (`--services` Gmail only, `--gmail-scope readonly`). Reader: one generated `<p>-mail` agent per parent: `profile: \"minimal\"`, only `<p>-gmail__*` allowed (also in `tools.sandbox.tools`) and denied by name elsewhere, except on that parent's own agent once its lookup is on (see Lookup); memory search off; one cloud model, storage off, no fallback. Gate: the connector reaches Google and nothing else. The wave A runbook found that a firewall rule cannot name Google's hosts for this program, so it builds the gate as one firewall rule that blocks every direct connection by the connector plus a small local proxy that lets it reach three named Google hosts; Tony's yes to that is asked at the runbook's step A4. Text: one weekday 07:00 Eastern job per reader from the jobs script (G003), Gmail read tools only, delivered to its owner: own label, school lines first (F051), no links, medical mail by sender and subject only, silent on an empty morning. Lookup (Tony, 13 Oct): `<p>-main` hands a mail question to its own `<p>-mail` through `subagents.allowAgents`, with `subagents.requireAgentId: true` (the list governs only a call that names an agent; a call that names none would start a copy of the asking agent), with a two-minute default time limit. On 2026.9.7 an agent started by another keeps only the tools its asker is allowed (the asker's allowed tools and its denies are passed to the helper and applied last), so `<p>-main` is itself allowed the three `<p>-gmail` read tools (also in its sandbox tool list) and no longer denies that one server; its instructions tell it to hand every mail question to the reader and never to call those tools itself. The reader's own list, the three read tools and nothing else, is what narrows the hand-off. Eval-only copies of a parent's agent never hold a connector tool or the hand-off to a mail reader (except T5's throwaway pair in wave C, which reads only the test mailbox), so the lookup is tested live. House rules: adds the account-connector rule when that plugin is first created. From then the parent's own agent is blocked in code from calling the Gmail tools it holds, if test T5 shows that the check is told which agent is calling.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 4,
+  "effort": "L",
+  "caveats": [
+   "The read-only grant lets the connector read every message in the account. The school lines are picked out by the model, with no sender filter and no check, so it may miss a school mail or list one that is not; and mail that arrives during the day waits for the next morning's text.",
+   "Mail text goes to the cloud model on Tony's go-ahead of 12 Oct, and is read before the full firewall and the outbound proxy exist. Until OpenAI approves Zero Data Retention its abuse-monitoring log can keep that text for up to 30 days. Both points depart from the roadmap's rules for mail readers, by his choice.",
+   "Nothing about the connector has been tried on this Mac: gog is not installed, so its flags come from upstream docs, and whether a token from the published sign-in app outlives seven days on a personal account is test T1. If the day-8 search fails, the choice is a weekly sign-in per parent or a different connector.",
+   "'No links' and 'sender and subject only for medical mail' are instructions to the reader, not enforced limits. What limits harm is that the reader holds only Gmail read tools and its outputs are the scheduled text to its owner and, once the lookup is on, its answer to its owner's own agent.",
+   "The lookup goes two steps beyond the roadmap's mail design. Its answer comes back into the parent's own agent, which holds that parent's chats, can search the web and will later hand tasks to the web helper. And by Tony's decision of 13 Oct that agent is itself allowed the Gmail read tools, because a helper keeps only the tools its asker is allowed: an instruction, checked by a count of its tool calls, keeps it from reading mail itself, not a tool limit, until the house-rules plugin's check exists, and then only if test T5 allows that check. Only prompt rules and a seeded-mail test stand between them, so it goes live in its own step and can be switched off without touching the morning text.",
+   "Google's Gemini app already answers questions from a person's own Gmail and lists a daily digest among its scheduled actions; Happy adds only asking, and being told, in the iMessage thread.",
+   "With the lookup on, each mail question also leaves the reader's transcript of that hand-off on the Mac (archived an hour after it finishes and kept until the disk budget evicts it, unless the optional 30-day setting of the wave A runbook is switched on) and the answer in the parent's own chat transcript."
+  ],
+  "corrections": [
+   "The 9 Oct needs list omits the sandbox-layer gate: with sandbox mode 'all', MCP tools stay hidden unless `tools.sandbox.tools` names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130). The minimal profile does not allow MCP tools implicitly either (same file, lines 36 and 41).",
+   "'Memory off' is not one switch in the installed docs: memory search has a per-agent override (`agents.entries.*.memory.search`, `enabled`, docs/reference/memory-config.md:31 and :102), dreaming is plugin-wide (docs/concepts/memory.md:275), and `excludeSessions.hookExternalContentSources` only matches hook sessions (docs/reference/memory-config.md:667).",
+   "'Send pinned to owner' only applies when the mail agent runs its own scheduled or hook turn: when spawned from `<p>-main` it always loses `message` and `session_status` (docs/tools/subagents/tool-policy.md:23), so its allow list must not consist of `session_status` alone.",
+   "The 9 Oct needs list puts `openclaw models status --agent --probe` in the deploy checks; the installed doc says a direct probe needs the Gateway stopped (docs/cli/models.md:121).",
+   "The 9 Oct verifier note says gogcli has no read-only-only Gmail scope. The upstream command reference lists `--gmail-scope full|readonly|send|read-send` and says `--readonly` on `gog auth add` requests read-only OAuth scopes, so a read-only grant can be requested; the catalog's hedge 'if the installed version supports it' can be firmed up, pending a check on the installed binary.",
+   "The 9 Oct text treats the `<p>-gmail` wrapper as new code. Upstream gogcli ships a stdio MCP server (`gog mcp`) that exposes only read tools unless `--allow-write` is passed, so the config entry can run gog directly with an `--allow-tool` list and no wrapper.",
+   "The 9 Oct needs list stops at the per-agent allow list. With sandbox mode 'all' (Happy's setting) the installed docs add a second gate: MCP tools are filtered out unless `tools.sandbox.tools` also names `bundle-mcp` or the server glob (docs/gateway/config-tools/tool-policy.md:101 and :130).",
+   "13 Oct, read in the installed code while the wave A runbook was written: an agent started through `sessions_spawn` keeps only the tools its asker is allowed. The spawn tool passes the asker's allow list and deny list to the child, also for a different target agent (dist/sessions-spawn-tool-B5tfhM3J.mjs:3244), and they are applied as the last filter, 'inherited tools' (dist/conversation-tool-policy-pipeline-D3eQnHfK.mjs:74); the docs say 'inherited tool policy' still applies (docs/tools/subagents/nesting.md:13). The lookup as first written, with the Gmail tools denied on the parent's own agent, could not have worked.",
+   "13 Oct: the card said no wrapper is needed for gog. The wave A runbook starts gog through a ten-line wrapper, which gives each sign-in its own keyring namespace and points gog at the local proxy; and it found that 2026.9.7 rejects a hand-off time limit set under one agent, so the limit is the gateway-wide default.",
+   "13 Oct: the wave A runbook builds each 07:00 text as two jobs, Tuesday to Friday looking back one day and Monday looking back three, because a scheduled message cannot carry the weekday; this page counts them as one text.",
+   "13 Oct, from the installed docs: `subagents.allowAgents` only governs a hand-off that names its target; one that names none starts a copy of the asking agent ('Default: only the requester agent', docs/tools/subagents/thread-bound-sessions.md:74), and `subagents.requireAgentId` is what refuses it. The lookup sets both."
+  ],
+  "unverified": [
+   "gog is not installed on this Mac; its flags (`--gmail-scope readonly` and `--services` on `gog auth add`, `--allow-tool` on `gog mcp`) come from the upstream docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the installed version.",
+   "T1: that publishing the self-made Google sign-in app to In production keeps a read-only Gmail token alive past seven days on a personal, unverified app. One search by hand on day 1 and again on day 8 or later, before the rest is built on the token; Google's scope page marks gmail.readonly as a Restricted scope.",
+   "Whether each adult's token can sit in a folder of its own under the happy user: upstream says tokens use the platform keyring by default with a file backend for headless hosts; splitting them with a per-adult GOG_HOME is an inference from the paths doc. The wave A runbook read upstream's source: a separate folder does not separate keyring entries, so it keeps each sign-in in happy's login Keychain under a namespace of its own and starts gog through a short wrapper; Tony's yes to both is asked at its step A4.",
+   "T2: that the minimal tool profile plus a per-agent allow shows each reader exactly one account server and shows it to no other agent (except that parent's own agent once its lookup is on, which is allowed the three tools on purpose); the roadmap lists this as not yet confirmed on this version. The 'read the other parent's mail' canary is run both ways.",
+   "T5, the connector turn: whether a plugin's blocking check is called for connector tools at all and, since 13 Oct, whether it is told which agent is calling, for a parent's own agent and for a helper it started. The docs say 'every tool call in the run' (plugins/hooks/tool-policy.md:222) but no sentence names MCP tools. It decides whether the account-connector rule can be written when the house-rules plugin is first created.",
+   "Whether a parent's own agent can see or quote the 07:00 text when the parent replies to it: checked at go-live. If it can, mail text reaches that agent even with the lookup switched off, and Tony signs that as the same departure from the roadmap as the lookup.",
+   "For the lookup, T4: that a hand-off from the parent's agent to its own mail reader returns the answer in the same chat while agents cannot see each other's sessions; and that a reader started this way keeps its three Gmail tools, which is read from the installed code and has not been run.",
+   "For the lookup, the seeded mail: a planted mail that tells the reader to make the parent's agent search for, save or pass on something must cause no tool call on the parent's agent in three runs (the planted mail also asks that agent to search the mailbox itself, which it is allowed to do and told not to), and the other parent's agent must be refused the reader. If either lookup test fails, the lookup stays off and the morning text is unaffected.",
+   "Whether this OpenAI account will be approved for Zero Data Retention; until then the 30-day abuse-monitoring log applies to mail text sent to the model. The per-person provider setting that sends store false was verified in M1 and not re-read here.",
+   "That a parent's own agent, allowed the Gmail read tools for the hand-off, keeps to its instruction and never calls them itself: a behaviour, checked by its tool-call record at go-live and at the exit test, and not enforced until the house-rules plugin's check exists, and then only if test T5 allows that check."
+  ],
+  "safety": "Each reader holds private mail and reads outsiders' text, so it has no way out: only Gmail read tools, and two outputs: the scheduled text, which the jobs script addresses from the family file, and, once the lookup is on, its answer to its owner's own agent. One reader, connector and token per parent; the two parents are held apart by tool permissions, an explicit deny and two tests until the house-rules plugin exists. The lookup is the weaker half: once it is on, the parent's own agent is allowed the same three read tools so that the reader it starts can use them, and only its instructions and a count of its tool calls keep it from reading mail itself.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:32",
+    "title": "IMAP email trigger",
+    "anchor": "profile: \"minimal\"",
+    "supports": "The doc's restricted reader template uses the minimal tool profile with an explicit allow list, denies file, runtime, web and browser tools, and runs fully sandboxed with no workspace access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/sandbox.md:73",
+    "title": "CLI: sandbox",
+    "anchor": "openclaw sandbox explain --agent",
+    "supports": "A CLI report shows an agent's effective sandbox mode, tool policy and elevated gates, usable as a deploy-time check.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Tool policy configuration",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers surface as plugin-owned tools, and sandboxed sessions need an extra sandbox-layer allow entry before those tools are visible.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API: Data controls in the OpenAI platform",
+    "anchor": "Zero Data Retention",
+    "supports": "OpenAI states API data is not used for training by default, but abuse-monitoring logs can be kept up to 30 days unless the account is approved for zero retention, so store-off is not the same as nothing retained.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:10",
+    "title": "Connect MCP servers",
+    "anchor": "mcp.servers",
+    "supports": "MCP server definitions live in gateway config and the tools they expose pass through the same tool profile and policy controls as built-in tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "MCP tools get server-prefixed names that per-agent allow and deny lists can target, deny always wins, and a server with no allowed tool is omitted for that agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/mcp.md",
+    "title": "gogcli docs: MCP server",
+    "anchor": "gmail_search",
+    "supports": "gog ships its own typed stdio MCP server (`gog mcp`); by default it registers read tools only (Gmail search, get message, get thread) and hides every write tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-auth-add.md",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--gmail-scope",
+    "supports": "The authorization command takes a Gmail scope mode of full, readonly, send or read-send, and its --readonly flag requests read-only OAuth scopes.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/15229592?hl=en",
+    "title": "Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+    "anchor": "find information from Google Workspace services",
+    "supports": "Google's own assistant offers consumers quick answers and summaries drawn from their Gmail, the same read-only lookup this gives each adult's mail agent.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:53",
+    "title": "Bundled gog skill",
+    "anchor": "gog gmail search",
+    "supports": "The bundled skill documents Gmail search with query operators through the gog CLI.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/gmail.md:47",
+    "title": "Gmail PubSub triggers: restricted reader",
+    "anchor": "group:web",
+    "supports": "OpenClaw's own recommended mail-reader agent denies web, file, runtime and browser tools, the same shape as <p>-mail.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:28",
+    "title": "Automations: how it works",
+    "anchor": "bundled MCP runtime instances",
+    "supports": "Isolated scheduled runs start and tear down their own MCP server instances, so a per-person Gmail server works in a cron job.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp",
+    "title": "gog documentation: MCP server",
+    "anchor": "--allow-write",
+    "supports": "gog's MCP server registers only read tools unless write is explicitly allowed, and sending needs a further flag.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/gmail/api/auth/scopes",
+    "title": "Gmail API: choose scopes",
+    "anchor": "gmail.readonly",
+    "supports": "Google classes read-only Gmail access as a restricted scope, the most sensitive tier.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.drafts/create",
+    "title": "Gmail API reference: users.drafts.create",
+    "anchor": "gmail.compose",
+    "supports": "Creating a draft needs the compose or modify scope, both of which also permit sending, so 'no send' must be enforced by gog flags and a hook, not by scope.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/mail/answer/7190",
+    "title": "Gmail Help: refine searches in Gmail",
+    "anchor": "category:promotions",
+    "supports": "Gmail search supports relative-time and category operators, so a last-day, no-promotions query is valid.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Google Identity: Using OAuth 2.0 to Access Google APIs",
+    "anchor": "refresh token expiring in 7 days",
+    "supports": "An OAuth app left in Testing status gets refresh tokens that expire after seven days, which would break a daily digest weekly.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:67",
+    "title": "Standing orders: standing orders plus automations",
+    "anchor": "daily inbox triage",
+    "supports": "OpenClaw's own worked example of a scheduled job is a daily inbox triage that categorises mail and reports a summary to the owner.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server",
+    "title": "Configure the Gmail MCP server (Google for Developers)",
+    "anchor": "gmailmcp.googleapis.com/mcp/v1",
+    "supports": "Google runs a hosted Gmail MCP server over Streamable HTTP with OAuth; it is in the Workspace Developer Preview Program and its setup lists the gmail.readonly and gmail.compose scopes.",
+    "check": "unchecked",
+    "added_round": 6
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:71",
+    "title": "Connect MCP servers",
+    "anchor": "openclaw mcp login",
+    "supports": "OpenClaw connects to stdio, SSE and Streamable HTTP MCP servers, can expose only some of a server's tools, and signs in to an HTTP server that uses OAuth.",
+    "check": "unchecked",
+    "added_round": 6
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/nesting.md:13",
+    "title": "Sub-agents: nesting",
+    "anchor": "inherited tool policy",
+    "supports": "Inherited tool policy still applies to a sub-agent, beside sandbox inheritance and target-agent allowlists.",
+    "check": "unchecked",
+    "added_round": 13
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:11",
+    "title": "Sub-agent tool policy",
+    "anchor": "same profile and tool-policy pipeline as the parent or",
+    "supports": "A sub-agent goes through the parent or target agent's tool-policy pipeline first and then the sub-agent restriction layer; the sub-agent filter can narrow but cannot add a tool back.",
+    "check": "unchecked",
+    "added_round": 13
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/sessions-spawn-tool-B5tfhM3J.mjs:3244",
+    "title": "Installed code: sessions_spawn",
+    "anchor": "inheritedToolAllowlist: ctx.inheritedToolAllowlist",
+    "supports": "The spawn tool hands the asking agent's allow list and deny list to the child session, also when a different target agent is named.",
+    "check": "unchecked",
+    "added_round": 13
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/conversation-tool-policy-pipeline-D3eQnHfK.mjs:74",
+    "title": "Installed code: tool-policy pipeline",
+    "anchor": "inherited tools",
+    "supports": "The inherited allow and deny lists are applied as the last step of a session's tool-policy pipeline.",
+    "check": "unchecked",
+    "added_round": 13
+   }
+  ],
+  "absorbs": [
+   "F047",
+   "F016"
+  ],
+  "adds": [
+   "From F050 (IMAP mailbox watch on a personal Gmail (allowlisted senders, per-message reader)): In F047, note that F060 and F061 should run as scheduled sweeps of the read-only Gmail tool limited to named senders, in place of an IMAP watch. Say plainly what is lost: that limit becomes a fixed search query or an in-house check instead of the mail plugin's built-in sender list, and F060's headers-only setting for health senders belonged to the plugin and needs a new answer. The note that the IMAP plugin cannot text a person by itself moves to F051, where the plugin is still used on the dedicated school mailbox.",
+   "From F052 ('Did I get an email about X?' lookup and thread summary): Give F047 the example ('did the dentist confirm?' returns sender, date and gist, or a five-line thread timeline) and the hand-off: <p>-main spawns <p>-mail through subagents.allowAgents and gets a bounded answer back.",
+   "From F045 (More read-only Google data per person: Sheets, Docs, Drive and Contacts): Carry over one source only: the gog quickstart page (https://gogcli.sh/quickstart), which says a Google sign-in app left in Testing issues tokens that expire after seven days. G015's caveat relies on that page but does not list it. The Drive, Docs, Sheets and Contacts lookups themselves are not carried over.",
+   "From F060 (Appointment, refill, results and travel-change emails to .ics, reminders and alerts): If the morning mail digest (F016) is built, let its deadline lines mention appointment and travel-change mail, and keep the rule that mail from health senders is summarised from the subject line only. A parent who wants one appointment on the calendar can still send Happy the confirmation and get a calendar-file proposal (F010, F011).",
+   "From F061 (Tax document checklist (January to April)): Add a seasonal leg to the mail digest: on Saturdays from January to April the same read-only mail agent searches for arrival notices from the family's own list of expected tax-form senders and texts 'arrived' with the date or 'still missing'. It only knows that a notice email arrived (forms that come by post or sit in a portal show as missing), 'do not open the form' is an instruction and not an enforced limit, and the job is switched off by hand after filing."
+  ],
+  "wave": "A",
+  "section": "Mail access",
+  "includes": [
+   {
+    "id": "F047",
+    "name": "Per-person read-only Gmail (<p>-gmail MCP)"
+   },
+   {
+    "id": "F016",
+    "name": "07:00 morning email digest with action items (M4)"
+   }
+  ],
+  "history": [
+   "r1: edited depends_on. Kept as the operator guardrail for the roadmap's M4 rule: one mail agent per inbox with minimal tools and no files, web or runtime; the vendor's restricted-reader pattern is the mechanism. The record had no dependency list, so two are written in: it has no use without the read-only Gmail tool (F047), and the roadmap wanted this agent on a local model, which does not exist yet.",
+   "r1: kept; credible mention: IMAP email trigger: verify the security boundary",
+   "r1: merged with F047 (same batch). The locked-down per-person mail agent and the read-only Gmail tool that is the only thing it reads are one build with one account grant, so they become one wave C card; drafts, email-to-self and the morning digest stay separate.",
+   "r2: edited depends_on, caveats, unverified, safety. Kept: it is the roadmap's M4 rule (one locked-down mail agent per inbox) built on the vendor's restricted-reader pattern, and Google's own assistant offers the same 'find it in my Gmail' lookup. The dependency on the removed drafts item is dropped, and an open question is answered: sign-in tokens from a Google app left in Testing expire after seven days, so the app has to be published.",
+   "r2: kept; credible mention: Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "r3: edited value. Kept: it is the roadmap's M4 rule (one locked-down mail agent per inbox) built on the vendor's restricted-reader pattern, and the morning digest (F016) runs on it. Value drops from 5 to 4: since it was scored, the drafts and appointment-email features that were to share this reader have been removed, and the record now says Gmail and Google's Gemini app already answer 'did I get an email about X?', so what is left is asking from the iMessage thread and carrying the digest.",
+   "r3: kept; credible mention: Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "r3: merged with F016 (same batch). The locked-down per-adult mail agent with its read-only Gmail tool and the 07:00 digest (with its Saturday tax-form check) that runs on that agent are one M4 build behind one open decision, so they become one wave C card; round 1 kept the digest apart while it still carried reply drafts, which have since been removed, and effort rises to L for two medium-sized halves.",
+   "r4: edited unverified, safety, caveats, depends_on. Kept, as in round 3: it is the roadmap's morning-mail milestone built on the vendor's restricted mail-reader pattern, Google's own assistant offers the same lookup, and the whole card still waits on Tony's decision about personal mail and the cloud model. Two fixes: the open-questions list no longer says there is no read-only sign-in option (the upstream command reference lists one), and the safety note now says that a lookup's answer returns into the parent's own agent, which can hand tasks to the research helper, so that route needs its own test.",
+   "r4: kept; credible mention: Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "r5: edited caveats. Kept, as in rounds 3 and 4: it is the roadmap's morning-mail milestone built on the vendor's restricted mail-reader pattern, and Google's own assistant offers the same lookup. One thing the earlier rounds did not use is OpenClaw's own security page: it recommends a read-only reader agent that passes a summary to the main agent (the shape of the lookup) and says not to run untrusted inboxes on weaker or smaller models, so Tony's open choice between the cloud model now and a local model later is a trade between privacy and resistance to a misleading mail. Two caveats now say so; the roadmap's own allowance of one read-only mail tool for the reader is stated beside its rule that local models get no tools touching untrusted content.",
+   "r5: kept; credible mention: Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "r6 (Tony's decisions, 11 Oct): Tony: school mail lands in both parents' personal Gmail and Happy should read it through an existing Gmail connector with a token, not a separate mailbox. This card moves to wave B as the connection the school digest (F051) needs; its 07:00 digest and lookup stay as later steps.",
+   "r7 (Tony's decisions, 11 Oct (2)): Tony: move the whole-inbox features to wave B, because once the whole inbox is read the school digest is trivial; and use gog as the connector.",
+   "r8 (Wave definition, 12 Oct): moved from wave B to wave A. Tony asked on 12 Oct for mail reading to be in wave A; its 07:00 text ships there, and its lookup half opens wave B unless he chooses it over the coded check.",
+   "r9 (Wording to match the waves, 12 Oct): Wave wording brought in line with the 12 Oct wave definition: the 07:00 text is in wave A; the lookup opens wave B by default.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The card is rewritten to the form S6, S9 and S1 approve and to Tony's answers of 12 Oct: one weekday 07:00 text per parent with the school lines first, Gmail read tools only, for both parents now that Jordan has agreed, and 'did I get an email about X?' built with it after its own tests. The second school text, the sender filter and its check, the Saturday tax-form job and the extra model tool are out, and the coded check on who may call the connector becomes a rule this card adds when the house-rules plugin is first created.",
+   "r10: kept; credible mention: Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "r13 (Tony, 13 Oct: helpers): Tony, 13 Oct: \"go with the first version\" and \"we expect to adopt this pattern (Happy main agent hold tools, then dispatch sub-agent to narrow tool selection to do their specific work)\". The lookup is rewritten to it: the parent's own agent is allowed the reader's three Gmail read tools so that the reader it starts can use them, and is told never to call them itself. Also recorded: what the wave A runbook found about the gate, the token store and the wrapper, each waiting for his yes at its step A4."
+  ],
+  "demand": {
+   "ref": "https://support.google.com/gemini/answer/15229592?hl=en",
+   "title": "Connect the Google Workspace app to Gemini Apps - Gemini Apps Help",
+   "supports": "Google's own assistant offers consumers summaries and quick answers drawn from their Gmail, the same read-only lookup this gives each adult's mail agent; opened again in this round."
+  },
+  "depends_on": [
+   "G003 in its small form: the three scheduler switches and the short jobs script, which creates each 07:00 job with its owner's handle read from the family file. The job is made by that script, not by the scheduling tool, so Jordan's copy needs no command-owner right",
+   "gog installed at a pinned version, with its read-only, service and tool-filter options confirmed on the installed program",
+   "A Google Cloud project, sign-in client and consent screen published to In production: Tony sets these up by hand at execution",
+   "Each parent's own approval of read-only Gmail on Google's screen: Tony first, then Jordan, who has agreed",
+   "One firewall rule: the mail connector may reach Google and nothing else. Tony accepted on 12 Oct that mail is read with this one rule before the full firewall and the outbound proxy exist. The wave A runbook builds the gate as one blocking rule plus a small local proxy for the connector, because a firewall rule cannot name Google's hosts for this program; his yes to that is asked at its step A4",
+   "Tony provides at execution: a second Google account used only as a test mailbox for planted mail, and a capped model key for each mail reader",
+   "Tony provides at execution: the school senders' addresses, used as a hint in the job's message for the school lines (F051), not as a filter",
+   "The Zero Data Retention application to OpenAI filed and its date written down; mail does not wait for the answer (Tony, 12 Oct)"
+  ],
+  "review_notes": []
+ }
+]

@@ -1,0 +1,31 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: ntfy
+    receivers:
+      - uid: ntfy-iphone
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          # File holds https://ntfy.sh/<topic>?template=grafana (from SOPS via stage.sh runtime/).
+          url: $__file{/Users/happy/.config/happy/ntfy-grafana-url}
+          httpMethod: POST
+          maxAlerts: '5'
+          # Only rule names and summaries; never label dumps, values or links. No '$' (provisioning interpolates it).
+          title: '{{ if eq .Status "firing" }}FIRING{{ else }}RESOLVED{{ end }}: {{ .CommonLabels.alertname }}'
+          # A query error arrives as alertname DatasourceError carrying the failed rule's own summary,
+          # which would read like the problem itself; say what it is instead.
+          message: '{{ range .Alerts }}{{ if eq .Labels.alertname "DatasourceError" }}Cannot evaluate rule: {{ .Labels.rulename }} (query failed; is VictoriaMetrics up?){{ else }}{{ .Annotations.summary }}{{ end }}{{ "\n" }}{{ end }}'
+  - orgId: 1
+    name: healthchecks
+    receivers:
+      - uid: hc-alerts
+        type: webhook
+        # Only the watchdog comes here: each notification is a ping, and a "resolved" must not count as one.
+        disableResolveMessage: true
+        settings:
+          # File holds the healthchecks.io ping URL of the "alerts" check (from SOPS via stage.sh runtime/).
+          url: $__file{/Users/happy/.config/happy/hc-alerts-url}
+          httpMethod: POST
+          payload:
+            template: 'watchdog'

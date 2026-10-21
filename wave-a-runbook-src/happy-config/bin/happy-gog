@@ -1,0 +1,31 @@
+#!/bin/zsh -f
+# happy-gog <sign-in> <gog arguments...>: run gog against ONE stored Google sign-in. Runs as happy.
+# Each sign-in (tony-gmail, test-gmail, later jordan-gmail) has
+#   - its own folder, ~/.config/happy/gog/<sign-in>: gog's config, OAuth client metadata and the
+#     short-lived state of a sign-in in progress (GOG_HOME);
+#   - its own namespace in happy's login Keychain, happy-gog-<sign-in>, holding the refresh token and
+#     the OAuth client secret (gog keeps both in the keyring).
+# A gog process started through this wrapper therefore holds exactly one Google sign-in.
+# It also has exactly one way out: the local egress proxy (egress/tinyproxy.conf), which opens
+# HTTPS tunnels to three Google hosts and refuses every other host. gog reads HTTPS_PROXY for all
+# its requests and passes its environment to the children its MCP server starts. Nothing here can
+# switch the proxy off. LuLu blocks direct connections by gog while happy's desktop owns the
+# screen, so a gog started without these variables reaches nothing then.
+# Used by: the sign-in steps and the by-hand searches (happy's Terminal), mcp.servers.<sign-in> in
+# openclaw.json (the gateway starts it), and happy-signin-check.
+set -eu
+name=${1:?usage: happy-gog <sign-in> <gog arguments>}
+shift
+[[ $name =~ '^[a-z][a-z0-9]{1,30}-gmail$' ]] || { print -u2 "happy-gog: bad sign-in name: $name"; exit 2; }
+export HOME=/Users/happy
+export GOG_HOME=$HOME/.config/happy/gog/$name
+export GOG_KEYRING_BACKEND=keychain
+export GOG_KEYRING_SERVICE_NAME=happy-gog-$name
+# Nothing inherited may point gog at another sign-in, client or keyring.
+unset GOG_ACCOUNT GOG_CLIENT GOG_CONFIG_DIR GOG_DATA_DIR GOG_STATE_DIR GOG_CACHE_DIR GOG_KEYRING_PASSWORD \
+      GOG_ACCESS_TOKEN GOG_AUTH_MODE GOG_ENABLE_COMMANDS GOG_ENABLE_COMMANDS_EXACT GOG_DISABLE_COMMANDS
+unset NO_PROXY no_proxy ALL_PROXY all_proxy
+export HTTPS_PROXY=http://127.0.0.1:8877 https_proxy=http://127.0.0.1:8877
+export HTTP_PROXY=http://127.0.0.1:8877 http_proxy=http://127.0.0.1:8877     # plain http too, should gog ever use it
+[[ -d $GOG_HOME ]] || /usr/bin/install -d -m 700 "$GOG_HOME"
+exec /opt/homebrew/bin/gog "$@"

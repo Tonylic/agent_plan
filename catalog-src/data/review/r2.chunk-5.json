@@ -1,0 +1,1341 @@
+[
+ {
+  "id": "G008",
+  "origin": "9 Oct",
+  "name": "Operator self-checks: daily integration health and credential expiry, security audit after every update and monthly",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "Host-side, read-only checks that text Tony only when something is broken or has changed: an expired or expiring sign-in, a failed channel probe, a plugin that did not load, a new audit finding, the firewall or FileVault off, a new listening port, updates pending. The monthly run also carries the operator's standing checklist: spend caps, backups, a review of standing approvals and key rotation.",
+  "example": "Trigger: the deploy script finishes an OpenClaw update; ten minutes later Tony gets 'Security audit: 0 critical, 1 new warning (a plugin now requests exec)'.",
+  "how": "Daily: a command automation runs `openclaw health --json`, `channels status --probe`, `models status --check` and, once installed, `gog auth list --check`, reading each entry and not exit codes. After every update and monthly: a happy-deploy script works through the bundled healthcheck checklist host-side (`openclaw security audit --deep` with `--json`, `gateway status --deep`, `doctor --lint`, then listening ports, firewall, FileVault, Time Machine and the software-update schedule), compares findings with the previous run and prints `NO_REPLY` when nothing changed; accepted findings go into `security.audit.suppressions`. Monthly checklist lines: every new agent or key has its own capped OpenAI project and a term in the daily cost alert; a quarterly restore drill into a scratch folder; each new store is inside the nightly archive. The roadmap's two other standing lines ride on the same monthly run: review the standing approvals, and rotate keys each quarter.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "The roadmap's M1 Grafana alerts already cover 'gateway down' and 'iMessage unhealthy', so the new work is expiring sign-ins and model credentials, plugins that failed to load and a live channel probe; do not build the same alert twice.",
+   "The Google half of the daily check waits until the gog command-line tool is installed.",
+   "The roadmap already says to re-run the audit after each update; this only makes it automatic and change-based.",
+   "Plain doctor can migrate state, so scheduled checks use the lint form, and the audit's fix flag is never used in a scheduled job.",
+   "The deep audit probes the live Gateway and loads plugin security collectors, so it runs while the Gateway is up; whether it can run from the scheduler as the happy user without the Gateway token on the command line is untested.",
+   "Spend caps, the daily budget alert and the nightly verified backup already exist, so what is carried here is three checklist lines and not a feature; eval-clone spend is labelled 'unknown' and the daily alert does not see it.",
+   "The backup archive holds sign-ins and keys and is not encrypted by OpenClaw, so it must never be copied to iCloud or any unencrypted place.",
+   "What the channel probe reports for a Basic-mode iMessage account is unverified."
+  ],
+  "corrections": [],
+  "unverified": [
+   "gog is not installed on the Mac mini today, so the Google half cannot run yet.",
+   "Whether OpenClaw's Brave search plugin exposes Brave's remaining-quota header; if not, quota needs a direct probe call or the dashboard.",
+   "What the channel probe reports for a Basic-mode iMessage account (the 9 Oct text mentions a private API probe that does not apply with SIP on).",
+   "Whether the deep audit can run from the scheduler as the happy user without passing the Gateway token on the command line",
+   "How long a deep audit takes on this install"
+  ],
+  "safety": "Read-only and host-side: no agent gains exec or any other tool, no model reads the output, and the result goes only to Tony.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/health.md:43",
+    "title": "Health CLI (installed docs)",
+    "anchor": "per-account probes",
+    "supports": "The JSON health snapshot lists channels, account probes, plugin load state and delivery-queue warnings.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/channels.md:37",
+    "title": "Channels CLI (installed docs)",
+    "anchor": "channels status --probe",
+    "supports": "This is the documented live check for channel accounts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/models.md:88",
+    "title": "Models CLI (installed docs)",
+    "anchor": "--check",
+    "supports": "The check mode returns exit codes for missing, expired or expiring model credentials without making a model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:49",
+    "title": "Bundled gog skill",
+    "anchor": "gog auth list --check",
+    "supports": "The Google CLI's own guidance is to inspect every reported account entry because its exit status does not prove each token is valid.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Google: Using OAuth 2.0 to Access Google APIs",
+    "anchor": "expiring in 7 days",
+    "supports": "An OAuth app left in Testing status gets refresh tokens that die after a week; tokens also die on a password change with Gmail scopes or six months of disuse.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh",
+    "title": "gog (gogcli) home page",
+    "anchor": "gogcli",
+    "supports": "gog is a real Google Workspace command-line tool installed from a Homebrew tap.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api-dashboard.search.brave.com/documentation/guides/rate-limiting",
+    "title": "Brave Search API: Rate limiting",
+    "anchor": "X-RateLimit-Remaining",
+    "supports": "Brave reports remaining per-second and monthly quota in response headers and answers 429 when a limit is hit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/health.md:9",
+    "title": "Health checks",
+    "anchor": "channel health without guessing",
+    "supports": "OpenClaw's own guide presents health checks, probe endpoints and uptime monitoring as the supported way for an operator to verify that the Gateway and its channels work.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/healthcheck/SKILL.md:41",
+    "title": "healthcheck skill: read-only checks",
+    "anchor": "openclaw security audit --deep",
+    "supports": "The bundled checklist starts with the deep security audit, a deep gateway status and a lint-only doctor run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/security.md:20",
+    "title": "CLI reference: openclaw security",
+    "anchor": "openclaw security audit --json",
+    "supports": "The audit has machine-readable output.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/model-usage/SKILL.md:29",
+    "title": "model-usage skill",
+    "anchor": "CodexBar's local cost logs",
+    "supports": "The model-usage skill reads CodexBar logs for Codex or Claude, not Gateway usage.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/running-the-audit.md:13",
+    "title": "Running the security audit",
+    "anchor": "after any config change",
+    "supports": "OpenClaw tells operators to run the security audit after any configuration change, the practice this job automates and reports only on change.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "OCL-13"
+  ],
+  "adds": [
+   "From G004 (Per-person and per-agent spend caps with a daily cost line): Carry one checklist line: before a new agent or key (mail, voice) goes live it gets its own OpenAI project with a hard monthly limit, a row in the caps file and a budget term in the 'Daily model cost over budget' alert, and the monthly check compares the registry's agents against both. Also carry the known gap that eval-clone spend is labelled 'unknown', so the daily alert does not see it; /usage (OCL-06) already prints a cost summary on request.",
+   "From G007 (Nightly backups and a quarterly restore drill): Carry two checklist lines: a quarterly restore drill with a reminder to Tony (`openclaw backup restore --target` into a scratch folder), and a check that each new store (the household database from F031, the wiki vault from F043, plugin state files) is inside the nightly archive or has its own tar step. Keep the warning that the archive holds sign-ins and keys and is not encrypted by OpenClaw, so it must never be copied to iCloud or any unencrypted place."
+  ],
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [
+   {
+    "id": "OCL-13",
+    "name": "Security audit after every update and monthly (healthcheck checklist, security audit --deep)"
+   }
+  ],
+  "history": [
+   "r1: edited caveats. Kept: OpenClaw documents health checks and uptime monitoring as the operator's way to know the Gateway and channels are working. One caveat is added because the roadmap's M1 alerts already cover 'gateway down' and 'iMessage unhealthy', so the new work here is credential expiry and plugin state.",
+   "r1: kept; credible mention: Health checks",
+   "r1: merged with OCL-13 (same batch). The daily integration-health watch and the change-based security audit are both read-only host jobs that text only Tony over the same delivery path, so they become one operator self-check card that also carries the checklist lines left over from the removed spend and backup entries.",
+   "r2: edited how, depends_on, effort, description. Kept on OpenClaw's own health-check guide. The merged card is two host scripts that compare against the previous run, so its effort is M and not S; a leftover dependency on the parents' audit digest (a later wave) is dropped, and the roadmap's two other standing lines (review of standing approvals, key rotation) join the monthly checklist.",
+   "r2: kept; credible mention: Health checks"
+  ],
+  "demand": {
+   "ref": "docs/gateway/health.md:9",
+   "title": "Health checks",
+   "supports": "OpenClaw's own guide presents the health commands, probe endpoints and uptime monitoring as the operator's way to verify that the Gateway and its channels work without guessing."
+  },
+  "depends_on": [
+   "G003 jobs registry",
+   "gog installed on the Mac mini (for the Google sign-in check only)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "G006",
+  "origin": "9 Oct",
+  "name": "What Happy did and what it remembered: a weekly review, and forgetting a conversation on request",
+  "tier": 2,
+  "cluster": "operator-platform",
+  "description": "On request, or in one Sunday text, each parent sees what Happy did on their behalf (reminders created, list items added, texts sent, approvals given) and what it saved to their memory that week. On request Tony clears what one conversation left in memory, previewed first: the forget command removes the parts it tracked and lists the notes Happy wrote itself, which are then deleted by hand.",
+  "example": "Sunday text: 'This week I set 4 reminders for you, added 6 items to Groceries, sent 2 texts to Jordan, asked you for 1 approval (given) and saved 3 notes to memory.' Or a parent asks 'what did you do today?' and gets the same list for today.",
+  "how": "Actions (G006): `openclaw audit --kind tool_action` gives tool names and outcomes, never arguments, so the target of each action comes from an in-house record (an `after_tool_call` hook, or the journal rows the write tools keep for undo, CRT-01) in one table in the household store (F031). A command automation renders the Sunday text from that table with no model; a small read tool that returns only the asker's own rows answers on request. Memory (F085): the week's saves come from the same per-write record, or from a weekly isolated automation per adult limited to `memory_search` and `memory_get`. Forgetting (F085, operator runbook): `openclaw memory forget --agent <id> --session <id-or-key> --dry-run`, read the report, repeat without `--dry-run`, then hand-delete the lines listed under `curatedWrites`.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "The digest, the memory review and the week-ahead brief (F014) would otherwise be three Sunday texts to the same parent, so the first two go out as one.",
+   "OpenClaw's own ledger leaves out arguments on purpose, so the in-house table that holds item text and recipients needs a retention limit, which is not yet defined.",
+   "Forgetting works per conversation, not per topic: the forget command selects whole sessions, deletes at once unless `--dry-run` is passed, and leaves the transcripts and any reworded copies.",
+   "Lines Happy wrote into the memory files itself after a 'remember this' are listed for review but not deleted, so Tony removes them by hand; forgetting a single topic is likewise a hand edit.",
+   "Lines in MEMORY.md carry no date unless the agent writes one, so the weekly memory list is reliable only when it comes from the per-write record and not from the file.",
+   "Whether switching on message audit rows needs a Gateway restart is unclear, because the two installed pages disagree.",
+   "The mail-session exclusion setting only keeps those sessions out of automatic ingestion, which is switched off, so today it is a backstop that changes nothing."
+  ],
+  "corrections": [
+   "'Forget what I said about X works' (9 Oct description) is not a platform ability: memory forget selects whole sessions by id, hook source or participant, never by topic or message text, and reworded copies are outside its cleanup. Topic-level forgetting is a hand edit of the memory file.",
+   "'Promote via openclaw memory promote --apply' will usually promote nothing a parent just confirmed: by default a candidate needs a 0.75 score, three recalls and three distinct queries. Either pass lower thresholds or write the confirmed line to MEMORY.md directly."
+  ],
+  "unverified": [
+   "Whether turning on message audit rows needs a Gateway restart: the audit CLI page says restart, the Gateway audit page says audit settings apply without one.",
+   "Retention for the custom side-effect table in home-store is undefined.",
+   "With dreaming switched off (roadmap decision) the session-exclusion setting has little to act on today; its effect was not tested.",
+   "The memory-wiki dashboards named on 9 Oct (privacy review, stale pages) are documented, but the plugin is not enabled on this install.",
+   "What a forget preview reports on this install was not run; the docs say direct edits are listed for review and are not given per-entry lineage.",
+   "How the weekly job tells this week's saves from older lines in MEMORY.md, which carry no date unless the agent writes one; the per-write record the audit digest (G006) keeps would be the reliable list."
+  ],
+  "safety": "The review only reports: each parent sees only their own agent's actions and saves, a limit enforced in the read tool's code because the table sits in the shared store. The riskier part is forgetting, which deletes memory at once; it stays an operator command at the Mac, with a preview first, and is never handed to a chat command.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/audit.md:21",
+    "title": "Audit history (installed docs)",
+    "anchor": "never stores prompts, message bodies",
+    "supports": "The built-in ledger records who ran what and how it ended, never the arguments, so it cannot say which list item or recipient.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/audit.md:52",
+    "title": "Audit CLI (installed docs)",
+    "anchor": "--kind tool_action",
+    "supports": "Tool activity can be pulled as JSON for a time window from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1284",
+    "title": "Plugin hook types (installed source)",
+    "anchor": "PluginHookAfterToolCallEvent",
+    "supports": "The after-tool hook receives the tool name, its parameters, result, error and duration, which is what a side-effect ledger needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/approvals.md:190",
+    "title": "Approvals CLI (installed docs)",
+    "anchor": "pending requests are live Gateway state",
+    "supports": "The approvals command lists and resolves pending requests only; there is no history listing.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+    "title": "Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+    "anchor": "ledger of actions",
+    "supports": "OpenAI's guidance says it may be particularly important that whoever deploys an agent gives the user a ledger of the actions the agent took, as a lighter way than approvals to let people see what was done for them.",
+    "check": "unchecked",
+    "added_round": 2
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/memory-config.md:650",
+    "title": "Memory configuration reference (installed docs)",
+    "anchor": "memoryPolicy.excludeSessions",
+    "supports": "The exclusion list only keeps matching sessions out of dreaming ingestion and backfill; it does not erase memories or limit workspace writes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/memory.md:210",
+    "title": "Memory CLI (installed docs)",
+    "anchor": "--dry-run",
+    "supports": "memory forget deletes at once with no confirmation unless run as a preview, so the runbook must always preview first.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory-provenance.md:260",
+    "title": "Memory provenance and deletion (installed docs)",
+    "anchor": "Paraphrases and other copies",
+    "supports": "Reworded copies of a fact, exports and backups are outside what the forget command cleans.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:56",
+    "title": "Automation payloads (installed docs)",
+    "anchor": "--tools",
+    "supports": "A scheduled job can be limited to a named tool list, which keeps the weekly review run read-only.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F085"
+  ],
+  "adds": [],
+  "wave": "B",
+  "section": "Operator checks and recovery",
+  "includes": [
+   {
+    "id": "F085",
+    "name": "Weekly memory review, and forgetting a conversation on request"
+   }
+  ],
+  "history": [
+   "r1: edited who. Kept: OpenClaw's audit history exists to answer which tool actions a run executed. The digest is read by the parents, so the audience label is corrected from operator to adults.",
+   "r1: kept; credible mention: Audit history",
+   "r2: edited description, example, how, depends_on, caveats, safety. Kept, on a stronger source: OpenAI's guidance for agent builders says users should be given a ledger of what the agent did, and OpenClaw's audit history supplies the raw rows. An example, dependencies and a privacy note are added, because the entry stores what OpenClaw's own ledger leaves out on purpose.",
+   "r2: kept; credible mention: Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "r2: merged with F085 (same purpose). The audit digest of what Happy did and the weekly review of what it saved to memory are the same Sunday look at Happy's own activity, sent to the same adult in the same wave, and each record already says to send them as one text; forgetting a conversation stays a separate operator step on the same card."
+  ],
+  "demand": {
+   "ref": "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+   "title": "Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "supports": "OpenAI's guidance says it may be particularly important that whoever deploys an agent gives the user a ledger of the actions the agent took, as a lighter way than approvals to let people see what was done for them."
+  },
+  "depends_on": [
+   "F031 household store (the side-effect table)",
+   "F041 durable per-person memory (the write path whose saves this reviews)",
+   "CRT-01 undo journal, if built: one table serves both",
+   "Message audit rows switched on (`logging.audit.messages`), for the 'texts sent' line"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "CRT-05",
+  "name": "Recovery card for the second adult (a bus factor of one)",
+  "tier": 2,
+  "cluster": "recovery and trust",
+  "description": "One printed page and a sealed envelope so Jordan can tell that Happy is down, pause it, and bring it back after a power cut while Tony is travelling. Today every recovery step, including the disk unlock after a reboot, depends on Tony being at home.",
+  "example": "Trigger: a power cut while Tony is abroad. Happy stops answering and Jordan opens the card.",
+  "how": "No new software. The card lists: (1) how to tell: no reply within a few minutes; also add Jordan as a second recipient of the existing dead-man alert. (2) The pause phrase (G005) and that it is always safe to use. (3) After a power cut the Mac waits at the FileVault screen: type the password from the envelope at the Mac, then log in the happy user so Messages runs. Apple's remote unlock over SSH needs Apple silicon, macOS 26, Remote Login on and a network connection, and the roadmap notes it works from the home network only, so it does not help someone who is away. (4) The two commands an admin may need: 'openclaw gateway status' and 'openclaw gateway restart' (the docs say not to chain stop and start). (5) Who to call. The envelope holds what the card needs and where the config repo and backups are. Separately, set a Legacy Contact on the Apple Accounts involved so the account behind Happy's iMessage identity can be recovered in the worst case; Apple's legacy access leaves out Keychain passwords, so the API keys still depend on the nightly backup (its checklist lines are now in G008). Rehearse once: Tony leaves the house, Jordan restarts the Mac and brings Happy back from the card. Least privilege, from review: the happy user holds a secure token on this Mac (read with sysadminctl in this review), and Apple's FileVault management page says unlocking needs a secure token and, on Apple silicon, volume ownership. If happy's password unlocks the disk at the startup screen, that one step also logs happy in, which is all a power cut needs. The first envelope then holds only happy's password and the admin credential goes in a second envelope for repairs. Confirm this at the rehearsal before relying on it.",
+  "who": "operator",
+  "risk": "medium",
+  "readiness": "now",
+  "depends_on": [
+   "decision: what goes in Jordan's envelope: the happy user's password only (enough for a restart if it unlocks the disk; it already opens every person's agent data) or also an admin credential (break-glass access that adds Tony's own account and the config repo)",
+   "G005 kill phrase",
+   "the existing nightly backup (its checklist lines are now in G008)",
+   "a small UPS (already suggested in the roadmap)"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "The envelope is a credential on paper. The happy password alone already opens every person's agent data, because the gateway keeps it under that account; an admin credential adds Tony's own account and the config repo. That is the price of not being locked out.",
+   "A UPS only bridges short cuts. A long outage still ends at the FileVault screen.",
+   "Legacy Contact access needs the access key and a death certificate. It is for the worst case, not for a business trip.",
+   "If Apple locks the Apple Account that Happy uses, nobody at home can fix it quickly, and iMessage is the only channel."
+  ],
+  "safety": "Nothing is granted to any agent and no secret is typed into chat or stored in Happy's memory. The control plane stays Tony's in normal operation; the envelope is a deliberate exception that is obvious once used, because it is sealed.",
+  "unverified": [
+   "Whether a standard, non-admin macOS account for Jordan can be enabled to unlock FileVault at boot on this Mac; the Apple page read in this run does not say who may unlock.",
+   "Whether the gateway's launchd service comes up for the happy user before that user logs in at the console after a reboot.",
+   "Whether the happy user is a volume owner and is offered at the FileVault startup screen. The secure token status was read; the unlock itself was not tried."
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G007",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/intro-to-filevault-dep82064ec40/web",
+    "title": "Intro to FileVault - Apple Support (Apple Platform Deployment)",
+    "anchor": "a network connection is available",
+    "supports": "On Apple silicon with macOS 26 or later, FileVault can be unlocked over SSH after a restart when Remote Login is on and the Mac has a network connection; credentials are still required.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/124963",
+    "title": "What's new for enterprise in macOS Tahoe 26 - Apple Support",
+    "anchor": "Remote Login is enabled",
+    "supports": "Apple's release notes for macOS 26.0 announce the SSH unlock and its two conditions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102631",
+    "title": "How to add a Legacy Contact for your Apple Account - Apple Support",
+    "anchor": "Legacy Contact",
+    "supports": "A chosen person can get account data after the owner's death with an access key and a death certificate; Keychain contents such as passwords are excluded.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/index.md:208",
+    "title": "Gateway runbook: operator commands",
+    "anchor": "openclaw gateway restart",
+    "supports": "Restart is the documented single command for bringing the Gateway back; chaining stop and start is discouraged.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/deployment/manage-filevault-with-device-management-dep0a2cb7686/web",
+    "title": "Manage FileVault with device management - Apple Support (Apple Platform Deployment)",
+    "anchor": "secure token",
+    "supports": "A user needs a secure token, and on Apple silicon must also be a volume owner, to work with FileVault unlock; the page does not make admin status a condition.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.1password.com/emergency-kit/",
+    "title": "Get to know your Emergency Kit (1Password Support)",
+    "anchor": "Give a copy to someone",
+    "supports": "A shipping password manager tells customers to print a recovery sheet and give a copy to someone they trust, such as a spouse, so access survives when the owner is unavailable.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All four sources hold. The entry assumes the envelope must be an admin credential; on this Mac the happy user holds a secure token, which Apple names as the requirement for unlocking FileVault, so the power-cut case may need only the non-admin happy password. Split the envelope and test it at the rehearsal."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator checks and recovery",
+  "includes": [],
+  "history": [
+   "r1: edited caveats. Kept: the roadmap itself says that after a power cut Happy stays down until Tony unlocks the Mac from home, and a printed recovery sheet held by a trusted second person is what a mainstream password manager tells its customers to keep. Two caveats said the same thing about the envelope and are merged.",
+   "r1: kept; credible mention: Get to know your Emergency Kit (1Password Support)",
+   "r2: edited how, depends_on. Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password tells its customers to print a recovery sheet and give a copy to someone they trust. Pointers to the removed backup entry now point at the operator self-checks (G008), and two overlapping 'decision' lines about the envelope become one.",
+   "r2: kept; credible mention: Get to know your Emergency Kit (1Password Support)"
+  ],
+  "demand": {
+   "ref": "https://support.1password.com/emergency-kit/",
+   "title": "Get to know your Emergency Kit (1Password Support)",
+   "supports": "A shipping password manager tells customers to print a recovery sheet, keep it somewhere safe and give a copy to someone they trust, such as a spouse, so access survives when the owner is unavailable."
+  }
+ },
+ {
+  "id": "MAC-04",
+  "name": "Paired-device command deny list before any Mac or phone is paired (computer.act, Mac host commands, iPhone data commands), plus the off switches",
+  "tier": 3,
+  "cluster": "Computer use: guardrails",
+  "description": "Make 'no agent can drive, run commands on or view any Mac, or pull data from a paired phone' an explicit Gateway setting instead of a side effect of no app being installed, and write down the three ways to switch computer control off. Nothing is paired today, so the family sees no change; it is the gate the iPhone app (OCL-01) and the screen-control pilot (MAC-02) must pass first.",
+  "example": "Tony adds the deny list to the config repo now, before any Mac or phone is paired. Later, during a pilot, 'Happy, stop everything' also halts desk, and he can flip the switch in the Mac app or remove the Accessibility grant.",
+  "how": "Add `computer.act` to `gateway.nodes.commands.deny` in happy-config, and while no Mac node is wanted also every desktop host command the docs list as arriving with a Mac pairing: `system.run`, `system.run.prepare`, `system.which`, `browser.proxy`, `browser.proxy.upload.v1`, `mcp.tools.call.v1`, `screen.snapshot` and `desktop.stream`. A deny entry always wins over platform defaults and allow entries, matches exact command names, withholds the command (for `computer.act`, together with the node's `computer` capability) and is logged. The list is Gateway-wide, so the same change carries the phone ceiling for the iPhone app entry (OCL-01): deny the iOS default data commands (`location.get`, `contacts.search`, `calendar.events`, `reminders.list`, `photos.latest`, `motion.activity`, `motion.pedometer`) and the four push-to-talk commands (`talk.ptt.start`, `talk.ptt.stop`, `talk.ptt.cancel`, `talk.ptt.once`), which any node that advertises talk otherwise gets by default and which come off the list only when Talk (VOX-01) is set up; keep the opt-in commands (`camera.snap`, `camera.clip`, `screen.record`, `health.summary`, `contacts.add`, `calendar.add`, `reminders.add`) out of `gateway.nodes.commands.allow`, and set `gateway.nodes.pluginTools.enabled: false` so a paired device cannot publish tools to agents. Keep `computer` absent from every agent's tool lists; the per-person agents already deny `group:nodes`, which contains it, and the inbox agent denies every tool. Set `gateway.nodes.pairing.sshVerify: false` (SSH-verified pairing is on by default) and do not use setup links for a Mac, since either can approve a node's first command surface automatically. Leave `gateway.nodes.pairing.autoApproveCidrs` unset (it is off unless set), so no device is approved by network address alone. The deny list covers paired nodes; control of the Gateway's own desktop is a separate route that the docs say needs the `cua-computer` plugin explicitly enabled on the Gateway host, so never run `openclaw plugins enable cua-computer` on the Mac mini. For reference, the documented gate stack for screen control is: tool policy exposes `computer` to an agent; gateway command policy; device pairing and then a second, distinct approval of the node's command surface; the switch inside the Mac app; and the macOS permissions. Exec approvals gate shell commands on a node, not clicks. Off switches during a pilot: (1) put the deny line back (command-policy changes reach connected nodes under the default hybrid reload, with no restart); (2) the G005 kill file checked in the desk hook; (3) on the Mac, turn off 'Allow Computer Control' (rechecked at each invocation) or revoke Accessibility.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Without this, once OpenClaw.app is installed on any family Mac, its pairing is approved and the macOS permissions are granted, pointer and keyboard control is available to any agent later given `computer` and to any caller with operator write access, because `computer.act` is in the macOS default allowlist and the app switch defaults on.",
+   "The deny list is global, not per Mac. The per-Mac controls are the pairing approval and the switch inside the app, so a pilot that lifts a deny entry lifts it for every paired node.",
+   "`screen.record` is already off unless explicitly allowed; `screen.snapshot` and `desktop.stream` are not, once a pairing that declares them is approved.",
+   "The two-step approval (device, then command surface) is not unconditional: SSH-verified pairing and setup-code enrollment can approve a node's first surface automatically.",
+   "The same pairing that would arm `computer.act` also brings shell execution, a browser proxy, node MCP calls and a desktop stream, which is why the deny list names those commands too."
+  ],
+  "safety": "Pure tightening. It turns an implicit state into a limit in config that a prompt cannot change.",
+  "unverified": [
+   "That deny entries for system.run and the other host commands apply exactly as for computer.act; the docs state the rule for exact command names in general.",
+   "That denying browser.proxy and mcp.tools.call.v1 for nodes leaves the sandboxed research browser and any MCP servers on the Gateway itself untouched. No node is paired today; check right after the change.",
+   "Whether `gateway.nodes.commands.deny` also blocks the `computer` tool's Gateway-desktop route (`target: \"gateway\"`); the docs describe a deny entry as withholding a command from a node's advertised surface.",
+   "Which command name sits behind the iPhone app's 'Screen snapshot' capability: the docs list `screen.snapshot` as a desktop host command and do not name the phone's, so read the phone's declared commands at pairing (OCL-01) and deny that one by its exact name."
+  ],
+  "overlaps_existing": [
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:225",
+    "title": "Computer use: deny example",
+    "anchor": "deny: [\"computer.act\"]",
+    "supports": "The documented way to keep the command off is an entry in gateway.nodes.commands.deny.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:219",
+    "title": "Run a node host: Pair + name",
+    "anchor": "request IDs are distinct",
+    "supports": "Device approval and command-surface approval are two separate steps, and an unapproved surface has no usable commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:34",
+    "title": "Node command policy: platform defaults",
+    "anchor": "computer.act",
+    "supports": "computer.act is in the default allowlist for macOS nodes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:401",
+    "title": "Paired node desktops",
+    "anchor": "hybrid reload mode",
+    "supports": "Command-policy changes reach connected nodes without a gateway restart.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:131",
+    "title": "Config hot reload: restart table",
+    "anchor": "gateway.nodes.commands",
+    "supports": "Changes under gateway.nodes.commands apply without a gateway restart.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Correct, cheap and worth doing now, but too narrow: pairing a Mac app node also brings shell execution, a browser proxy, node MCP calls and a desktop stream, and the 'two separate approvals' claim has a documented default exception. Widen the deny list and close the auto-approval path.",
+   "All 7 sources check out and this is a config-only change that works today. Two corrections: hot-apply of command policy is documented, so nothing is left unverified, and the 'second approval' gate is skipped by setup links and SSH-verified pairing."
+  ],
+  "reviewed_by": 2,
+  "wave": "A",
+  "section": "The Mac and other computers",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, unverified, caveats. Kept: OpenClaw's own computer-use page shows the deny entry for an operator who wants the command off. Widened as both earlier reviewers asked, because pairing a Mac brings shell, browser-proxy, MCP and screen-viewing commands along with pointer control; the deny list now names every one of them, and a stale pointer to a removed entry is dropped.",
+   "r1: kept; credible mention: Computer use",
+   "r2: edited name, description, how, unverified, value, example. Kept on OpenClaw's computer-use page, and made the one wave-A card for every paired device: the iPhone deny lines that the phone entry (OCL-01) repeated now live here. Round 1 missed that SSH-verified pairing is on by default and that this release can also drive the Gateway's own desktop; with nothing paired today the value is 3, a cheap seatbelt.",
+   "r2: kept; credible mention: Computer use"
+  ],
+  "demand": {
+   "ref": "docs/nodes/computer-use.md:220",
+   "title": "Computer use",
+   "supports": "OpenClaw's computer-use guide tells an operator who does not want screen control to put the command on the Gateway deny list, and says a denied command is withheld and logged."
+  }
+ },
+ {
+  "id": "MAC-02",
+  "name": "Screen-control pilot: one stateless desk agent on a clean, resettable Mac VM (app setup, watching view and go-live test included)",
+  "tier": 3,
+  "cluster": "Computer use: agent design",
+  "description": "An experimental pilot, parked until there is a chore worth it: a dedicated agent with no memory and no other tools is the only holder of `computer`, and it drives a clean macOS virtual machine with no Apple Account, Messages or saved passwords, never happy's own desktop. A parent's agent hands it one bounded task and gets a short text result back; no family task is approved for it today.",
+  "example": "Operator pilot, not a family text yet: Tony gives desk one synthetic task from the acceptance set (a sample file on the clean desk, with a result that can be checked as a file). desk answers 'done, saved as result.txt' or 'stopped: a sign-in window appeared'.",
+  "how": "Clean desk (MAC-03): a macOS guest on the Mac mini built with Apple's Virtualization framework (for example the Lume CLI) and reset to a known snapshot before every run; OpenClaw.app is installed inside the guest, paired as its own node and granted Accessibility and Screen Recording there; files move only through the File Transfer plugin limited to one folder. Desk agent (MAC-02): `agents.entries.desk` with memory off, `tools.profile: minimal`, `computer` added and everything else denied, reached only by `sessions_spawn` from a parent's agent; a `before_tool_call` hook allowlists actions, checks the kill file and returns `requireApproval` on the first action of each run. Around it: Screen Sharing inside the VM only, so a person can watch, and a ten-task acceptance test with three planted-instruction cases.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "MAC-04 deny entries for `computer.act` and `screen.snapshot` lifted for the pilot; the deny list is Gateway-wide and not per device, so no other Mac may be paired while the pilot runs, and if the iPhone app (OCL-01) is paired its approved command list is re-read first",
+   "disk and memory on the Mac mini for a macOS guest",
+   "a route from the guest to the loopback-bound gateway (tailnet identity or SSH tunnel) and a firewall rule limiting the guest to the gateway address",
+   "`gateway.nodes.commands.allow` entries for the file commands",
+   "F019 spawn pattern",
+   "G005 kill switch",
+   "G009 family delivery",
+   "existing on-demand eval harness (for the acceptance test)",
+   "a named family chore that no app or script already handles (none approved today)"
+  ],
+  "value": 2,
+  "effort": "L",
+  "caveats": [
+   "The guest is not empty of secrets: OpenClaw.app inside it is signed in to the family gateway, so until the app is shown to run as a node with no operator rights, the agent driving the screen can open a console to everything the clean desk was built to keep away.",
+   "The gateway is bound to loopback and published only through Tailscale Serve, so the guest needs an SSH tunnel, its own tailnet identity or a wider gateway bind, and each of those changes the M0 baseline and needs its own review.",
+   "Pairing the Mac app pairs a whole node: shell execution, a browser proxy, node MCP calls and a desktop stream arrive together with pointer control.",
+   "A hook sees typed parameters and not meaning, so an action allowlist cannot stop the model clicking the wrong thing, and what exists on the controlled desktop is the real boundary.",
+   "The approval on the first action only proves that a parent started the task: the dozens of clicks after it run unreviewed, and the prompt is text only with no screenshot.",
+   "Red-team research on computer-use agents reports injected on-screen instructions succeeding in a large share of attempts, so the tool's built-in warning to the model is a tripwire and not a control.",
+   "A desktop that is never reset is the agent's memory, because files, open windows and the clipboard carry over from one run, or one parent, to the next.",
+   "Whether Computer Control works inside a macOS guest with a virtual display, and whether an approval raised inside a spawned desk run reaches the asking parent's chat, are both untested, and a pass on the acceptance test shows usefulness, not safety.",
+   "In OpenClaw 2026.9.7 the `computer` tool can also target the Gateway's own desktop once the `cua-computer` plugin is enabled on the Gateway host, and with no target given it tries a configured Gateway computer first. Never enable that plugin on the Mac mini, and have the hook require `target: \"node\"` with the guest's node id on every call, so a run can never land on happy's desktop."
+  ],
+  "safety": "desk reads untrusted content (the screen) and holds no memory, accounts or message tool; its ways out are whatever the controlled desktop can reach. The trifecta counts as respected only after the app's operator access inside the guest is removed or proven absent, guest egress is limited to the gateway, and the guest is reset before each run. Never-list items stay off that desktop.",
+  "unverified": [
+   "That `before_tool_call` receives the `computer` tool's action parameters in `event.params` the same way it does for other built-in tools.",
+   "That a spawned desk run returns its result to the requester under the family's session-visibility settings (the roadmap lists the same open question for research).",
+   "Where a plugin approval raised inside a spawned desk run is delivered. The docs promise same-chat approval for requests that originate from a chat and block a call that has no approval route; if the sub-run does not count as coming from the parent's iMessage chat, every desk task would fail closed.",
+   "Live behaviour of the hook on `computer` calls. The installed source wraps every built-in tool, `computer` included, with the before_tool_call hook, and the tool's schema has `action`, `node`, `text`, `app` and `url` parameters, but this was read, not run.",
+   "That OpenClaw.app's Computer Control (its TCC grants, its capture path and its 'verified unlocked desktop' check) works inside a macOS guest VM with a virtual display, including a guest running without a display window.",
+   "How to restrict a Lume guest's network to one host address.",
+   "Whether the Mac app can run in the guest as a node with no operator scopes.",
+   "Apple's licence for the installed macOS 27. The macOS Tahoe 26 licence, read in an earlier run, allows up to two additional macOS instances in virtual machines on an Apple-branded computer for personal, non-commercial use.",
+   "The guest's memory cost. OpenClaw's macOS VM page asks for about 60 GB of free disk per VM and does not state memory."
+  ],
+  "overlaps_existing": [
+   "F019",
+   "F041",
+   "G005",
+   "G009"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:94",
+    "title": "Computer use: the computer agent tool",
+    "anchor": "model-only",
+    "supports": "Screenshots stay with the model, are never auto-sent to chat, and on-screen content is to be treated as untrusted.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:75",
+    "title": "Tool policy: Tool groups",
+    "anchor": "group:nodes",
+    "supports": "`computer` is a named built-in tool in the nodes group and can be allowed or denied per agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:48",
+    "title": "Tool call policy hooks",
+    "anchor": "requireApproval",
+    "supports": "A plugin's before_tool_call hook can block a call or pause it for human approval based on the tool name and parameters.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/loop-detection.md:12",
+    "title": "Tool-loop detection",
+    "anchor": "tools.loopDetection",
+    "supports": "Loop detection is a per-agent setting and is off unless enabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/prompt-injection.md:34",
+    "title": "Prompt injection",
+    "anchor": "reader agent",
+    "supports": "OpenClaw recommends a tool-limited reader agent for untrusted content that passes a summary to the main agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "title": "Computer use guide (OpenAI)",
+    "anchor": "Treat screen content as untrusted",
+    "supports": "OpenAI tells developers that text on the screen cannot grant permission and must be treated as untrusted.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2505.21936",
+    "title": "RedTeamCUA: Realistic Adversarial Testing of Computer-Use Agents in Hybrid Web-OS Environments",
+    "anchor": "42.9%",
+    "supports": "An arXiv red-team study measured indirect prompt injection succeeding against commercial computer-use agents at rates from single digits to well over a third of attempts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:691",
+    "title": "Exec approvals: Approval flow",
+    "anchor": "Command-Return",
+    "supports": "The macOS app shows exec approval panels that are approved with a button or a keystroke.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals-advanced.md:309",
+    "title": "Exec approvals, advanced: Same-chat approvals",
+    "anchor": "supports both approval kinds",
+    "supports": "The web UI can resolve both exec and plugin approvals, and a chat that originated a request can approve it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:162",
+    "title": "Plugin permission requests: Decision behavior",
+    "anchor": "No approval route",
+    "supports": "A plugin approval with no connected approval surface is blocked rather than allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/mac/remote.md:9",
+    "title": "Remote control",
+    "anchor": "full remote control",
+    "supports": "The macOS app acts as a full remote control for a gateway running on another host.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:17906",
+    "title": "OpenClaw tool assembly",
+    "anchor": "wrapToolWithBeforeToolCallHook",
+    "supports": "Every tool in the built-in set, which includes the computer tool created at line 17625, is wrapped with the before_tool_call hook.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/computer-tool-CmTqrkDu.mjs:1193",
+    "title": "computer tool schema",
+    "anchor": "action: stringEnum",
+    "supports": "The computer tool takes a named action parameter that a hook can match on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:109",
+    "title": "iMessage: Approval polls and reactions",
+    "anchor": "channels.imessage.allowFrom",
+    "supports": "Over iMessage, /approve is authorized against the channel's allowFrom approver list, so any listed handle can resolve a request.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:119",
+    "title": "Sub-agents",
+    "anchor": "subagents.allowAgents",
+    "supports": "Which agents a given agent may spawn is set per agent with an allowAgents list.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "title": "Computer use tool (Anthropic)",
+    "anchor": "dedicated virtual machine or container",
+    "supports": "Anthropic's first precaution is a dedicated VM or container with minimal privileges, and the second is keeping account logins away from the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/trycua/cua/tree/main/libs/lume",
+    "title": "Lume (trycua/cua)",
+    "anchor": "Apple Virtualization Framework",
+    "supports": "Lume is a command-line tool that creates and runs macOS and Linux virtual machines on Apple's virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer)",
+    "anchor": "Running macOS in a virtual machine",
+    "supports": "Apple documents a supported way to run macOS as a guest on Apple silicon (only the page title was retrievable in this run).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/node-host.md:31",
+    "title": "Run a node host",
+    "anchor": "Tailscale identity headers",
+    "supports": "Node-role connections cannot authenticate with Tailscale identity headers and need token or password auth.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/file-transfers.md:39",
+    "title": "Node file transfers",
+    "anchor": "allowReadPaths",
+    "supports": "File access on a node is granted per path through read and write allowlists in the File Transfer plugin config.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/120421",
+    "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+    "anchor": "iPhone Mirroring",
+    "supports": "iPhone Mirroring needs Mac and iPhone signed in to the same Apple Account, so a guest without an account cannot use it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/macos.md:193",
+    "title": "macOS app: Open dashboard links",
+    "anchor": "shared owner profile",
+    "supports": "When a gateway uses a shared token or password and no personal sign-in, the app's dashboard runs as the shared owner profile.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSSequoia.pdf",
+    "title": "Software License Agreement for macOS Sequoia (Apple)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two additional macOS instances in virtual environments on an Apple-branded computer for personal, non-commercial use, among other purposes.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/virtualization/running-macos-in-a-virtual-machine-on-apple-silicon.json",
+    "title": "Running macOS in a virtual machine on Apple silicon (Apple Developer, documentation data)",
+    "anchor": "VZMacOSInstaller",
+    "supports": "Apple's sample project installs macOS from a restore image and runs macOS guests on Apple silicon with the Virtualization framework.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/legal/sla/docs/macOSTahoe.pdf",
+    "title": "Software License Agreement for macOS Tahoe 26 (Apple, PDF)",
+    "anchor": "two (2) additional copies",
+    "supports": "Section 2B(iii) permits up to two extra macOS instances in virtual machines on an Apple-branded computer, including for personal non-commercial use.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:57",
+    "title": "Node command policy",
+    "anchor": "Dangerous plugin node commands",
+    "supports": "Plugin node commands flagged dangerous stay blocked until listed in gateway.nodes.commands.allow.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/file-transfer/index.js:170",
+    "title": "File Transfer plugin: node host commands",
+    "anchor": "dangerous: true",
+    "supports": "The file.fetch command (block starting at line 165) and its sibling file and directory commands are registered as dangerous.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MAC-03"
+  ],
+  "adds": [
+   "From MAC-01 (Computer-control substrate: OpenClaw.app as the Mac node): Carry the setup facts: screen control on macOS works only through the signed OpenClaw.app (macOS 15 or later; a 2026.9.7 build exists), installed inside the clean VM and granted Accessibility and Screen Recording there, never to the shared node binary. Carry the warning that pairing the app pairs a whole node (shell execution with no prompts until its exec approvals are set to deny, Desktop sharing and Allow Computer Control both on by default) and puts a signed-in Gateway console on the controlled desktop.",
+   "From MAC-15 (Watch Happy work: Screen Sharing and the Control UI Desktop panel): Carry: a person watches pilot runs through macOS Screen Sharing limited to named users, switched on only inside the desk VM and never on happy's own session, with desktop.stream kept in the deny list unless the Control UI Desktop panel is wanted. Carry the two limits: nothing arbitrates between a human hand and the agent on a paired Mac, and Screen Sharing can lock the Mac when the last viewer leaves, which ends the run.",
+   "From MAC-05 (Computer-use acceptance test: ten household tasks before any go-live): Carry the gate: ten desk tasks that each end in a checkable file plus three planted-instruction cases, run on the clean desk with synthetic files; the suggested bar is at least 8 of 10 on three consecutive runs with no planted instruction followed, re-run after each OpenClaw or macOS update. Carry the caution that a pass shows usefulness, not safety, and that no benchmark figure for the family's own model was found."
+  ],
+  "review_notes": [],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "The Mac and other computers",
+  "includes": [
+   {
+    "id": "MAC-03",
+    "name": "A clean desk: control a macOS VM, not happy's own session"
+   }
+  ],
+  "history": [
+   "r1: edited name, description, example, depends_on, value, effort. This becomes the single entry for the screen-control pilot: the Mac app install (MAC-01), the watching view (MAC-15) and the go-live test (MAC-05) are steps of the same piece of work. Value drops to 2 and effort rises to L because the whole chain is the real cost and, with the form-filling pilot (MAC-07) removed, no family chore is approved for it yet.",
+   "r1: kept; credible mention: Computer use",
+   "r1: merged with MAC-03 (same batch). The clean macOS virtual machine exists only to give the stateless desk agent a desktop to drive, so the two halves of the screen-control pilot become one later card.",
+   "r2: edited depends_on, unverified, caveats. Kept as the one parked screen-control card. Its first dependency said the deny list would be lifted 'for exactly one node', which is impossible because the list is Gateway-wide; that is corrected, a repeated open question is dropped, and one limit round 1 missed is added: this release can also drive the Gateway's own desktop, so the pilot has to pin the guest.",
+   "r2: kept; credible mention: Computer use"
+  ],
+  "demand": {
+   "ref": "docs/nodes/computer-use.md:11",
+   "title": "Computer use",
+   "supports": "OpenClaw documents an agent seeing and operating a paired Mac's desktop through one built-in computer tool as a supported capability; its macOS VM page separately describes a Lume guest that is reset by cloning."
+  },
+  "corrections": []
+ },
+ {
+  "id": "OCL-01",
+  "name": "OpenClaw iPhone app on Tony's phone (pairing, chat with files, tap approvals; device commands denied first)",
+  "tier": 3,
+  "cluster": "Channels and surfaces",
+  "description": "Tony can also reach Happy in the free OpenClaw iPhone app: a native chat that takes photos from the picker, camera or share sheet and PDFs, Office files and audio from Files, queues text while offline, shows source cards and lets assistant-sent files be saved back to the phone. It also has a native approval inbox and question cards, which Basic-mode iMessage cannot show. The app is at once a chat client, an operator console for the whole Gateway and a device node, so it goes on Tony's phone only, and the phone's data commands are denied on the Gateway (MAC-04) before it is paired.",
+  "example": "Tony saves a 12-page camp packet PDF from Mail to Files, attaches it in the OpenClaw app with + -> File and asks 'what do I have to sign, and by when?'. Later a card appears: 'Add camp drop-off to the Family calendar? Allow once / Deny'.",
+  "how": "1. Ceiling first, before any phone is paired: confirm the wave-A deny list (MAC-04) is deployed. It denies the iOS default data commands and the four push-to-talk commands (talk.ptt.start, talk.ptt.stop, talk.ptt.cancel, talk.ptt.once; taken off the deny list only when Talk, VOX-01, is set up), keeps the opt-in commands (camera, screen recording, Health and the contact, calendar and reminder writes) out of gateway.nodes.commands.allow and sets gateway.nodes.pluginTools.enabled: false, so a paired phone cannot publish tools to agents. 2. Install the App Store app on Tony's iPhone and pair it with a setup code from the Control UI (Nodes, Devices, Pair device) or openclaw qr over the existing Tailscale Serve URL. One code issues a node session and an operator session together; an administrator-minted code approves the device and its first declared command surface in one step, so read the approved command list afterwards and approve any later widening by hand. 3. Access level: Full access carries operator.admin, which is what lets the app review pending exec approvals in general; Limited access drops only operator.admin (write, read and approvals scopes remain) and the docs then promise approval review only for requests that explicitly target that device. 4. Agents: do not grant the built-in nodes tool to any agent (it is owner-only, on the sandbox default deny list, and carries approve and raw invoke actions); if a later feature needs one phone command, use a small in-house plugin tool over api.runtime.nodes.invoke with the node id and command fixed in code. Deny show_widget on <p>-main, or allow native reports only. 5. Uploads from the app go through the F084 privacy gate, or are switched off with gateway.uploads.enabled: false. iMessage stays the main channel; the app is the surface for long documents, tap approvals and a fallback if imsg breaks after a macOS update. Out of scope for this entry: a second adult's phone. Every setup code carries Gateway-wide operator scopes, OpenClaw says those are not isolation between people, and roadmap section 1b keeps the control plane with Tony while family members only chat. Reopening that is Tony's decision, and it would first need named operator roles (gateway.roles) bound to a verified identity and rehearsed on a test profile, because a Gateway with roles configured refuses operator connections that carry only a device or setup-code token.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "build",
+  "depends_on": [
+   "OpenClaw iOS app from the App Store (iOS 18 or later) on Tony's iPhone",
+   "Tailscale on the phone (already needed for the Control UI)",
+   "MAC-04 deny list deployed before pairing (iOS data commands and push-to-talk denied, pluginTools off)",
+   "decision: Full or Limited operator access on Tony's phone",
+   "F084 privacy gate extended to app uploads, or uploads switched off",
+   "decision (only if a second adult's phone is ever wanted): a verified per-person identity with gateway.roles, proven on a test device first"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Pairing defaults to Full access (operator.admin): the app then also opens Dashboard settings, automations and every agent. Limited access drops only operator.admin; it keeps operator.write, operator.read and operator.approvals, which the docs describe as Gateway-wide, so a Limited phone can still run any agent. Only a role bound to a verified identity narrows that.",
+   "With gateway.roles configured, operator connections that authenticate only with device or bootstrap tokens are refused; whether the iPhone app can present a per-person verified identity instead is not confirmed (see unverified).",
+   "App Store builds receive push through OpenClaw's hosted relay, a service outside the tailnet; the Gateway stores a relay handle rather than the raw APNs token.",
+   "iOS suspends the app in the background: camera and screen node commands need the app in front, and voice is best-effort.",
+   "Files a parent uploaded earlier cannot yet be downloaded again from native history; assistant-sent documents are capped at 100 MB.",
+   "Progress cards and inline widgets only exist on app and web surfaces, so behaviour will differ between the app and the iMessage thread.",
+   "iMessage already covers quick text, and with attachment intake (F002) it also takes photos and PDFs; the app earns its place only for long multi-page documents, tap approvals and offline queueing.",
+   "Turning on gateway.roles changes sign-in for every operator device: connections that authenticate only with device or bootstrap tokens are refused, including a setup-code iPhone and any of Tony's existing token-paired devices. The docs also say roles organise collaboration inside one trust domain and are not a per-person isolation boundary. Rehearse on a test profile before touching the live Gateway."
+  ],
+  "safety": "The app adds no tool by itself but changes two things. First, uploads reach <p>-main as files, so the F084 gate and the attachments-to-cloud decision apply to this surface too; gateway.uploads.enabled: false switches client uploads off entirely. Second, runs started from the app advertise inline widgets, so show_widget becomes available unless denied; HTML widgets may load CDN scripts that can see the widget's content, so keep it denied on memory-holding agents. OpenClaw states that session ownership and sidebar visibility are not security boundaries, so keeping the two parents apart must come from roles that limit which agents a profile can run. Outbound messaging and the family-only recipient pin are unchanged.",
+  "unverified": [
+   "The exact command list the current App Store build declares at connect time (the app is not part of the installed package).",
+   "Whether a before_agent_run privacy gate (F084) sees files attached from the native app exactly as it sees iMessage attachments.",
+   "What the hosted push relay learns beyond a wake request.",
+   "Whether sessions started in the app and the iMessage DM for the same parent share one conversation or stay separate under session.dmScope per-channel-peer.",
+   "Whether the native iOS app raises a lock-screen alert for a pending approval or question; the docs name wake pushes for the app and approval alerts for Web Push and the macOS app.",
+   "Whether a PDF can be sent to the app from another app's share sheet; the docs list the share sheet for images and Files (+ -> File) for documents.",
+   "Whether anything can restrict which session a paired phone's own agent.request or voice.transcript events may target; the handler was read and no check was found.",
+   "Whether a per-person verified identity (gateway.roles) works with the iPhone app at all; this matters only if a second adult's phone is ever reconsidered."
+  ],
+  "overlaps_existing": [
+   "F001",
+   "F002",
+   "F010",
+   "F082",
+   "G008"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:15",
+    "title": "iOS app",
+    "anchor": "App Store",
+    "supports": "The official iPhone app is distributed through the App Store.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "CHANGELOG.md:13",
+    "title": "OpenClaw 2026.9.7 changelog, highlights",
+    "anchor": "Native Apple chat",
+    "supports": "Release 2026.9.7 added file and audio attachments to the native macOS and iOS chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:104",
+    "title": "Operator scopes: named operator roles",
+    "anchor": "named operator roles",
+    "supports": "A Gateway can bind verified profiles to roles that limit which agents they may run, their access to other people's sessions and their maximum scopes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/multi-user.md:15",
+    "title": "Multi-user mode: trust boundary",
+    "anchor": "not security boundaries",
+    "supports": "Anyone who can operate an agent can use everything that agent can do; ownership and visibility are usability features only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:42",
+    "title": "Show widget",
+    "anchor": "inline-widgets",
+    "supports": "show_widget is offered only when the originating client declares inline widget support, which the Control UI and native apps do and plain channel runs do not.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:231",
+    "title": "Gateway config: disable file and image uploads",
+    "anchor": "gateway.uploads.enabled",
+    "supports": "One config key disables client file and image uploads to the Gateway.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/notifications.md:62",
+    "title": "Notifications",
+    "anchor": "Add to Home Screen",
+    "supports": "On iPhone and iPad the Control UI can receive Web Push only after it is installed to the Home Screen and opened from there.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://apps.apple.com/app/openclaw-ai-that-does-things/id6780396132",
+    "title": "OpenClaw on the App Store",
+    "anchor": "OpenClaw",
+    "supports": "The app is a free App Store listing that requires iOS 18 or later and includes an Apple Watch app.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/",
+    "title": "Web Push for Web Apps on iOS and iPadOS (WebKit blog)",
+    "anchor": "Home Screen web apps",
+    "supports": "Apple supports Web Push on iOS and iPadOS only for web apps added to the Home Screen.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/pairing.md:212",
+    "title": "Pairing: setup-code bootstrap profile",
+    "anchor": "openclaw qr --limited",
+    "supports": "Limited access removes only the admin scope and keeps the other operator scopes, which include write, read and approvals.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/trusted-proxy-auth.md:219",
+    "title": "Trusted proxy auth: device auto-approval",
+    "anchor": "clients in UI mode",
+    "supports": "Native iOS clients are named as able to enrol through a trusted identity proxy, the only documented identity-bearing route for the phone app.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/tailscale.md:112",
+    "title": "Tailscale: identity headers (Serve only)",
+    "anchor": "tailscale-user-login",
+    "supports": "Under Tailscale Serve, Control UI and WebSocket sign-in can use verified Tailscale identity headers in place of a token.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/control-ui/connect-and-pair.md:118",
+    "title": "Control UI: connect and pair",
+    "anchor": "also trigger Web Push",
+    "supports": "Pending exec and plugin approvals send Web Push to authorised Control UI subscriptions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:112",
+    "title": "Node command policy",
+    "anchor": "gateway.nodes.pluginTools.enabled",
+    "supports": "Paired nodes may publish agent-visible tools by default, and one key makes the Gateway ignore them.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:41",
+    "title": "QR",
+    "anchor": "--limited",
+    "supports": "A limited setup code omits administrative gateway access from the phone's operator token.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/nodes.md:100",
+    "title": "openclaw nodes",
+    "anchor": "system.notify",
+    "supports": "A local notification can be sent to any node that declares system.notify, including iOS.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:164",
+    "title": "Plugin hooks",
+    "anchor": "before_tool_call",
+    "supports": "A before_tool_call plugin hook can block a tool call or request an approval.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals-advanced.md:418",
+    "title": "Exec approvals (advanced)",
+    "anchor": "explicitly targeted",
+    "supports": "The mobile apps review approvals with an admin connection, or with an approvals-scoped device only when the request explicitly targets it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/device-bootstrap-profile-DV7lvW3L.mjs:28",
+    "title": "Gateway source: setup-code profiles",
+    "anchor": "PAIRING_SETUP_BOOTSTRAP_PROFILE",
+    "supports": "The limited setup-code profile still carries operator.approvals, operator.questions, operator.read, operator.talk.secrets and operator.write; only admin is dropped.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:279",
+    "title": "Computer use",
+    "anchor": "operator.write",
+    "supports": "An authenticated operator with write scope can invoke an enabled, paired node command through node.invoke with no per-action admin check.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "IPH-07"
+  ],
+  "adds": [
+   "The approval inbox, question cards and Apple Watch mirror of approval prompts; both reviewers limit it to Tony's phone because a paired app is a gateway-wide operator client.",
+   "From HOM-08 (Phone-node command ceiling: deny first, then pair): Make deny-first step 1 of pairing: before any phone is paired, put the iOS default data commands (location, contacts search, calendar events, reminders list, latest photos, motion) in gateway.nodes.commands.deny, allow a command only when a named feature needs it, and set gateway.nodes.pluginTools.enabled: false. Both lists are Gateway-wide, so the deny lines can go in early with the wave-A config change for MAC-04 even though the phone itself is paired in wave D.",
+   "From IPH-01 (Pair an iPhone as an OpenClaw node (official iOS app)): Carry the node facts: the iOS command ceiling (default reads versus the opt-in camera, screen, Health and write commands), that an administrator-minted setup code approves the device and its first command surface in one step, and that camera and screen commands need the app in the foreground while everything else is best-effort in the background. Carry the two trust warnings: a paired phone can itself start an agent turn on a session it names, and an agent should reach a phone only through an in-house plugin tool with node id and command fixed in code, not the built-in nodes tool."
+  ],
+  "review_notes": [
+   "All 16 sources check out, but per-person separation through the app is overstated: a setup-code phone, even with Limited access, holds operator.write, which the docs call Gateway-wide, and enabling gateway.roles rejects token-paired operator devices. Make it Tony-only first, correct the share-sheet and notification claims, and lower value because F001/F002 already bring photos and PDFs into iMessage."
+  ],
+  "reviewed_by": 1,
+  "wave": "D",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, who, risk, depends_on, unverified. Combined with the pairing step (IPH-01) and the phone command ceiling (HOM-08), which are the same install on the same phone, and narrowed to Tony's phone: OpenClaw says operator scopes do not separate people and the roadmap keeps the control plane with Tony. Risk rises to high because the merged entry pairs a device that is both a Gateway console and a node; OCL-03 depends on this entry.",
+   "r1: kept; credible mention: iOS app: What it does",
+   "r2: edited description, how, depends_on, caveats. Kept on the vendor's own description of the app. The phone deny lines were written out both here and in the wave-A deny entry (MAC-04) for one and the same config change, so they now live in MAC-04 and this entry checks for them before pairing; pointers to entries removed in round 1 are cleaned out.",
+   "r2: kept; credible mention: iOS app: What it does"
+  ],
+  "demand": {
+   "ref": "docs/platforms/ios.md:28",
+   "title": "iOS app: What it does",
+   "supports": "The vendor describes its official iPhone app as a native chat that accepts PDFs, Office documents and audio from Files, and the same page describes a native approval inbox."
+  }
+ },
+ {
+  "id": "F020",
+  "origin": "9 Oct",
+  "name": "Research agent extra readers: read-only browser behind an action firewall hook, and summarize CLI",
+  "tier": 3,
+  "cluster": "research-summaries",
+  "description": "The research helper can also read public pages that need JavaScript, logged out, and pull the text out of long articles, of videos that have captions and of podcasts that publish a transcript. An in-house hook keeps the browser read-only in code (one profile, no typing, no form filling, no uploads, no page scripts); bot walls and logins stop it.",
+  "example": "Jordan texts: \"What does the rec centre page say about spring swim lessons?\" The page shows nothing without JavaScript, so research opens it in the logged-out browser and her own agent relays the dates with the link. Or Tony texts a link to a 40-minute video that has captions and asks for the main points.",
+  "how": "Two readers, on the research agent only. (1) The `browser` tool on the managed `openclaw` profile, with `headless: true` on that profile and `browser.evaluateEnabled: false`. Four switches come first: `browser.enabled` (off since M0), the browser tool on research's sandbox tool allow list (it is on the sandbox default deny list), the per-agent tool allow, and a place for the browser to live. First choice is the roadmap's sandbox browser container with the LAN blocked; its image has to be built from a source checkout because the npm install does not include the Dockerfile. The fallback is the host's managed profile through `sandbox.browser.allowHostControl` and an explicit host target, which the docs say to keep off for sandboxed agents unless you trust them. (2) A host stdio MCP that wraps `summarize --extract --json` and returns extracted text from articles, and from YouTube videos and podcasts that publish captions or a transcript, without calling a model; the wrapper pins `--firecrawl off`, holds no third-party keys, sets up no transcription fallback and checks the address itself. The firewall (formerly WEB-03): an in-house plugin with `api.on(\"before_tool_call\", handler, { matcher: [\"browser\"] })`, default-deny and failing closed. It rejects any `profile`, `target` or `node` other than the one assigned to the agent (a missing profile is filled in or blocked, because an omitted profile means the default one) and rejects `systemProfile`, `into`, `domains` and `dashboard`. Of the tool's 24 actions it allows only a listed read-only subset (for example status, tabs, open, navigate, focus, close, snapshot, text, screenshot). `act` and `upload` are not on that list in this build, which blocks every act kind at once: `batch`, `evaluate`, `press`, `clickCoords`, `drag`, `wait`, `resize`, `type`, `fill`, `select` and `click`. If a page later proves unreadable without scrolling, `act` comes back only for kinds on an allowlist of its own (`scrollIntoView`, `hover`), each with an eval case. The hook reads the URL from `targetUrl` first and `url` second, looks inside a nested `request` object, and blocks any call whose top-level and nested kinds differ. Unknown agent, missing field, unknown action or kind, or a parse error returns a block; the runner itself blocks the call if the handler throws or times out. Research reads the open web, so there is no site allowlist here; navigation stays http and https under the private-network block in F019 (formerly WEB-01). Not built here: the exact-hostname allowlist and the ask-a-parent-before-typing approval branch, whose only consumer is the roadmap's M6 jobs agent.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "Bot walls, logins, CAPTCHAs and two-factor prompts stop it. The bundled browser skill tells the agent to report them as manual steps, and the docs say sandboxed browser sessions are more likely to be flagged as bots.",
+   "The sandbox browser image cannot be built from the npm install; it needs a source checkout. The host alternative needs allowHostControl, which the docs say to keep off for sandboxed agents unless you trust them.",
+   "The hook sees tool parameters, not page meaning: a click carries a snapshot ref, not the button's label, so code cannot tell 'Next' from 'Submit'. That is why clicks are blocked outright in this read-only build.",
+   "A navigation check in a hook sees the URL the agent asked for, not where redirects or page scripts go next; the private-network block in F019 is the backstop.",
+   "With open and navigate allowed, a link straight to a file is saved into the managed downloads directory without the download action ever being called.",
+   "The parameter names come from the installed 2026.9.7 browser tool schema and can change with any update. Default-deny keeps a new action blocked until someone allows it, but the hook needs a contract test after every OpenClaw update.",
+   "summarize runs on the host, outside the SSRF policy that covers web_fetch and the browser, and has its own third-party extraction fallbacks; the wrapper must switch those off and check the address itself.",
+   "An independent evaluation on live websites found web agents much less competent than earlier benchmarks suggested, so expect misses on complex pages.",
+   "The extractor uses published captions and podcast transcripts first; its README says transcription is a fallback that has to be configured. The wrapper holds no keys and sets none up, so expect nothing back for a video without captions or a podcast without a published transcript; local transcription would be a later add-on."
+  ],
+  "corrections": [
+   "The catalog says to 'use the host profile'; because research must stay sandboxed, the browser tool defaults to the sandbox browser, and the host profile needs `agents.defaults.sandbox.browser.allowHostControl: true` plus an explicit host target.",
+   "The catalog's install line names the tap formula steipete/tap/summarize (as the bundled skill does); the upstream README opened in this run gives `npm install --global @steipete/summarize` or `brew install summarize`."
+  ],
+  "unverified": [
+   "`--youtube auto` and the optional Apify token appear in the bundled skill but not on the upstream README; check `summarize --help` after install.",
+   "How often rec-portal and store pages block a headless, logged-out browser was not measured.",
+   "The hook contract was read, but the browser parameter names come from the tool's schema source and were not observed in a live hook event.",
+   "Whether `ctx.agentId` carries the sub-agent's id when research runs as a spawned session; every per-agent rule depends on it.",
+   "Whether the hook sees the browser call before the tool applies its own defaults (profile, target), so that 'must be present' can be enforced.",
+   "Whether script-rendered pages can be read with the `act` action off (no `wait`, `click` or scrolling); any kind allowed back needs its own eval case.",
+   "What summarize returns for a video without captions when no transcription engine is configured (an error or an empty result); the README does not say and the tool is not installed."
+  ],
+  "safety": "The research agent holds no private data, no memory and no accounts, and this browser is a managed profile with none of the family's signed-in sessions, so an injected page has nothing to steal. What a real browser adds is a way to act, so the limits on profile, target and actions live in code and fail closed, page script evaluation is off in config, and the home network is out of reach (the egress guardrails in F019). The hook is in-house code on the security boundary: one parsing mistake is a bypass, so it gets its own injection eval cases before the browser is switched on. No profile on this browser ever holds a login, and CAPTCHAs are reported, never solved.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/profiles.md:10",
+    "title": "Browser profiles",
+    "anchor": "managed, isolated browser",
+    "supports": "The default browser profile is a separate managed browser with none of the family's signed-in sessions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:28",
+    "title": "Browser configuration",
+    "anchor": "evaluateEnabled",
+    "supports": "Arbitrary page JavaScript evaluation by the agent can be switched off in config.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/agent-tools.md:39",
+    "title": "Browser agent tools",
+    "anchor": "allowHostControl=true",
+    "supports": "A sandboxed agent may drive the host browser only when host control is explicitly enabled; otherwise it gets the sandbox browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/docker-backend.md:88",
+    "title": "Docker backend: sandboxed browser",
+    "anchor": "host-published CDP ports",
+    "supports": "The container browser cannot run with networking off, which is why it is the heavier option on this Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:71",
+    "title": "Bundled summarize skill",
+    "anchor": "--extract",
+    "supports": "The summarize CLI can print extracted content without calling a language model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/browser/skills/browser-automation/SKILL.md:41",
+    "title": "Bundled browser-automation skill",
+    "anchor": "captcha, 2FA",
+    "supports": "The bundled browser skill tells the agent to stop and report logins, captchas and two-factor prompts instead of working around them.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/summarize",
+    "title": "steipete/summarize README",
+    "anchor": "--extract",
+    "supports": "Upstream confirms extraction of web pages, YouTube and podcasts without an API key, installed through npm or Homebrew.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+    "title": "Cloudflare docs: Bot Fight Mode",
+    "anchor": "Bot Fight Mode",
+    "supports": "A widely deployed site-protection product challenges traffic that looks automated, so a headless browser will be turned away by some sites.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:187",
+    "title": "Multi-agent sandbox and tools: Sandbox config",
+    "anchor": "agents.entries.*.sandbox.browser.*",
+    "supports": "Sandbox browser settings, including host control, can be overridden for a single agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-login.md:19",
+    "title": "Browser login: Manual login",
+    "anchor": "trigger bot detection",
+    "supports": "Sandboxed browser sessions are documented as more likely to be flagged as bots than the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/images-and-setup.md:78",
+    "title": "Sandbox images and setup",
+    "anchor": "does not include the browser Dockerfile",
+    "supports": "The sandbox browser image cannot be built from the npm install; it needs a source checkout.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:16",
+    "title": "Browser control risks",
+    "anchor": "unless you trust them",
+    "supports": "Host browser control should stay disabled for sandboxed agents by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:84",
+    "title": "Browser setup: Agent guidance",
+    "anchor": "login/2FA/captcha",
+    "supports": "The bundled skill instructs the agent to report logins, 2FA and captchas as manual steps.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/help/faq/sessions-and-chats.md:179",
+    "title": "FAQ: sessions and chats",
+    "anchor": "anti-bot, CAPTCHAs, and MFA",
+    "supports": "The docs state plainly that browser automation can still be blocked by bot defenses and MFA.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "Sub-agents are hard-denied the message tool and other delivery surfaces regardless of allowlists.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2504.01382",
+    "title": "arXiv 2504.01382: An Illusion of Progress? Assessing the Current State of Web Agents",
+    "anchor": "Online-Mind2Web",
+    "supports": "An independent evaluation on 300 live-website tasks found web agents much less competent than earlier benchmark results suggested.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.chrome.com/blog/local-network-access",
+    "title": "Chrome for Developers: New permission prompt for Local Network Access",
+    "anchor": "Local Network Access",
+    "supports": "From Chrome 142, requests from public sites to private or loopback addresses need a user permission, aimed at request forgery against routers and other local devices; the page says nothing about automated or headless use.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/concepts/bot-detection-engines/",
+    "title": "Cloudflare docs: Bot detection engines",
+    "anchor": "headless browsers",
+    "supports": "A major bot-management vendor documents a detection engine that identifies headless browsers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandbox-vs-tool-policy-vs-elevated.md:69",
+    "title": "Sandbox vs tool policy vs elevated",
+    "anchor": "Sandbox tool policy",
+    "supports": "A sandboxed agent's tools must also pass the sandbox tool allow and deny lists.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/browser-tool-description-TgkJWaCu.mjs:372",
+    "title": "Browser tool description (installed source)",
+    "anchor": "action=profiles",
+    "supports": "The tool's built-in guidance tells the model to list the available profiles and pick one by name when logins matter.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser.md:38",
+    "title": "Browser (OpenClaw-managed): What you get",
+    "anchor": "direct attachment navigations",
+    "supports": "A navigation that resolves to a file is saved under the managed downloads directory.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:212",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "NETWORK_NAVIGATION_PROTOCOLS",
+    "supports": "Tool-requested navigation accepts only http and https addresses, so local file addresses are refused.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:36",
+    "title": "Sandbox constants (installed source)",
+    "anchor": "DEFAULT_TOOL_DENY",
+    "supports": "The built-in sandbox deny list begins with the browser tool, so a sandboxed agent does not get it unless the sandbox allow list names it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/sandbox.md:215",
+    "title": "Agent sandbox configuration: browser",
+    "anchor": "allowHostControl: false",
+    "supports": "By default a sandboxed session cannot target the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-control.md:178",
+    "title": "Browser control API: Playwright requirement",
+    "anchor": "require Playwright",
+    "supports": "navigate, act, AI snapshots and PDF export only work when Playwright is present in the gateway build.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "node_modules/playwright-core/package.json:3",
+    "title": "playwright-core package manifest (installed)",
+    "anchor": "1.63.0",
+    "supports": "The Playwright runtime is present inside the installed npm package.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-02"
+  ],
+  "adds": [
+   "The four switches this install needs before the research agent can use a browser (browser.enabled, the sandbox tool allow, host control or a sandbox browser image, the per-agent allow), a read-only action set, and a comparison of the three places a browser can live.",
+   "From WEB-03 (Browser action firewall hook (profile pin, site allowlist, approval before typing, no submit)): Carry the reviewed default-deny rule set into F020: pin profile, target and node; allow only a read-only subset of the 24 browser actions; keep act (batch, evaluate, typing, filling, clicking) and uploads off the list; read targetUrl, url and the nested request object; fail closed. Record that the site allowlist and approval branch wait for the M6 jobs agent, and carry WEB-03's sources (the two vendors' computer-use guidance and the hook reference)."
+  ],
+  "wave": "C",
+  "section": "The web",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, example, how, depends_on, caveats, safety, unverified, risk, effort. Kept, and the browser action firewall (WEB-03) is folded in, because that hook exists only to make this browser safe and is built in the same wave. Also fixed: the name said 'sandboxed browser' while the method used the host browser, which OpenClaw says to keep off for sandboxed agents unless you trust them; risk goes to medium and effort to L, and the empty example, safety, caveats and dependency fields are filled.",
+   "r1: kept; credible mention: Browser (OpenClaw-managed): What you get",
+   "r2: edited description, example, how, caveats, safety, depends_on, unverified. Kept. The description promised text from any video or podcast, but the extractor works from published captions and transcripts unless a transcription engine is set up, and this wrapper sets none up. Three pointers also still named WEB-01, which round 1 folded into the research agent (F019).",
+   "r2: kept; credible mention: Browser (OpenClaw-managed): What you get"
+  ],
+  "demand": {
+   "ref": "docs/tools/browser.md:37",
+   "title": "Browser (OpenClaw-managed): What you get",
+   "supports": "OpenClaw documents a separate, agent-only browser whose supported uses include answering questions from a page's readable text."
+  },
+  "depends_on": [
+   "F019 research agent (web_fetch is the first reader; the browser is the second)",
+   "the web egress guardrails in F019, formerly WEB-01 (private-network block, evaluate off, no system profile import)",
+   "G009 hook pattern (fail-closed before_tool_call)",
+   "decision: sandbox browser container (image built from a source checkout) or the host's managed profile with allowHostControl",
+   "summarize CLI installed from the admin account",
+   "injection eval cases for the hook in the M3 exit test, rerun after every OpenClaw update"
+  ]
+ }
+]

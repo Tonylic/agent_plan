@@ -1,0 +1,80 @@
+<script>
+(function(){
+  var KEY='wave-a-plan-progress-v1';
+  var state={};
+  try{state=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){state={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+  var steps=[].slice.call(document.querySelectorAll('.step[data-id]'));
+  // Steps with data-done are recorded in the execution log; they stay ticked whatever this browser saved.
+  function isDone(st){return st.hasAttribute('data-done')||!!state[st.getAttribute('data-id')];}
+  steps.forEach(function(st){
+    var id=st.getAttribute('data-id');
+    var cb=st.querySelector('input[type=checkbox]');
+    if(!cb)return;
+    cb.checked=isDone(st);
+    st.classList.toggle('done',cb.checked);
+    if(st.hasAttribute('data-done')){cb.disabled=true;cb.title='Recorded in the execution log';return;}
+    cb.addEventListener('change',function(){
+      if(cb.checked)state[id]=1;else delete state[id];
+      st.classList.toggle('done',cb.checked);
+      save();refresh();
+    });
+  });
+
+  function refresh(){
+    var total=steps.length,done=0;
+    steps.forEach(function(st){if(isDone(st))done++;});
+    var pct=total?Math.round(done*100/total):0;
+    var lab=document.getElementById('prog-label');
+    if(lab)lab.textContent=done+' of '+total+' steps done';
+    var bar=document.getElementById('prog-bar');
+    if(bar)bar.style.width=pct+'%';
+    document.querySelectorAll('nav.toc a[data-phase]').forEach(function(a){
+      var ph=a.getAttribute('data-phase');
+      var ps=steps.filter(function(st){return st.getAttribute('data-phase')===ph;});
+      var pd=ps.filter(isDone).length;
+      var c=a.querySelector('.cnt');
+      if(c){c.textContent=pd+'/'+ps.length;c.classList.toggle('full',ps.length>0&&pd===ps.length);}
+    });
+  }
+  refresh();
+
+  var reset=document.getElementById('reset-progress');
+  var resetArm=false,resetTimer=null;
+  if(reset)reset.addEventListener('click',function(){
+    if(!resetArm){resetArm=true;reset.textContent='Click again to clear all ticks';
+      resetTimer=setTimeout(function(){resetArm=false;reset.textContent='Clear all ticks';},4000);return;}
+    clearTimeout(resetTimer);resetArm=false;reset.textContent='Clear all ticks';
+    state={};save();
+    steps.forEach(function(st){if(st.hasAttribute('data-done'))return;var cb=st.querySelector('input[type=checkbox]');if(cb)cb.checked=false;st.classList.remove('done');});
+    refresh();
+  });
+
+  document.querySelectorAll('.cmd').forEach(function(box){
+    var pre=box.querySelector('pre');if(!pre)return;
+    var b=document.createElement('button');b.type='button';b.textContent='Copy';
+    b.setAttribute('aria-label','Copy this block');
+    b.addEventListener('click',function(){
+      var text=pre.innerText.replace(/\n$/,'');
+      function ok(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1400);}
+      function fallback(){var r=document.createRange();r.selectNodeContents(pre);var s=window.getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Selected';setTimeout(function(){b.textContent='Copy';},1400);}
+      try{navigator.clipboard.writeText(text).then(ok,fallback);}catch(e){fallback();}
+    });
+    box.appendChild(b);
+  });
+
+  var links=[].slice.call(document.querySelectorAll('nav.toc a[href^="#"]'));
+  var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));}).filter(Boolean);
+  if('IntersectionObserver' in window&&secs.length){
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});
+        }
+      });
+    },{rootMargin:'-20% 0px -70% 0px'});
+    secs.forEach(function(s){io.observe(s);});
+  }
+})();
+</script>

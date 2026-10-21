@@ -1,0 +1,36 @@
+#!/bin/zsh -f
+# happy-signin-check: run once a day by local.happy.signin-check (and by hand, which also prints the
+# result). For every stored Google sign-in it asks Google whether the refresh token still works
+# (`gog auth list --check` exchanges it for an access token) and pushes one number per sign-in to
+# VictoriaMetrics: happy_google_signin_ok{signin="tony-gmail"} 1 or 0, for Grafana's
+# "Google sign-in not working" rule. No model call and no mail content: nothing is searched or read.
+# gog's exit status is not the answer (it can be 0 with a broken sign-in), so every entry's
+# "valid" field is read. If this job stops pushing, the rule fires too. gog reaches Google through
+# the egress proxy, so a proxy that is down also reads as "not working"; the log line says so.
+set -u
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+limit() { /usr/bin/perl -e 'alarm shift; exec @ARGV' "$@"; }   # macOS has no timeout(1)
+found=0
+for d in $HOME/.config/happy/gog/*-gmail(N/); do
+  name=${d:t}; found=1; ok=0
+  # Up to three tries a minute apart: at login this can run before the proxy or the network is up.
+  # A plain "invalid_grant" from Google is final and is not retried.
+  for try in 1 2 3; do
+    out=$(limit 90 $HOME/bin/happy-gog "$name" --no-input --json auth list --check 2>/dev/null)
+    if print -r -- "$out" | /usr/bin/jq -e '(.accounts | length) >= 1 and all(.accounts[]; .valid == true)' >/dev/null 2>&1; then
+      ok=1; break
+    fi
+    [[ $out == *invalid_grant* || $try == 3 ]] && break
+    print "happy-signin-check: $(/bin/date -u +%FT%TZ) $name not working yet (try $try of 3); trying again in a minute"
+    /bin/sleep 60
+  done
+  why=""
+  if (( ! ok )) && [[ $out == *proxyconnect* ]]; then why=" (the egress proxy on 127.0.0.1:8877 is not answering; the sign-in itself was not tested)"; fi
+  print "happy-signin-check: $(/bin/date -u +%FT%TZ) $name $( (( ok )) && print ok || print "NOT WORKING$why" )"
+  print -r -- "happy_google_signin_ok{signin=\"$name\"} $ok" \
+    | /usr/bin/curl -fsS -m 5 --data-binary @- http://127.0.0.1:8428/api/v1/import/prometheus >/dev/null \
+    || print "happy-signin-check: $(/bin/date -u +%FT%TZ) could not push to VictoriaMetrics"
+done
+(( found )) || print "happy-signin-check: $(/bin/date -u +%FT%TZ) no sign-in folders under ~/.config/happy/gog"
+exit 0

@@ -1,0 +1,334 @@
+[
+ {
+  "id": "G001",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw's own agent template tells a proactive assistant to stay quiet at night and to let only urgent items through, and the hook rules and the job-management page were opened again and match the build note. The card now says plainly that a pause is dependable for the briefs and best effort for timed reminders, and that switching a job off by chat is a command-owner power, not the route the parents use.",
+  "who_trigger_result": "Both parents / Happy is about to send an unprompted text, or a parent texts 'mute until 3' or 'we are away next week' / non-urgent texts are capped per day and stopped outside allowed hours, each carries a tag naming its job, and briefs, reminders and routines pause for the window while urgent alerts still arrive.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/reference/templates/AGENTS.md:119",
+   "title": "OpenClaw AGENTS.md template: be proactive",
+   "anchor": "overrides quiet hours",
+   "supports": "OpenClaw's own agent template tells a proactive agent to stay quiet at night and when nothing is new, and lets only an urgent item through."
+  },
+  "edits": {
+   "how": "Policy (G001): an in-house plugin with `before_tool_call` on `message` (fails closed) and a `message_sending` cancel for `--announce` deliveries (fails open on error); counters live in the household store, and schedules are generated inside the allowed windows in the first place. Pause (G002): a paused-until row in the same store. A job that holds the store tool reads the row first and answers `NO_REPLY`. A job that cannot read it, such as a timed reminder, which runs with an empty tool list (F007), is paused by the plugin's delivery hook instead: the hook reads the same row and cancels the text. For a long absence a host helper can also run `openclaw automations disable|enable <job-id>`, and `cron.enabled: false` pauses everything. The policy's priority classes decide which alerts still pass during a mute. OpenClaw also lets a command owner (a sender listed in `commands.ownerAllowFrom`) ask the agent to change an existing automation by chat; that is not the route used here (see caveats).",
+   "caveats": [
+    "Each iPhone can already silence the night on a schedule, so what Happy adds is the daily cap, the urgent or not-urgent split, the label and the pause by chat.",
+    "The delivery hook can only rewrite or cancel a text, so one stopped by the daily cap or by quiet hours is dropped, not delivered later; holding texts and releasing them in a batch would need a queue of the plugin's own, which is not designed. Scheduled jobs are therefore timed inside the allowed hours, and the hook is the backstop.",
+    "It is not a hard gate for scheduled texts: the message_sending hook that sees `--announce` deliveries lets the message through if the plugin throws or times out, and only the agent's own message tool is gated fail-closed.",
+    "The reading of the announce path comes from bundled JavaScript and not a doc page, so confirm it with a throwaway hook before relying on either hook.",
+    "No doc lists a job id on message_sending, so each job may have to write its own tag into the text.",
+    "No built-in quiet hours or priority classes were found in OpenClaw, so keeping urgent alerts on during a mute depends on this plugin.",
+    "The household store does not exist yet, so the counters and the paused-until row are a design and not an installed feature.",
+    "The fixed emergency reply (CRT-13) answers an inbound text and must never be held back by quiet hours, caps or a mute.",
+    "Timed reminders run with an empty tool list (F007), so a reminder job cannot check the pause itself; its text is stopped only by the delivery hook, which is the best-effort side. A mute is therefore dependable for the briefs and other jobs that read the row themselves and best effort for reminders. Because a stopped text is dropped and not sent late, a one-off reminder that falls inside a mute would be lost, so one-off reminders a parent set belong in a class that passes; a recurring one such as the bins reminder can pause, because the next one comes round anyway.",
+    "Switching a job off by chat is open only to a command owner, which is Tony's handle alone today (adding Jordan is the open decision recorded on F007). OpenClaw's page gives that sender's agent the power to update, run or remove any job on the Gateway, not only to pause one, and a job changed that way no longer matches the registry (G003). The paused-until row is the route both parents use, and it changes no job."
+   ],
+   "description": "Caps how many unprompted texts each parent gets in a day, stops non-urgent ones outside allowed hours and labels each one so you know which job sent it. A text stopped by the cap or the hours is dropped, not sent later, so scheduled jobs are timed inside the allowed hours in the first place. Either parent can text 'mute until 3' or 'we are away next week', and briefs, bin reminders and routines pause for that window while urgent alerts still arrive. The pause is dependable for the briefs and other jobs that check it themselves, and best effort for timed reminders, which can only be stopped at delivery."
+  },
+  "merge_hints": [
+   "G005",
+   "F007"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged; the first reviewer's new caveat said reminders a parent set should pass a mute while the description and example say the bins reminder pauses, so the caveat now separates one-off from recurring reminders and the description states the best-effort limit."
+ },
+ {
+  "id": "OCL-14",
+  "verdict": "edit",
+  "reason": "Kept as an optional on-device classifier that no card needs yet: OpenClaw's own page describes this model role for bounded judgments such as scoring urgency, and its ONNX page asks only for a host at 2026.9.6 or later, which this install meets. The card pointed to the privacy gate by a number that was folded into photo and PDF reading (F002) last round, so the description and build note now name F002.",
+  "who_trigger_result": "Tony's in-house hooks (none needs it today; the privacy gate in F002 first, possibly the school-mail reader, later the kids filters) / a hook needs a yes/no, pick-one or score on a short text / a typed answer with a probability, computed on the Mac with no cloud call.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/decision-models.md:14",
+   "title": "Decision models",
+   "anchor": "scoring its urgency",
+   "supports": "OpenClaw describes a model role for bounded judgments such as routing a request, scoring urgency or checking a condition, returning a typed answer."
+  },
+  "edits": {
+   "description": "A way to ask a small on-device model a yes/no, pick-one or score question (does this text look like a bank statement, is this school email a closure or delay, is this reply fine for an eight-year-old) and get a typed answer with a probability, with no cloud call. It is a building block, not something the family sees, and no card needs it yet: it could later replace the pattern match in the document privacy gate (part of F002), sort closure mail in the school digest (F051) and, much later, sit in front of the kids filters (F072), which still need their own child-safety model. It does not depend on the skipped local-LLM milestone.",
+   "how": "Release 2026.9.7 adds the decisionModel role and the core decision_evaluate tool, and plugins can call the same runtime from a hook through api.runtime.decisions.evaluate. The local provider is the @openclaw/onnx plugin, installed pinned to the Gateway version (npm:@openclaw/onnx@2026.9.7): zero-shot classifier presets on CPU in a separate worker process, with models fetched only by an explicit download command and checked against fixed hashes. Config is agents.defaults.decisionModel (or per agent) plus plugins.entries.onnx. Call it from the in-house hooks (the privacy gate in F002, the F051 school-mail reader, later the F072 kids filters) rather than granting the tool to <p>-main."
+  },
+  "merge_hints": [
+   "F002",
+   "F051",
+   "F072"
+  ],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "F083",
+  "verdict": "edit",
+  "reason": "Kept as the small tool change that gives chat answers, the briefs and the trip planner an hour-by-hour rain window. One limit was missing: the National Weather Service says its hourly forecast reaches seven days ahead, so a question about a later date gets no hourly answer.",
+  "who_trigger_result": "Either parent, and the scheduled briefs / a question about rain or snow at a given hour in the next seven days or about active alerts for home, or a brief run / an hour-by-hour answer, snowfall amounts and alert lines straight from the National Weather Service.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.weather.gov/documentation/services-web-api",
+   "title": "National Weather Service: API Web Service documentation",
+   "anchor": "forecastHourly",
+   "supports": "The National Weather Service offers hourly forecasts for the next seven days and active alerts as open data, free to use for any purpose, through a service meant for others to build on."
+  },
+  "edits": {
+   "caveats": [
+    "Apple's Weather app can already send a notification when rain or snow is about to start or stop, and for government-issued severe-weather alerts at a saved location; Apple notes this is not offered in every country or region. This tool earns its place as the weather feed for the briefs (F014) and the trip planner (F028), which need an hourly rain window, and for questions asked inside a Happy conversation. The weather watch (F018) polls the alerts feed with its own script and does not depend on this tool.",
+    "The National Weather Service hourly forecast reaches seven days ahead, so a question about a game further out gets no hour-by-hour answer until the date comes into range."
+   ]
+  },
+  "merge_hints": [
+   "F014",
+   "F028"
+  ],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "CRT-01",
+  "verdict": "edit",
+  "reason": "Kept on the same ground as before: making it easy to recover when the assistant is wrong, with undoing automated actions as one named pattern, is Microsoft's published guidance for AI systems. One build-order point is added: the weekly review of what Happy did (G006, a wave earlier) needs the same table of Happy's writes, so those rows should be written by the tools themselves from the start or they have to be redone for undo.",
+  "who_trigger_result": "Either parent / texts 'undo that' within a day of one of Happy's own writes / Happy shows what it will reverse and, after a yes, restores the old value or deletes the item it created.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.microsoft.com/en-us/haxtoolkit/guideline/support-efficient-correction/",
+   "title": "Support efficient correction - Microsoft HAX Toolkit (Guideline 9)",
+   "anchor": "Support efficient correction",
+   "supports": "Microsoft's guidelines for human-AI interaction tell designers to make it easy to edit, refine or recover when the AI system is wrong, and list undoing automated actions as one pattern."
+  },
+  "edits": {
+   "depends_on": [
+    "F031 household store",
+    "F030 Reminders bridge",
+    "F007 reminders",
+    "F010 calendar write, if built",
+    "G006 weekly review of what Happy did (a wave earlier) needs the same table of Happy's writes: if the write tools record each row themselves from the start, with the old value, undo then adds the undo tool, its hook and the guarded delete on the Reminders bridge; rows written by an after_tool_call hook carry no old value and would have to be redone"
+   ]
+  },
+  "merge_hints": [
+   "G006"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged; the new dependency line said undo would add 'only the undo tool and its hook', which left out the Reminders-bridge delete the card's own caveat requires, so that is written in."
+ },
+ {
+  "id": "AUT-09",
+  "verdict": "edit",
+  "reason": "Kept as a small piece of operator tooling built on OpenClaw's own list of personal-assistant checks. Two leftovers from the ten-line scorecard that round 1 cut back are fixed: the name still said 'scorecard', and a caveat still spoke of ten cases when four apply today.",
+  "who_trigger_result": "Tony (operator) / runs the eval suite after a deploy or config change / a pass or fail line for each behaviour check (no secret echo, no fake 'done', honest partial failure, pending kept apart from done) before he tells the family something new is on.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/personal-agent-benchmark-pack.md:18",
+   "title": "Personal agent benchmark pack: scenarios",
+   "anchor": "Ten scenarios",
+   "supports": "OpenClaw itself publishes ten small checks of personal-assistant behaviour (no secret echo, no fake progress, honest failure reports, reminder round trip and others), which is the list this entry ports to the family's own eval suite."
+  },
+  "edits": {
+   "name": "Personal-agent behaviour checks added to the eval suite",
+   "caveats": [
+    "The upstream pack with a mock model measures the plumbing; a promptfoo port measures the real model and costs tokens on every run.",
+    "A handful of cases is a regression tripwire, not a benchmark. Anthropic's guidance is to start from 20 to 50 tasks drawn from real failures and to read the transcripts, not only the scores.",
+    "Eval clones must keep messaging tools denied, or a reminder test texts the family.",
+    "The docs say not to point the upstream pack at live chat services or real accounts.",
+    "Several of the ten themes have nothing to exercise on Happy today: no tool is approval-gated, so there is nothing to deny; reminders need F007; preference recall needs F041; thread routing and diagnostics artifacts are developer-surface checks. Start with the themes that apply now (no secret echo, no fake \"done\", honest partial failure, pending versus done) and add the rest as the tools land."
+   ]
+  },
+  "merge_hints": [
+   "G008"
+  ],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "F051",
+  "verdict": "edit",
+  "reason": "Kept: a shipping family assistant sells the same school-mail digest. Effort rises from medium to large, because this card now holds two medium-sized entries (the mailbox with its reader, and the digest) plus the per-platform setup and the closure pass-through, and it was left at medium when they were merged. Two lines round 2 said to carry over were also missing and are added: new senders are added by Tony through a reviewed deploy, and a platform's calendar link goes to the family calendar.",
+  "who_trigger_result": "Both parents / school, PTA, coach or lunch-system mail arrives at the dedicated mailbox and a weekday 16:00 job runs / one five-line text of the day's school mail with dates spelled out and a dated to-do list, with neither parent's own inbox touched.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://apps.apple.com/app/id6746368694",
+   "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "anchor": "reads the school emails",
+   "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide."
+  },
+  "edits": {
+   "effort": "L",
+   "caveats": [
+    "Pick the mailbox provider with the password in mind: the plugin signs in with a mailbox password only, which on Gmail means a Google app password that Google does not recommend, while OpenClaw's guide names Fastmail and iCloud.",
+    "Each school system has to accept an extra guardian address, a manual chore per system, and auto-forwarding from a parent's Gmail may fail the plugin's aligned-DMARC check, so registering the address directly is the safe route.",
+    "The reader gets body text and attachment file names only, so PDF or image newsletters and flyer attachments are not read.",
+    "Urgent alerts are not this digest's job, since the school's own alerts reach the parents' phones first; the reader keeps one backup rule (a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep, not held until 16:00), and sorting urgent from routine on real district mail is untested.",
+    "PowerSchool emails carry grades and attendance and Classroom summaries carry assignment titles: these are a child's education records and they reach the cloud model under store:false, which is why the card is rated medium risk.",
+    "Classroom summaries (missing and upcoming work, no grades) arrive only if the school uses Classroom and the teacher switches them on, and the guardian invitation expires after 120 days.",
+    "One job appears to take one delivery target, so two parents need two jobs or the parents' group chat, and the iCloud read path likely needs an in-house himalaya wrapper.",
+    "For a school or team app that sends no email, try the app's own email notifications into this mailbox first and a parent's screenshot to Happy second; Canvas and ClassDojo have no verified email path.",
+    "The reminder step is not wired end to end. The reader that writes the digest holds no reminder or store tool, on purpose, because it reads untrusted mail, and it is untested whether the parent's own agent, which receives any reply, can see the digest text. Until that is tested, a parent names the line when asking their own agent for a reminder. Giving the reader a write to the household store would let text from a school email reach the parents' private agents, so that route needs its own review first.",
+    "The sender list lives in family.json5 and changes only with a reviewed deploy, so a parent who needs a new coach or teacher added asks Tony. The mail plugin logs a rejected message without its subject or body, so a mail that did not show up can be traced in the gateway log.",
+    "A calendar link that a school platform offers is subscribed in the family calendar (F009), not read by this reader."
+   ]
+  },
+  "merge_hints": [],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "MKT-02",
+  "verdict": "edit",
+  "reason": "Kept: Alexa+ ships a quiz made from a household's own study material, and here it is one reviewed skill on top of photo reading. The card still pointed to two entries that were folded into others last round (the privacy gate, now in F002, and local spoken replies, now in F003), and its note about the Gemini app understated what that app's quiz already offers; both are corrected.",
+  "who_trigger_result": "A parent, with the child beside them / sends a photo of the study guide or a word list and asks for a quiz / ten questions one at a time with a hint first, a running score and the answer key at the end.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+   "title": "Introducing Alexa+, the next generation of Alexa",
+   "anchor": "turn them into a quiz",
+   "supports": "Amazon's consumer assistant lets a household upload study materials and have them turned into a quiz."
+  },
+  "edits": {
+   "how": "A photo needs inbound attachments on (`channels.imessage.includeAttachments: true`; see F002); `<p>-main` reads it with the reply model's own vision. The privacy gate in F002 checks text PDFs only, so a photographed sheet is not screened. A small operator-reviewed workspace skill (AUT-06) fixes the format: one question per message, wait for the answer, one hint before revealing, a running score, the answer key at the end, no web lookups. A pasted spelling list or a request for math facts uses the same skill with no photo and needs no attachments. An optional one-shot `automations` reminder offers a re-quiz the night before the test. No new tool: this is a prompt-only addition.",
+   "depends_on": [
+    "F002 photo and PDF understanding with inbound attachments switched on, for the photo route only",
+    "AUT-06 operator-reviewed skill for the quiz format (optional; needs the `read` tool)",
+    "F007 automations tool on <p>-main (only for the optional re-quiz reminder)",
+    "F003 voice over iMessage, its local spoken replies (only for reading spelling words aloud)"
+   ],
+   "caveats": [
+    "Parent-run only: the kids are not users, and the parent holds the phone and sends the answers. The roadmap's child-safety rule keeps the kids' own content away from cloud providers, so this must not turn into a child chatting with Happy alone; that version waits for the kids agent (F072) and never uses a cloud model or cloud speech.",
+    "The ChatGPT or Gemini app on a parent's phone does the same thing today, and Gemini's version is a tap-through quiz made from uploaded material, with a Hint button and a summary of strengths and focus areas at the end. Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+    "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state. Tell it to quiz only from what is on the page and spot-check.",
+    "A text quiz shows spelling words on screen, so spelling practice needs the words read aloud: a spoken reply made on the Mac with the local voice (F003, which starts with the built-in macOS say voice), whose quality for spelling words is untried.",
+    "The running score lives in the conversation and is gone after the daily session reset."
+   ]
+  },
+  "merge_hints": [
+   "AUT-06",
+   "F002"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged; Google's quiz help page was opened and shows a purpose-built quiz with hints and an end summary, so the caveat that compares Happy with the phone apps now says so."
+ },
+ {
+  "id": "CRT-11",
+  "verdict": "edit",
+  "reason": "Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. Four entries this card leaned on were folded into others last round, so its build note, dependencies and safety text now point to the cards that exist (the safety note also said the page watchers run on the research agent; they are scripts with no model). 'Tracks registration dates' promised more than the card's own caveat allows, since camp sites often cannot be read: Happy reminds about the dates the parents give it, with a page watch where a site can be read.",
+  "who_trigger_result": "Both parents / a monthly job from January to May and a weekly one before each break, or a parent adding cover by text / a list of the no-school days and summer weeks still uncovered for each child, with the registration dates the parents gave it coming up.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+   "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "anchor": "Jordan Care Scramble",
+   "supports": "A university early-childhood institute describes parents building spreadsheets of camps from January, hitting waitlists on registration day and still having weeks of summer with no cover."
+  },
+  "edits": {
+   "description": "A grid of every weekday the kids have no school (teacher days, breaks, early releases, the ten or so summer weeks) against who covers it: camp, grandparents, a trip, a parent off work. Happy keeps the grid, lists the open cells months ahead, reminds the parents of the registration dates they give it (with a page watch for a camp whose site can be read), and at tax time lists what was paid to which day camp from the receipts a parent sent. School and camp form paperwork is a separate entry (CRT-12).",
+   "how": "Inputs: the district calendar (a public feed the family Google Calendar is subscribed to, read through F009, or a photo or PDF through the dates-after-a-yes flow, F010) gives the no-school weekdays; parents add coverage by text. Store: household store rows (F031) keyed by date range and child nickname, with a status (open, pencilled, booked, paid) and a provider name. Jobs: a monthly isolated job on <p>-main from January to May, and weekly in the four weeks before each break ('--cron'), listing open cells; page watchers for 'registration opens' on camps the parents name (the changed-page watch in F018, created by Tony); options research by the stateless research agent given ages, weeks and a distance only (F019). Parents register and pay themselves. After paying, a parent sends the receipt and Happy records amount and provider. In February it lists day-camp totals per provider and which providers still lack a taxpayer number, because IRS Publication 503 treats day camp, and not overnight camp, as a possible work-related care expense for a child under 13, and asks for the provider's name, address and taxpayer number (Form W-10 is the request form).",
+   "depends_on": [
+    "F031 household store",
+    "F009 family calendar subscribed to the district feed, or F010 for a district calendar PDF",
+    "F018 page watchers and F019 research agent",
+    "F007 reminders",
+    "F002 photo and PDF reading, for receipts (its privacy gate screens text PDFs only)"
+   ],
+   "safety": "The grid lives with <p>-main, which holds private data and does not browse. The research agent gets ages, date ranges and distance only, never names, school or address. The page watchers are host scripts with no model (F018) and hold no private data. No registration, booking or payment is performed. A receipt sent as a photo is read by the cloud model like any other photo; the privacy gate in F002 screens text PDFs only."
+  },
+  "merge_hints": [
+   "CRT-12"
+  ],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "CRT-12",
+  "verdict": "edit",
+  "reason": "Kept: CDC tells parents that sports teams, summer camps and schools may ask for vaccination records and to keep them in a safe place; the page was opened in this round. One open point was about an estimate (6 to 10 forms a year) that the card no longer makes, so it is dropped.",
+  "who_trigger_result": "A parent / asks what is still needed for a school or camp form, sends the form as a photo or PDF, or a reminder fires 14 days before a form is due / a per-child list of which documents are on file and where each one is, and paste-ready answers for the form.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.cdc.gov/vaccines-children/records/index.html",
+   "title": "Keeping Track of Records | Childhood Vaccines | CDC",
+   "anchor": "sports teams, summer camps",
+   "supports": "CDC tells parents that sports teams, summer camps and other activities may require vaccination records, to keep the records in a safe place, and that copies come from the doctor, the state registry or the school."
+  },
+  "edits": {
+   "unverified": [
+    "Whether this state's immunization registry gives parents direct online access.",
+    "Typical validity windows for school and camp physicals; twelve months is often quoted but was not sourced here."
+   ]
+  },
+  "merge_hints": [
+   "CRT-11",
+   "CRT-13",
+   "F063"
+  ],
+  "overturned": false,
+  "challenge_note": ""
+ },
+ {
+  "id": "F014",
+  "verdict": "edit",
+  "reason": "Kept as the one card for Happy's scheduled calendar-and-weather texts; Google ships the same kind of daily calendar digest. Leftovers are tidied (a folded-away number, two open points that are now answered), the card gains the safety note it lacked, and it now says what Happy's brief adds over Google's own digest.",
+  "who_trigger_result": "Each parent / scheduled jobs at 19:30 Sunday to Thursday, 18:00 on Sunday and, optionally, 07:00 on weekdays / one short text with the next day's or week's events, who drives, what to pack and the weather, or silence when the day is unremarkable.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/16316416",
+   "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+   "anchor": "Daily digests of your calendar",
+   "supports": "Google ships scheduled daily digests of a person's calendar and to-do list to prepare for the day ahead, the same kind of recurring logistics text."
+  },
+  "edits": {
+   "caveats": [
+    "On Sundays the 18:00 week-ahead and the 19:30 evening brief would both arrive within ninety minutes. Either let the Sunday week-ahead carry Monday's detail and run the evening brief Monday to Thursday only (`1-4`), or accept two texts.",
+    "The morning leg is the optional one: it needs the household store (F031) for items due and trash day, and the weather plugin returns no sunset, so a sunset line, if wanted, needs a small local calculation.",
+    "If the optional 07:00 morning brief and the morning mail digest (F016) are both switched on, a parent gets two texts at 07:00. They cannot be one job, because the mail agent and the parent's main agent are kept apart; move one of them by a quarter of an hour, or leave the morning brief off for a parent who has the mail digest.",
+    "Dates taken from mail are not part of the first build: they would come from a separate job on the mail agent (G015, wave C), and how that job hands dates to the brief without passing email text into the parent's main agent still has to be designed. Until then the school deadlines in the week-ahead are rows a parent typed or confirmed (F010).",
+    "The National Weather Service forecast reaches seven days ahead, so the Sunday 18:00 weather outlook covers the coming week and no further.",
+    "Google's Gemini app can already send a scheduled daily digest of a person's own Google calendar and to-do list (being rolled out gradually to personal accounts, up to ten active actions). What Happy's brief adds is the family's own layer: who drives, what to pack from the routines table, the forecast for home, silence on an unremarkable day, and arrival in the iMessage thread."
+   ],
+   "unverified": [
+    "The [T]/[S] driver tag is a family habit the brief depends on, not a product feature; no source can vouch that both adults will keep it up.",
+    "gog is not installed, so its flags were checked only against its website, not a binary.",
+    "The deadlines input (home-store rows or a sheet) does not exist yet; its shape is a design choice, not a sourced fact.",
+    "The catalog passes `home-store__*` in `--tools`; the installed docs document the `<server>__<tool>` prefix only for MCP servers, and home-store is planned as a native plugin, so that glob is untested.",
+    "That the NWS forecast endpoints carry no sunrise or sunset field: the opened documentation page does not list one, absence was not proven.",
+    "The weather plugin's current fields (12-hour periods, alerts without id, no sunset) were read in ~/src/happy-config/plugins/home-weather/nws.js, which is not one of the two citable source kinds."
+   ],
+   "safety": "Each brief job holds only the weather tool and the read-only calendar tool (plus the household store on the week-ahead and morning legs), has no web tool, and sends its one text only to its own parent. Calendar text can be written by people outside the family (an invitation, a subscribed feed), so it is outside content (see F009); the job's only way out is that one text to its own parent."
+  },
+  "merge_hints": [
+   "MKT-06",
+   "F083"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged; the mail digest (F016) already tells the reader that Gemini offers a scheduled digest, and this card cites the same Google page as its evidence without saying so, so the matching caveat is added, along with a safety line for a medium-risk card whose safety field was empty."
+ },
+ {
+  "id": "F016",
+  "verdict": "edit",
+  "reason": "Kept: a morning mail digest for each adult is the roadmap's own M4 milestone and OpenClaw's own worked example of a scheduled job; it still waits on Tony's decision about personal mail and the cloud model. Round 2 folded the tax-form checklist and the health-mail rule into this card, but neither reached the text a reader sees, and the card had no example and no safety note; those are now written in.",
+  "who_trigger_result": "Each adult / a 07:00 scheduled job on that adult's own mail agent, and a Saturday job from January to April / a text of about ten lines listing mail that needs a reply, has a deadline or involves money, and in tax season which expected forms have arrived.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/standing-orders.md:67",
+   "title": "Standing orders: standing orders plus automations",
+   "anchor": "daily inbox triage",
+   "supports": "OpenClaw's own worked example of a scheduled job is a daily inbox triage that categorises mail and reports a summary to the owner."
+  },
+  "edits": {
+   "description": "Each adult gets a 07:00 text of about ten lines listing mail in their own inbox that needs a reply, has a deadline (an appointment to confirm or a changed flight counts) or involves money. From January to April a Saturday text also says which expected tax forms have had an arrival email and which are still missing. Both jobs only read and report; they write no drafts.",
+   "example": "Trigger: 07:00. Text to Tony: 'Mail that needs you: the plumber asks you to confirm Thursday's visit by tomorrow; the car insurance renewal is due on 20 October; the coach asks who can drive on Saturday. Nothing else needs a reply.'",
+   "how": "Isolated job on tool-restricted <p>-mail, `--tools \"<p>-gmail__*,llm-task\"`; gog MCP is read-only by default; no web tools and no drafts server in this job. Mail from health senders is summarised from the subject line only, by instruction. Seasonal leg (the former tax document checklist, F061): a second job on the same agent, Saturdays from January to April, searches for arrival notices from the family's own list of expected tax-form senders and texts 'arrived' with the date or 'still missing'; Tony switches it off after filing.",
+   "caveats": [
+    "The roadmap's M4 keeps each inbox on a local model so that mail never leaves the Mac. There is no local model today, so this digest would send personal mail to the cloud model; whether that is acceptable under store:false is Tony's open decision, and the digest waits on it.",
+    "Google announced a Gmail 'AI Inbox' in January 2026, described as like a personalised briefing that highlights to-dos, for trusted testers first with wider release promised later. If it has reached the parents' accounts it covers much of this digest inside Gmail, so check before building.",
+    "Reply drafts are left out: the roadmap treats them as optional ('if ever added'), and Gmail's own conversation summaries, Help Me Write and Suggested Replies are free for all users.",
+    "Google's Gemini app lists \"Daily digests of your calendar, to-do list, and emails\" among its scheduled actions for personal Google accounts (being rolled out gradually, up to ten active actions). That digest is prepared inside Google, where the mail already lives, so try it on one parent's account before building this.",
+    "The Saturday tax-form check only knows that a notice email arrived: a form that comes by post or sits in a portal shows as missing. 'Do not open the form' and 'subject line only for health senders' are instructions to the agent, not enforced limits."
+   ],
+   "safety": "Mail is outside content read next to private data, so both jobs run on the adult's own mail agent, which has no web, file or code tools and no draft or send tool, and each text goes only to that mailbox's owner. The open question is the model, not the tools: the roadmap keeps personal mail on a local model, and this digest would send it to the cloud model, so it waits on Tony's decision."
+  },
+  "merge_hints": [
+   "G015",
+   "F014"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged; the new example led with a dentist's email although the card's own rule limits health senders to the subject line, so the example uses a different sender, the appointment and travel-change line from the folded entry is added to the description, and the empty safety field is filled."
+ }
+]

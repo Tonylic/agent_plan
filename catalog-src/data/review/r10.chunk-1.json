@@ -1,0 +1,1143 @@
+[
+ {
+  "id": "F002",
+  "origin": "9 Oct",
+  "name": "Photos and PDFs sent to Happy are read and answered",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it; today a message that is only an attachment is dropped without a reply. Nothing on the Mac screens what a parent sends: the photo or PDF goes to the cloud model as it is, which Tony accepted on 12 Oct. The house rule goes on the printed sheet: no bank, tax or medical papers.",
+  "example": "A parent sends a photo of a school flyer from the third-grader's class and asks 'what do we need to send in, and by when?' Happy answers in the same thread.",
+  "how": "One switch: `channels.imessage.includeAttachments: true`. Photos then go to the reply model as images, and an attached PDF arrives as extracted text. The same deploy sets `tools.media.audio.enabled: false`, so audio understanding stays off until the voice card (F003) lists a transcriber on the Mac. In each parent's AGENTS.md the line that says Happy cannot see photos or files is replaced and a line says it cannot watch video; the smoke-eval check that forbids asking for an upload changes to match. A suggested layout for a flyer or form, to change after the first real ones: the dates, what to do, any money or form, the deadline, and which child if that matters; no line count. One planted-file test: a PDF and a photo with hidden instructions must cause no tool call, a hand-off to the web helper or a mail lookup included. One line goes on the printed sheet. No gate plugin; no house-rules rule.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "S",
+  "caveats": [
+   "Nothing screens what a parent sends: any photo or PDF goes to the cloud model as it is. The only guard against a statement sent by mistake is the house rule on the printed sheet.",
+   "The same switch also lets voice memos and video in, and audio auto-detection tries a configured provider key before any local program, so audio understanding is set off in the same deploy and stays off until the voice card (F003) lists a transcriber on the Mac.",
+   "Happy cannot watch video on this provider set, so an AGENTS.md line has it say so and ask for a photo or a few screenshots.",
+   "store:false covers less than it reads: OpenAI can keep abuse-monitoring logs, content included, for up to 30 days unless the organisation has Zero Data Retention, and family photos fall under that. Tony accepted this on 12 Oct.",
+   "Medical papers are on the 'do not send' line, and the medical-bill reply layout is off the card until Tony says medical bills may be sent.",
+   "Only the switch is built: the optional `pdf` tool (page selection) is not part of this form."
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' says view_image is already granted and sets agents.defaults.pdfModel to luna. The minimal profile contains only session_status and gateway (tool-policy.md:36), and pdfModel is an agents.defaults key that is unset by default (pdf.md:124). The Markdown already drops both."
+  ],
+  "unverified": [
+   "Reading accuracy on blurry phone photos and scanned image-only PDFs was not measured.",
+   "The exact point at which an inbound PDF falls back to page images; the 200-characters-per-page rule is documented for the pdf tool, not for channel attachments.",
+   "That the gateway process under the happy account already has Full Disk Access to the Messages attachments folder comes from the 9 Oct notes and was not re-checked.",
+   "Whether OpenClaw treats the per-person custom provider ids exactly like the stock OpenAI provider for image input was not tested live (the config repo does declare image input for both models).",
+   "What a voice memo turns into with audio understanding off has not been seen on a live turn; the go-live check is that it is declined and no audio leaves the Mac.",
+   "The eval endpoint is documented to take images; whether a PDF can be handed to an eval-only copy the same way has not been tried, so the planted PDF may have to be a supervised turn from Tony's phone."
+  ],
+  "safety": "A photo or PDF is outside content read directly by the agent that holds a parent's chats. That agent cannot browse or fetch and replies only in its own chat; reminders (F007), where live, are pinned to the asker in code. The hand-off to the web helper (F019), the roadmap's one remaining leak path, has only a prompt rule and the planted-file test.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:92",
+    "title": "PDF tool",
+    "anchor": "document-extract",
+    "supports": "For providers other than Anthropic and Google the pdf tool extracts text and page images locally with the bundled document-extract plugin (clawpdf, PDFium).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, OpenClaw hands it the original image instead of a text summary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:92",
+    "title": "Configuration — tool policy",
+    "anchor": "group:media",
+    "supports": "The pdf tool belongs to group:media, so under the minimal profile it must be allowed explicitly and any group deny removes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "title": "GPT-6 Sol model reference (OpenAI API docs)",
+    "anchor": "gpt-6-sol",
+    "supports": "OpenAI lists text and image as this model's input modalities and text as its only output; audio input is not listed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/prompt-and-session.md:149",
+    "title": "Prompt and session hooks (installed docs)",
+    "anchor": "before_agent_run",
+    "supports": "This hook runs after the prompt is built and before the model sees it, can block the run with a replacement message, and the original text is not kept.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Hook reference (installed docs)",
+    "anchor": "Fail closed",
+    "supports": "If this hook throws or exceeds 15 seconds the run is blocked rather than allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:126",
+    "title": "Plugin hooks (installed docs)",
+    "anchor": "allowConversationAccess",
+    "supports": "A non-bundled plugin's before_agent_run handler only runs when the operator grants it conversation access in config.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments (installed docs)",
+    "anchor": "includeAttachments",
+    "supports": "Inbound iMessage attachments are dropped unless the operator switches them on, so the gate matters only once that switch is flipped.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API guide: Your data",
+    "anchor": "30 days",
+    "supports": "API inputs are not used for training by default but abuse-monitoring logs can keep content for up to a month, and image and file inputs get extra scanning.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+    "title": "LLM02:2025 Sensitive Information Disclosure (OWASP Gen AI Security Project)",
+    "anchor": "Sensitive Information Disclosure",
+    "supports": "OWASP's guidance for applications built on language models recommends filtering sensitive inputs before they reach the model and steering users away from entering them.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F084"
+  ],
+  "adds": [
+   "From F001 (Inbound iMessage attachments (photos, PDFs, voice memos)): F002's edit in this review already carries the includeAttachments switch, the size caps, F001's two unverified points and the OpenAI retention caveat. Still to move across: F001's four sources (media.md:17, private-api.md:84, media-understanding.md:63 and the OpenAI data-controls page).",
+   "From CRT-15 (Video clips sent to Happy): F002's edit in this review already adds the caveat: videos cannot be watched on this provider set, so Happy says so and asks for a photo or a few screenshots; a clip's sound track could later reuse F003's local transcription. Nothing else needs to move.",
+   "From F023 (Explain this: document, school message, homework concept or how-to): Add the 'explain this' reply format to photo and PDF reading: five fixed lines for a school message, form or flyer (dates, what to do, money or forms, which kid, deadline) and five for a medical bill or Explanation of Benefits (billed, allowed, what you owe, whether a bill will follow, possible duplicate), with the reminder that an EOB is not a bill. Pasted text works today, a link is handed to the research agent (F019), and whether medical bills pass the privacy gate (F084) is still to settle.",
+   "From OCL-14 (Local classifier calls (decision_evaluate with an on-device ONNX model)): F002 already has the caveat; reword it to name the route instead of this card's number: OpenClaw's decision_evaluate with the on-device @openclaw/onnx plugin pinned to the Gateway version (experimental; input capped at 512 tokens, thresholds from a small labelled test set, and the gate must fail closed because an unavailable result is not a 'no'). Carry the one line folded in from F086 as well: Apple's on-device model is documented only as a utility model, not a classifier."
+  ],
+  "wave": "B",
+  "section": "Channel, media and voice",
+  "includes": [
+   {
+    "id": "F084",
+    "name": "Local privacy gate for documents: refuse bank statements and tax forms (text PDFs only)"
+   }
+  ],
+  "history": [
+   "r1: edited name, description, how, caveats, unverified. Kept, and widened to absorb F001 (the attachment switch it cannot work without) and the one usable line of CRT-15 (ask for a photo when a video arrives), so 'send Happy a photo or a PDF' is one item built in one go.",
+   "r1: kept; credible mention: Media understanding",
+   "r2: edited safety. Kept. The safety note was empty although photos and PDFs are outside content read by the agent that holds a parent's memory; it now says what the platform marks as untrusted and which other entries have to keep that agent's ways out closed.",
+   "r2: kept; credible mention: Media understanding",
+   "r2: merged with F084 (same purpose). The local privacy gate for text PDFs is the condition Tony set for switching attachment intake on (decision 3 of 9 Oct, and the wave A order 'gate, then attachments'), and it has nothing to inspect without that switch, so the gate and photo and PDF reading become one wave A card that states the gate's limit.",
+   "r3: kept; credible mention: Media understanding",
+   "r4: edited safety. Kept: OpenClaw documents reading inbound photos and documents as a built-in step, and nine entries build on this one. The safety note said every way out of the parent's agent stays closed or pinned to the family, but the roadmap itself calls the hand-off to the research helper (F019) a leak path that is still open, so the note now says so and the hidden-instructions test counts that hand-off as a tool call.",
+   "r4: kept; credible mention: Media understanding",
+   "r5: edited how, caveats, safety. Kept: OpenClaw documents reading inbound photos and documents as a built-in step, the roadmap plans attachment intake, and other entries build on this one. Three small fixes from this round stand: one caveat still pointed at the local-classifier card (OCL-14) that round 4 folded into this entry; the build note called the media-reading step's default input limits 'inbound caps'; and the safety note now records that OpenClaw's own advice for outside content is a separate reader agent, which this entry does not use. The classifier caveat is also reworded to match OpenClaw's pages: the gate is plugin code, and input over the limit is rejected, not cut.",
+   "r5: kept; credible mention: Media understanding",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave B. Photos and PDFs are outside content read by a parent's own agent, so they go live after the web helper's tests and wait on Q8 part 2.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The privacy-gate plugin for text PDFs is gone: attachment reading is one switch, one planted-file test and one line on the printed sheet (S7). Tony said on 12 Oct that photos and PDFs may go to the cloud model before OpenAI answers on data retention, so nothing on the card waits.",
+   "r10: kept; credible mention: Media understanding"
+  ],
+  "demand": {
+   "ref": "docs/nodes/media-understanding.md:10",
+   "title": "Media understanding",
+   "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step before the reply, and says the original media is still handed to the reply model."
+  },
+  "depends_on": [
+   "G005: the printed sheet gains one line: no bank, tax or medical papers",
+   "Go-live check: the planted PDF and the planted photo cause no tool call (where the web helper F019 or the mail lookup G015 is live, a hand-off to it counts as a tool call). An attachment cannot reach an agent while the switch is off, so it runs on an eval-only copy where the endpoint takes the file, otherwise as one supervised turn from Tony's phone in the sitting the switch goes on",
+   "Go-live check: one live voice memo with audio understanding off is declined and no audio goes to the cloud model",
+   "Tony provides one supervised send of the planted PDF and the planted photo (made in the plan) from his own phone at execution"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F003",
+  "origin": "9 Oct",
+  "name": "Voice memos to Happy, transcribed on the Mac mini, with a spoken reply in the built-in Mac voice",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "A parent sends a voice memo instead of typing; the Mac mini transcribes it, echoes the text back and answers, and the answer also arrives as an audio file in the built-in Mac voice. Speech is turned into text on the Mac mini, and the transcript then goes to the cloud model like any typed message. A parent can already dictate with the iPhone keyboard, so this is a convenience.",
+  "example": "A parent sends a voice memo: 'will it rain tomorrow morning?' Happy echoes the transcript, answers in text and attaches the same answer as audio. Or Tony sends `/tts latest` after a long answer and gets it read out.",
+  "how": "In: an explicit `tools.media.models` CLI entry for `whisper-cli` (audio capability, `{{AttachmentPath}}`), with `tools.media.audio.enabled: true` and `tools.media.audio.echoTranscript: true`. It needs Homebrew whisper.cpp, ffmpeg and a GGML model file, installed from the admin account; OpenClaw converts the memo to WAV itself. With an explicit entry, auto-detection, which tries a configured provider key first, is not used. Out: the `tts` block with provider `tts-local-cli` running the macOS `say` command, `tts.providers.microsoft.enabled: false` and no cloud speech provider; `tts.auto: \"inbound\"` on the two parents' own agents only, so a voice memo gets a spoken answer as an audio file and every other agent stays text-only; `/tts latest` on demand, for Tony. The AGENTS.md line that says Happy cannot hear voice memos is replaced. First test: one live voice-memo turn whose trace shows the transcript, not the audio file, reaching the cloud model. No plugin; no rule in the house-rules plugin.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "A parent can already dictate a message with the iPhone keyboard and send it as text, so for the two adults this is a convenience and not a new ability.",
+   "Local-only is not the default in either direction: audio auto-detection tries a configured provider key before any local program, and the keyless Microsoft online voice is on by default and can serve as a fallback, so the transcriber is listed explicitly and the Microsoft voice is switched off. `/tts provider <id>` changes the provider for everyone, so having no cloud speech provider configured is the control, and the bundled `sag` skill (ElevenLabs, a cloud voice) stays off.",
+   "The reply is a plain audio file attachment (WAV, several megabytes for a few minutes), not a voice bubble; the voice-bubble option belongs to the Private API actions, which need SIP off.",
+   "Long replies are summarised by the cloud chat model before they are spoken, or cut short.",
+   "`/tts latest` and the other /tts commands work for Tony only: Jordan is not on the command list, and OpenClaw silently ignores /tts from her. The spoken reply after a voice memo does not depend on it.",
+   "Talk mode in the iPhone app (OCL-01) has its own speech setting and does not pick up this voice automatically."
+  ],
+  "corrections": [
+   "Markdown pairs a whisper-cpp install with audio.preferredModel: \"cli:whisper\". The matcher compares that value with cli: plus the entry's exact command string (dist/resolve-KJuMET3H.mjs:148), so for whisper-cpp it must be cli:whisper-cli, or cli: plus the full path used in the entry; cli:whisper only matches the Python whisper CLI.",
+   "The Homebrew formula is now named whisper.cpp (formerly whisper-cpp) and its page says GGML model files are not downloaded by default. The 9 Oct note about a model that downloads automatically describes the Python whisper CLI (media-understanding.md:168), not whisper-cli.",
+   "ffmpeg is a hard requirement the Markdown leaves out: upstream whisper-cli reads only 16-bit WAV (github.com/ggml-org/whisper.cpp README), OpenClaw shells out to ffmpeg for that conversion (dist/ffmpeg-exec-VIr-PIWC.mjs:25 prints the brew install hint), and the formula does not pull ffmpeg in."
+  ],
+  "unverified": [
+   "The container format of iMessage voice memos, and whether ffmpeg decodes it cleanly, were not tested.",
+   "Transcription speed on the M5 Pro was not measured.",
+   "That only the transcript reaches the cloud model: the media docs say the original attachment is still passed to the model, and the model's listed inputs are text and image, so the audio file should be left out, but this was not checked on a live turn.",
+   "Whether the per-person custom provider ids count as OpenAI audio auth in auto-detection is undocumented; the explicit CLI entry is meant to sidestep the question, and the first live turn shows whether it does.",
+   "Whether a failed local synthesis can still fall through to the Microsoft online voice once that provider is switched off; the docs say other configured providers are fallbacks and that Microsoft is enabled by default. Not tested.",
+   "That the documented say preset writes a valid WAV on macOS 27 without extra data-format flags was not run.",
+   "How Messages on iPhone presents a WAV attachment (inline player or plain file) was not tested.",
+   "The 1,500-character summarise-or-truncate threshold is documented (tts/commands.md:104) but its effect on long replies here was not tried.",
+   "That the spoken reply after a voice memo reaches a parent who is not on the command list was read from the docs and not tried from Jordan's phone."
+  ],
+  "safety": "Speech is turned into text on the Mac mini; the transcript goes to the cloud model like any typed message, and the first live turn checks that the audio file is withheld. The spoken reply is made on the Mac, with the Microsoft voice off and no cloud speech provider. A voice memo comes from an allowlisted parent and brings no outside content.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "In auto-detection a configured provider API key is tried before any local speech binary, which is why the local CLI has to be listed explicitly to keep audio on the Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/runner.entries-Du3EDemB.mjs:338",
+    "title": "OpenClaw media-understanding CLI runner (bundled source)",
+    "anchor": "whisper-cli",
+    "supports": "For whisper-cli the runner first converts any non-WAV attachment to 16 kHz mono WAV with ffmpeg, so ffmpeg must be present on the host.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://formulae.brew.sh/formula/whisper.cpp",
+    "title": "Homebrew Formulae: whisper.cpp",
+    "anchor": "GGML model files",
+    "supports": "The Homebrew formula (formerly whisper-cpp) installs whisper-cli but ships no model files and does not list ffmpeg as a dependency; both must be added separately.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:297",
+    "title": "Text-to-speech configuration",
+    "anchor": "Speech Swift",
+    "supports": "OpenClaw documents Speech Swift and speech-core as local speech engines for macOS, Linux and Windows.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/quickstart.md:44",
+    "title": "Text-to-speech quickstart",
+    "anchor": "explicit-intent only",
+    "supports": "The tts agent tool stays silent unless the user asks for audio or Auto-TTS is enabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts.md:12",
+    "title": "Text-to-speech",
+    "anchor": "audio attachment",
+    "supports": "Only four channels get native voice messages; every other channel, including iMessage, receives an audio attachment.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:49",
+    "title": "iMessage rich messages",
+    "anchor": "asVoice",
+    "supports": "Sending a file as a voice message is part of the private-API action list.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:11",
+    "title": "iMessage private API",
+    "anchor": "SIP off",
+    "supports": "The private-API action set requires disabling SIP, which this install does not do.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:84",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "/tts latest",
+    "supports": "A slash command re-sends the latest assistant reply as audio once.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:28",
+    "title": "Text-to-speech field reference",
+    "anchor": "inbound",
+    "supports": "The inbound auto mode sends audio only after an inbound voice message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sherpa-onnx-tts/SKILL.md:3",
+    "title": "sherpa-onnx-tts skill",
+    "anchor": "offline, no cloud",
+    "supports": "A bundled skill provides offline local TTS through sherpa-onnx.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sag/SKILL.md:3",
+    "title": "sag skill",
+    "anchor": "ElevenLabs text-to-speech",
+    "supports": "The sag skill is a front end to the ElevenLabs cloud service.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/speech-provider-UuMpLqsM.mjs:150",
+    "title": "OpenClaw source: Microsoft speech provider",
+    "anchor": "isConfigured",
+    "supports": "The Microsoft provider reports itself as configured whenever its enabled flag is not set to false.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:85",
+    "title": "Text-to-speech output",
+    "anchor": "Summary on",
+    "supports": "Replies over the length limit are summarized by a model before synthesis, or truncated when summaries are off or unavailable.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:25",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.mediaMaxMb",
+    "supports": "Outbound iMessage media has a size cap that defaults to 16 MB.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "VOX-04"
+  ],
+  "adds": [
+   "From F004 (Spoken replies (TTS) and voice round trip): VOX-04's edit in this review already adds the say first step, the voice-memo round trip (tts.auto inbound), F004's three unverified points and the note that the phone already reads texts aloud in the car. Still to move across: F004's sources (field-reference.md:27, configuration.md:141, output.md:46 and the Apple CarPlay page)."
+  ],
+  "wave": "none",
+  "section": "Channel, media and voice",
+  "includes": [
+   {
+    "id": "VOX-04",
+    "name": "Spoken replies in a local voice (macOS say first, a neural voice later, cloud speech switched off)"
+   }
+  ],
+  "history": [
+   "r1: edited depends_on, unverified, description. Kept; three small corrections. The promise that only the transcript reaches the cloud model has not been checked on a live turn, so the description no longer states it as fact, and the dependency on the attachment switch (now part of F002) was not recorded.",
+   "r1: kept; credible mention: Audio and voice notes",
+   "r2: edited caveats, safety. Kept. Two things were missing from the record: the safety note was empty although the whole promise is that speech stays on the Mac, and nothing said that the roadmap plans voice memos for the kids' voice milestone while a parent can already dictate a typed message on the phone.",
+   "r2: kept; credible mention: Audio and voice notes",
+   "r2: merged with VOX-04 (same purpose). Voice memos in and spoken replies out are the roadmap's single 'Voice (iMessage)' component, tied together by the reply-after-a-voice-memo setting, so local transcription and the local voice become one wave A card with the neural voice named as a later step.",
+   "r3: edited value, depends_on. Kept: OpenClaw documents local transcription of voice notes, and the roadmap lists voice over iMessage as its own component. Two things did not match the record's own notes. The name promises speech kept on the Mac mini while the check that the audio file stays off the cloud model is still open, so that live test is now a listed prerequisite. And the entry says that for the two adults this is a convenience, with nothing else depending on it and the roadmap placing voice memos with the kids' milestone, so its value drops from 3 to 2, the same as the other voice entry that makes the same concession (VOX-01).",
+   "r3: kept; credible mention: Audio and voice notes",
+   "r4: edited caveats. Kept: OpenClaw documents transcribing inbound voice notes on the machine itself, and the roadmap lists voice over iMessage as its own component. One caveat still pointed at the Talk-mode entry (VOX-01), which an earlier round merged into the iPhone app entry (OCL-01), so the pointer is corrected; nothing else changes.",
+   "r4: kept; credible mention: Audio and voice notes",
+   "r5: edited example, caveats. Kept: OpenClaw documents transcribing voice notes on the machine itself, and the roadmap lists voice over iMessage as its own component; the point that a parent can already dictate a text was weighed in rounds 2 and 3 and is not re-argued. One thing no round recorded: the example offers `/tts latest` to 'a parent', but the config repo names Tony as the only command owner and sets no command allowlist, and OpenClaw then ignores every typed command except /new and /reset from the other parent. The example and a new caveat say so; the spoken reply after a voice memo does not depend on it.",
+   "r5: kept; credible mention: Audio and voice notes",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Later plan 'the kids' agent': nobody has asked for voice memos between the adults and Happy (Q3), the phone's dictation covers them, and the roadmap schedules voice with the kids' milestone.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony picked voice on 12 Oct ('All features'), so the card is planned in its simplified form: voice memos transcribed on the Mac mini and a spoken reply in the built-in Mac voice. The three routes to a nicer voice and the lines about a second language come off.",
+   "r10: kept; credible mention: Audio and voice notes"
+  ],
+  "demand": {
+   "ref": "docs/nodes/audio.md:2",
+   "title": "Audio and voice notes",
+   "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply, with local command-line transcribers among the options."
+  },
+  "depends_on": [
+   "F002: attachment intake switched on (voice memos arrive through the same switch)",
+   "whisper.cpp, ffmpeg and a GGML model file installed on the Mac mini from the admin account",
+   "First test, before it stays on: one live voice-memo turn whose trace shows that the transcript, and not the audio file, is what reaches the cloud model",
+   "Tony provides one test voice memo from his own phone at execution, and Jordan one from hers"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F007",
+  "origin": "9 Oct",
+  "name": "Timed reminders over iMessage, one-off and repeating (Tony only)",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "'Remind me at 4:30 to pick up the kids', or a repeating reminder, becomes a scheduled text to the asker, and reminders can be listed and cancelled; to change one, cancel it and set a new one. It works for Tony only: OpenClaw lets only a command owner use the scheduling tool from chat, and Jordan is not one, so she uses the Reminders app or Siri on her own phone.",
+  "example": "Tony texts: 'Remind me at 4:30 to pick up the kids.' At 4:30 he gets a text from Happy: 'Pick up the kids.' Later he texts 'what reminders do I have?' and then 'cancel the 4:30 one'.",
+  "how": "First T7, with `cron.triggers.enabled: false` already set: one throwaway reminder created from iMessage on a throwaway agent with no memory, accounts or other tools, removed in the same sitting. Then T5 for the scheduling tool: a logging plugin shows which fields the blocking check is given. Then the reminder rule in the house-rules plugin: add only, as a text to the asker, no web address, an empty tool list; list and remove allowed; update and run refused; blocked when the check itself fails. Then the roadmap's recipient test: five ways to change the recipient, the other parent included. Only then is the `automations` tool granted, to Tony's agent alone, in the agent's tool list and the sandbox's. One-shot reminders delete themselves after delivery; repeating ones carry the time zone. One instruction: when 'remind me' is unclear, ask. The smoke-eval case that expects 'I can't set reminders' is replaced by a reminder case.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "For a plain personal timer, Siri and the iPhone Reminders app already do the job, including reminders tied to a place. Happy's version earns its place for reminders that come out of something Happy just read or answered, such as a flyer's dates (F010).",
+   "It works for Tony only: OpenClaw refuses the scheduling tool to a sender who is not a command owner, whatever the config says, and Tony is the only owner. Jordan uses the Reminders app or Siri on her own phone.",
+   "A reminder cannot be edited in place: the rule refuses any change to an existing job, so Tony cancels it and sets a new one.",
+   "Tony's agent can list every scheduled job on the gateway, Jordan's morning mail text included, and can remove one. The rule stops it changing or running them; a removal is written to the scheduler's admin log, and the job is then created again with the jobs script. Reminders are the one kind of job the jobs script does not create.",
+   "Once the shared Reminders list (F030) exists, 'remind me' can mean a text from Happy at a set time (this card) or an item on that list, so the agent is told to ask when it is unclear.",
+   "The card rests on T7, which has not been run: the installed docs describe creating a job from chat for Control UI administrators, not for an iMessage owner turn. If T7 fails, the rule and the grant are not built and Tony decides what comes next."
+  ],
+  "corrections": [
+   "Catalog JSON 'needs' lists --delete-after-run. One-shot --at jobs already delete themselves after confirmed delivery (how-it-works.md:19). The Markdown already says so."
+  ],
+  "unverified": [
+   "Creating a reminder from an iMessage owner turn has not been tried live on this install; managing-jobs.md:81 describes chat creation for Control UI administrators (T7).",
+   "Whether the blocking check is called for the scheduling tool, and which fields carry a job's target, its other destinations and its tool list, has not been tried (T5).",
+   "That a job created by the agent can be given an empty tool list by the creating turn, and that the rule can require it, was read from the docs and not tried.",
+   "What Tony's agent sees of another person's job when it lists or inspects it: the docs give the list as a short summary (name, next run, last status); whether a job's message or its last text can be shown too has not been looked at.",
+   "The comparison with Siri and Apple Reminders for one-off personal timers was not sourced."
+  ],
+  "safety": "OpenClaw advises keeping the scheduling tool off agents that read outside content, because it can name where a job's text goes, a web address included. Tony's agent gets it only after the reminder rule is live in code: add only, to the asker alone, no web address, an empty tool list, blocked when the check fails. Script triggers stay off.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:73",
+    "title": "Configuration — tool policy",
+    "anchor": "automations",
+    "supports": "The scheduler is exposed to agents as the automations tool, with cron kept as an alias, inside group:automation.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work",
+    "anchor": "auto-delete after successful completion",
+    "supports": "One-shot reminders remove themselves once delivery is confirmed, so no clean-up flag is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:99",
+    "title": "Automation delivery",
+    "anchor": "preserved live delivery target",
+    "supports": "A reminder an agent creates from a live chat keeps that chat as its delivery target, so it texts the person who asked.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baselines",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Only owner senders may use the scheduling tool from chat, so each parent has to be listed as an owner before they can set reminders.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:27",
+    "title": "Standing intents",
+    "anchor": "commands.ownerAllowFrom",
+    "supports": "Only channel owners receive the intent tool to create, list or cancel standing intents.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2606.23459",
+    "title": "TriggerBench: Investigating Prospective Memory for Large Language Models (arXiv 2606.23459)",
+    "anchor": "TriggerBench",
+    "supports": "A 2026 benchmark paper finds language models get much worse at acting on a remembered future trigger as context grows, the reason a structural matcher is used here.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "is not valid with",
+    "supports": "A timezone cannot be combined with a fixed-interval schedule, so fixed local dose times need cron expressions or dated one-shots.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Cron sessions do not load MEMORY.md, so each reminder must carry its own text and the refill arithmetic happens in the parent's normal chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105064",
+    "title": "Add and log medications with iPhone, iPad, and Apple Watch",
+    "anchor": "Skipped or Taken",
+    "supports": "Apple's Health app already schedules medication alerts and lets the user log each dose as taken or skipped, so per-dose pings duplicate the phone.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:154",
+    "title": "Memory overview: memory tools",
+    "anchor": "creates, lists, or explicitly cancels",
+    "supports": "The intent tool is one of three memory tools provided by the active memory plugin, memory-core by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102484",
+    "title": "Use Reminders on your iPhone, iPad, or iPod touch - Apple Support",
+    "anchor": "When Messaging",
+    "supports": "The built-in Reminders app can raise a reminder when you message a chosen person and can tie a reminder to a location.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/index.md:35",
+    "title": "Automation",
+    "anchor": "Remind me in 20 minutes",
+    "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, with one-shot and recurring schedules.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F008",
+   "F065",
+   "AUT-05"
+  ],
+  "adds": [
+   "The documented limits of topic-triggered intents (keyword match with no model call, 24-hour cooldown, three fires, 90-day expiry, owner-only tool) for the footnote on reminders.",
+   "From G020 (Pending items view: approvals waiting, drafts unsent, watchers, reminders, open requests): Add the phrase 'what is pending?' to the reminders entry: it answers from the same automations list with every reminder and watcher and its next run time, and leaves gateway approvals out. Note that an owner's list shows every job on the gateway, not only that parent's; open requests (G010) and unanswered proposals join the list only if their tables are ever built.",
+   "From G009 (Family-only delivery: text the other parent or the parents' group, and ask-and-relay a yes or no, with the recipient pinned in code): The one check reminders need becomes the reminder rule in the house-rules plugin: a reminder may only be added, only as a text to the asker, with no web address and an empty tool list; listing and removing are allowed, and changing or running an existing job is refused. Both `tools.message.crossContext` switches stay off and no agent gets the message tool."
+  ],
+  "wave": "C",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": [
+   "r1: edited depends_on, caveats. Kept: timed reminders are OpenClaw's own standard example for its scheduler, and eleven other items list this one as a dependency. Two things were missing. Only a command owner may use the scheduling tool from chat and the roadmap makes Tony the only owner, so Jordan cannot set a reminder until that is decided. And for a plain personal timer the phone already does the job, which the entry now says.",
+   "r1: kept; credible mention: Automation",
+   "r2: edited risk, readiness, how, depends_on, caveats, safety. Kept, but it was marked low risk and ready now with an empty safety note: the scheduling tool lets the agent name where a job's output goes, including a web address, so it can be given to a parent's agent only after the family-only hook (G009) also covers it, as the multi-day project entry (AUT-01) already says. A caveat now separates a timed text from Happy from an item on an Apple Reminders list (F030).",
+   "r2: kept; credible mention: Automation",
+   "r3: edited caveats, depends_on, safety, example. Kept: a timed reminder is OpenClaw's own standard example for its scheduler, and eleven entries build on this one. One thing no earlier round recorded: OpenClaw lets a command owner's agent list, change, run or remove every scheduled job on the gateway, whoever created it. So the agent that sets one parent's reminders can also read the other parent's and alter the generated jobs, which cuts across the one-data-domain-per-person rule. The entry now says so in its caveats, its safety note and the decision about making Jordan an owner.",
+   "r3: kept; credible mention: Automation",
+   "r4: edited effort, depends_on. Kept: a timed reminder is OpenClaw's own standard example for its scheduler, and eleven entries build on this one. Its effort was still marked small from when it was a single config change; it now needs the family-only hook extended to the scheduler, a decision on who is a command owner and a first live test nobody has run, so effort is medium and that test is listed as a prerequisite.",
+   "r4: kept; credible mention: Automation",
+   "r5: edited depends_on. Kept: a timed reminder is OpenClaw's own standard example for its scheduler, and eleven entries build on this one. One correction to the owner decision: it said making Jordan an owner would open /restart and /update to her, but the config repo already switches both off for everyone (commands.restart: false). It now also says what else rides on that decision: as a non-owner she has none of the everyday chat commands today, and that part alone can be given through the command allowlist without making her an owner (see OCL-06).",
+   "r5: kept; credible mention: Automation",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave C. Reminders put the scheduling tool on the agent that holds Tony's notes, so they wait for the coded rule and for his answer to Q6.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony said yes to timed reminders on 12 Oct, for himself only. The separate family-only hook this card waited for is not built: its guard is one rule in the house-rules plugin, written after a live test shows that a reminder can be created from iMessage at all, and the line about making Jordan a command owner comes off.",
+   "r10: kept; credible mention: Automation"
+  ],
+  "demand": {
+   "ref": "docs/automation/index.md:35",
+   "title": "Automation",
+   "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, as a one-shot job with exact timing."
+  },
+  "depends_on": [
+   "G003 in its small form: `cron.triggers.enabled: false`, one of the three scheduler switches, set before any agent holds the scheduling tool",
+   "T7 passes first: a reminder can be created from an iMessage turn at all (not tried on this install); it runs on a throwaway agent that is removed in the same sitting",
+   "T5 for the scheduling tool: the blocking check is called for it and is given the job's target and tool list",
+   "The house-rules plugin with the reminder rule live before the scheduling tool is granted. This card creates the plugin if no earlier card has; when the plugin is first created, the roadmap's coded check on who may call the mail connector (G015) goes in as a rule too",
+   "Tony provides the T7 text and one live reminder from his own phone at execution"
+  ]
+ },
+ {
+  "id": "F009",
+  "origin": "9 Oct",
+  "name": "Shared Google calendar, read-only: 'what's on Saturday?' and 'is Friday at 1 clear?'",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "'What's on Saturday?' or 'is Friday at 1 clear?' is answered from the family's shared Google calendar, read-only; nothing on the calendar is changed. 'Clear' means nothing shows on the calendars the asking parent's own sign-in can see; the other parent's own calendars are not read, so Happy cannot say whether both parents are free. The same connection feeds the 21:00 evening text (F014).",
+  "example": "A parent texts: 'What's on Saturday?' and gets the day's events from the shared calendar. Tony asks 'is Friday at 1 clear?' and gets what his own sign-in shows for that hour; nothing on the calendar is changed.",
+  "how": "One host-side stdio MCP server per parent. Sign-in: `gog auth add <account> --services calendar --readonly`, approved by that parent on Google's screen and stored apart from the mail sign-in, so the grant covers Calendar only. Server: `gog --account <account> mcp --allow-tool calendar_events`, because by default the server registers every read tool, mail and Drive search included. Each parent's own agent allows only its own calendar server's tool by name, in the agent's tool list and the sandbox's, and denies the other parent's; `bundle-mcp` is not opened. 'Is Friday at 1 clear?' is answered by listing that hour's events with the same tool; there is no free/busy tool. No rule of its own: the house-rules plugin's account-connector rule (a person's connector answers only that person's agents, blocked when the check fails) is live before the server is granted. One eval case: an event title that carries instructions must cause no tool call, a hand-off to the web helper included.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "'Is Friday at 1 clear?' is answered only from events the asking parent's sign-in can see: the shared calendar, and that parent's own calendars unless the tool can be pinned to one calendar. 'Clear' does not mean both parents are free. gog's server offers one calendar tool, the events list, and no free/busy tool; reading each parent's own calendar as busy-only belongs to the conflict watch (MKT-06).",
+   "Happy does not write to the calendar. A date from a flyer or an email is in calendar answers, and in the evening text, only after a parent adds the event on the phone.",
+   "A renewal, expiry or upkeep date is one calendar event with an alert that a parent types once on the shared calendar (a repeating event for upkeep). It then shows in calendar answers and the evening text, and the phone's own alert works when Happy is down. There is no renewals table and no monthly 'coming due' text.",
+   "A public feed (the school district's calendar, a team schedule, library events) shows up in calendar answers only after the shared Google calendar is subscribed to its link, which Google allows from a computer browser only; Google gives no refresh interval, and TeamSnap says changes can take up to 24 hours to appear.",
+   "Two layers keep one parent's calendar out of the other parent's agent: tool permissions with an explicit deny (checked by T2), and the coded account-connector rule. Tony accepted going without the second layer for mail only, so here it is in place first. If T5 shows the blocking check is never called for a connector's tools, the rule cannot be written and Tony decides whether one layer is enough for the calendar too."
+  ],
+  "corrections": [
+   "The 9 Oct wording has Tony hand-write the calendar MCP server. gogcli.sh/mcp.html documents a built-in stdio server (gog --account <account> mcp) with a read-only calendar_events tool and an --allow-tool filter, so listing events needs no custom code. Freebusy and conflicts exist only as CLI commands (gogcli.sh/commands) and still need a wrapper.",
+   "Catalog JSON 'needs' expects a calendar.readonly scope from --services calendar. The documented switch is --readonly on gog auth add; Google's scope list does include calendar.readonly (developers.google.com/workspace/calendar/api/auth). The Markdown asked to verify the flag; gog's command page confirms it."
+  ],
+  "unverified": [
+   "That `--services calendar` with `--readonly` yields a calendar-only read grant, and that `--allow-tool calendar_events` leaves no other tool registered, were read from gogcli.sh and not run; `gog mcp --list-tools` is the check once gog is installed.",
+   "Whether a second sign-in for the same Google account, stored apart with gog's --home or --client switch, replaces or widens the mail sign-in; gog's auth page does not say (T2).",
+   "That the minimal tool profile plus a per-agent allow exposes exactly one account server: the roadmap lists it as not yet confirmed on this version (T2).",
+   "Whether the blocking check is called for a connector's tools at all, and which fields it is given (T5).",
+   "Whether gog's calendar_events tool can be pinned to a single calendar id was not confirmed.",
+   "That events from a URL-subscribed calendar are returned through the Google Calendar API, and so through gog, was not confirmed.",
+   "Whether the school district, clubs and library the family uses publish feed links was not checked."
+  ],
+  "safety": "Read-only and calendar-only: each sign-in covers Calendar alone, apart from the mail sign-in; the server offers only the events tool, to its owner's agent alone, held there by tool permissions and the coded connector rule. Outsiders can write event titles, so calendar text is outside content; that agent cannot browse, and its one way out is the hand-off to the web helper (F019).",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Configuration — tool policy",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers are plugin-owned tools that sandboxed sessions only see when the sandbox tool allowlist includes bundle-mcp or the server's tool names.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp.html",
+    "title": "gogcli docs: MCP server",
+    "anchor": "calendar_events",
+    "supports": "gog ships its own stdio MCP server whose only Calendar tool is a read tool that lists events; write tools stay hidden unless explicitly allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/gog-auth-add.html",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--readonly",
+    "supports": "Adding an account with the read-only flag requests read-only OAuth scopes and blocks mutating requests at runtime.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Using OAuth 2.0 to Access Google APIs (Google for Developers)",
+    "anchor": "expiring in 7 days",
+    "supports": "An external OAuth app left in Testing status gets refresh tokens that expire after seven days, so the app must be published for an always-on agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/delegate-architecture.md:48",
+    "title": "Delegate architecture",
+    "anchor": "read events, surface conflicts",
+    "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From G012 (External calendar feeds (.ics): district calendar, team schedules, library and rec events): F009's edit in this review already adds the feed-subscription caveat and the two unverified points. Still to move across: G012's Google Help and TeamSnap sources. If a change alert is wanted for the district calendar too, widen SRC-09's wording from sports feeds to any public feed.",
+   "From F063 (Renewals, expiry and upkeep look-ahead (passports, licences, car, domains, filed documents, check-ups, home and car upkeep)): One line on the calendar card: a renewal, expiry or upkeep date is one calendar event with an alert that a parent adds once to the shared Google calendar (a repeating event for upkeep); the event's own alert gives the notice and works when Happy is down. The event then shows in calendar answers and, the evening before, in the 21:00 evening text; Tony can also ask Happy for a timed reminder (F007). Happy does not add the event itself."
+  ],
+  "wave": "C",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": [
+   "r1: edited caveats, unverified. Kept; it now also carries the setup note from G012 (public feeds show up once the family Google Calendar is subscribed to them), because that entry needed nothing built beyond this one.",
+   "r1: kept; credible mention: Delegate architecture",
+   "r2: edited name, caveats, depends_on, safety. Kept. The name carried an internal server name instead of saying what a parent gets, and the change-alert pointer led to an entry that round 1 merged into the calendar and feed watchers (F029). The safety note was empty and nine other entries build on this one, so it now says why the access is read-only and that event text written by outsiders is outside content, and the two prerequisites are written down.",
+   "r2: kept; credible mention: Delegate architecture",
+   "r3: edited how, caveats, depends_on, safety, unverified, example. Kept: read-only calendar access is the lowest-risk tier in OpenClaw's own guide, and eleven entries read the calendar through this one. The build note would have given a parent's main agent more than the calendar: gog's sign-in covers its whole default set of Google services unless it is limited to Calendar, and its server registers every read tool, mail and Drive search included, unless it is narrowed to the events tool. Both limits are now in the build note, the prerequisites and the safety note. A pointer to the feed watcher follows it to its merged entry (F018).",
+   "r3: kept; credible mention: Delegate architecture",
+   "r4: edited example, caveats, safety, how. Kept: read-only calendar access is the lowest-risk tier in OpenClaw's own guide, and ten entries read the calendar through this one. 'Is anyone free Friday at 1?' can only be answered from events the asking parent's sign-in can see (the family calendar, not the other parent's work calendar), and gog's server has an events list but no free/busy tool, so the example, a new caveat and the build note now say so; the safety note also names the hand-off to the research helper, which the roadmap calls a leak path that is still open.",
+   "r4: kept; credible mention: Delegate architecture",
+   "r5: edited name, description, example, how, caveats. Kept: read-only calendar access is the lowest-risk tier in OpenClaw's own guide, and many entries read the calendar through this one. The name and the description still offered 'is anyone free Friday at 1?', which round 4's own caveat says this entry cannot answer: it reads the family calendar and the asker's own, not the other parent's. The wording now promises only 'is Friday at 1 clear?'; telling whether both parents are busy stays with the conflict watch (MKT-06). The build note and one caveat still used the old question, so they are reworded to match.",
+   "r5: kept; credible mention: Delegate architecture",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave C. Which calendar the family shares has never been stated (Q4), and a second Google sign-in goes live only after its own check.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony said on 12 Oct that the family shares a Google calendar, so the card is no longer built on a guess: the iCloud branch and the work-calendar example come off. The build takes the roadmap's narrower form, one calendar tool per parent allowed by name, with a sign-in kept apart from the mail one. One correction to the editor's row, to keep a roadmap rule: Tony accepted going without the coded check on who may call a connector for mail only (S1), so the calendar server is granted only once that rule is live in the house-rules plugin.",
+   "r10: kept; credible mention: Delegate architecture"
+  ],
+  "demand": {
+   "ref": "docs/concepts/delegate-architecture.md:48",
+   "title": "Delegate architecture",
+   "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+  },
+  "depends_on": [
+   "G015: gog installed and the Google sign-in app published, both set up with mail and reused here (a sign-in from an app left in Testing status expires after seven days; T1's day-8 check is run with mail)",
+   "The house-rules plugin with its account-connector rule live before the calendar server is granted. Timed reminders (F007) are expected to create the plugin; if this card comes first, it creates the plugin with that rule",
+   "Each parent approves a calendar-only, read-only sign-in on Google's own screen at execution; Jordan approves her own",
+   "T2, calendar half, before go-live: the calendar sign-in cannot run a mail search, and each parent's agent shows exactly one calendar tool and is refused the other parent's",
+   "The connector's firewall rule (gog may reach Google and nothing else) checked to cover the calendar server",
+   "Tony provides the Google account each parent signs in with, and the name of the shared calendar, at execution"
+  ]
+ },
+ {
+  "id": "F019",
+  "origin": "9 Oct",
+  "name": "Research helper: answers from public web pages with the link and the time fetched",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Happy can read public web pages that load without JavaScript or a login: a research helper with no memory, no accounts and no family data fetches the page, and the parent's own agent relays the answer with its link and the time it was fetched. When a page cannot be read, Happy says 'could not verify'. Nothing the helper fetches can reach the home network.",
+  "example": "A parent texts: 'What time does the town pool open on Saturday? Check their site.' Happy sends the hours with the link and when the page was fetched.",
+  "how": "First T4: one hand-off from Tony's agent to the helper, with a time limit, must return its answer in the same chat while agents still cannot see each other's sessions. Agent: a shared `research` agent from the family file: a fresh sandbox per conversation, memory search off, no accounts, `web_search` and `web_fetch` only, its own capped key. Each parent's agent gains `sessions_spawn` with `subagents.allowAgents: [\"research\"]` and `runTimeoutSeconds`. Guardrails: both `dangerouslyAllowPrivateNetwork` keys unset, `tools.web.fetch.headers` empty, no fetch-provider plugin, `tools.web.fetch.useTrustedEnvProxy` off, `browser.enabled: false`, `browser.evaluateEnabled: false`. One rule in the helper's AGENTS.md: give the link and the time fetched, show the page's own date when it has one, give a price or date only from a fetched page, say 'could not verify'. In each parent's AGENTS.md the 'cannot open links' line becomes the hand-off rule, with what a task may carry; its smoke-eval case changes too. Four planted eval cases. Tony's agent first, Jordan's a day later. No plugin; no house-rules rule.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "L",
+  "caveats": [
+   "The plain fetch runs no JavaScript and cannot log in, so such pages stay unread until the extra readers (F020) exist, and Happy says 'could not verify'. A slow lookup gets no 'on it' and no plain-words 'cancel that': the helper's built-in finish report is the only progress message, and a lookup ends at its time limit or at Tony's built-in stop.",
+   "If the hand-off test (T4) fails, the only documented alternative is session visibility `tree` for the whole gateway, which changes a signed-off setting and needs Tony's yes plus a re-run of the separation check.",
+   "The home-network block rests on the fetch tool resolving and pinning the address itself, so `tools.web.fetch.useTrustedEnvProxy` stays off and both private-network keys stay truly unset: an explicitly written `false` on the browser key turns hostname navigation into an allowlist and would stop the later research browser (F020).",
+   "Once the helper can fetch pages, neither the firewall nor the proxy can hold the gateway program to a list of hosts; they refuse home-network addresses and nothing more, so tool permissions, not the firewall, keep the other agents off the web.",
+   "The answer rule and the rule on what goes into a task (the town and the children's ages yes, names and the school no) are prompt rules; nothing mechanical enforces them, and the planted eval cases are the only check. The roadmap's prompt-injection tripwire is not built with this card: by Tony's answer of 12 Oct it waits for local models.",
+   "The fetch tool's home-network check covers `web_fetch` only, so host-side helpers that take a web address (the summarize wrapper, the print download, watcher scripts) need their own scheme, host and resolved-address checks."
+  ],
+  "corrections": [
+   "The 9 Oct verifier notes advised turning the sandbox off for research; the installed docs say a sandboxed requester cannot spawn an unsandboxed target, so the catalog's final wording (keep mode all) is the only workable one.",
+   "A verifier note asked for research rules in AGENTS.md and SOUL.md; the installed docs say sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file."
+  ],
+  "unverified": [
+   "That a cross-agent hand-off returns its result with agent-to-agent messaging off and session visibility set to self: the roadmap lists this as untested on 2026.9.7, and nothing was run here (T4).",
+   "The rule on what may go into the task text is a prompt rule; nothing mechanical enforces what a parent's agent writes into it.",
+   "Nothing in the installed stack enforces citations; it is a prompt rule the model can ignore, and the eval cases are the only check.",
+   "Whether page fetches pass through the outbound proxy once it is configured: the installed docs point both ways and nothing has been tried; it is read from the proxy's log when the gate is built.",
+   "The explicit-false behaviour of the browser policy was read in the installed source only; the docs do not describe it and it was not exercised.",
+   "How long a real lookup takes: nothing on the current stack runs longer than about 20 seconds, so whether an 'on it' line is ever needed is unknown until the hand-off exists."
+  ],
+  "safety": "The helper reads untrusted pages but holds no memory, accounts or family data, and cannot reach the home network. The roadmap's one remaining leak path stays open: a parent's agent holds private chats and writes the task text for a helper that can fetch any public address. A prompt rule and planted tests guard it; the helper's answer is treated as untrusted.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:17",
+    "title": "Web fetch",
+    "anchor": "Enabled by default",
+    "supports": "Page fetching is built in and needs no key or plugin, so granting it is configuration only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+    "title": "Sub-agents: allowlist",
+    "anchor": "agents.entries.*.subagents.allowAgents",
+    "supports": "A person's agent may hand work to another configured agent only if that agent id is on its allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agents: tool policy",
+    "anchor": "session_status",
+    "supports": "A spawned helper always loses messaging, scheduling and status tools, so research cannot text anyone or create jobs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/THREAT-MODEL-ATLAS/execution.md:35",
+    "title": "Threat model: T-EXEC-002 indirect prompt injection",
+    "anchor": "Separate execution contexts",
+    "supports": "OpenClaw's own threat model recommends a separate context for fetched content, which is what the research agent provides.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+    "title": "Simon Willison: The lethal trifecta for AI agents",
+    "anchor": "The lethal trifecta",
+    "supports": "Private data, untrusted content and a way to send data out are dangerous in one agent; keeping page reading away from the memory-holding agent removes one leg.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2510.09023",
+    "title": "arXiv 2510.09023: The Attacker Moves Second",
+    "anchor": "The Attacker Moves Second",
+    "supports": "Adaptive attacks defeated most published prompt-injection defences, so isolation and tool limits are used instead of trusting the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:216",
+    "title": "Browser configuration: SSRF policy",
+    "anchor": "do not automatically proxy",
+    "supports": "The managed browser launches direct and ignores the gateway's proxy environment variables.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:54",
+    "title": "Browser control risks: Browser SSRF policy",
+    "anchor": "special-use destinations stay blocked",
+    "supports": "Private and internal destinations are blocked for the browser by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/network-proxy.md:11",
+    "title": "Network proxy",
+    "anchor": "does not ship, download, start",
+    "supports": "The egress proxy is operator-provided; OpenClaw only routes through it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:276",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "requires an IP-literal URL",
+    "supports": "When the browser policy carries an explicit false for private-network access, a hostname navigation is refused unless the host is on the allowed list; IP-literal URLs still pass.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/config-DLo8Wb5-.mjs:118",
+    "title": "Browser config resolution (installed source)",
+    "anchor": "hasExplicitPrivateSetting",
+    "supports": "An unset key resolves to a policy without the strict flag, while an explicitly written value resolves to true or false, so unset and false behave differently.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/browser.md:122",
+    "title": "openclaw browser CLI: Profiles",
+    "anchor": "enabled by default",
+    "supports": "Cookie import from a real browser profile is on unless disabled, for both CLI and agent-triggered imports.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:49",
+    "title": "Browser setup",
+    "anchor": "control service as one unit",
+    "supports": "The browser agent tool and control service exist only when both the browser plugin and the browser enabled setting are on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/firecrawl.md:25",
+    "title": "Firecrawl: Install plugin",
+    "anchor": "@openclaw/firecrawl-plugin",
+    "supports": "The only documented fetch-fallback provider is a separately installed plugin, so with nothing installed a failed fetch has no third party to be retried through.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:84",
+    "title": "Configuration: browser, UI, and desktop",
+    "anchor": "ssrfPolicy.blockedHostnames",
+    "supports": "The browser block has its own hostname deny list with the same exact-host and wildcard rules as the fetch one.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web.md:186",
+    "title": "Web search: result shape",
+    "anchor": "published?: string",
+    "supports": "Search hits carry a publication date only sometimes and no fetch time, so search-only claims need the weaker stamp.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:20",
+    "title": "Standing orders",
+    "anchor": "AGENTS.md",
+    "supports": "Rules placed in AGENTS.md are injected into every session, the right home for a citation rule.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2304.09848",
+    "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+    "anchor": "51.5%",
+    "supports": "A peer-reviewed audit found that only about half of generated search-engine sentences were fully backed by their citations, so the rule needs evals, not trust.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-web-search",
+    "title": "Web search (OpenAI API docs)",
+    "anchor": "clearly visible and clickable",
+    "supports": "OpenAI requires that information taken from web results be shown to end users with clearly visible, clickable inline citations.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "Each background run can carry its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/nesting.md:24",
+    "title": "Sub-agents: nesting",
+    "anchor": "maxConcurrent: 8",
+    "supports": "Concurrent child runs per session are capped by config, default eight, and can be lowered.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents.md:14",
+    "title": "Sub-agents",
+    "anchor": "announces",
+    "supports": "A finished helper reports its result back to the requester by default, giving the single completion message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:18",
+    "title": "iMessage: Private API mode",
+    "anchor": "typing indicators and read receipts",
+    "supports": "Typing indicators exist only in the mode that needs system protection off, so in today's Basic mode a text acknowledgement is the only progress signal.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-01",
+   "F022",
+   "G014"
+  ],
+  "adds": [
+   "From F025 (Fact check and official-source answers): Carry the four-way verdict (true, false, mixed, unclear) backed by two or three dated sources, and the rule to answer admin questions from official sites. An official-sites-only mode would need a before_tool_call hook and is not planned.",
+   "From F026 (Product and program research with sourced prices and links): Add one answer shape to the research agent's rules for 'best X under $N' and 'camps for a 9-year-old' asks: three to five options with links, a price or date only when it came from a fetched page (with the fetch time), 'could not verify' for bot-walled shops and brochures that are remote PDFs, and no buying or booking. CRT-11's options research points here."
+  ],
+  "wave": "B",
+  "section": "Web reading and research",
+  "includes": [
+   {
+    "id": "WEB-01",
+    "name": "Web egress guardrails for fetch and browser (no LAN, no headers, no fallback provider)"
+   },
+   {
+    "id": "F022",
+    "name": "Citation and freshness rules"
+   },
+   {
+    "id": "G014",
+    "name": "Long-running task etiquette: acknowledge, background, notify, cancel"
+   }
+  ],
+  "history": [
+   "r1: edited description. Kept; 'any public web page' overclaims, because the plain fetch runs no JavaScript and cannot log in (those pages wait for F020 or stay unread).",
+   "r1: kept; credible mention: Web fetch",
+   "r1: merged with WEB-01, F022, G014 (same batch). The research agent, the egress guardrails that sit in front of it, the citation and freshness rules written into its instructions, and the acknowledge-and-cancel etiquette for its hand-off become one wave A card.",
+   "r2: edited risk, safety. Kept. It was marked low risk with a safety note saying the split 'breaks the trifecta', but the roadmap itself calls the hand-off from a parent's agent to the research helper the one remaining leak path, and OpenClaw's guidance is to deny the hand-off tool by default to an agent that handles outside content. Risk is now medium and the safety note says what is and is not closed.",
+   "r2: kept; credible mention: Web fetch",
+   "r3: edited name, depends_on, unverified. Kept: reading a public page is a built-in OpenClaw tool, and nine entries build on this helper. It is marked ready now, yet the hand-off it rests on (the helper's answer coming back to the parent's agent with agent-to-agent messaging off) is on the roadmap's own list of things not yet confirmed on this version, and the entry named no prerequisite except an optional proxy. The agent set-up, that first test and the eval cases are now listed. The name is put in plain words, and one open point that referred to this entry as if it were another is reworded.",
+   "r3: kept; credible mention: Web fetch",
+   "r4: edited caveats, depends_on. Kept: reading a public page is a built-in OpenClaw tool, and eight entries build on this helper. The promise that the helper cannot reach the home network rests on the fetch tool checking the resolved address itself, and the documented switch that sends fetches through an operator's proxy hands that check to the proxy; the entry now says when that switch may be on, what happens while it is off, and adds a matching test case.",
+   "r4: kept; credible mention: Web fetch",
+   "r5: kept; credible mention: Web fetch",
+   "r8 (Wave definition, 12 Oct): moved from wave A to wave B. Web reading is a second kind of risk and needs the roadmap's outbound gate first, which wave A cannot hold beside mail.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. The scripted acknowledgement, the cancel phrase, the fixed fact-check format and the 30-day rule come off, leaving one time limit and one answer rule (S15), and the card starts with the hand-off test instead of calling itself ready now. Tony's answers of 12 Oct settle its gate: the outbound proxy is built first, and the prompt-injection tripwire waits for local models. No other card carries that gate, so its work is counted here: 13 hours is about 5.5 for the helper and 7.5 for the gate.",
+   "r10: kept; credible mention: Web fetch"
+  ],
+  "demand": {
+   "ref": "docs/tools/web-fetch.md:11",
+   "title": "Web fetch",
+   "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+  },
+  "depends_on": [
+   "The outbound gate, built first in the same plan (Tony's answer 7b; the roadmap's gate before web reading): the firewall blocking every program by default with one rule per program, and the outbound proxy for the gateway's calls enforcing after at least one night in report mode; the plugin allowlist left open at the M1 sign-off is closed in the same step. No other card carries this work, so its hours are counted on this card",
+   "T4 passes first: a hand-off from a parent's agent returns the helper's answer with agent-to-agent messaging off and session visibility set to self (the roadmap lists this as not yet confirmed)",
+   "Four planted eval cases pass before go-live: a home-network address, a public address that redirects to one, a public name that resolves to one, and a result that asks the parent's agent to pass its notes to the helper",
+   "If the mail lookup (G015) is live: its seeded-mail test is run again with the helper present",
+   "Tony provides a new capped model key for the helper at execution"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F030",
+  "origin": "9 Oct",
+  "name": "Shared Apple Reminders list: Happy reads it, adds to it and ticks items off",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "Happy can read, add to and tick off items on the Apple Reminders list the two parents share, so a change shows up on both phones. Tony names the list at execution. Nothing is coded until a by-hand test shows that an item added from the Mac reaches that list on both phones.",
+  "example": "After Happy answers 'what do I need for pancakes for six?', a parent texts 'add the flour, eggs and buttermilk to our list'. The three items appear on the shared list on both parents' phones. Later the other parent texts 'what's still on the list?' and gets the open items.",
+  "how": "First T9, by hand, before any code: in happy's desktop session join the list Tony names, add and tick off one item with `remindctl`, and look at both phones; then add one item with a due time and note whether a phone alerts. If the item does not arrive, try a list that Happy's account owns and shares to both parents; if that fails too, the card is dropped. Then an in-house host-side tool plugin wrapping `remindctl` with three verbs (list, add, complete) on that one list only, no delete and no due dates, allowed on both parents' own agents in the agent's tool list and the sandbox's. Reminders access is granted once by hand in the gateway's own process context. One instruction: when 'remind me' could mean a timed text or a list item, ask. No house-rules rule: the tool's three verbs and its one list, fixed in its configuration, are the limit in code.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "For a single item spoken to the phone, Siri already creates reminders with nothing to build. The bridge earns its place when the items come out of something Happy read or planned (a recipe link, the dinner plan in F033, a flyer).",
+   "If T9 fails for a list a parent owns, the fallback is a list that Happy's account owns and shares to both parents; if that fails too, the card is dropped.",
+   "The tool sets no due dates and cannot delete: an item added by mistake is ticked off, or removed on the phone. T9 notes whether a due time alerts a phone, in case a parent later asks for dated items.",
+   "Who sees the list is set in Apple's sharing, not in Happy's code. What one parent's agent adds is seen by the other parent, and by anyone else the list is ever shared with.",
+   "A shared Apple Note as a second filing target is not part of this build.",
+   "A scheduled text of the open list is not built; if a parent asks for one and names the day and hour, it is one more job in the jobs script."
+  ],
+  "corrections": [],
+  "unverified": [
+   "No opened source confirms that remindctl can add to or complete items on a shared iCloud list owned by another family member; its README only says reminders sync through the normal iCloud path (T9).",
+   "Which binary macOS records the Reminders permission against when the launchd gateway spawns remindctl is not documented in any opened source; it needs one test on happy's logged-in desktop.",
+   "Whether a due time on an item added from the Mac alerts a parent's phone on a shared list (the second half of T9)."
+  ],
+  "safety": "The tool can only list, add and complete on the one list fixed in its configuration; the model cannot write elsewhere or delete. An added item shows on every phone the list is shared with, and Happy's code cannot check the sharing, so Tony confirms at execution that only the two parents share it. List text typed by anyone on the list is outside content.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "OpenClaw has a supported way to build a small plugin that only adds typed agent tools, which is the shape of the planned home-reminders bridge.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/remindctl",
+    "title": "steipete/remindctl README",
+    "anchor": "remindctl complete",
+    "supports": "The CLI lists, adds, completes and deletes Apple Reminders with JSON output, needs macOS 14 or later, and needs Reminders access granted to the app that runs it on that Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/device-commands.md:134",
+    "title": "Device commands (OpenClaw docs)",
+    "anchor": "reminders.list",
+    "supports": "The node reminders commands are offered by iOS and Android nodes only, and adding a reminder is a dangerous command that needs an explicit gateway allow, so a macOS node is not an alternative path.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/reminders/share-a-reminder-list-remnd509c0d9/mac",
+    "title": "Share a reminder list on Mac - Apple Support",
+    "anchor": "Share a reminder list",
+    "supports": "A shared list lives in iCloud Reminders, invitees must accept and also use iCloud Reminders, and accepted participants can create and edit items from any of their devices.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/apple-reminders/SKILL.md:37",
+    "title": "Bundled apple-reminders skill",
+    "anchor": "iPhone/iPad Reminders app",
+    "supports": "OpenClaw ships a skill for listing, adding and completing Apple Reminders from the Mac, meant for people who want the tasks to appear in the Reminders app on their phones.",
+    "check": "unchecked",
+    "added_round": 2
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From OCL-08 (Notes and task apps as a filing target (Apple Notes, Obsidian, Things, Bear, Notion, Trello)): Carry one caveat into F030: a shared Apple Note could later be a second filing target using the same host-side wrapper, but only after an unattended append is proven. Things, Bear, Notion and Trello are not pursued, and the F043 vault folder can be opened in Obsidian by a person with no agent tool.",
+   "From F032 (Grocery and errand capture by text or voice, plus Saturday shop list): Give F030 the example 'add oat milk' and one optional Saturday-morning job per parent that texts the open shopping list. Note that Reminders exposes no purchase history, so 'not bought in three weeks' is out, and that capture by voice memo waits on local transcription (F003)."
+  ],
+  "wave": "none",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": [
+   "r1: edited name, caveats. Kept, with the name narrowed to what is sourced: the Reminders bridge. The shared-Notes half has no tested way to add to a note unattended, so it becomes a later experiment recorded as a caveat (this is also all that is carried over from OCL-08).",
+   "r1: kept; credible mention: Share a reminder list on Mac - Apple Support",
+   "r2: edited description, example, depends_on, caveats, safety. Kept. The description stated as fact that changes reach both phones, though the record's own open question is whether a write made on the Mac lands on a list shared from someone else's account; it now says that is the first thing to prove, with an example added. The record also gains an honest note that Siri already adds a single spoken reminder, and a safety note, which was empty for a tool that writes to shared lists.",
+   "r2: kept; credible mention: Bundled apple-reminders skill",
+   "r3: edited example. Kept: OpenClaw ships a skill for exactly this, adding and completing Apple Reminders so they show up on the phone. One thing to fix: the example ('add oat milk and stamps') is the single-item case that the entry's own caveat says Siri already handles with nothing to build. The example now shows the two uses the caveat says earn the bridge its place: items that come out of something Happy just answered, and reading the list back.",
+   "r3: kept; credible mention: Bundled apple-reminders skill",
+   "r4: kept; credible mention: Bundled apple-reminders skill",
+   "r5: kept; credible mention: Bundled apple-reminders skill",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Later plan 'Happy acts outside the chat': no shared Reminders list is on record (Q4), adding to one from the Mac is untried (T9), and writing to lists on both phones is a kind of risk none of A to C adds.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness, who. Tony picked the shared Reminders list on 12 Oct ('All features'), so the card is planned in its simplified form: a by-hand test first, then one small tool that can list, add and tick off on the one list he names at execution. The claim that the family 'already shares' lists comes off.",
+   "r10: kept; credible mention: Bundled apple-reminders skill"
+  ],
+  "demand": {
+   "ref": "skills/apple-reminders/SKILL.md:37",
+   "title": "Bundled apple-reminders skill",
+   "supports": "OpenClaw ships a skill for listing, adding and completing Apple Reminders from the Mac, meant for people who want the tasks to appear in the Reminders app on their phones."
+  },
+  "depends_on": [
+   "Tony provides the name of the shared Reminders list at execution, and confirms that it is shared with the two parents only",
+   "happy's Apple Account invited to that list from a parent's phone, with iCloud Reminders on",
+   "remindctl installed on the Mac mini and Reminders access granted in the gateway's own process context",
+   "T9 passes by hand before any plugin code: an item added from the Mac appears on the list on both phones"
+  ]
+ },
+ {
+  "id": "F031",
+  "origin": "9 Oct",
+  "name": "Household database: shared rows for the dose log and the coverage planner",
+  "tier": 1,
+  "cluster": "lists-household",
+  "description": "A small database on the Mac mini that both parents' agents read and write, so either parent gets the same answer whoever entered the row. It is built only as far as two planned features need it: one table for the sick-day dose log (CRT-10) and one for the childcare coverage grid (CRT-11). It has no general 'save a fact' tools: reference text both parents look up lives in the family handbook (F043), and each parent's own notes stay with that parent (F041).",
+  "example": "One parent texts Happy what they gave the kindergartner and when. Later the other parent asks 'when was the last dose logged?' and gets the same row, with who logged it. In the same way, one parent texts that a no-school week is covered, and the other parent's 'which weeks are still open?' no longer lists it.",
+  "how": "One in-house tool plugin over Node's built-in `node:sqlite`, with one database file on the Mac mini. It sits in the config repo's `plugins/` folder like the weather plugin: the ordinary deploy copies it and it loads from `plugins.load.paths` after a restart. No general tools: no schedule tools and no `fact_get` or `fact_set`. Each feature adds one table and its own typed tools: the dose log (CRT-10) and the coverage grid (CRT-11). Every input is typed and short in the tool's own schema (a date or time, a whole number, a choice from a fixed list, a label of at most about 40 characters); no separate secret detector. The tools are allowed by name on the two parents' own agents (`tools.alsoAllow` and the sandbox gate `tools.sandbox.tools`) and on no shared agent or mail reader. A scheduled job that reads a table lists the tool by the name the plugin declares. No house-rules rule is added.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "Everything in it is shared between the two adults on purpose: neither table filters by person. That steps outside 'one data domain per person', by Tony's pick of the two features on 12 Oct. Something meant for one parent belongs in that parent's own notes (F041).",
+   "Only two tables are planned. There is no general upkeep or 'when is the filter due?' table: a repeating date is a calendar event or a reminder.",
+   "A later feature that needs rows both parents' agents write adds its own table and typed tools here; it does not start a second store.",
+   "Inputs are short and typed, with no secret detector, so a short secret typed as a label would be stored; the standing instruction never to ask for or reveal passwords, keys or codes is the only guard against that.",
+   "The dose table holds what was given to a child, and that text goes to the cloud model whenever a parent's agent reads it back. Tony picked the dose log knowing this, and its card (CRT-10) carries his confirm step at execution.",
+   "The rows can be read only through Happy: when the Mac mini or the cloud model is down, neither parent can get at them."
+  ],
+  "corrections": [
+   "The 9 Oct verifier note says the secret-rejecting before_tool_call hook can live in the same plugin as the defineToolPlugin store. docs/plugins/tool-plugins.md:11 says defineToolPlugin adds tools only, and :233 points to definePluginEntry when tools are combined with hooks.",
+   "The catalog chooses defineToolPlugin for the store but still names its tools home-store__schedule_* in the automations. docs/tools/multi-agent-sandbox-tools.md:242 gives that server__tool form to MCP servers only; a plugin's tools carry the names it declares, so job tool lists must use those."
+  ],
+  "unverified": [
+   "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done.",
+   "That a tool in this plugin is told which agent called it, so a row can carry who wrote it without asking the model: the installed tool-context type lists the calling agent's id and the sender's id (dist/agent-harness-runtime-BbN1SctJ.d.ts), and the docs show that context reaching a tool built through a factory (plugins/tool-plugins.md:138); not tried on a live turn.",
+   "Which plugin form is used: the card named `defineToolPlugin`, which the installed docs describe as a TypeScript package with a build step (plugins/tool-plugins.md:20), while the one plugin in the config repo is plain JavaScript written with `definePluginEntry` and `api.registerTool`. Settled at execution.",
+   "Where the database file is kept so that the nightly backup includes it and a restore brings it back: not tried.",
+   "That the tools are offered to the two parents' agents and to no other agent or its eval-only copy: the separation check is extended to them at execution. The parents' own eval-only copies are generated with the same tool list as the parents' agents, so what a test run may write into the real file is settled then."
+  ],
+  "safety": "Both parents' agents read and write the same rows, so the store is shared between the two adults on purpose. Its tools are allowed by name on those two agents only. The tool's own schema keeps every input short and typed, which leaves a planted instruction little room to persist. No send and no web access is added.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins (OpenClaw docs)",
+    "anchor": "defineToolPlugin",
+    "supports": "A defineToolPlugin plugin adds agent-callable tools only (no hooks or services), which fits a local store with a handful of typed tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nodejs.org/api/sqlite.html",
+    "title": "SQLite | Node.js documentation",
+    "anchor": "node:sqlite",
+    "supports": "Node ships a built-in synchronous SQLite module (added in 22.5.0, release-candidate stability), so the store needs no extra database dependency on the installed Node 26.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+    "title": "Multi-agent sandbox and tools (OpenClaw docs)",
+    "anchor": "<safe-server>__<safe-tool>",
+    "supports": "The double-underscore server__tool name belongs to configured MCP servers; a native plugin tool is addressed by the name it declares.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+    "title": "Maintenance Checklist | ENERGY STAR",
+    "anchor": "change air filters once a month",
+    "supports": "A US government energy programme tells households to check or change heating and cooling filters on a fixed interval and book yearly check-ups, the kind of dated upkeep schedule this store keeps.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "none",
+  "section": "Lists and household data",
+  "includes": [],
+  "history": [
+   "r1: edited name. Kept: about a dozen other items keep their dates and facts here (upkeep calendar, chore rota, sick-day log, coverage planner and more), so it stays as the one shared store instead of being folded into any single one of them. The name is corrected: it is an in-house tool plugin, not an MCP server, and shopping-style lists live in the Reminders bridge (F030).",
+   "r1: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r2: edited name, description, caveats, safety. Kept as the one shared store that fourteen other entries build on; its credible mention is the same upkeep guidance as the upkeep calendar (F038), its first user. The name's 'ledgers' had nothing behind it, and the description now says where this store stops and the family handbook (F043) and personal memory (F041) begin, since all three were described as places for facts.",
+   "r2: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r3: edited description, example. Kept as the one shared store that fifteen other entries build on, with the government upkeep guidance as its credible mention (opened again in this round). The description still spoke of 'the upkeep nudges' although round 2 folded the upkeep calendar into the renewals look-ahead (F063); it now names that entry, and an example is added.",
+   "r3: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r4: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r5: edited caveats, safety. Kept as the one shared store that fourteen other entries list as a prerequisite, with the government upkeep guidance as its credible mention (opened again in this round). One safety line overclaimed: it said anything stored here is shared between the two adults by design, but round 4 gave the change journal (G006) a table in this store that holds each parent's own rows, including a copy of the text of every saved memory note, so the note now says which tools are shared and which table is not.",
+   "r5: kept; credible mention: Maintenance Checklist | ENERGY STAR",
+   "r8 (Wave definition, 12 Oct): moved from wave A to not in a wave yet. Later plan 'shared household data': nothing placed in A to C needs the household database (S8), so it is built with the first picked feature that does.",
+   "r10: edited name, description, example, how, depends_on, caveats, safety, unverified, effort, readiness. Tony's 'All features' brings in the dose log and the coverage planner, which both need rows that either parent's agent can write and the other can read, so the database is planned in exactly that size: one in-house plugin, one file, one table per feature, and none of the general schedule or fact tools. The dinner plan and the form kit, in their simplified forms, need no table.",
+   "r10: kept; credible mention: Maintenance Checklist | ENERGY STAR"
+  ],
+  "demand": {
+   "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+   "title": "Maintenance Checklist | ENERGY STAR",
+   "supports": "A US government energy programme tells households to inspect, clean or change heating and cooling filters every month and to book yearly pre-season check-ups, the kind of dated upkeep schedule this store keeps for both parents; opened again in this round."
+  },
+  "depends_on": [
+   "No other planned card is needed first. It is built in the same plan as its first user, the dose log (CRT-10) or the coverage planner (CRT-11), whichever comes first; the other adds its own table when it is built",
+   "Node's built-in SQLite module on the installed Node, so no new package",
+   "The config repo's plugins folder and the ordinary deploy with a gateway restart, the way the weather plugin is deployed, plus one more path in `plugins.load.paths`"
+  ]
+ }
+]

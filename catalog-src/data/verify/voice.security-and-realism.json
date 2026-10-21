@@ -1,0 +1,1352 @@
+[
+ {
+  "id": "VOX-01",
+  "verdict": "revise",
+  "reason": "The iPhone app is a full gateway client and device node, not a voice-only surface: every pairing profile carries operator.read, and the two phone profiles also carry write and approvals, so a second adult's phone can read the other adult's agent workspace and approve anyone's requests. That breaks the section 1b rule that family members only chat; the only safe placement verified today is the operator's own phone.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/ios.md:15",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:19",
+    "ok": true,
+    "note": "Anchor present. The next line lists the node capabilities the same app exposes (screen snapshot, camera, location), which the feature did not mention."
+   },
+   {
+    "ref": "docs/nodes/talk.md:12",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:19",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:651",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:655",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:668",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:35",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/cli/qr.md:54",
+    "ok": true,
+    "note": "Line lists the default mobile handoff scopes: admin, approvals, read, talk.secrets and write. Two lines down the same page shows that --limited removes only admin, which the feature did not carry through to its safety claim."
+   },
+   {
+    "ref": "docs/cli/qr.md:69",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk/session-ownership.md:17",
+    "ok": true,
+    "note": "Anchor present. The same page says an agent-prefixed session key selects that agent, so talk.agentId is a default, not a restriction."
+   }
+  ],
+  "corrections": {
+   "readiness": "experimental",
+   "risk": "high",
+   "value": 3,
+   "description": "A parent installs the OpenClaw iPhone app and holds a spoken back-and-forth with their own agent: the phone transcribes, the gateway answers as it would a text, and the reply is spoken. The app also adds a Listen action on any reply and a Siri phrase or Action Button shortcut that starts voice. Realistic first step is Tony's phone only: the app is a full gateway client and a device node, and with what is verified today a second adult's phone cannot be held to her own agent.",
+   "how": "Phase 1, Tony's phone only. App Store OpenClaw app reaching the gateway over the tailnet. Pairing code from `openclaw qr --limited`: this drops only operator.admin, and the phone still holds operator.write, operator.approvals and operator.talk.secrets. Leave the phone's node surface unapproved, or deny its commands with `gateway.nodes.commands.deny`, so pairing adds voice and nothing else. Set `talk.agentId` explicitly and give Talk its own speech provider (`talk.provider`). Native Talk is a loop: Apple Speech recognition on the phone, Gateway chat on tony-main, then `talk.speak`. Keys: `talk.speechLocale`, `talk.silenceTimeoutMs`, `talk.interruptOnSpeech`. Entry points: the inline Talk control, the `Start Live Voice` App Shortcut, the Siri phrase, or the Action Button. Phase 2, Jordan's phone: only after a spike shows that `gateway.roles` (other people's sessions hidden, agent list limited to jordan-main) works with the iOS app under a verified identity per person. Until then she keeps iMessage with Siri dictation, which already works.",
+   "depends_on": [
+    "OpenClaw iOS app on Tony's iPhone",
+    "Tailscale on the phone",
+    "VOX-03 voice guardrails",
+    "decision: is a write-scoped gateway credential on a phone acceptable",
+    "a Talk speech provider (talk.provider), configured separately from the tts block",
+    "spike before any second adult is paired: gateway.roles with the iOS app"
+   ],
+   "caveats": [
+    "Audio can leave the house even in the native loop: the docs say Apple Speech recognition on iOS may use network services. The transcript then goes to OpenAI as text like any typed message.",
+    "iOS may suspend background audio, so voice is best-effort unless the app is in the foreground; the Siri shortcut does not bypass unlock or foreground restrictions.",
+    "The app is a gateway client first. Every pairing profile includes operator.read, which covers session lists, chat history, logs and read-only browsing of every agent's workspace; the app's Agents > Files screen and its offline transcript cache show exactly that. On a second adult's phone this means the other adult's agent memory is readable.",
+    "The default pairing code includes the admin scope, and in every profile the app lets its user pick any agent.",
+    "`--limited` removes only operator.admin. The phone keeps operator.write (chat with any agent, gateway-wide tool invocation, node command relay) and operator.approvals, so a second phone is also a second approver for every pending request.",
+    "`--voice-node` does not rescue the native loop: the chat turn is chat.send, which the docs class as write-scoped, and that profile holds only read and talk.",
+    "Pairing registers the phone as the gateway's first node. Once a node surface is approved, the default iOS policy allows location, contacts search, calendar events, reminders and latest photos to any write-scoped client, subject to the iOS permission on the phone.",
+    "App Store builds register with a vendor-hosted push relay: a new third-party dependency and egress destination for this gateway.",
+    "Talk playback uses the Talk speech provider, not the general tts block. The docs name elevenlabs (cloud), mlx and system for Talk, and the mlx helper ships with the Mac app, which is not installed here; expect the iPhone's own system voice.",
+    "A lost or unlocked phone is now a gateway credential rather than just an iMessage sender; Tony needs the device-revocation step written down before pairing.",
+    "`openclaw qr` only advertises a Tailscale URL when OpenClaw itself owns the Serve route (`gateway.tailscale.mode`), so the M0 Serve setup has to be checked before pairing.",
+    "Dictating an iMessage to Happy with the keyboard microphone or Siri already works today with no setup. Talk adds the continuous loop, barge-in and spoken replies, not a new capability."
+   ],
+   "safety": "Tony's phone: acceptable, because section 1b already makes Tony the control-plane owner who can read everything; pair with the limited profile, keep the node surface unapproved, and treat the phone as an admin-adjacent credential. A second adult's phone: no safe placement is verified. The docs describe operator scopes as a guardrail inside one trusted operator domain, not a boundary between people, and the named-roles feature that could limit her to her own agent rejects the device and bootstrap tokens that QR pairing issues. Voice input is the speaker's own words, so no untrusted-content leg is added to <p>-main, and tool policy, hooks and the family-only recipient pin still apply to the agent's tool calls. A child must not use a parent's Talk session: every agent is cloud-backed and Apple Speech on iOS may send audio to Apple.",
+   "unverified": [
+    "Whether the iOS app can connect its operator session at all once `gateway.roles` is configured.",
+    "Whether Tony and Jordan have separate tailnet logins, which a verified Tailscale identity per person would need.",
+    "Whether the iPhone app accepts a `--voice-node` code; even if it does, the native loop probably fails without write scope.",
+    "Whether a local engine set up under tts (VOX-04) can serve as the Talk speech provider for talk.speak on iOS.",
+    "Whether a Talk session can continue the same conversation as the person's iMessage thread, or only shares agent memory.",
+    "Whether the M0 Tailscale Serve route is owned by OpenClaw (`gateway.tailscale.mode`), which `openclaw qr` requires before it will advertise a tailnet URL.",
+    "Whether in-app Talk still works while the phone's node surface is left unapproved.",
+    "Which `talk.provider` ids besides elevenlabs, mlx and system the gateway accepts for playback on iOS."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:56",
+    "title": "openclaw qr",
+    "anchor": "--limited",
+    "supports": "The limited pairing profile keeps the same token and removes only the admin scope from the operator handoff."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, lists, logs and session reads across the gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:37",
+    "title": "Operator scopes",
+    "anchor": "operator.write",
+    "supports": "The write scope covers sending messages, invoking tools and relaying node commands, and it also satisfies read."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:40",
+    "title": "Operator scopes",
+    "anchor": "operator.approvals",
+    "supports": "The approvals scope gives access to the exec and plugin approval APIs."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:12",
+    "title": "Operator scopes",
+    "anchor": "not hostile multi-tenant isolation",
+    "supports": "Operator scopes are a guardrail inside one trusted operator domain and do not separate people; separate gateways are the documented answer for that."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:22",
+    "title": "iOS app",
+    "anchor": "Agents surface (Files)",
+    "supports": "The iPhone app has a screen that browses the selected agent workspace, with previews and share-sheet export."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:23",
+    "title": "iOS app",
+    "anchor": "offline cache",
+    "supports": "The iPhone app keeps a local cache of recent chat sessions and transcripts for the paired gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:467",
+    "title": "Operator scopes",
+    "anchor": "write-scoped method",
+    "supports": "Sending a chat turn is a write-scoped gateway method, which a read-plus-talk credential does not hold."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:174",
+    "title": "Operator scopes",
+    "anchor": "bootstrap-token",
+    "supports": "With named roles configured, operator logins by device token or bootstrap token without a verified identity are rejected."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:31",
+    "title": "Node command policy",
+    "anchor": "location.get",
+    "supports": "The gateway default policy for an iOS node allows location, contacts search, calendar events, reminders and latest photos, among others."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:22",
+    "title": "Node command policy",
+    "anchor": "no effective commands",
+    "supports": "A node surface that has not been approved exposes no commands."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration",
+    "anchor": "gateway.nodes.commands.deny",
+    "supports": "A gateway-wide deny list removes declared node commands after pairing."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:527",
+    "title": "iOS app",
+    "anchor": "ios-push-relay.openclaw.ai",
+    "supports": "App Store builds register with a vendor-hosted push relay whose address cannot be overridden."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:31",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "active Talk speech provider",
+    "supports": "Talk playback is synthesized by the active Talk speech provider, which is configured separately from general TTS."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-02",
+  "verdict": "revise",
+  "reason": "Readiness 'experimental' is honest, but data handling is understated: OpenAI lists 30-day abuse-monitoring retention for the realtime endpoint, the voice key sits outside the per-person store-off providers, the spoken yes is not tied to a speaker, and the feature inherits the unsolved phone pairing from VOX-01.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/talk.md:13",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:181",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:209",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:156",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:131",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk/realtime-sessions.md:57",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk/realtime-sessions.md:131",
+    "ok": true,
+    "note": "Anchor present. The gate is described for voice-originated consult runs on the realtime paths; nothing on the page ties the confirmation to a particular speaker."
+   },
+   {
+    "ref": "docs/nodes/talk/realtime-sessions.md:87",
+    "ok": true,
+    "note": "Anchor present. The same paragraph adds that provider sessions receive a bounded realtime profile context; its contents are not described."
+   },
+   {
+    "ref": "https://developers.openai.com/api/docs/pricing",
+    "ok": true,
+    "note": "Fetched. gpt-live-1 is listed at $0.05 per minute, billed per second; gpt-realtime-mini audio is $10 in and $20 out per million tokens. The page also says backend model and tool usage are charged separately, which the feature omitted."
+   }
+  ],
+  "corrections": {
+   "risk": "high",
+   "depends_on": [
+    "VOX-01 phase 1 (operator's phone only)",
+    "VOX-03 voice guardrails",
+    "an OpenAI Platform key dedicated to voice",
+    "decision: Zero Data Retention for the organisation that owns the voice key",
+    "G004 spend caps extended to the voice key"
+   ],
+   "caveats": [
+    "Raw audio, not just text, goes to OpenAI for the whole call: with WebRTC the media runs directly between the device and the provider.",
+    "Billed separately from chat. OpenAI's pricing page lists gpt-live-1 at $0.05 per minute and gpt-realtime-mini at $10 in and $20 out per million audio tokens. Ten minutes a day on gpt-live-1 works out to about $15 a month per parent (my arithmetic).",
+    "`talk.realtime` is one gateway-wide block, so the per-person provider ids and per-person cost split used for text do not carry over to voice.",
+    "The installed docs mark the iOS GPT-Live path as implemented with device live verification still pending, and GPT-Live sessions end at a 30-minute TTL.",
+    "In a kitchen with children talking in the background, their voices are streamed to a cloud model. Use it with the phone at the ear or headphones, or stay on VOX-01 push-to-talk.",
+    "For most kitchen questions the native loop is enough; realtime mainly buys barge-in and lower latency.",
+    "Retention: OpenAI's data-controls page lists the realtime endpoint with 30 days of abuse-monitoring retention unless the organisation has Zero Data Retention (the endpoint is eligible; GPT-Live sessions are listed separately and are also eligible). The M1 store-off decision covers chat calls through the custom provider ids and does not carry over to voice.",
+    "The per-minute GPT-Live price is not the whole bill: OpenAI's pricing page says backend model and tool usage are charged separately, so each agent-consult turn is billed again on the chat key.",
+    "The spoken confirmation gates the action, not the speaker: anyone in earshot, a child included, can say yes. It applies to voice-originated consult runs only.",
+    "Usable only on a phone that is already paired, which today means the operator's phone (see VOX-01)."
+   ],
+   "safety": "`brain: agent-consult` keeps tools behind the same <p>-main policy, hooks and approvals as text. The spoken-confirmation gate is host-enforced, bound to the final arguments and consumed once, so generated text cannot confirm on the user's behalf; it does not identify who spoke. The realtime voice model is a second cloud model outside <p>-main's provider policy: it hears the room and is given a bounded slice of the session's history. Headphones or phone-at-ear is a habit, not a control, so this stays out of shared rooms when children are present. Never point realtime at a kids agent: it is cloud audio by construction.",
+   "unverified": [
+    "Whether this OpenAI organisation has Zero Data Retention; without it realtime audio falls under the 30-day abuse-monitoring window.",
+    "What the 'bounded realtime profile context' sent to the voice provider contains for an agent that holds personal memory.",
+    "Whether realtime credentials can be set per agent or per person.",
+    "Real latency and barge-in quality on the home Wi-Fi."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API: data controls",
+    "anchor": "/v1/realtime",
+    "supports": "OpenAI lists the realtime endpoint with 30 days of abuse-monitoring retention, no application state, and eligibility for Zero Data Retention."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/realtime-sessions.md:94",
+    "title": "Talk realtime sessions and delegation",
+    "anchor": "shared-session history",
+    "supports": "Gateway-controlled realtime calls are given a bounded slice of the shared session history as background."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-03",
+  "verdict": "revise",
+  "reason": "Two of the pack's limits do not do what the entry says: `--limited` still hands out write and approvals, and the spoken-confirmation gate covers realtime consult runs only. No item in the pack separates the two adults on a voice device, because every pairing profile includes operator.read; the entry should say so and add the missing cloud-speech locks.",
+  "source_checks": [
+   {
+    "ref": "docs/cli/qr.md:58",
+    "ok": true,
+    "note": "Anchor present. Two lines up, the page shows that --limited omits only the admin scope, so the feature was wrong to offer it as an alternative voice profile."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:42",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:482",
+    "ok": true,
+    "note": "Anchor present. The surrounding lines and the RPC reference show read scope reaches further than the feature says: session reads, logs and agent workspace browsing, not only status."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:104",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:174",
+    "ok": true,
+    "note": "Anchor present. The same paragraph requires a verified identity such as a trusted proxy or Tailscale login for operator connections once roles exist."
+   },
+   {
+    "ref": "docs/nodes/talk/client-ui.md:23",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk/realtime-sessions.md:131",
+    "ok": true,
+    "note": "Anchor present, but the gate is scoped to voice-originated consult runs (client tool calls, the gateway relay, GPT-Live delegations). It is not a general rule for the native speech loop."
+   },
+   {
+    "ref": "docs/tools/tts/commands.md:28",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:41",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "description": "One reviewed set of limits that goes in before any voice surface is switched on: voice-only devices get a read-plus-talk credential, Talk has an explicit default owner, realtime voice must confirm aloud before acting, cloud speech providers are switched off in config rather than by instruction, and a house rule says shared-room microphones never reach a memory-holding or cloud-backed agent while kids are around. It narrows what a voice device can do; it does not stop a paired device from reading both adults' agents.",
+   "how": "Pair voice-only devices (a Watch, a room device) with `openclaw qr --voice-node`: node token plus only operator.read and operator.talk. Do not treat `--limited` as a voice profile; it removes only operator.admin and keeps write, approvals and talk.secrets. Set `talk.agentId` explicitly, because a multi-agent gateway has no unambiguous Talk owner. Use `talk.realtime.brain: agent-consult` and keep the built-in spoken-confirmation gate, knowing it applies to voice-originated realtime consult runs; the native speech loop is ordinary chat and relies on the existing hooks and approvals. Shut the cloud-speech doors in config: leave `tts.modelOverrides.allowProvider` off, set `tts.providers.microsoft.enabled: false`, configure no cloud speech keys, and block the speech hosts at the egress proxy, because any authorized sender can run `/tts provider <id>`. Keep voice devices' node surfaces unapproved or denied with `gateway.nodes.commands.deny`. Add a read-only listing of paired devices, their scopes and their node commands to the operator's inspect script. Per-person enforcement would need `gateway.roles` on top of a verified identity per person; that is a separate project and unproven with the mobile apps.",
+   "caveats": [
+    "operator.read is broad and is in every pairing profile: session lists, chat history, logs and read-only browsing of every agent's workspace. There is no voice credential today that cannot read both adults' agent memory.",
+    "A read-plus-talk device probably cannot run the native speech loop, because the chat turn is write-scoped. Least privilege therefore pushes voice devices onto the realtime path, which is cloud audio.",
+    "Talk clients choose the agent (the Watch literally asks which agent), so 'Jordan's device only reaches jordan-main' is not enforced without gateway roles.",
+    "There is no speaker identification anywhere in the stack. Whoever is near the microphone is the user, and the spoken yes can come from anyone in the room; the FaceTime doc says the same about its own calls.",
+    "With roles configured, plain device or bootstrap tokens are rejected for operator connections, so roles change how every app signs in and need a verified identity per person. The docs add that the write scope stays gateway-wide even under roles.",
+    "Standalone Watch setup needs the iPhone connected with operator.admin, which conflicts with pairing phones below admin."
+   ],
+   "safety": "This entry is the control layer for the voice lens: credential scopes, tool policy, provider switches in config and a host-enforced confirmation are limits the model cannot talk its way past. What it cannot deliver is the section 1b separation between the two adults on app or voice devices, or the kids rule; those need verified role enforcement and a local model, neither of which exists yet. Until then the only compliant voice device is the operator's own.",
+   "unverified": [
+    "Whether the iOS and Watch apps still connect once `gateway.roles` is configured.",
+    "Whether a voice-node device can be pinned to exactly one agent.",
+    "Whether the kill switch hooks in G005 fire for realtime Talk sessions.",
+    "Whether a voice-node credential can run the native speech loop at all.",
+    "Whether the provider fallback chain reaches the Microsoft online voice when a local engine fails (the docs and source say it counts as configured by default)."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:56",
+    "title": "openclaw qr",
+    "anchor": "--limited",
+    "supports": "The limited pairing profile keeps the same token and removes only the admin scope from the operator handoff."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, lists, logs and session reads across the gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:467",
+    "title": "Operator scopes",
+    "anchor": "write-scoped method",
+    "supports": "Sending a chat turn is a write-scoped gateway method, which a read-plus-talk credential does not hold."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:344",
+    "title": "Operator scopes",
+    "anchor": "Gateway-wide operations",
+    "supports": "Even with named roles, the write scope still authorizes gateway-wide tool invocation and node command relay, so it is not a per-person boundary."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:126",
+    "title": "Text-to-speech field reference",
+    "anchor": "Allow Microsoft speech usage",
+    "supports": "The keyless Microsoft speech provider is enabled by default."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:67",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "/tts provider <id>",
+    "supports": "A slash command lets an authorized sender switch the speech provider."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:372",
+    "title": "iOS app: Standalone voice",
+    "anchor": "operator.admin",
+    "supports": "Standalone Watch voice setup requires the iPhone to be connected with the admin scope."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration",
+    "anchor": "gateway.nodes.commands.deny",
+    "supports": "A gateway-wide deny list removes declared node commands after pairing."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-04",
+  "verdict": "revise",
+  "reason": "The local engine is sound, but 'never touches a cloud TTS provider' is not true by default: the keyless Microsoft online voice is enabled and counts as a configured fallback, and any authorized sender can switch provider with a slash command. The neural-engine route is also an install and a service, not a small config change.",
+  "source_checks": [
+   {
+    "ref": "docs/tools/tts/configuration.md:297",
+    "ok": true,
+    "note": "Anchor present. Speech Swift is a third-party project; the page documents a Homebrew install and a local server on port 8080 a few lines below."
+   },
+   {
+    "ref": "docs/tools/tts/configuration.md:331",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/configuration.md:341",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/configuration.md:446",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/quickstart.md:44",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/quickstart.md:67",
+    "ok": true,
+    "note": "Anchor present. The field reference adds that this online provider is enabled by default, which is the gap in the feature safety claim."
+   },
+   {
+    "ref": "docs/tools/tts.md:12",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/channels/imessage/rich-messages.md:49",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/channels/imessage/private-api.md:11",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/commands.md:84",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/tools/tts/field-reference.md:28",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "skills/sherpa-onnx-tts/SKILL.md:3",
+    "ok": true,
+    "note": "Anchor present. The skill needs a runtime download and two environment variables, and as a skill it is run by an agent through exec, which no agent here has."
+   },
+   {
+    "ref": "skills/sag/SKILL.md:3",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "name": "Local neural voice for spoken replies (local-only once cloud speech is switched off)",
+   "effort": "M",
+   "how": "Gateway `tts` block. Documented option A: Speech Swift's local server on loopback (`brew install speech`, `speech-server --port 8080`) with the `openai` speech provider pointed at the loopback base URL, `model` tts-1 (which selects Kokoro) and `responseFormat` wav. Option B: `tts-local-cli` running the `speech` or `say` command. Option C: the bundled sherpa-onnx-tts skill with a Piper voice. Per-agent control through `agents.entries.<id>.tts` (off for research and inbox). `tts.auto: inbound` gives a voice answer to a voice memo; `/tts latest` reads the previous reply. ffmpeg on the host for conversions. To make local-only true rather than assumed: set `tts.provider` explicitly, set `tts.providers.microsoft.enabled: false`, configure no cloud speech keys, keep `tts.modelOverrides.allowProvider` off, and block the cloud speech hosts at the egress proxy. For anything a child will hear, also turn the summary step off or point `tts.summaryModel` at a local model. Option C is only usable as a `tts-local-cli` command here: the bundled skill is run by an agent through exec, which no agent has.",
+   "caveats": [
+    "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+    "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+    "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+    "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+    "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio.",
+    "Local-only is not the default. The keyless Microsoft provider is enabled by default, and the docs say other configured providers act as fallbacks, so a stopped local server could end in a cloud call unless Microsoft is disabled.",
+    "`/tts provider <id>` is open to any authorized sender and writes one preference file on the gateway host, so a single text can move speech to another provider for everyone. Having no cloud provider configured is the control; a prompt rule is not.",
+    "Option A adds a third-party Homebrew package and a long-running loopback server under the happy user, plus a model download: an install, a launch agent, a firewall rule and a one-time egress exception."
+   ],
+   "safety": "Speech synthesis is an output transformation on the gateway host and adds no new way for an agent to send data out. It is local-only, and so usable for kids' content later, only after the cloud speech providers are disabled in config and blocked at the proxy; the default provider chain and the provider slash command would otherwise allow a cloud voice. Long replies pass through a summary model before synthesis, which must be local or off for kids. Keep provider switching by directive off (VOX-03).",
+   "unverified": [
+    "Kokoro or Piper voice quality and speed on this Mac.",
+    "Whether pointing `tts.providers.openai` at loopback has any side effect on the earlier decision not to add a catalog openai model provider (it is a different config block).",
+    "Whether scheduled announce deliveries (briefs) pass through Auto-TTS or only interactive replies do.",
+    "Whether the fallback chain actually reaches the Microsoft online voice when the selected local provider errors.",
+    "Which hosts the Speech Swift package contacts to download its models."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:126",
+    "title": "Text-to-speech field reference",
+    "anchor": "Allow Microsoft speech usage",
+    "supports": "The keyless Microsoft speech provider is enabled by default."
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/speech-provider-UuMpLqsM.mjs:150",
+    "title": "OpenClaw source: Microsoft speech provider",
+    "anchor": "isConfigured",
+    "supports": "The Microsoft provider reports itself as configured whenever its enabled flag is not set to false."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/quickstart.md:77",
+    "title": "Text-to-speech quickstart",
+    "anchor": "fallback options",
+    "supports": "When several speech providers are configured, the selected one is tried first and the others serve as fallbacks."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:67",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "/tts provider <id>",
+    "supports": "A slash command lets an authorized sender switch the speech provider."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:94",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "settings/tts.json",
+    "supports": "Slash-command speech preferences are written to one preferences file on the gateway host."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:46",
+    "title": "Text-to-speech field reference",
+    "anchor": "auto-summary",
+    "supports": "Long replies are summarized by a model that defaults to the primary chat model."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-05",
+  "verdict": "revise",
+  "reason": "It sits on VOX-01, which is not ready beyond the operator's phone, and most of what it offers (timers, reading a recipe aloud) the phone already does better. A kitchen with children is also where an open microphone feeding a cloud agent is least acceptable.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/talk.md:200",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:199",
+    "ok": true,
+    "note": "Anchor present. The key is documented as a single gateway setting with per-platform defaults; no per-session override is described."
+   },
+   {
+    "ref": "docs/nodes/talk/macos-relay.md:72",
+    "ok": true,
+    "note": "Anchor present, but the sentence sits in the paragraph about continuous realtime providers that keep the microphone open during playback. It is not general advice for the turn-based native loop."
+   },
+   {
+    "ref": "docs/platforms/ios.md:25",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "readiness": "experimental",
+   "value": 2,
+   "caveats": [
+    "For timers the phone or watch is simply better: a Siri timer is faster and audible, while Happy's reminder is an iMessage ping.",
+    "<p>-main does not browse, so 'find me a recipe' is a research-agent job first (F019); the kitchen session works from text the parent chose to send.",
+    "With kids in the kitchen this should be push-to-talk on the parent's phone, not an open microphone.",
+    "The headphone advice in the docs is given for continuous realtime sessions, where the microphone stays open during playback; the turn-based native loop keeps echo suppression. It matters if this is run over VOX-02.",
+    "Inherits VOX-01: only the operator's phone can be paired within the family's separation rule today, so this is a one-parent workflow until that changes.",
+    "`talk.silenceTimeoutMs` is one gateway-wide key, so a longer pause for cooking slows every other Talk turn.",
+    "Voice Wake and background listening stay off in the kitchen: on iOS the recognizer may use Apple's network service, and children's speech would reach a cloud agent."
+   ],
+   "safety": "Same agent, tool policy and hooks as typed chat; nothing new can leave the house through the agent, and the only content entering the memory-holding agent is the recipe the parent sent. The exposure is the room: other people's speech, children's included, is transcribed by Apple and answered by a cloud model, so the session is started and stopped by hand by the parent and never by wake word.",
+   "unverified": [
+    "How well Apple dictation copes with extractor-fan and pan noise.",
+    "Whether the silence timeout can be changed per session rather than gateway-wide.",
+    "Whether the iPhone app has a user-facing hold-to-talk control; the docs list push-to-talk only as node commands."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:650",
+    "title": "iOS app",
+    "anchor": "talk.ptt.start",
+    "supports": "Push-to-talk on iOS is exposed as node commands that the gateway allows for Talk-capable nodes."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:651",
+    "title": "iOS app",
+    "anchor": "best-effort",
+    "supports": "Voice on iOS is best-effort whenever the app is not in the foreground, which a propped-up phone that dims or locks will hit."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-06",
+  "verdict": "revise",
+  "reason": "Safe and available today, so it survives; the changes are small. Value is overstated for what is a reply-style rule on top of the phone's own feature, one item listed as unverified is answered by the Apple page already cited, and a passenger-privacy caveat is missing.",
+  "source_checks": [
+   {
+    "ref": "https://support.apple.com/en-us/108415",
+    "ok": true,
+    "note": "Fetched. The page says Siri can announce incoming messages in the car, and that for long messages it gives only the sender and reads the text on request; that second point answers an item the feature left unverified."
+   },
+   {
+    "ref": "docs/platforms/ios.md:665",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:662",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "value": 3,
+   "caveats": [
+    "I found no CarPlay surface in the installed OpenClaw docs or changelog (a search for the word returned nothing), so there is no Happy app on the car screen to plan for.",
+    "The OpenClaw Start Live Voice shortcut is not a car feature: it needs the phone unlocked and the app in the foreground.",
+    "Anything that needs a tap, such as an approval prompt, has to wait until parked.",
+    "This is mostly the phone doing its job; the only work is making Happy's replies fit to be read aloud.",
+    "Apple's page says that for long messages Siri announces only the sender and reads the text on request, which is the practical reason to keep replies to two sentences.",
+    "Announced replies are heard by everyone in the car, so the driving style should also hold back private detail (money, health, the other adult's plans) until parked.",
+    "The example needs calendar knowledge Happy does not have yet; today the rule only improves weather and search answers."
+   ],
+   "unverified": [
+    "Whether a voice memo (F003) can be recorded hands-free in CarPlay.",
+    "Apple's detailed CarPlay Messages pages returned only navigation when fetched, so only the general CarPlay support page is cited."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-07",
+  "verdict": "revise",
+  "reason": "No local way to overlay a clip is verified without Home Assistant or the Sonos cloud API, so the defining behaviour is unproven on these speakers. The entry also leaves the trigger to a model on an agent that reads search results, and adds a LAN listener to a host that has none. Effort is L, and two living-area speakers limit the value.",
+  "source_checks": [
+   {
+    "ref": "skills/sonoscli/SKILL.md:3",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "skills/sonoscli/SKILL.md:56",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "https://docs.sonos.com/reference/audioclip-loadaudioclip-playerid",
+    "ok": true,
+    "note": "Fetched. The command takes a streamUrl (MP3 or WAV), may be mixed with playing content, and its security block lists a cloud OAuth scope and an API key. The page says not all devices support audio clips and that support is shown by the AUDIO_CLIP capability."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/sonos/",
+    "ok": true,
+    "note": "Fetched. announce: true lowers the music and restores it afterwards. The page adds two facts the feature lacks: TCP port 1443 on each speaker must be reachable, and older hardware or S1 firmware may not fully support announcements."
+   },
+   {
+    "ref": "https://sonoscli.sh/commands/",
+    "ok": true,
+    "note": "Fetched. play-url and play-uri are listed; there is no say, tts, announce or clip command and nothing about restoring previous playback."
+   }
+  ],
+  "corrections": {
+   "readiness": "experimental",
+   "effort": "L",
+   "value": 2,
+   "how": "Trigger is deterministic, not a model decision: a `before_dispatch` claim on a fixed prefix such as `announce:` from an adult's handle hands the parent's words verbatim to the tool, so <p>-main (which reads search results) never decides to speak to the house and no cloud-written text is played to the children. If an agent tool form is kept, each announcement needs an approval. The tool itself, `announce(text, rooms)`, lives in the planned `home-sonos` plugin. It synthesizes the text with the local engine from VOX-04, serves the file from a small HTTP server bound to the LAN address only (one directory, short-lived random file names, inbound firewall exception for the speakers), and plays it. Route A, no Home Assistant: the Sonos audio-clip command `loadAudioClip` with a `streamUrl`, which mixes the clip with whatever is playing but is documented under the cloud Control API with OAuth and an API key; or sonoscli `play-uri`, which replaces what is playing and restores nothing. Route B, if Home Assistant is ever installed for VOX-11: its Sonos integration plays an announcement with `announce: true` and restores the volume. In code: text length cap, volume cap, quiet hours from G001, speaker allowlist, a daily cap.",
+   "caveats": [
+    "The bundled sonoscli skill documents discover, status, play, volume and grouping only; it has no announce or speech command. The tool's site lists `play-url` and `play-uri`, but I could not confirm that either resumes the previous music.",
+    "Sonos audio clips only work on players that report the AUDIO_CLIP capability; the two speakers here are unchecked.",
+    "LAN speaker control from the gateway needs the macOS Local Network permission for the launchd node process.",
+    "A talking house at the wrong moment is worse than no feature; quiet hours and a low daily cap matter more than voice quality.",
+    "The overlay is unverified without Home Assistant. Sonos documents loadAudioClip under its cloud Control API (OAuth scope plus API key), and Home Assistant's page says its announcements need TCP port 1443 open on each speaker, which suggests a local interface exists; Sonos' own page does not document one.",
+    "Home Assistant's page warns that older hardware and S1 firmware may not fully support announcements.",
+    "The 9 Oct scan found the two speakers in the living room and the family room, so an announcement does not reach the kitchen or bedrooms.",
+    "The clip server would be the first LAN-facing listener on the gateway Mac.",
+    "The Sonos cloud route puts a Sonos account token on the gateway and makes a house announcement depend on an internet round trip."
+   ],
+   "safety": "The audience is everyone in the house, guests and children included, so this is an outbound channel in its own right even though nothing leaves the building. It must not be callable by an agent that reads untrusted content without an approval: <p>-main reads search and research results, so the safe trigger is a fixed prefix claimed before the model, speaking the parent's words verbatim. Never reachable from research or mail readers. Speech is synthesized locally, with the VOX-04 hardening in place. Text length, volume, quiet hours, speaker allowlist and a daily cap are enforced in code. No lock, alarm or door is involved."
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Plugin hooks reference",
+    "anchor": "before_dispatch",
+    "supports": "A plugin hook can claim an inbound message before the model is run."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-08",
+  "verdict": "revise",
+  "reason": "Two of the three paths do not hold up for this install: the companion path inherits the VOX-01 phone pairing and mirrors approval prompts to the wrist, and standalone voice needs both an admin-scoped iPhone for setup and a gateway URL the Watch can reach outside the tailnet. Only plain Messages dictation is usable, and that path has no opened source.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/ios.md:263",
+    "ok": true,
+    "note": "Anchor present. The companion path needs no separate Watch pairing but does need the iPhone connected to the gateway and available to relay."
+   },
+   {
+    "ref": "docs/platforms/ios.md:376",
+    "ok": true,
+    "note": "Anchor present. Four lines up, the same section requires an iPhone connection with the admin scope for setup, which the feature did not mention."
+   },
+   {
+    "ref": "docs/platforms/ios.md:395",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:405",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:436",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:157",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "depends_on": [
+    "an Apple Watch (ownership unknown)",
+    "VOX-01 phase 1 (operator's phone only) for the companion path",
+    "VOX-02 plus a non-tailnet gateway URL for the standalone path, which the inbound rule excludes",
+    "VOX-03"
+   ],
+   "caveats": [
+    "Standalone voice is effectively blocked here when away from the phone: the docs say a tailnet-only route is not enough, and this gateway is reachable only over Tailscale Serve.",
+    "The docs themselves say physical-Watch microphone and speaker routing, wrist-down use, network handoff, battery and long-call reliability still need device validation.",
+    "The Watch asks which agent to use, so it does not enforce one person, one agent.",
+    "Path 1 already covers the quick question from the wrist; the companion app adds a spoken reply, not a new ability.",
+    "Standalone setup requires the iPhone to be connected with operator.admin, the opposite of the reduced pairing in VOX-01 and VOX-03.",
+    "On the companion path the Watch also mirrors exec approval prompts from the iPhone with allow-once and deny buttons, which makes an approval one accidental tap away.",
+    "The Watch's own credential includes operator.read, which is not limited to one person's agent.",
+    "Standalone audio is WebRTC to the provider with no TURN or TCP fallback: cloud audio, and it fails on networks that block UDP."
+   ],
+   "safety": "The Watch runs no agent; the gateway owns tools and policy. The companion path is only as safe as the iPhone pairing behind it, which today means the operator's phone. Standalone voice would need a certificate-trusted gateway URL reachable from outside the tailnet, which the Tailscale-only inbound rule forbids; do not open one for this. Plain Messages dictation to Happy adds no new credential and is the path to use."
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:372",
+    "title": "iOS app: Standalone voice",
+    "anchor": "operator.admin",
+    "supports": "Standalone Watch voice setup requires the iPhone to be connected with the admin scope."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:448",
+    "title": "iOS app: Review command approvals",
+    "anchor": "paired Apple Watch receives",
+    "supports": "The Watch mirrors exec approval prompts from the iPhone and offers allow-once and deny."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:440",
+    "title": "iOS app: Standalone voice",
+    "anchor": "TURN relay",
+    "supports": "The Watch voice transport has no TURN relay and no TCP or WebSocket media fallback."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-09",
+  "verdict": "reject",
+  "reason": "Agree with the entry's own verdict. An always-on room microphone on the gateway host means installing the Mac app, which registers a node with screen capture and computer control on the machine that holds every secret; nothing identifies the speaker; and with children in the house their speech would go to cloud agents. Keep only under considered and not recommended.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/mac/voicewake.md:12",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/mac/voicewake.md:16",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/mac/voicewake.md:21",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/mac/voicewake.md:43",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/mac/voicewake.md:64",
+    "ok": true,
+    "note": "Anchor present. The next line adds that the reply target is derived from that session delivery context, so on this gateway a room request could be answered in an iMessage thread."
+   },
+   {
+    "ref": "docs/nodes/voicewake.md:9",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/voicewake.md:29",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/voicewake.md:49",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/macos.md:32",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/macos.md:267",
+    "ok": true,
+    "note": "Anchor present. The list item says the app registers one Mac node combining camera and screen capture, location and computer control with the node host system commands."
+   },
+   {
+    "ref": "docs/nodes/talk.md:191",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "https://www.apple.com/mac-mini/specs/",
+    "ok": true,
+    "note": "Fetched. The audio section lists a built-in speaker, a headphone jack and HDMI audio; no microphone is listed."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-10",
+  "verdict": "revise",
+  "reason": "Readiness 'experimental' is not honest: no safe placement exists today. The talk-only credential still reads every agent's sessions and workspace through the app's own screens, the native speech loop needs write scope so the talk-only path is cloud realtime audio in a room the children use, and nothing verified pins the device to one agent.",
+  "source_checks": [
+   {
+    "ref": "docs/cli/qr.md:42",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/cli/qr.md:58",
+    "ok": true,
+    "note": "Anchor present. The profile still includes the read scope, which the RPC reference shows is enough to browse any agent workspace and read chat history."
+   },
+   {
+    "ref": "docs/platforms/ios.md:20",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:74",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:69",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/platforms/ios.md:651",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/voicewake.md:13",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/nodes/talk.md:12",
+    "ok": true,
+    "note": "Anchor present. The same line describes the native loop as speech recognition, Gateway chat, then talk.speak; the chat step is a write-scoped method."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/111795",
+    "ok": true,
+    "note": "Fetched. Guided Access restricts the device to one app and can disable touch regions and hardware buttons. Nothing on the page limits what is reachable inside the app or who may speak to it."
+   }
+  ],
+  "corrections": {
+   "readiness": "blocked",
+   "value": 2,
+   "description": "An old iPhone on a charger in the kitchen, locked to the OpenClaw app, would work as a tap-to-talk (or wake-word) terminal for quick household questions and list additions. It looks like the cheapest room device, but as the app is documented it cannot be made safe for a shared room yet.",
+   "depends_on": [
+    "a spare iPhone (existence unknown)",
+    "VOX-03",
+    "a new stateless kitchen agent",
+    "VOX-04 local TTS",
+    "local model before kids may use it",
+    "a verified way to hold one device to one agent with no read access to other agents (gateway.roles or equivalent)",
+    "a local speech path that works with a talk-only credential"
+   ],
+   "caveats": [
+    "iOS voice features are best-effort unless the app stays in the foreground, hence Guided Access plus keep-awake. Months of always-on use on a charger is untested.",
+    "On iOS the speech recognizer may use Apple's network service, and the docs only promise the on-device-only wake contract for macOS.",
+    "Kids will talk to it. Every agent today is cloud-backed, so under the family's own rule this terminal is for parents only until a local model exists. Guided Access controls taps, not voices.",
+    "No speaker identification: a guest can ask anything the kitchen agent can answer, so keep memory and private data out of that agent.",
+    "A talk-only device is not a blind device. operator.read covers session lists, chat history and read-only browsing of every agent's workspace, and the app has Sessions and Agents > Files screens plus an offline transcript cache. Guided Access keeps people inside the app, not out of those screens; disabling touch regions is a brittle workaround.",
+    "The native speech loop sends its turn with a write-scoped method, so a voice-node pairing probably supports only the realtime path: kitchen audio, children included, streamed to a cloud voice model. Pairing with --limited instead would put write and approval rights on a counter-top device.",
+    "The phone also registers as a node with camera, screen and location command families; an always-on device in the kitchen needs its node surface left unapproved or denied at the gateway.",
+    "Holding the device to the kitchen agent rests on `talk.agentId` (one gateway-wide default) or on the app's own agent picker. Hard enforcement would need gateway roles, which reject the bootstrap token this pairing uses.",
+    "If Tony also wants an idle iPhone as a device for Happy to operate, that is a different job; a phone pinned by Guided Access cannot be both."
+   ],
+   "safety": "No safe placement exists today. The credential cannot send messages or change config, but it can read both parents' agents; the room is shared with children and every model is cloud-backed; and nothing a curious child or a guest cannot get around holds the device to a stateless agent. Revisit when there is a local model (M2), a verified way to restrict a device to one agent with no cross-agent read, and a local speech path that works with a talk-only credential.",
+   "unverified": [
+    "Whether the iPhone app accepts a voice-node setup code and can be pinned to one agent.",
+    "Voice Wake reliability with the screen dimmed, and battery health on a permanent charger.",
+    "Whether a spare iPhone exists.",
+    "Whether Guided Access touch-region blocking can reliably hide the app's Sessions and Files screens.",
+    "Whether a voice-node credential can run the native speech loop at all."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, lists, logs and session reads across the gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:22",
+    "title": "iOS app",
+    "anchor": "Agents surface (Files)",
+    "supports": "The iPhone app has a screen that browses the selected agent workspace, with previews and share-sheet export."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:23",
+    "title": "iOS app",
+    "anchor": "offline cache",
+    "supports": "The iPhone app keeps a local cache of recent chat sessions and transcripts for the paired gateway."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:467",
+    "title": "Operator scopes",
+    "anchor": "write-scoped method",
+    "supports": "Sending a chat turn is a write-scoped gateway method, which a read-plus-talk credential does not hold."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:174",
+    "title": "Operator scopes",
+    "anchor": "bootstrap-token",
+    "supports": "With named roles configured, operator logins by device token or bootstrap token without a verified identity are rejected."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:641",
+    "title": "iOS app",
+    "anchor": "camera.*",
+    "supports": "The iPhone app exposes camera, screen, location and talk command families to the gateway as a node."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:22",
+    "title": "Node command policy",
+    "anchor": "no effective commands",
+    "supports": "A node surface that has not been approved exposes no commands."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-11",
+  "verdict": "revise",
+  "reason": "Readiness 'blocked' is honest and every source checks out. One caveat offers an adult-only interim use as 'experimental'; a shared-room speaker has no speaker identity, so children's questions would reach a cloud model and that loophole has to go.",
+  "source_checks": [
+   {
+    "ref": "https://www.home-assistant.io/voice-pe/",
+    "ok": true,
+    "note": "Fetched. Price is $69 or 59 EUR; the page calls the product a preview that cannot yet do everything commercial devices do; a physical switch cuts power to the microphones; wake word runs on the device; speech can be local or use the vendor cloud."
+   },
+   {
+    "ref": "https://www.home-assistant.io/installation/macos",
+    "ok": true,
+    "note": "Fetched. Minimum 2 GB RAM and 2 vCPUs; VirtualBox is documented with an Apple Silicon image, and UTM is mentioned as an option for experienced users."
+   },
+   {
+    "ref": "https://www.home-assistant.io/voice_control/voice_remote_local_assistant/",
+    "ok": true,
+    "note": "Fetched. Speech-to-Phrase is a closed-ended model for home-control phrases; Whisper is open-ended and recommended only for powerful hardware; Piper and Whisper are added through the Wyoming integration."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/openai_conversation/",
+    "ok": true,
+    "note": "Fetched. The page says the integration works only with the official OpenAI endpoint and not with compatible third-party services, proxies or other backends."
+   },
+   {
+    "ref": "docs/gateway/openai-http-api.md:8",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/gateway/openai-http-api.md:41",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "The price on Home Assistant's page is now $69 (59 EUR); the roadmap says $59.",
+    "Home Assistant itself calls it a preview that cannot yet do everything commercial assistants do.",
+    "It adds an always-on VM to patch and back up, in a house whose only Home Assistant relevant gear is Hue, Sonos and one TV.",
+    "Open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware; the fast Speech-to-Phrase option covers home-control phrases only.",
+    "Without a local model, a speaker question reaches OpenAI as text. A room speaker cannot be made adults-only, because nothing identifies who is speaking, so there is no interim adult version: the device stays blocked until a local model exists.",
+    "Side benefit if it is ever built: Home Assistant's Sonos integration gives the announce feature in VOX-07 for free."
+   ]
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-12",
+  "verdict": "reject",
+  "reason": "Agree with not-recommended. The plugin needs a public webhook, which the Tailscale-Serve-only rule excludes, and the motivating example is already handled by the phones: tornado warnings arrive as Wireless Emergency Alerts with no sign-up. Keep only under considered and not recommended.",
+  "source_checks": [
+   {
+    "ref": "docs/plugins/voice-call.md:16",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call.md:33",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call.md:89",
+    "ok": true,
+    "note": "Anchor present. The warning says setup fails when the resolved address is loopback or private. An earlier note on the page says the plugin runs inside the gateway process."
+   },
+   {
+    "ref": "docs/plugins/voice-call/configuration.md:82",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/configuration.md:116",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/tts-and-inbound-calls.md:125",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/security-and-interfaces.md:87",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "https://www.twilio.com/en-us/voice/pricing/us",
+    "ok": true,
+    "note": "Fetched. $1.15 per month for a local number, $0.0140 per minute outbound, $0.0085 inbound, $0.0044 for Media Streams."
+   },
+   {
+    "ref": "https://www.twilio.com/docs/voice/api/call-resource",
+    "ok": true,
+    "note": "Fetched (first part of a long page). The create request accepts inline Twiml so no URL fetch is needed, with a 4,000-character limit; only To and From are required and the status callback is optional."
+   },
+   {
+    "ref": "https://telnyx.com/pricing/voice-api",
+    "ok": true,
+    "note": "Fetched. The $0.002 per minute figure is there but is stated as plus a SIP trunking fee that this section does not quantify, so it is not the full per-minute cost; $1.00 per number per month appears in a side panel."
+   },
+   {
+    "ref": "https://tailscale.com/kb/1223/funnel",
+    "ok": true,
+    "note": "Fetched. Funnel makes a local service reachable from the public internet; Serve keeps it inside the tailnet."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "Cost is not the issue. Twilio's US page lists $1.15 a month for a local number, $0.0140 a minute outbound, $0.0085 a minute inbound and $0.0044 a minute for Media Streams. Telnyx lists $0.002 a minute plus a SIP trunking fee the page does not quantify, and $1.00 a month per number.",
+    "The plugin's setup fails without a public webhook URL, and Funnel by definition exposes a listener to the public internet. That contradicts 'reachable only over Tailscale Serve'.",
+    "Call-in is the weak half: the docs call the caller allowlist a low-assurance caller-ID screen, so a memory-holding agent must never sit behind it. Keep inbound disabled.",
+    "A synthetic-voice call is covered by the FCC ruling in VOX-13; calling the parents' own phones with their consent is the unproblematic case.",
+    "The phone can probably do this without any infrastructure: a per-contact setting that lets Happy's texts sound through silent mode and Focus. I could not load Apple's page for it, so it is listed as unverified, but it should be tried first.",
+    "The headline example is already covered: the National Weather Service says tornado warnings are pushed to phones as Wireless Emergency Alerts with no sign-up or app.",
+    "The REST-only variant is a second outbound path that bypasses the gateway's recipient hook. The two numbers have to be fixed in the script, a Twilio credential joins the Keychain and the egress allowlist, and the text is spoken by Twilio's cloud voice, so it may carry only non-private alert text."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/wrn/wea",
+    "title": "NWS: Wireless Emergency Alerts",
+    "anchor": "No signup is required",
+    "supports": "Tornado warnings and other severe alerts are pushed to capable phones by carriers without any sign-up or app."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-13",
+  "verdict": "reject",
+  "reason": "Agree with the entry's own rejection. A synthetic-voice call to a third party breaks the family-only outbound rule and the no-bookings rule, puts untrusted speech into an agent that can talk back, and falls under the FCC ruling on AI voices. The call-script alternative needs no new capability and already exists as draft-only outreach. Keep only under considered and not recommended.",
+  "source_checks": [
+   {
+    "ref": "https://docs.fcc.gov/public/attachments/FCC-24-17A1.txt",
+    "ok": true,
+    "note": "Fetched. FCC 24-17, CG Docket No. 23-362, released 8 February 2024: AI-generated voices fall under the artificial or prerecorded voice restrictions, calls need prior express consent, and the message must identify who is responsible for the call."
+   },
+   {
+    "ref": "https://www.govinfo.gov/content/pkg/USCODE-2023-title47/html/USCODE-2023-title47-chap5-subchapII-partI-sec227.htm",
+    "ok": true,
+    "note": "Fetched. The statute bars artificial-voice calls to mobile numbers and to residential lines without prior express consent and allows $500 per violation. The residential clause does not name business lines, which the feature already lists as unverified."
+   },
+   {
+    "ref": "https://www.govinfo.gov/content/pkg/USCODE-2023-title18/html/USCODE-2023-title18-partI-chap119-sec2511.htm",
+    "ok": true,
+    "note": "Fetched. A party to a communication, or anyone with one party prior consent, may intercept it unless the purpose is a crime or tort."
+   },
+   {
+    "ref": "https://app.leg.wa.gov/rcw/default.aspx?cite=9.73.030",
+    "ok": true,
+    "note": "Fetched. Recording a private communication needs the consent of all participants; consent counts as given when the recording is announced and the announcement is itself recorded."
+   },
+   {
+    "ref": "docs/plugins/voice-call/realtime-and-streaming.md:26",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/security-and-interfaces.md:90",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/configuration.md:118",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/voice-call/configuration.md:126",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-14",
+  "verdict": "reject",
+  "reason": "Agree with the entry: it cannot run without reducing SIP, an administrator account and full Xcode on the gateway Mac, all of which contradict the M0 baseline, and every listed caller gets owner authority with no speaker check. Keep only under considered and not recommended, to be re-read on future releases.",
+  "source_checks": [
+   {
+    "ref": "docs/plugins/facetime.md:16",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:21",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:22",
+    "ok": true,
+    "note": "Anchor present. The warning also says OpenClaw does not change SIP or privacy permissions itself, so the reduction is a manual Recovery-mode step."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:191",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:32",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:35",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:37",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:62",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:265",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/facetime.md:326",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "VOX-15",
+  "verdict": "reject",
+  "reason": "Agree with not-recommended. It needs browser automation on the gateway host, puts other people's speech (including what a teacher says about a child) into a cloud model, has no built-in disclosure, and its talk-back modes give Happy a voice to people outside the family. Keep only under considered and not recommended.",
+  "source_checks": [
+   {
+    "ref": "docs/plugins/meeting-plugins.md:39",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/meeting-plugins.md:63",
+    "ok": true,
+    "note": "Anchor present. The preceding lines say notes are written by the meeting agent utility model and saved to the shared state database in all three modes."
+   },
+   {
+    "ref": "docs/plugins/meeting-plugins.md:133",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/meeting-plugins.md:214",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/meeting-plugins.md:218",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   },
+   {
+    "ref": "docs/plugins/google-meet.md:16",
+    "ok": true,
+    "note": "Opened the file at this line; the anchor is there and the paraphrase matches the text."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "It needs Chrome automation on the gateway, which this stack does not have, and Zoom may demand a CAPTCHA or host admission; CAPTCHA solving is on the never list.",
+    "There is no automatic consent announcement; the docs put disclosure on the operator. The recording-consent law in VOX-13 applies, and a bot named Happy in a teacher conference changes the conversation.",
+    "Other people's speech is untrusted content and goes to the cloud model as text.",
+    "Talk-back modes give Happy a voice to strangers, which breaks the family-only outbound rule; only transcribe mode is even arguable.",
+    "The cheap substitute already exists: a parent records a voice memo of their own summary afterwards and sends it to Happy (F003), or uses the meeting platform's own notes.",
+    "Notes are written by the meeting agent's utility model, a cloud model here, from everyone's captions; a teacher conference is largely about a child.",
+    "Stored transcripts and summaries are readable by any gateway client holding the read scope, so they are not private to the parent who asked."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/meeting-plugins.md:57",
+    "title": "Meeting plugins",
+    "anchor": "utility model",
+    "supports": "Meeting notes are written by the meeting agent utility model, with the primary model as a fallback."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:82",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "transcripts.get",
+    "supports": "Stored meeting transcripts and summaries can be read by any client holding the read scope."
+   }
+  ],
+  "removed_sources": []
+ }
+]

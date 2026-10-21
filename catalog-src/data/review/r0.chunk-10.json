@@ -1,0 +1,1710 @@
+[
+ {
+  "id": "VOX-02",
+  "name": "Realtime voice conversation (OpenAI realtime or GPT-Live over WebRTC)",
+  "tier": 3,
+  "cluster": "Talk mode",
+  "description": "Low-latency, interruptible speech-to-speech: the phone streams audio straight to an OpenAI realtime voice model, which answers in a natural voice and hands anything that needs tools or memory to the person's agent. This is the upgrade path from VOX-01 when the turn-by-turn loop feels slow.",
+  "example": "Hands full at the stove: Happy, how long do I rest a pork tenderloin... actually, first convert 425 Fahrenheit to a fan oven setting.",
+  "how": "`talk.realtime` block on the gateway: `provider` openai, a realtime model from the installed docs, `mode` realtime, `transport` webrtc (the iPhone path is client-owned WebRTC) and `brain` agent-consult so every tool call is routed through gateway policy on <p>-main. iOS client-owned WebRTC is Platform-key-only, so it needs an OpenAI Platform API key under `talk.realtime.providers.openai` (as a SecretRef), separate from the per-person chat provider ids. The host enforces a fresh spoken yes before high-impact actions started by voice. Finalized utterances are appended to the agent session so later text and voice turns share history.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "VOX-01",
+   "VOX-03 voice guardrails",
+   "an OpenAI Platform key dedicated to voice",
+   "G004 spend caps extended to the voice key",
+   "VOX-01 phase 1 (operator's phone only)",
+   "decision: Zero Data Retention for the organisation that owns the voice key"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Raw audio, not just text, goes to OpenAI for the whole call: with WebRTC the media runs directly between the device and the provider.",
+   "Billed separately from chat. OpenAI's pricing page lists gpt-live-1 at $0.05 per minute and gpt-realtime-mini at $10 in and $20 out per million audio tokens. Ten minutes a day on gpt-live-1 works out to about $15 a month per parent (my arithmetic). The price page says gpt-live-1 is billed per second and that backend model and tool usage are charged separately, so every agent-consult turn adds normal chat cost on top.",
+   "`talk.realtime` is one gateway-wide block, so the per-person provider ids and per-person cost split used for text do not carry over to voice.",
+   "The installed docs mark the iOS GPT-Live path as implemented with device live verification still pending, and GPT-Live sessions end at a 30-minute TTL.",
+   "In a kitchen with children talking in the background, their voices are streamed to a cloud model. Use it with the phone at the ear or headphones, or stay on VOX-01 push-to-talk.",
+   "For most kitchen questions the native loop is enough; realtime mainly buys barge-in and lower latency.",
+   "Retention: OpenAI's data-controls page lists the realtime endpoint with 30 days of abuse-monitoring retention unless the organisation has Zero Data Retention (the endpoint is eligible; GPT-Live sessions are listed separately and are also eligible). The M1 store-off decision covers chat calls through the custom provider ids and does not carry over to voice.",
+   "The per-minute GPT-Live price is not the whole bill: OpenAI's pricing page says backend model and tool usage are charged separately, so each agent-consult turn is billed again on the chat key.",
+   "The spoken confirmation gates the action, not the speaker: anyone in earshot, a child included, can say yes. It applies to voice-originated consult runs only.",
+   "Usable only on a phone that is already paired, which today means the operator's phone (see VOX-01).",
+   "Turning on `talk.realtime` is one gateway-wide choice for iPhone Talk: the docs say OpenAI realtime configs run as WebRTC on iOS and only non-realtime configs use the native loop. It is not a per-person upgrade from VOX-01; a per-device opt-in is documented for the Mac app only.",
+   "The default and the limited pairing codes both hand the phone operator.talk.secrets, the scope for reading Talk configuration with secrets included."
+  ],
+  "safety": "`brain: agent-consult` keeps tools behind the same <p>-main policy, hooks and approvals as text. The spoken-confirmation gate is host-enforced, bound to the final arguments and consumed once, so generated text cannot confirm on the user's behalf; it does not identify who spoke. The realtime voice model is a second cloud model outside <p>-main's provider policy: it hears the room and is given a bounded slice of the session's history. Headphones or phone-at-ear is a habit, not a control, so this stays out of shared rooms when children are present. Never point realtime at a kids agent: it is cloud audio by construction.",
+  "unverified": [
+   "Whether a store:false style retention control applies to realtime sessions.",
+   "Whether realtime credentials can be set per agent or per person.",
+   "Real latency and barge-in quality on the home Wi-Fi.",
+   "Whether this OpenAI organisation has Zero Data Retention; without it realtime audio falls under the 30-day abuse-monitoring window.",
+   "What the 'bounded realtime profile context' sent to the voice provider contains for an agent that holds personal memory.",
+   "Whether an iPhone can stay on the native loop while `talk.realtime` is configured.",
+   "Whether Talk configuration read with operator.talk.secrets includes the realtime provider key."
+  ],
+  "overlaps_existing": [
+   "F004"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:13",
+    "title": "Talk mode",
+    "anchor": "client-owned WebRTC",
+    "supports": "On iOS, OpenAI realtime configs with webrtc transport run as a client-owned WebRTC session.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/realtime-sessions.md:57",
+    "title": "Talk realtime sessions and delegation",
+    "anchor": "directly between the client and OpenAI",
+    "supports": "In WebRTC calls the audio media flows between the client device and OpenAI while the gateway owns tools and transcripts.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/pricing",
+    "title": "OpenAI API pricing",
+    "anchor": "gpt-live-1",
+    "supports": "Lists per-minute pricing for gpt-live-1 and per-token audio pricing for the gpt-realtime models.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "OpenAI API: data controls",
+    "anchor": "/v1/realtime",
+    "supports": "OpenAI lists the realtime endpoint with 30 days of abuse-monitoring retention, no application state, and eligibility for Zero Data Retention.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/secretref-credential-surface.md:165",
+    "title": "SecretRef credential surface",
+    "anchor": "talk.realtime.providers.*.apiKey",
+    "supports": "The realtime provider key can be supplied as a SecretRef.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/client-ui.md:14",
+    "title": "Talk client UI",
+    "anchor": "Use realtime Gateway relay",
+    "supports": "The Mac app has a local, default-off opt-in for the realtime relay.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:78",
+    "title": "iOS app",
+    "anchor": "owns provider, voice",
+    "supports": "On the iPhone the gateway's Talk configuration decides provider, voice and speech language; saved device overrides no longer apply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:54",
+    "title": "openclaw qr",
+    "anchor": "operator.talk.secrets",
+    "supports": "The mobile operator handoff includes the scope for reading Talk secrets.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:43",
+    "title": "Operator scopes",
+    "anchor": "operator.talk.secrets",
+    "supports": "One operator scope allows reading Talk configuration with secrets included.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Readiness 'experimental' is honest, but data handling is understated: OpenAI lists 30-day abuse-monitoring retention for the realtime endpoint, the voice key sits outside the per-person store-off providers, the spoken yes is not tied to a speaker, and the feature inherits the unsolved phone pairing from VOX-01.",
+   "All 9 sources hold, including the live OpenAI price page, and every named key exists in the installed build. Added that realtime is a gateway-wide switch for iPhone Talk rather than a per-person upgrade, and two billing and credential details."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-05",
+  "name": "Cooking companion by voice (hands-free kitchen session)",
+  "tier": 3,
+  "cluster": "Voice workflows",
+  "description": "A parent props the phone on the counter and walks through a recipe by voice: next step, how much butter again, set a 12-minute reminder, with the ability to interrupt a long answer.",
+  "example": "Happy, start the chili recipe I sent this morning, one step at a time.",
+  "how": "A workflow on <p>-main over VOX-01 (or VOX-02). The recipe arrives earlier as pasted text or a photo over iMessage (F001). A kitchen-mode section in AGENTS.md: one step per turn, short sentences, repeat quantities with units, no lists or links. `talk.interruptOnSpeech` gives barge-in; `talk.silenceTimeoutMs` is raised so a pause while stirring does not end the turn. Timers go through the existing reminders tool (F007) and arrive as a text.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "experimental",
+  "depends_on": [
+   "VOX-01",
+   "F007 timed reminders",
+   "F001 attachments for recipe photos"
+  ],
+  "value": 2,
+  "effort": "S",
+  "caveats": [
+   "For timers the phone or watch is simply better: a Siri timer is faster and audible, while Happy's reminder is an iMessage ping.",
+   "<p>-main does not browse, so 'find me a recipe' is a research-agent job first (F019); the kitchen session works from text the parent chose to send.",
+   "With kids in the kitchen this should be push-to-talk on the parent's phone, not an open microphone.",
+   "The docs recommend headphones for open-microphone sessions because speaker audio feeds back into the mic.",
+   "The headphone advice in the docs is given for continuous realtime sessions, where the microphone stays open during playback; the turn-based native loop keeps echo suppression. It matters if this is run over VOX-02.",
+   "Inherits VOX-01: only the operator's phone can be paired within the family's separation rule today, so this is a one-parent workflow until that changes.",
+   "`talk.silenceTimeoutMs` is one gateway-wide key, so a longer pause for cooking slows every other Talk turn.",
+   "Voice Wake and background listening stay off in the kitchen: on iOS the recognizer may use Apple's network service, and children's speech would reach a cloud agent."
+  ],
+  "safety": "Same agent, tool policy and hooks as typed chat; nothing new can leave the house through the agent, and the only content entering the memory-holding agent is the recipe the parent sent. The exposure is the room: other people's speech, children's included, is transcribed by Apple and answered by a cloud model, so the session is started and stopped by hand by the parent and never by wake word.",
+  "unverified": [
+   "How well Apple dictation copes with extractor-fan and pan noise.",
+   "Whether the silence timeout can be changed per session rather than gateway-wide.",
+   "Whether the iPhone app has a user-facing hold-to-talk control; the docs list push-to-talk only as node commands."
+  ],
+  "overlaps_existing": [
+   "F007",
+   "F033"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:200",
+    "title": "Talk mode",
+    "anchor": "interruptOnSpeech",
+    "supports": "Talk has a config key, on by default, that stops playback when the user starts speaking.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/macos-relay.md:72",
+    "title": "Talk on macOS and the Gateway relay",
+    "anchor": "Use headphones",
+    "supports": "The docs advise headphones so speaker output does not feed an open microphone.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:25",
+    "title": "iOS app",
+    "anchor": "inline Talk control",
+    "supports": "The iPhone chat screen offers dictation, voice notes and an inline Talk control in one place.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "It sits on VOX-01, which is not ready beyond the operator's phone, and most of what it offers (timers, reading a recipe aloud) the phone already does better. A kitchen with children is also where an open microphone feeding a cloud agent is least acceptable."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-08",
+  "name": "Parent talks to Happy from the Apple Watch",
+  "tier": 3,
+  "cluster": "Wearables",
+  "description": "Raise the wrist, ask, hear the answer. There are three ways and they differ a lot: dictating an ordinary iMessage to Happy from the Watch (works today), the OpenClaw Watch companion that relays one turn at a time through the iPhone, and a standalone realtime call placed by the Watch itself.",
+  "example": "On a walk without the phone in hand: ask Happy whether the library is open tomorrow.",
+  "how": "Path 1, nothing to build: Messages on the Watch to Happy's contact. Path 2, `Talk to Claw`: the OpenClaw Watch app (installed from the iPhone's Watch app) uses watchOS dictation, relays text through the paired iPhone app and reads the reply with the system voice; it needs the iPhone pairing from VOX-01 but no separate Watch pairing. Path 3, `Talk on Watch`: standalone realtime; setup gives the Watch its own node credential plus operator.read and operator.talk, audio is WebRTC Opus over UDP between the Watch and the provider, and it needs `talk.realtime` with webrtc transport plus a secure gateway URL that the Watch trusts and can reach by itself.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "experimental",
+  "depends_on": [
+   "an Apple Watch (ownership unknown)",
+   "VOX-03",
+   "VOX-02 for the standalone path",
+   "VOX-03",
+   "VOX-01 phase 1 (operator's phone only) for the companion path",
+   "VOX-02 plus a non-tailnet gateway URL for the standalone path, which the inbound rule excludes"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "Standalone voice is effectively blocked here when away from the phone: the docs say a tailnet-only route is not enough, and this gateway is reachable only over Tailscale Serve.",
+   "The docs themselves say physical-Watch microphone and speaker routing, wrist-down use, network handoff, battery and long-call reliability still need device validation.",
+   "The Watch asks which agent to use, so it does not enforce one person, one agent.",
+   "Path 1 already covers the quick question from the wrist; the companion app adds a spoken reply, not a new ability.",
+   "Standalone setup requires the iPhone to be connected with operator.admin, the opposite of the reduced pairing in VOX-01 and VOX-03.",
+   "On the companion path the Watch also mirrors exec approval prompts from the iPhone with allow-once and deny buttons, which makes an approval one accidental tap away.",
+   "The Watch's own credential includes operator.read, which is not limited to one person's agent.",
+   "Standalone audio is WebRTC to the provider with no TURN or TCP fallback: cloud audio, and it fails on networks that block UDP.",
+   "Standalone setup needs the iPhone connected with operator.admin, so a phone paired with the limited code from VOX-03 cannot enrol the Watch. The companion path relays chat through the iPhone, so that phone needs the write scope.",
+   "The Watch transport needs a provider and authentication combination that supports gateway-controlled WebRTC and returns an ICE-lite answer with UDP candidates; there is no TURN relay and no TCP fallback."
+  ],
+  "safety": "The Watch runs no agent; the gateway owns tools and policy. The companion path is only as safe as the iPhone pairing behind it, which today means the operator's phone. Standalone voice would need a certificate-trusted gateway URL reachable from outside the tailnet, which the Tailscale-only inbound rule forbids; do not open one for this. Plain Messages dictation to Happy adds no new credential and is the path to use.",
+  "unverified": [
+   "Whether either adult owns an Apple Watch.",
+   "Apple's Watch Messages dictation page could not be fetched in this run, so path 1 rests on common knowledge rather than a cited page."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:263",
+    "title": "iOS app: Apple Watch voice and chat",
+    "anchor": "watchOS dictation",
+    "supports": "The companion path uses Watch dictation, relays text through the paired iPhone and reads the answer back one turn at a time.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:157",
+    "title": "Talk mode",
+    "anchor": "physical Watch verification pending",
+    "supports": "The Talk status table marks standalone Watch Talk as implemented but not verified on a physical Watch.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/watch/write-messages-apdb488390c8/watchos",
+    "title": "Write messages on Apple Watch - Apple Support",
+    "anchor": "Create Message",
+    "supports": "Messages on the Watch lets you start a conversation and dictate, type or scribble the text.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Two of the three paths do not hold up for this install: the companion path inherits the VOX-01 phone pairing and mirrors approval prompts to the wrist, and standalone voice needs both an admin-scoped iPhone for setup and a gateway URL the Watch can reach outside the tailnet. Only plain Messages dictation is usable, and that path has no opened source.",
+   "All 6 sources hold. Path 1 is now sourced from Apple's Watch guide. Added that standalone Watch voice has to be set up from an iPhone holding operator.admin, which conflicts with the limited pairing in VOX-03, and the transport requirements the docs list."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-11",
+  "name": "Home Assistant Voice Preview Edition kitchen speaker",
+  "tier": 3,
+  "cluster": "Room devices",
+  "description": "The roadmap's kitchen speaker: a small open device with a physical microphone mute where wake word, speech-to-text and text-to-speech can all run locally in Home Assistant, so only text would be handed to Happy. It is the only candidate with hardware mute and fully local speech, and its main purpose (kids) is blocked until there is a local model.",
+  "example": "Okay Nabu, what is the weather this afternoon?",
+  "how": "Buy the device. Run Home Assistant OS in a VM on the Mac (documented minimum 2 GB RAM and 2 vCPUs; a VirtualBox image for Apple Silicon, or UTM). Add Whisper or Speech-to-Phrase for speech-to-text and Piper for speech through the Wyoming integration for a fully local pipeline. Then a conversation agent must forward the text to a stateless OpenClaw agent, and that hop is the unsolved part: Home Assistant's official OpenAI integration only talks to OpenAI's own endpoint, and OpenClaw's OpenAI-compatible chat endpoint (off by default; the config repo's flat config has it enabled on this gateway) is documented as full operator access. With token auth a bearer token gets the full operator scope set and the request's model field chooses the agent, so Home Assistant would hold an owner-level credential that can reach any agent unless a small kids-only shim sits in between, as the roadmap already notes.",
+  "who": "both",
+  "risk": "high",
+  "readiness": "blocked",
+  "depends_on": [
+   "local model (M2, currently skipped)",
+   "Home Assistant OS VM on the Mac",
+   "a scoped endpoint or shim between Home Assistant and the gateway",
+   "kids agent (M5)"
+  ],
+  "value": 2,
+  "effort": "L",
+  "caveats": [
+   "The price on Home Assistant's page is now $69 (59 EUR); the roadmap says $59.",
+   "Home Assistant itself calls it a preview that cannot yet do everything commercial assistants do.",
+   "It adds an always-on VM to patch and back up, in a house whose only Home Assistant relevant gear is Hue, Sonos and one TV.",
+   "Open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware; the fast Speech-to-Phrase option covers home-control phrases only.",
+   "Without a local model, a speaker question reaches OpenAI as text. A room speaker cannot be made adults-only, because nothing identifies who is speaking, so there is no interim adult version: the device stays blocked until a local model exists.",
+   "Side benefit if it is ever built: Home Assistant's Sonos integration gives the announce feature in VOX-07 for free.",
+   "Home Assistant's OpenAI page points to its OpenRouter integration for other providers and offers no custom base URL, so the bridge would be a community integration or a self-written shim (not verified which)."
+  ],
+  "safety": "Speech stays inside the house. The risk is the bridge credential: the chat-completions endpoint is equivalent to an operator secret. The speaker must reach only a tool-less, memory-less agent, and kids' questions may only go to a local model with the roadmap's classifiers in front.",
+  "unverified": [
+   "Which Home Assistant conversation integration can target a custom OpenAI-compatible endpoint in 2026 (the roadmap cites a community one; I did not verify it).",
+   "Whisper latency inside a VM on this Mac.",
+   "Whether OpenClaw can issue an HTTP credential scoped to one agent.",
+   "Whether a trusted-proxy identity in front of the HTTP endpoint could narrow a caller to one agent. With the token auth this gateway uses, the docs say scope headers are ignored and the request's model field selects any agent."
+  ],
+  "overlaps_existing": [
+   "F072",
+   "F074"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice-pe/",
+    "title": "Home Assistant Voice Preview Edition",
+    "anchor": "Home Assistant Voice Preview Edition",
+    "supports": "Official product page: price, on-device wake word, physical mic mute, local or cloud speech processing, and the statement that it is a preview.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/installation/macos",
+    "title": "Home Assistant: install on macOS",
+    "anchor": "2 GB",
+    "supports": "On a Mac, Home Assistant OS runs as a virtual machine with a documented minimum of 2 GB RAM and 2 vCPUs, including an Apple Silicon image.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/voice_remote_local_assistant/",
+    "title": "Home Assistant: installing a local Assist pipeline",
+    "anchor": "Speech-to-Phrase",
+    "supports": "A fully local pipeline uses Whisper or Speech-to-Phrase plus Piper through the Wyoming integration, and Whisper is recommended only for powerful hardware.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/openai_conversation/",
+    "title": "Home Assistant: OpenAI integration",
+    "anchor": "official OpenAI API endpoint",
+    "supports": "The official OpenAI conversation integration does not support OpenAI-compatible third-party endpoints.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/openai-http-api.md:8",
+    "title": "OpenAI chat completions",
+    "anchor": "disabled by default",
+    "supports": "The gateway's OpenAI-compatible HTTP surface exists but is off unless enabled.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Readiness 'blocked' is honest and every source checks out. One caveat offers an adult-only interim use as 'experimental'; a shared-room speaker has no speaker identity, so children's questions would reach a cloud model and that loophole has to go.",
+   "All 6 sources hold and blocked is the right call. Added what the installed docs say about the bridge: with token auth the HTTP endpoint ignores scope narrowing and the caller picks the agent through the model field, so a speaker-side credential cannot be confined to one tool-less agent."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "HOM-02",
+  "name": "Bundled device skills: what each one controls and how it signs in",
+  "tier": 3,
+  "cluster": "device tools",
+  "description": "A decision record for the nine bundled skills in this lens. Two fit the house (openhue, sonoscli), one belongs to research (goplaces), one is already beaten by the in-house weather plugin, and five do not apply or should be skipped. All of them are instructions for running a command-line tool, so on this stack (no exec for any agent) each is reference material for a host-side plugin, not something to switch on.",
+  "example": "Operator question: which of the bundled home skills do we install?",
+  "how": "openhue: Hue Bridge on the LAN, lights, rooms and scenes only; pairing by pressing the bridge button once, after which a local app key sits in ~/.openhue/config.yaml. sonoscli: local UPnP/SOAP to each speaker on port 1400, no account; discovery needs the macOS Local Network permission for the Gateway's parent process. camsnap: RTSP/ONVIF cameras with a user and password in ~/.config/camsnap/config.yaml, plus local webcams on macOS; needs ffmpeg. eightctl: Eight Sleep account email and password against an unofficial, rate-limited API. spotify-player: Spotify Premium, with spogo importing browser cookies. blucli: Bluesound/NAD players only. songsee: turns an audio file into spectrogram images, not a home control. weather: wttr.in through web_fetch or curl, no key, and it defers to official services for severe alerts. goplaces: Google Places text search and details with GOOGLE_PLACES_API_KEY. Keep openhue and sonoscli as backends for the F076/F077 plugins in the home agent; leave the rest uninstalled.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "F076",
+   "F077"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Every skill assumes the agent can run shell commands; Happy's agents cannot, so nothing here works by enabling a skill alone.",
+   "eightctl and spotify-player hand an agent a full account login (password or browser cookies) for a convenience the vendor apps already give; skip both.",
+   "The house has no Bluesound, Eight Sleep or RTSP camera, so blucli, eightctl and the network-camera half of camsnap have nothing to talk to.",
+   "The bundled weather skill uses wttr.in; the in-house home_weather plugin on api.weather.gov is the better source for alerts."
+  ],
+  "safety": "No new grant is made by this entry. The two skills kept are wrapped by plugins with allowlists and caps in code and live only in the stateless home agent.",
+  "unverified": [
+   "Whether spogo's cookie import can be scoped to one browser profile; not checked because the skill is not recommended."
+  ],
+  "overlaps_existing": [
+   "F076",
+   "F077",
+   "F079",
+   "F083"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/openhue/SKILL.md:111",
+    "title": "openhue bundled skill",
+    "anchor": "First run requires button press",
+    "supports": "Hue pairing needs a physical press on the bridge, and the bridge must be on the local network.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.openhue.io/cli/setup",
+    "title": "OpenHue CLI setup",
+    "anchor": "openhue setup",
+    "supports": "The setup command discovers the bridge, waits for the button press and saves the bridge address and key in a YAML file under the user's home folder.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.meethue.com/develop/get-started-2/",
+    "title": "Philips Hue developer: Get started",
+    "anchor": "devicetype",
+    "supports": "The Hue API is served locally by the bridge and issues an application key only after the link button is pressed, as proof of physical access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sonoscli/SKILL.md:56",
+    "title": "sonoscli bundled skill",
+    "anchor": "Local Network",
+    "supports": "On macOS the Gateway's parent process needs the Local Network privacy permission or Sonos discovery fails.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh",
+    "title": "sonoscli",
+    "anchor": "UPnP/SOAP",
+    "supports": "sonoscli controls speakers over the local network on port 1400 and installs from a Homebrew tap.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/camsnap/SKILL.md:32",
+    "title": "camsnap bundled skill",
+    "anchor": "camsnap add",
+    "supports": "Cameras are added with a host, user and password kept in camsnap's own config file; ffmpeg is required.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/eightctl/SKILL.md:49",
+    "title": "eightctl bundled skill",
+    "anchor": "API is unofficial and rate-limited",
+    "supports": "Eight Sleep control uses an unofficial API with account email and password.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/spotify-player/SKILL.md:44",
+    "title": "spotify-player bundled skill",
+    "anchor": "spogo auth import --browser chrome",
+    "supports": "The preferred Spotify tool signs in by importing browser cookies and needs a Premium account.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/blucli/SKILL.md:27",
+    "title": "blucli bundled skill",
+    "anchor": "Bluesound/NAD players",
+    "supports": "blucli only controls Bluesound and NAD players.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/songsee/SKILL.md:27",
+    "title": "songsee bundled skill",
+    "anchor": "spectrograms",
+    "supports": "songsee renders pictures from audio files and controls nothing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/weather/SKILL.md:85",
+    "title": "weather bundled skill",
+    "anchor": "official local weather services",
+    "supports": "The wttr.in based skill tells the agent to use official services for severe alerts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/goplaces/SKILL.md:36",
+    "title": "goplaces bundled skill",
+    "anchor": "GOOGLE_PLACES_API_KEY",
+    "supports": "goplaces needs a Google Places API key and offers search, resolve and details.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 2,
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F076",
+  "origin": "9 Oct",
+  "name": "Hue lights: rooms and scenes by name",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "Text Happy to switch Hue rooms and scenes by name or ask which lights are still on, within a room allowlist and quiet hours enforced in code.",
+  "example": "",
+  "how": "In-house plugin wraps the openhue CLI on the host inside a sandboxed, stateless home agent reached by sessions_spawn; bridge key sits in ~/.openhue/config.yaml; Local Network permission for node.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Philips Hue's own local API documentation sits behind a developer login and was not opened; only the OpenHue CLI pages were.",
+   "Whether the launchd-run gateway needs the Local Network switch for plain HTTPS to the bridge; the bundled skills document it only for Sonos discovery.",
+   "The bridge's presence on the LAN comes from the 9 Oct scan and was not re-checked (no LAN contact in this run)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/openhue/SKILL.md:84",
+    "title": "OpenHue CLI (bundled skill)",
+    "anchor": "openhue set room",
+    "supports": "The bundled skill documents the room, brightness and scene commands the plugin would wrap, plus the one-time bridge button pairing.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.openhue.io/cli/setup",
+    "title": "Setup",
+    "anchor": "openhue setup",
+    "supports": "The OpenHue setup command pairs by pressing the bridge button and saves the bridge address and key in a config file under the user's home folder, not the Keychain.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+    "title": "Thread-bound sub-agent sessions",
+    "anchor": "requester session is sandboxed",
+    "supports": "A sandboxed agent cannot hand off to an unsandboxed one, so the new home agent must be sandboxed like the parent agents that call it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/mac-help/control-access-to-your-local-network-on-mac-mchla4f49138/mac",
+    "title": "Control access to your local network on Mac",
+    "anchor": "Local Network",
+    "supports": "macOS gates each app's ability to find and talk to devices on the home network behind a Privacy and Security switch.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F077",
+  "origin": "9 Oct",
+  "name": "Sonos: play, pause, volume, what is playing",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "Text Happy to play a Sonos favourite, pause everything, set a room's volume or group rooms, with a hard volume cap and quiet-hours cap enforced in code.",
+  "example": "",
+  "how": "In-house plugin wraps the sonos CLI (Homebrew steipete/tap/sonoscli) in the home agent; favourites only; needs Local Network permission for the gateway's node process or --ip per speaker.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "'sonoscli is go install only' is wrong: the project's install page recommends Homebrew (a steipete tap) and also offers prebuilt release archives; go install needs Go 1.26 or later. Only the bundled skill's metadata is limited to go install, so Go does not have to be installed on the Mac mini."
+  ],
+  "unverified": [
+   "The volume caps (35, and 10 at night) are design numbers, not sourced.",
+   "The two speakers and their room names come from the 9 Oct scan and were not re-checked."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/sonoscli/SKILL.md:34",
+    "title": "Sonos CLI (bundled skill)",
+    "anchor": "sonos volume set",
+    "supports": "The bundled skill documents status, play, pause and per-room volume commands for the sonos CLI.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh/install",
+    "title": "Install — sonoscli",
+    "anchor": "brew install steipete/tap/sonoscli",
+    "supports": "The project's own install page lists a Homebrew tap as the recommended route, with go install and prebuilt archives as alternatives.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/steipete/sonoscli/main/README.md",
+    "title": "sonoscli README (raw)",
+    "anchor": "sonos scene save",
+    "supports": "sonoscli saves, lists and applies scenes, searches linked services through Sonos without Spotify Web API credentials, and describes itself as unofficial.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh",
+    "title": "sonoscli",
+    "anchor": "brew install steipete/tap/sonoscli",
+    "supports": "A Homebrew formula exists, so the tool does not have to be built with Go.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "HOM-04"
+  ],
+  "adds": [
+   "Named Sonos scenes from an allowlist and play-by-search through the music service already linked in the Sonos app, so Happy holds no music login; scenes must be saved in the happy account; a Homebrew install replaces the Go toolchain; auto-playing the first search hit has no content filter."
+  ],
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F080",
+  "origin": "9 Oct",
+  "name": "Print it: PDFs, photos and generated pages to the home printer (incl. Sunday fridge sheet)",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "'Print this' sends a PDF, photo or https link to the home printer from anywhere, with a copies cap; the weekly fridge sheet waits for calendar and lists.",
+  "example": "",
+  "how": "Plugin calls lp -d <queue> -n <copies> on the host after lpadmin adds the queue once; the plugin downloads links itself because web_fetch returns text; attachments need includeAttachments.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That the Canon PRO-100 supports AirPrint or driverless IPP: no Canon page was opened. If it does, every phone in the house can already print to it directly.",
+   "The checks against private-network addresses in the download step are a design requirement, not an existing plugin feature.",
+   "'No destination configured' comes from the 9 Oct check and was not re-run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/man-lp.html",
+    "title": "lp(1)",
+    "anchor": "number of copies",
+    "supports": "The CUPS lp command prints a file to a named printer and takes a copies count, the two options the plugin needs.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/man-lpadmin.html",
+    "title": "lpadmin(8)",
+    "anchor": "lpadmin",
+    "supports": "The CUPS lpadmin command creates a print queue, including a driverless IPP Everywhere queue, the one-time setup step.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:11",
+    "title": "Web fetch",
+    "anchor": "plain HTTP GET",
+    "supports": "The built-in fetch tool returns readable text from a page, not the original file, so the plugin must download a PDF itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Printing a file someone just texted requires inbound attachments to be switched on first.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/options.html",
+    "title": "Command-Line Printing and Options (OpenPrinting CUPS)",
+    "anchor": "lpstat -p -d",
+    "supports": "The standard printing commands take a destination and a copy count and can list available printers.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108963",
+    "title": "How to scan documents on your iPhone or iPad (Apple Support)",
+    "anchor": "Scan Documents",
+    "supports": "The Notes app on iPhone scans paper to a document with automatic capture and corner adjustment.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102895",
+    "title": "About AirPrint (Apple Support)",
+    "anchor": "AirPrint",
+    "supports": "An iPhone prints without drivers to an AirPrint-enabled printer on the same Wi-Fi network; whether this printer is one was not confirmed.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "MAC-14"
+  ],
+  "adds": [
+   "States plainly that printing and scanning need no screen control: printing is one lp command once a print queue exists, scanning is the iPhone's document scanner sent as an attachment (F001, F002). Whether this printer supports AirPrint from the phones is unconfirmed."
+  ],
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "HOM-11",
+  "name": "LG TV: off at bedtime, notice on screen",
+  "tier": 3,
+  "cluster": "tv",
+  "description": "Turn the TV off by text or at a set time on school nights, lower the volume, and optionally show a short notice on screen first. This adds a second route to F078's HomeKit Shortcut: Home Assistant's LG webOS integration, which can also put a message on the TV.",
+  "example": "20:30 on school nights: the TV shows 'TV off in 10 minutes', then switches off.",
+  "how": "Route A: an allowlisted Shortcut named 'TV off' in happy's account, run with the shortcuts command by the F078 plugin; happy's Apple Account must be a member of the Home, and a member without remote control can act only while at home on the home network, which is where the Mac mini sits. Route A can switch the TV off but cannot show a message. Route B (needs HOM-01): Home Assistant's webOS media player turns the TV off or changes volume, and the on-screen line is the per-TV notify action. Because the MCP server works through Assist intents, put 'show notice N, wait, turn off' into one Home Assistant script whose only field picks from fixed strings, and expose that script. Power-on is left out. Scheduled runs are command or home-agent jobs with a skip-tonight file, as in F081.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "depends_on": [
+   "F078 or HOM-01",
+   "stateless home agent (F076)"
+  ],
+  "value": 2,
+  "effort": "S",
+  "caveats": [
+   "The TV is the only HomeKit accessory in the house, so this is the whole of 'HomeKit control' today.",
+   "Apple Home can already switch an accessory off at a time of day, but automations need a home hub (HomePod or Apple TV), which is not in the inventory.",
+   "The webOS integration cannot power the TV on by itself (it needs Wake-on-LAN) and requires the TV's 'LG Connect Apps' setting.",
+   "Because a HomeKit accessory pairs with one controller, the Home Assistant route uses LG's own network API, not HomeKit.",
+   "The remote on the sofa is still the fastest off switch; the value is the scheduled, argument-free cut-off.",
+   "The cut-off is advisory: nothing stops a child from pressing power on the remote a minute later.",
+   "On most newer TV firmware the notice shows text only, and passing an icon can stop it from appearing.",
+   "The on-screen notice is available only through Home Assistant (Route B); the HomeKit Shortcut route can only switch the TV off or change what HomeKit exposes."
+  ],
+  "safety": "Low-consequence actuation with a name allowlist; on-screen text is picked from fixed strings so nothing from the web or from a model's free text reaches the screen. The home agent has no memory or web tool.",
+  "unverified": [
+   "Whether the house has an Apple home hub.",
+   "The TV's webOS version and whether on-screen notifications work on its firmware.",
+   "Whether a HomeKit action in a Shortcut run on the Mac mini works for the non-admin happy user, and whether happy's Apple Account can be added to the Home without a home hub; Apple's hub page lists sharing among the things a hub enables, while its sharing page does not mention a hub.",
+   "Whether the TV's own power-off timer already covers a fixed nightly cut-off; LG's support page did not render in this run.",
+   "Whether scripts exposed to Assist are offered as tools by Home Assistant's MCP server (same open point as HOM-03)."
+  ],
+  "overlaps_existing": [
+   "F078",
+   "F081"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/webostv/",
+    "title": "LG webOS TV - Home Assistant",
+    "anchor": "LG Connect Apps",
+    "supports": "The integration can turn the TV off, change volume and source and show a notification on screen, cannot power it on without another mechanism, and needs a network setting enabled on the TV.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "title": "Run shortcuts from the command line (Shortcuts User Guide for Mac)",
+    "anchor": "shortcuts run",
+    "supports": "macOS can run a named shortcut from the command line, with file input and output flags, and pauses if the shortcut asks for input.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102557",
+    "title": "Set up your HomePod, HomePod mini, or Apple TV as a home hub",
+    "anchor": "home hub",
+    "supports": "Apple Home automations, remote control and sharing depend on a HomePod or Apple TV acting as a home hub.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+    "title": "HomeKit Device - Home Assistant",
+    "anchor": "single controller at once",
+    "supports": "A HomeKit accessory cannot be paired to Apple Home and Home Assistant at the same time.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102386",
+    "title": "Share control of your home - Apple Support",
+    "anchor": "Control Accessories Remotely",
+    "supports": "A person invited to a Home can be limited to controlling accessories only while at the home and on its Wi-Fi network; the page does not mention a home hub.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102313",
+    "title": "Create scenes and automations with the Home app - Apple Support",
+    "anchor": "A Time of Day Occurs",
+    "supports": "Time-of-day automations in Apple Home are offered once a home hub is set up.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources hold and the rating is honest. Two corrections: the on-screen notice in the Home Assistant route is not an intent, so it is reachable over MCP only through a script a parent writes and exposes, and the cut-off is advisory because a child can switch the TV back on with the remote.",
+   "The webOS, Shortcuts and HomeKit-pairing sources hold, but the home-hub page was read too strongly (it says a hub enables sharing, not that sharing is impossible without one), and Route B's on-screen notice is a Home Assistant action that the MCP server is not shown to offer directly; it needs a wrapping script. The on-screen notice exists only on Route B."
+  ],
+  "reviewed_by": 2,
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F081",
+  "origin": "9 Oct",
+  "name": "Scheduled home scenes and goodnight check (read-only first)",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "At 22:30 a parent gets a text only if lights or speakers are still on, switching nothing; scheduled bedtime scenes come later, after a dry-run period.",
+  "example": "",
+  "how": "Command payload (no model) runs openhue and sonos status, printing NO_REPLY when all is off; automation approvals never reach chat and Lobster is off in sandboxes, so actuation starts dry-run.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "'Isolated runs cannot approve' is too strong: the exec approvals doc says approvals from scheduled runs are delivered to connected approval clients (Control UI, the apps) and the run waits, but they never go to chat channels and are denied at once when no such client is connected. For an iMessage-only household the conclusion is unchanged: use a dry-run period, not per-call approval."
+  ],
+  "unverified": [
+   "Whether plugin-tool approvals raised inside a scheduled run follow the same delivery rule as exec approvals.",
+   "That the two CLIs report 'on' states in a form a short script can parse reliably was not tried (neither is installed)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads",
+    "anchor": "without starting a model-backed turn",
+    "supports": "A command job runs a script on the gateway host with no model call, so the nightly check costs no tokens and has no prompt to inject into.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals.md:559",
+    "title": "Exec approvals",
+    "anchor": "chat channels never receive",
+    "supports": "Approvals raised by scheduled runs go only to connected approval clients such as the Control UI, never to chat, and are denied if none is connected.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/lobster.md:120",
+    "title": "Lobster",
+    "anchor": "disabled entirely for sandboxed tool",
+    "supports": "The Lobster workflow tool is switched off in sandboxed tool contexts, so it cannot gate a sandboxed home agent.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-07",
+  "name": "Sonos announce (intercom-style)",
+  "tier": 3,
+  "cluster": "Voice workflows",
+  "description": "A parent texts an announcement and the house speakers say it, then go back to what they were playing. The 9 Oct catalog parks this as a later toy under F077; this entry spells out the two real ways to do it and what each costs.",
+  "example": "Happy, tell the house the bus leaves in ten minutes.",
+  "how": "Trigger is deterministic, not a model decision: a `before_dispatch` claim on a fixed prefix such as `announce:` from an adult's handle hands the parent's words verbatim to the tool, so <p>-main (which reads search results) never decides to speak to the house and no cloud-written text is played to the children. If an agent tool form is kept, each announcement needs an approval. The tool itself, `announce(text, rooms)`, lives in the planned `home-sonos` plugin. It synthesizes the text with the local engine from VOX-04, serves the file from a small HTTP server bound to the LAN address only (one directory, short-lived random file names, inbound firewall exception for the speakers), and plays it. Route A, no Home Assistant: the Sonos audio-clip command `loadAudioClip` with a `streamUrl`, which mixes the clip with whatever is playing but is documented under the cloud Control API with OAuth and an API key; or sonoscli `play-uri`, which replaces what is playing and restores nothing. Route B, if Home Assistant is ever installed for VOX-11: its Sonos integration plays an announcement with `announce: true` and restores the volume. In code: text length cap, volume cap, quiet hours from G001, speaker allowlist, a daily cap.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "experimental",
+  "depends_on": [
+   "F077 Sonos plugin",
+   "VOX-04 local TTS",
+   "decision: Sonos account OAuth, Home Assistant, or local play-uri only",
+   "G001 notification policy"
+  ],
+  "value": 2,
+  "effort": "L",
+  "caveats": [
+   "The bundled sonoscli skill documents discover, status, play, volume and grouping only; it has no announce or speech command. The tool's site lists `play-url` and `play-uri`, but I could not confirm that either resumes the previous music.",
+   "Sonos audio clips only work on players that report the AUDIO_CLIP capability; the two speakers here are unchecked.",
+   "LAN speaker control from the gateway needs the macOS Local Network permission for the launchd node process.",
+   "A talking house at the wrong moment is worse than no feature; quiet hours and a low daily cap matter more than voice quality.",
+   "The overlay is unverified without Home Assistant. Sonos documents loadAudioClip under its cloud Control API (OAuth scope plus API key), and Home Assistant's page says its announcements need TCP port 1443 open on each speaker, which suggests a local interface exists; Sonos' own page does not document one.",
+   "Home Assistant's page warns that older hardware and S1 firmware may not fully support announcements.",
+   "The 9 Oct scan found the two speakers in the living room and the family room, so an announcement does not reach the kitchen or bedrooms.",
+   "The clip server would be the first LAN-facing listener on the gateway Mac.",
+   "The Sonos cloud route puts a Sonos account token on the gateway and makes a house announcement depend on an internet round trip.",
+   "The speaker has to fetch the clip from the Mac over HTTP, so this adds a LAN-facing listener to a host whose gateway binds only to loopback today. It should serve nothing but the generated clip files and be covered by the host firewall review.",
+   "Sonos accepts only MP3 or WAV clips (the local engines emit WAV, which fits). Home Assistant notes that announcements need TCP port 1443 reachable on each speaker and may not work on older S1 hardware.",
+   "The `sonos` binary is not installed; the bundled skill installs it with `go install`, so a Go toolchain is a prerequisite."
+  ],
+  "safety": "The audience is everyone in the house, guests and children included, so this is an outbound channel in its own right even though nothing leaves the building. It must not be callable by an agent that reads untrusted content without an approval: <p>-main reads search and research results, so the safe trigger is a fixed prefix claimed before the model, speaking the parent's words verbatim. Never reachable from research or mail readers. Speech is synthesized locally, with the VOX-04 hardening in place. Text length, volume, quiet hours, speaker allowlist and a daily cap are enforced in code. No lock, alarm or door is involved.",
+  "unverified": [
+   "Whether sonoscli `play-uri` restores the prior queue or stream after a clip.",
+   "Whether these two Sonos models support audio clips, and whether a purely local clip endpoint is usable without the Sonos cloud.",
+   "Latency from text to sound.",
+   "Whether the Sonos Control API route needs a registered developer integration (client id and secret) before OAuth works."
+  ],
+  "overlaps_existing": [
+   "F077",
+   "G001"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/sonoscli/SKILL.md:3",
+    "title": "sonoscli skill",
+    "anchor": "discover/status/play/volume/group",
+    "supports": "The bundled Sonos skill covers discovery, status, playback, volume and grouping, with no announcement feature.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.sonos.com/reference/audioclip-loadaudioclip-playerid",
+    "title": "Sonos developer docs: loadAudioClip",
+    "anchor": "loadAudioClip",
+    "supports": "Sonos has a command that schedules an audio clip from a URL on a player, can mix it with playing content, and requires players with the audio-clip capability and Control API authorization.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/sonos/",
+    "title": "Home Assistant: Sonos integration",
+    "anchor": "announce",
+    "supports": "Home Assistant's local Sonos integration plays TTS or alerts as an overlay, lowering and then restoring the music volume.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://sonoscli.sh/commands/",
+    "title": "sonoscli command index",
+    "anchor": "play-uri",
+    "supports": "The CLI lists play-url and play-uri commands and no say, tts, announce or clip command.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Plugin hooks reference",
+    "anchor": "before_dispatch",
+    "supports": "A plugin hook can claim an inbound message before the model is run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:138",
+    "title": "Text-to-speech configuration",
+    "anchor": "tts-local-cli",
+    "supports": "OpenClaw has a local command-line speech provider, shown with the macOS say command, so speech can be made without a cloud service.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/sonoscli",
+    "title": "sonoscli README",
+    "anchor": "play-url",
+    "supports": "sonoscli can play a media URL on a speaker by proxying it through a temporary local MP3 stream, and has no announce or speech command of its own.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/core/llm/",
+    "title": "Home Assistant API for Large Language Models (Home Assistant Developer Docs)",
+    "anchor": "via intents",
+    "supports": "Home Assistant's LLM API gives a model intents rather than arbitrary action calls, which is why the announce call needs a script wrapper.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/tts/",
+    "title": "Text-to-speech (TTS) - Home Assistant",
+    "anchor": "tts.speak",
+    "supports": "Home Assistant speaks a message on a media player through a text-to-speech action, and the engines named on the page include cloud services, so a local engine has to be chosen deliberately.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "HOM-03"
+  ],
+  "adds": [
+   "The Home Assistant route: the Sonos integration's announce call wrapped in a script a parent exposes, with fixed phrases only in the first version."
+  ],
+  "review_notes": [
+   "No local way to overlay a clip is verified without Home Assistant or the Sonos cloud API, so the defining behaviour is unproven on these speakers. The entry also leaves the trigger to a model on an agent that reads search results, and adds a LAN listener to a host that has none. Effort is L, and two living-area speakers limit the value.",
+   "All 5 sources hold. No route is both local and confirmed to bring the music back without Home Assistant: the Sonos clip command is a cloud Control API call behind OAuth, and sonoscli has no clip or announce command. That makes it experimental rather than a straightforward build, and the clip server is a new LAN listener."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "HOM-01",
+  "name": "Home Assistant as the house hub, reached over MCP",
+  "tier": 3,
+  "cluster": "home hub",
+  "description": "OpenClaw 2026.9.7 has no Home Assistant, HomeKit, Matter or MQTT integration of its own (none in the docs, none among the bundled plugins). The official route is Home Assistant's MCP Server integration: one endpoint through which a stateless home agent reads state and controls only the entities a parent has exposed, covering Hue, Sonos and the LG TV with one audited list instead of one plugin per brand.",
+  "example": "Are any lights or the TV still on downstairs?",
+  "how": "Run Home Assistant OS in a VM on the Mac mini (the roadmap already plans this VM for the kids' speaker). Add the Hue, Sonos and LG webOS integrations, then the 'Model Context Protocol Server' integration; turn off 'Expose all LLM APIs' and expose only the wanted entities. In OpenClaw add mcp.servers.<name> with url http://<ha-host>:8123/api/mcp, transport 'streamable-http' written out (when it is omitted OpenClaw uses sse), and the Home Assistant long-lived token in headers.Authorization, supplied through a secret reference and not a config literal (auth 'oauth' with openclaw mcp login is the documented alternative). This Gateway uses tools.profile 'minimal', which hides MCP tools, so grant them only to the stateless 'home' agent from F076 by listing the <server>__<tool> names in that agent's alsoAllow and in its sandbox tool allow list (tools.sandbox.tools.alsoAllow); no other agent then sees the server. Write toolFilter.include after a live probe (openclaw mcp doctor <name> --probe), since it selects tools by name. The registry before_tool_call hook stays as the second, fail-closed gate and enforces quiet hours.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "depends_on": [
+   "Home Assistant OS VM (2 GB RAM, 2 vCPU, bridged network adapter)",
+   "stateless home agent (F076)",
+   "egress proxy exception for the Home Assistant LAN address",
+   "decision: direct CLIs (F076/F077) or Home Assistant as the single device path, not both"
+  ],
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "Home Assistant's MCP option 'Expose all LLM APIs' is on by default and the token belongs to an administrator account by default; both need tightening before OpenClaw connects.",
+   "The MCP server does not support notifications or sampling, so Home Assistant cannot push a state change to Happy through MCP; events need a separate webhook (see HOM-06).",
+   "A HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration, not through HomeKit.",
+   "Home Assistant's macOS install page recommends dedicated hardware unless a hypervisor is already in use; it is one more service to patch and back up.",
+   "Running both the direct CLIs and Home Assistant doubles the paths to the same lamp; pick one.",
+   "With only Hue, two Sonos and one TV today, the hub pays off mainly if presence (HOM-05), announcements (HOM-03) or the kids' speaker are also wanted.",
+   "Home Assistant's macOS page documents VirtualBox (UTM only as a fallback for people used to virtual machines) and points anyone not comfortable with virtual machines to a dedicated board; the VM is one more service to patch, back up and bring back after every reboot and FileVault unlock, and until it is up every home tool fails.",
+   "Home Assistant's MCP server offers its Assist intents plus any scripts exposed to Assist, not arbitrary actions; anything beyond on/off, brightness, volume and state reads (announcements, TV notices) needs a script a parent writes and exposes.",
+   "Because those tools are generic intents, toolFilter.include narrows verbs, not device classes; the exposure list in Home Assistant and a before_tool_call check on each call's target are the real limits.",
+   "The long-lived token is a ten-year credential for Home Assistant's APIs as one user; the exposed-entity limit applies to the MCP tools, not to the token, so it must stay host-side and be rotated by hand.",
+   "State text returned by Home Assistant (now-playing titles, device names) is third-party text read by an agent that can actuate; allowlists and caps in code have to bound the result.",
+   "Home Assistant's MCP options 'Expose all LLM APIs' and 'Require an administrator account' are both on by default: out of the box every LLM API is offered and the token must belong to an administrator. Tighten the first before OpenClaw connects; a token for a non-admin Home Assistant user works only after the second is turned off.",
+   "Home Assistant's macOS page is written for people who already run a supported hypervisor (VirtualBox, with UTM as the fallback) and points everyone else to a dedicated board; the VM is one more service to patch and back up.",
+   "toolFilter selects MCP tools by name, not by device. Home Assistant's LLM API works through intents, so one tool may act on any exposed entity; the per-device limit lives in Home Assistant's exposure list and in the hook, not in toolFilter.",
+   "Home Assistant exposes new entities in the cover domain (garage doors and gates) to Assist by default, so the exposure list needs a review after each device is added (see HOM-12)."
+  ],
+  "safety": "The home agent keeps no memory, has no web tool and no outbound message tool, so it holds no private data and cannot send anything out; the only outside text it reads is device state. Only exposed entities are reachable through MCP; locks, garage, alarm, gate and cameras are never exposed in Home Assistant, and a fail-closed hook that inspects each call's target repeats that block on the OpenClaw side (HOM-12). The token is a wider credential than the MCP tools and is kept host-side only.",
+  "unverified": [
+   "Whether Home Assistant OS runs cleanly under VirtualBox or UTM on macOS 27 with an M5 chip.",
+   "Whether openclaw mcp login completes against Home Assistant's OAuth; both sides document OAuth but the pair was not tried, so the long-lived token path is assumed.",
+   "The exact tool names Home Assistant's MCP server exposes (not listed on the page fetched), so the toolFilter list must be written after a live probe.",
+   "Whether the Smokescreen egress proxy applies to MCP HTTP calls to a LAN address.",
+   "Whether a non-administrator Home Assistant user can use the MCP endpoint once 'Require an administrator account' is turned off, and what that user can still reach.",
+   "Whether a Home Assistant long-lived token is confined to the MCP endpoint or carries its owner's full API rights; the authentication page fetched does not say.",
+   "Which macOS account runs the VM and how it comes back headless after a reboot (FileVault needs a manual unlock)."
+  ],
+  "overlaps_existing": [
+   "F076",
+   "F077",
+   "F078"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+    "title": "Model Context Protocol Server - Home Assistant",
+    "anchor": "/api/mcp",
+    "supports": "Home Assistant ships an MCP server at this path with OAuth or long-lived token auth, limited to exposed entities, without notifications or sampling, since release 2025.2.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:83",
+    "title": "MCP servers (OpenClaw docs)",
+    "anchor": "streamable-http",
+    "supports": "OpenClaw can register a remote Streamable HTTP MCP server by URL in mcp.servers and narrow it with toolFilter.include.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/openhue/SKILL.md:44",
+    "title": "openhue bundled skill",
+    "anchor": "HomeKit scenes or Shortcuts",
+    "supports": "The bundled Hue skill itself sends HomeKit scenes and Shortcuts to Apple's ecosystem, confirming there is no HomeKit path inside OpenClaw.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/start/why-openclaw/openclaw-and-hermes-agent.md:20",
+    "title": "OpenClaw and Hermes Agent comparison",
+    "anchor": "Home Assistant state-change subscriptions",
+    "supports": "The only mention of Home Assistant in the installed docs is as a feature of a different project, not of OpenClaw.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/installation/macos",
+    "title": "Install Home Assistant on macOS",
+    "anchor": "2 GB of RAM",
+    "supports": "On a Mac, Home Assistant OS runs in a VirtualBox or UTM virtual machine with at least 2 GB RAM, 2 vCPUs and a bridged network adapter.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+    "title": "HomeKit Device - Home Assistant",
+    "anchor": "single controller at once",
+    "supports": "A HomeKit accessory must be removed from Apple Home before Home Assistant can pair it, so sharing one accessory between both is not possible this way.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/core/llm/",
+    "title": "Home Assistant API for Large Language Models",
+    "anchor": "via intents",
+    "supports": "Home Assistant's built-in LLM API works through intents over the exposed entities and allows no administrative tasks, so it is not a pass-through for arbitrary actions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/auth_api/",
+    "title": "Authentication API - Home Assistant Developer Docs",
+    "anchor": "valid for 10 years",
+    "supports": "A long-lived access token lasts ten years, is created for one user and is sent as a bearer header to Home Assistant's APIs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/mcp/registry.md:38",
+    "title": "Manage saved MCP servers",
+    "anchor": "still hides them",
+    "supports": "Configured MCP tools appear under the coding and messaging tool profiles but stay hidden under the minimal profile, which is the profile this Gateway uses.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandbox-vs-tool-policy-vs-elevated.md:115",
+    "title": "Sandbox vs tool policy vs elevated",
+    "anchor": "tools.sandbox.tools.alsoAllow",
+    "supports": "For sandboxed agents the sandbox tool policy is a second allow gate, so MCP tool names or a server-prefixed glob must also be added there.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/mcp/transports.md:199",
+    "title": "MCP transports and OAuth",
+    "anchor": "when omitted, OpenClaw uses",
+    "supports": "The streamable-http transport has to be named explicitly because the default for a URL server is sse.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/homeassistant/exposed_entities.py",
+    "title": "home-assistant/core source: exposed_entities.py (development branch)",
+    "anchor": "DEFAULT_EXPOSED_DOMAINS",
+    "supports": "In Home Assistant's source the default set of domains exposed to assistants includes cover, light, media_player and switch, and exposing new entities to the built-in assistant is on by default.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Placement holds (stateless home agent, no web, no send, no memory), but two of the stated controls are weaker than written: Home Assistant's MCP tools are generic intents, so a tool-name filter cannot separate device classes, and the long-lived token is a general ten-year API credential rather than an exposed-entities-only one. One install-page caveat was also misquoted.",
+   "All six sources hold and the route exists on 2026.9.7, but three setup facts were missing or off: this Gateway runs the minimal tool profile, which hides MCP tools until an agent allows them in both its tool policy and its sandbox tool policy; Home Assistant limits its MCP endpoint to administrator accounts by default; and toolFilter narrows by tool name, not by device."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "HOM-05",
+  "name": "Is anyone home? (house-level presence)",
+  "tier": 3,
+  "cluster": "presence and location",
+  "description": "A who-is-home answer for parents and a condition for other jobs, such as lights left on with nobody in the house. OpenClaw's own presence tool and geolocation plugin do not answer this: they describe clients connected to the Gateway and turn a public IP into a rough city, which returns nothing on a tailnet or LAN.",
+  "example": "Is anyone home?",
+  "how": "Home Assistant Companion app on each adult's iPhone creates a device tracker; a person entity per adult follows it; the home zone's state is the number of people inside. Set the app's location reporting to 'Zone Name Only' so coordinates stay on the phone. The home agent reads the zone and person states through the MCP server (HOM-01); these entity types are not exposed to Assist by default and have to be exposed by hand. Each phone needs a path to Home Assistant when it is away (Tailscale to the VM), because a leave report is sent after the phone has left the home Wi-Fi. Without Home Assistant, the lighter option is a Shortcuts automation on each adult's iPhone (Arrive, Leave or Wi-Fi) that posts to a mapped Gateway hook as in HOM-06, with a small state file as the house-level signal; it is no more accurate than the phone's own geofence.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "HOM-01",
+   "Home Assistant Companion app on both adults' iPhones",
+   "both phones able to reach Home Assistant away from home (Tailscale on each phone and Home Assistant on the tailnet); Home Assistant listens only on the local network by default and the roadmap rules out port forwarding",
+   "a path from the phones to Home Assistant when away (Tailscale)"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "The iOS app's cheapest location updates are the least accurate kind and can lag, so 'just left' may be a few minutes stale.",
+   "The kids have no phones, so 'anyone' means the two adults.",
+   "Watching for phones on Wi-Fi is brittle: iPhones present a private Wi-Fi address per network, with a rotating option, and sleep.",
+   "Apple Home tracks arrival and departure for its own automations but a Mac cannot trigger a location automation, and Happy cannot read that state.",
+   "The presence tool reports people as online when a client is connected, including idle tabs, which is unrelated to being at home.",
+   "Watching for phones on Wi-Fi is brittle mainly because phones sleep and drop off the network; on a WPA2 or WPA3 home network the iPhone's private address is fixed by default and rotates only if set to Rotating or on weakly secured networks.",
+   "The count covers the two adults only. With the kids at home with a sitter or a grandparent it reads zero, so it must never be the only condition for switching anything off.",
+   "A departure is recorded only if the phone can reach Home Assistant from outside the house; with a LAN-only server and no VPN up, the house keeps showing that adult as home.",
+   "The Companion app sends location straight to the family's own Home Assistant, or through Home Assistant Cloud if that service is switched on; leave Cloud off so presence stays in the house."
+  ],
+  "safety": "Presence is private data. Phones report zone names only. Only the count of people in the home zone is exposed to the home agent; per-person zones are one person's data and stay unexposed, so one adult's agent cannot read the other's whereabouts (roadmap section 1b). The count is never available to the research agent or a kids agent.",
+  "unverified": [
+   "That Apple offers no programmatic way to read Home or Find My presence (a negative that could not be sourced).",
+   "The exact iOS location permission level the Companion app needs; the page fetched does not state it.",
+   "Whether the Companion app queues or drops a zone change when the server is unreachable; the location page does not say.",
+   "Whether a zone entity can be exposed to Assist on its own; if not, a helper sensor holding the count is needed.",
+   "Whether person and zone entities, once exposed, are returned by the MCP server's tools; the default exposed domains in Home Assistant's source do not include person, zone or device_tracker."
+  ],
+  "overlaps_existing": [
+   "F081"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/presence.md:64",
+    "title": "Presence (OpenClaw docs)",
+    "anchor": "Online means connected, including idle tabs",
+    "supports": "The presence tool describes connected Gateway clients, not whether a person is in the house.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/geolocation.md:71",
+    "title": "Geolocation plugin",
+    "anchor": "100.64/10",
+    "supports": "The geolocation plugin maps public IPs to a rough city and answers 'not found' for tailnet and LAN addresses.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/zone/",
+    "title": "Zone - Home Assistant",
+    "anchor": "zone.home",
+    "supports": "A zone's state is the count of people inside it, and the home zone exists by default with a 100 m radius.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/person/",
+    "title": "Person - Home Assistant",
+    "anchor": "not_home",
+    "supports": "A person entity follows its device trackers and reports home, away or a zone name.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://companion.home-assistant.io/docs/core/location/",
+    "title": "Home Assistant Companion: Location",
+    "anchor": "Zone Name Only",
+    "supports": "The iOS app can report only the zone name instead of coordinates, sends data only to the user's own server, and its significant-change updates are the least accurate type.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102509",
+    "title": "Use private Wi-Fi addresses on Apple devices",
+    "anchor": "Rotating",
+    "supports": "iPhones use a per-network private Wi-Fi address with Off, Fixed and Rotating settings, which weakens presence detection by network address.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102313",
+    "title": "Create scenes and automations with the Home app",
+    "anchor": "People Arrive",
+    "supports": "Apple Home has arrive and leave automations tied to the person's primary iPhone, and a Mac cannot trigger a location-based automation.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/docs/configuration/remote/",
+    "title": "Remote access - Home Assistant",
+    "anchor": "only listens on your local network",
+    "supports": "Home Assistant is reachable only on the local network unless Home Assistant Cloud, a VPN such as Tailscale, a reverse proxy or port forwarding is set up, and Companion app sensors do not update from outside without that path.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/homeassistant/exposed_entities.py",
+    "title": "home-assistant/core source: exposed_entities.py (development branch)",
+    "anchor": "DEFAULT_EXPOSED_DOMAINS",
+    "supports": "The domains Home Assistant exposes to assistants by default do not include person, zone or device_tracker, so presence entities need manual exposure.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+    "title": "Add automations to Shortcuts on iPhone or iPad",
+    "anchor": "Wi-Fi",
+    "supports": "Arrive, Leave and Wi-Fi are among the Shortcuts automations that can run without asking, which makes a phone-side presence signal possible without Home Assistant.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "A hard dependency is missing: both phones must reach Home Assistant away from home, which is LAN-only by default and may not be port-forwarded under the roadmap. Per-person zone names are one person's data and should not be readable by the other adult's agent, 'nobody home' is wrong whenever the kids are home with someone else, and one caveat misread Apple's default.",
+   "All seven sources hold. Corrections: person and zone entities are outside Home Assistant's default exposed set and their visibility through the MCP server is unproven; the phones must be able to reach Home Assistant from outside the house; and the claim that there is no signal without Home Assistant was too strong, since a Shortcuts automation posting to a Gateway hook is a lighter option."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F079",
+  "origin": "9 Oct",
+  "name": "Camera snapshot and package-at-the-door watch",
+  "tier": 3,
+  "cluster": "devices-home",
+  "description": "Ask 'did the package come?' and get a one-line answer with a camera frame; nothing to point it at today, since the house has no local-stream camera.",
+  "example": "",
+  "how": "Plugin wraps camsnap snap for an outdoor camera allowlist, returns the JPEG as a structured attachment under channels.imessage.attachmentRoots; camsnap keeps camera passwords in a plain-text config file.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "later",
+  "value": 2,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "That Ring, Nest and Arlo cameras offer no local stream: only community forum posts were found for Ring, no first-party statement was opened.",
+   "'No RTSP camera in the house' comes from the 9 Oct scan and was not re-checked.",
+   "Frames would go to the cloud vision model; whether that is acceptable for pictures of the kids is a family decision."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/camsnap/SKILL.md:37",
+    "title": "camsnap (bundled skill)",
+    "anchor": "camsnap snap",
+    "supports": "The bundled skill documents grabbing a still from a named RTSP or ONVIF camera, a motion watch command, and the need for ffmpeg.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/camsnap",
+    "title": "steipete/camsnap",
+    "anchor": "credentials in plain text",
+    "supports": "The tool's own README says its config file holds camera credentials in plain text with user-only permissions, and that Homebrew is the install route.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:21",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.attachmentRoots",
+    "supports": "An outbound attachment path must sit under an allowed root, so the snapshot folder has to be added there.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/rich-output-protocol.md:29",
+    "title": "Rich output protocol",
+    "anchor": "structured attachment fields",
+    "supports": "Plugins must return media through structured attachment fields, not text commands.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "The house",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-01",
+  "name": "Multi-day family project with check-ins",
+  "tier": 3,
+  "cluster": "long-running projects",
+  "description": "A parent hands Happy a project with an end date (birthday party, weekend trip, garage clean-out). Happy keeps one project note with decisions and open items, checks in on a schedule it paces itself, runs research legs in the background, and stops when the date passes. New against the 9 Oct catalog: durable project state plus paced check-ins; F028 only covers a one-shot plan.",
+  "example": "Plan our 10-year-old's birthday party for Saturday the 14th: 10 kids, indoor, under 300 dollars. Check in with me every few days until it is sorted.",
+  "how": "Held by the asking parent's <p>-main. State: one project note (memory/projects/<slug>.md through the F041 write path, or home-store rows from F031) with goal, end date, decisions, open items and a review date. The note records only what the parent typed or confirmed, written in a turn that carried no web or research results. Check-ins: one isolated automation per project, created through the `automations` tool on <p>-main with a `pacing` object (`min`, `max`; `--pacing-min` and `--pacing-max` are the CLI spelling), so each run can call `automations(action: \"next_check\")` and be clamped to those bounds. The job's tool cap holds the note or home-store read tools plus `automations` (inside an automation run that tool is limited to the run's own job) and never `sessions_spawn` or a web tool; announce to the owner; NO_REPLY when nothing is due; the run removes its own job after the end date. Hard prerequisites before `automations` is allowed on <p>-main: the fail-closed before_tool_call pin must also match `automations`/`cron` add and update and refuse webhook delivery, completion and failure destinations, and any recipient other than the asking parent; and `cron.triggers.enabled: false`, so the tool does not offer script payloads, trigger scripts or stream commands. Research legs: `sessions_spawn` to the stateless `research` agent with `runTimeoutSeconds` and `completionTarget: \"parent\"`, in interactive turns only, so <p>-main reviews the result privately before it texts anything. Decisions are plain proposals in chat (or `ask_user` while the parent is in the conversation). `/goal` is not the durable state here (see AUT-02).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F041 memory write path or F031 home-store",
+   "F007 automations tool on <p>-main",
+   "F019 research agent",
+   "G009 delivery pin",
+   "G001 notification policy",
+   "decision: Jordan as a command owner",
+   "delivery pin hook that covers automations/cron add and update (extends G009 and F007)",
+   "cron.triggers.enabled: false (AUT-08)"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Scheduled runs do not get MEMORY.md injected, so a check-in must read the project note with a tool or carry the state in the job message.",
+   "A job created from chat is capped to the tools the creating turn had and cannot be widened later, so a check-in can never do more than the parent's own main agent.",
+   "The conversation resets every morning at 04:00 and that also wipes any /goal; the project note is the only continuity between days.",
+   "Every check-in is a cloud model turn. Pace in days, not minutes, and cap active projects per person (three is plenty).",
+   "Published measurements put the reliable autonomous working span of frontier models at well under a working day, so the design is many short runs with a parent between them, not one long unattended run.",
+   "No bookings, purchases or invitations sent: the output is options, links and drafts. A static checklist is still easier in a shared Notes or Reminders list; Happy adds the nudging and the research.",
+   "The one long-task measurement opened in this run dates from March 2025 and covers software tasks: the frontier model of that time finished about half of the tasks that take a person roughly 50 minutes. It says nothing direct about gpt-6-sol or about family planning. The case for many short runs with a parent between them rests on cost and on keeping a person in the loop, not on that number.",
+   "Command-owner status is gateway-wide: an owner can ask their agent to list, inspect, update, run or remove any job on the gateway, whoever created it. Once Jordan is an owner, each parent's agent can read and change the other's check-in jobs, so job messages must not carry private detail.",
+   "The F041 plan refuses memory writes in a turn tainted by web results, and a turn that received a research result is tainted. Research findings therefore cannot be saved into the project note in that turn: they stay in the chat thread, and the note holds only what the parent states or confirms afterwards."
+  ],
+  "safety": "<p>-main holds the note and never browses; `research` does every web leg, has no memory, and as a sub-agent can never get the message, cron or gateway tools. The `automations` tool is itself a send path: a job can name any chat as its delivery target or post its result to a webhook URL. <p>-main holds memory and reads search snippets, so the recipient pin must cover `automations`/`cron` calls, not only `message`, and must refuse webhook mode before the tool is granted. Check-in runs carry no web tool and no `sessions_spawn`; that is the hard limit. The rule that handoff text carries dates, ages and budget only (never names, school or address) is prompt text, not enforcement. With the pin in place nothing on the never list is reachable: there is no payment, booking or outbound-to-strangers tool anywhere in the chain.",
+  "unverified": [
+   "Whether a custom-session job (`--session session:<id>`) is exempt from the daily reset policy, which would let check-ins keep conversational context.",
+   "Whether memory read tools can be named in a job tool cap for a sandboxed agent on 2026.9.7; test at build time.",
+   "That research handoffs return results with agent-to-agent off and session visibility self (already an open item in the roadmap).",
+   "Whether the gateway accepts webhook delivery or an arbitrary recipient on a job that an agent creates from an iMessage owner turn. The tool description offers both; it was not tested.",
+   "Whether next_check and self-removal stay callable when the job's tool cap leaves out `automations`.",
+   "Whether the F041 path hook, written for memory/*.md, admits a memory/projects/ subfolder."
+  ],
+  "overlaps_existing": [
+   "F028",
+   "G014",
+   "F007",
+   "F041",
+   "F031",
+   "F082"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:67",
+    "title": "Automation schedules: dynamic cadence (pacing)",
+    "anchor": "pacing.min",
+    "supports": "Recurring jobs can carry minimum and maximum pacing bounds set with the pacing flags.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads: agent-turn options",
+    "anchor": "capped to the tools available",
+    "supports": "Jobs an agent creates are limited to the creating turn's tools and the agent cannot widen the stored list.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:30",
+    "title": "How automations work: isolated run hardening",
+    "anchor": "may remove only their own job",
+    "supports": "An isolated run can see and remove only its own job, which is how a finished project ends itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model: keep it compact",
+    "anchor": "omit root memory",
+    "supports": "Cron, sub-agent, group and channel sessions do not get MEMORY.md injected.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:22",
+    "title": "Standing intents: choose the right intention tier",
+    "anchor": "Put aspirations",
+    "supports": "Long-running aims belong in a maintained Markdown note with a review date, not in clock jobs or triggers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/announce.md:55",
+    "title": "Sub-agent announce: private parent completion",
+    "anchor": "completionTarget",
+    "supports": "A child result can be returned privately to the parent turn with no automatic channel delivery.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "Sub-agents are hard-denied the gateway, cron, message and session-send tools regardless of allowlists.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2503.14499",
+    "title": "Measuring AI Ability to Complete Long Software Tasks (arXiv 2503.14499)",
+    "anchor": "time horizon",
+    "supports": "Frontier models at the time of the paper finished only about half of tasks that take a human roughly an hour, which argues for short runs with human check-ins.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:19",
+    "title": "Automation delivery: delivery modes",
+    "anchor": "POST finished event payload",
+    "supports": "A job's delivery mode can be a webhook that posts the finished run to a URL.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-tool-DAgRmVx6.mjs:1020",
+    "title": "OpenClaw 2026.9.7 compiled source: automations tool description (delivery)",
+    "anchor": "webhook posts finished-run event",
+    "supports": "The text shown to the model says a job's delivery can name a specific chat or post the finished run to a webhook URL.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:79",
+    "title": "Manage automations: owner and administrator authority",
+    "anchor": "regardless of its creator",
+    "supports": "A channel sender listed as a command owner can have the agent list, inspect, update, run or remove any automation on the gateway, whoever created it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baseline: chat-driven agent turns",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Senders who are not owners cannot use the cron or gateway tools whatever the config says.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All nine sources check out, but the safety case has a hole: the `automations` tool this feature depends on can set a job's delivery to any chat or to a webhook URL, and command-owner status lets either parent's agent read and edit the other's jobs. The project note also collides with the F041 rule that tainted turns cannot write memory. Value lowered to 3."
+  ],
+  "reviewed_by": 1,
+  "wave": "D",
+  "section": "Longer-running autonomy",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "AUT-03",
+  "name": "Self-paced watch loop (/loop and paced automations)",
+  "tier": 3,
+  "cluster": "scheduled autonomy",
+  "description": "\"Keep checking this until it happens, then tell me\": a recurring agent turn bound to the conversation, at a fixed interval or self-paced so it checks more often while things move and backs off when quiet.",
+  "example": "/loop 30m has the district posted a decision about tomorrow's snow day? Stop once it is posted.",
+  "how": "`/loop [interval] <prompt>` typed to <p>-main makes the agent create a recurring agent-turn job in that conversation through the `automations` tool; with no interval it self-paces between 1 minute and 1 hour using `next_check`. `/loop status` and `/loop stop` manage it. Longer-lived watchers are created by happy-deploy with `openclaw automations add --pacing-min ... --pacing-max ...` and an explicit `--tools` cap. Needs `automations` allowed on <p>-main (it is denied today with the rest of `group:automation`).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F007 automations tool on <p>-main",
+   "decision: Jordan as a command owner",
+   "F029 for anything that needs page content",
+   "delivery pin hook that covers automations/cron add and update (extends G009 and F007)",
+   "cron.triggers.enabled: false (AUT-08)"
+  ],
+  "value": 2,
+  "effort": "S",
+  "caveats": [
+   "Owner-only: Jordan cannot use /loop unless she is listed as a command owner, which is a gateway-wide elevation. An owner can list, inspect, update, run or remove every job on the gateway, including the other parent's.",
+   "Every tick is a cloud model turn and the self-paced floor is one minute. Require an explicit interval of 15 minutes or more and a stop condition, in AGENTS.md.",
+   "<p>-main has web_search only, so a loop sees search snippets, not page content. Whether a change posted minutes ago shows up in snippets within the loop interval is untested, so the snow-day example is not dependable this way. Real page watching belongs to the research agent (F029).",
+   "A loop does not end by itself. The scheduler disables a recurring job only after 10 failures in a row, so the prompt must say when to stop.",
+   "Nothing fires while the Mac is off or locked after a reboot.",
+   "For known sources the phone is already better: district push alerts, carrier tracking, calendar alerts."
+  ],
+  "safety": "Inside a loop run the `automations` tool is limited to the run's own job, and the result returns to the conversation that created it. The exposure comes from granting `automations` to <p>-main at all: in an interactive owner turn the tool can create a job whose delivery names any chat or a webhook URL and, unless `cron.triggers.enabled` is false, script payloads, trigger scripts and stream commands. <p>-main holds memory and reads untrusted search snippets, so without a fail-closed before_tool_call pin on `automations`/`cron` that refuses webhook mode and any recipient but the asker, the tool completes the trifecta. With the pin in place and triggers off, what remains is the exposure <p>-main already has with web_search, now repeated unattended. Keep loops short-lived, count them against the G001 daily cap, and never give a looped agent web_fetch.",
+  "unverified": [
+   "Whether a conversation-bound loop keeps running, or is orphaned, across the 04:00 session rollover.",
+   "The exact tool cap a /loop job records under the minimal profile on this config.",
+   "Whether the gateway accepts webhook delivery or an arbitrary recipient on a job that an agent creates from an iMessage owner turn. The tool description offers both; it was not tested.",
+   "How quickly the search index reflects a newly posted page (not measured)."
+  ],
+  "overlaps_existing": [
+   "F029",
+   "F007",
+   "F018"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:77",
+    "title": "Automation schedules: /loop chat shortcut",
+    "anchor": "/loop [interval] <prompt>",
+    "supports": "The loop command creates a conversation-bound recurring job and self-paces between one minute and one hour when no interval is given.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:424",
+    "title": "Slash commands: /loop",
+    "anchor": "owner-only because it uses",
+    "supports": "The loop command is restricted to owners because it drives the scheduler control tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads: agent-turn options",
+    "anchor": "capped to the tools available",
+    "supports": "An agent-created job inherits no more than the creating turn's tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:136",
+    "title": "Automation delivery: failure notifications",
+    "anchor": "10 consecutive execution failures",
+    "supports": "A recurring job is switched off automatically only after ten execution failures in a row.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:16",
+    "title": "How automations work",
+    "anchor": "Gateway must be running",
+    "supports": "Schedules run inside the gateway process and do not fire while it is down.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-tool-DAgRmVx6.mjs:1020",
+    "title": "OpenClaw 2026.9.7 compiled source: automations tool description (delivery)",
+    "anchor": "webhook posts finished-run event",
+    "supports": "The text shown to the model says a job's delivery can name a specific chat or post the finished run to a webhook URL.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:79",
+    "title": "Manage automations: owner and administrator authority",
+    "anchor": "regardless of its creator",
+    "supports": "A channel sender listed as a command owner can have the agent list, inspect, update, run or remove any automation on the gateway, whoever created it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baseline: chat-driven agent turns",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Senders who are not owners cannot use the cron or gateway tools whatever the config says.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All six sources check out, but 'there is no new send path' is wrong: the `automations` tool that /loop drives can set a job's delivery to any chat or to a webhook, so a pin on that tool and `cron.triggers.enabled: false` are hard prerequisites. Readiness becomes build, and value drops to 2 because a loop on <p>-main sees search snippets only."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "Longer-running autonomy",
+  "includes": [],
+  "history": []
+ }
+]

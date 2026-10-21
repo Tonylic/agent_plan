@@ -1,0 +1,52 @@
+#!/bin/zsh -f
+# happy-deploy: apply the staged, committed config as the happy user.
+# Installed root:wheel 755 at /usr/local/libexec/happy-deploy; tonyli runs it through /etc/sudoers.d/happy:
+#   sudo -u happy /usr/local/libexec/happy-deploy [--restart]
+# Order: the resolver first (config validation checks its path and owner), then the config, which is
+# all-or-nothing, then everything else. A rejected config stops the deploy before step 3.
+# The gateway hot-applies openclaw.json or restarts itself when needed (gateway.reload.mode "hybrid").
+set -euo pipefail
+umask 077
+[[ "$(/usr/bin/id -un)" == happy ]] || { print -u2 "happy-deploy: must run as happy"; exit 1; }
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+cd "$HOME"
+
+stage=/usr/local/var/happy-stage/current
+[[ -r "$stage/REVISION" ]] || { print -u2 "happy-deploy: nothing staged at $stage"; exit 1; }
+rev=$(<"$stage/REVISION")
+state=$HOME/.openclaw
+meta="$HOME/Library/Application Support/happy-deploy"
+
+/usr/bin/install -d -m 700 "$state" "$state/bin" "$state/sandboxes" "$HOME/bin" "$HOME/.config/happy" \
+  "$HOME/Library/Logs/openclaw" "$HOME/Library/Logs/happy" "$HOME/Backups/openclaw" "$meta"
+/usr/bin/install -d -m 755 "$HOME/Library/LaunchAgents"
+
+# 1. The exec SecretRef provider: OpenClaw requires it to be owned by happy and not group/world-writable.
+/usr/bin/install -m 700 "$stage/openclaw/bin/keychain-resolver" "$state/bin/keychain-resolver"
+
+# 2. Config. Validate a candidate copy first; the live file is replaced only if it passes.
+cand="$meta/openclaw.json.candidate"
+/bin/cp "$stage/openclaw/openclaw.json" "$cand"
+if ! OPENCLAW_CONFIG_PATH="$cand" openclaw config validate; then
+  print -u2 "happy-deploy: candidate config is invalid; live config left unchanged"
+  exit 1
+fi
+/bin/chmod 600 "$cand"
+/bin/mv -f "$cand" "$state/openclaw.json"   # same volume, so this is an atomic rename
+
+# 3. Helper scripts, runtime values and LaunchAgents (copied only; first load is by hand as happy).
+for f in "$stage"/bin/*(N); do /usr/bin/install -m 700 "$f" "$HOME/bin/${f:t}"; done
+for f in "$stage"/runtime/*(N); do /usr/bin/install -m 600 "$f" "$HOME/.config/happy/${f:t}"; done
+for p in "$stage"/launchd/*.plist(N); do
+  /usr/bin/plutil -lint -s "$p"
+  /usr/bin/install -m 644 "$p" "$HOME/Library/LaunchAgents/${p:t}"
+done
+
+print -r -- "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ) $rev" >> "$meta/history.log"
+print "happy-deploy: applied $rev (the gateway hot-reloads openclaw.json)"
+
+# 4. Optional forced restart.
+if [[ "${1:-}" == --restart ]]; then
+  openclaw gateway restart
+fi

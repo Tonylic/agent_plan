@@ -1,0 +1,382 @@
+[
+ {
+  "id": "F002",
+  "verdict": "edit",
+  "reason": "Kept. The safety note was empty although photos and PDFs are outside content read by the agent that holds a parent's memory; it now says what the platform marks as untrusted and which other entries have to keep that agent's ways out closed.",
+  "who_trigger_result": "Either parent / texts Happy a photo, a screenshot or a PDF, with or without a question / gets it read and answered in the same thread instead of silence.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/media-understanding.md:10",
+   "title": "Media understanding",
+   "anchor": "summarize inbound media",
+   "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step and says the original media is still handed to the reply model."
+  },
+  "edits": {
+   "safety": "A photo or a PDF is outside content arriving in the agent that holds a parent's memory. OpenClaw wraps text extracted from a PDF in untrusted-content markers (media-understanding.md:267), but a photo reaches the model as a plain image, and the vendor says sender controls do not sanitize attachments (hardened-baseline.md:42). What keeps this inside the house rule is that this agent cannot browse or fetch pages and that its ways out stay closed or pinned to the family: today its message tool is confined to the current conversation (G009 records both crossContext switches as off in the live config), and G009, F007 and the research hand-off (F019) have to keep it that way when they open more. Add one eval case: a PDF that carries hidden instructions must cause no tool call."
+  },
+  "merge_hints": [
+   "F023",
+   "F084"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed after opening media-understanding.md:10 and :267 and hardened-baseline.md:42; the safety note now also names the research hand-off (F019), which the roadmap's own table lists as a way out of the parent's agent."
+ },
+ {
+  "id": "F003",
+  "verdict": "edit",
+  "reason": "Kept. Two things were missing from the record: the safety note was empty although the whole promise is that speech stays on the Mac, and nothing said that the roadmap plans voice memos for the kids' voice milestone while a parent can already dictate a typed message on the phone.",
+  "who_trigger_result": "Either parent / sends a voice memo instead of typing / sees the transcript echoed back and gets a normal text answer, with the speech-to-text step run on the Mac mini.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/audio.md:2",
+   "title": "Audio and voice notes",
+   "anchor": "inbound audio/voice notes",
+   "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply, with local command-line transcribers among the options."
+  },
+  "edits": {
+   "caveats": [
+    "The roadmap schedules iMessage voice memos in its kids' voice milestone, and the kids agent (F072) is not built yet. A parent can already speak a message with the iPhone keyboard's Dictate button and send it as ordinary text (Apple's 'Dictate text on iPhone' guide), so for the two adults this is a convenience, not a new ability."
+   ],
+   "safety": "The local transcriber has to be listed explicitly: left to auto-detection, a configured provider key is tried before any local program (audio.md:39), which here could mean a cloud transcription service. With the explicit entry the speech-to-text step stays on the Mac mini; the transcript then goes to the cloud chat model like any typed message, and whether the audio file itself is withheld from that model is the open check listed under unverified. A voice memo comes from an allowlisted parent, so it brings no new outside content and no new way to send data out."
+  },
+  "merge_hints": [
+   "VOX-04"
+  ],
+  "overturned": false,
+  "challenge_note": "Keep confirmed (audio.md:2 opened), changed to an edit only to fill the empty safety note from the item's own sources and to add the roadmap's timing and the phone's dictation as a caveat."
+ },
+ {
+  "id": "VOX-04",
+  "verdict": "edit",
+  "reason": "Kept. Two pointers led to entries that no longer exist: the voice guardrails pack, which round 1 folded into VOX-01, and the driving entry.",
+  "who_trigger_result": "A parent / sends a voice memo, or asks for the last answer read aloud (/tts latest) / gets the reply as an audio file made on the Mac mini, with no cloud voice once the online provider is switched off.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/tts/configuration.md:295",
+   "title": "Text-to-speech configuration",
+   "anchor": "Local Speech Swift and speech-core",
+   "supports": "OpenClaw documents local speech engines on a Mac as a supported way to turn replies into audio."
+  },
+  "edits": {
+   "caveats": [
+    "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+    "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+    "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+    "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+    "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio.",
+    "Local-only is not the default. The keyless Microsoft provider is enabled by default, and the docs say other configured providers act as fallbacks, so a stopped local server could end in a cloud call unless Microsoft is disabled.",
+    "`/tts provider <id>` is open to any authorized sender and writes one preference file on the gateway host, so a single text can move speech to another provider for everyone. Having no cloud provider configured is the control; a prompt rule is not.",
+    "Option A adds a third-party Homebrew package and a long-running loopback server under the happy user, plus a model download: an install, a launch agent, a firewall rule and a one-time egress exception.",
+    "The loopback route needs Speech Swift v0.0.23 or later. It is a 0.0.x project, so pin the version and expect rough edges; the server also needs its own launchd job to stay up.",
+    "None of `speech`, `speech-server` or `ffmpeg` is installed on this Mac today.",
+    "iMessage outbound media is capped by `channels.imessage.mediaMaxMb` (default 16 MB), which bounds the length of a WAV reply.",
+    "In the car the phone already does the speaking: Siri announces Happy's text replies, so no audio file is needed there."
+   ],
+   "safety": "Speech synthesis is an output transformation on the gateway host and adds no new way for an agent to send data out. It is local-only, and so usable for kids' content later, only after the cloud speech providers are disabled in config and blocked at the proxy; the default provider chain and the provider slash command would otherwise allow a cloud voice. Long replies pass through a summary model before synthesis, which must be local or off for kids. Keep provider switching by directive off (the voice guardrails now recorded under VOX-01)."
+  },
+  "merge_hints": [
+   "F003"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "VOX-06",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "A road-safety authority, AAA, rates listening and replying to messages by voice at the wheel as a high mental distraction and asks that voice-to-text messaging be unusable while a car is moving; this entry invites exactly that. The phone already does the listening and speaking with nothing to build (the reason its Apple Watch twin was removed), so the one useful line, short replies when a parent says they are driving, moves to the standing preferences (F042); nothing depends on this entry.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://newsroom.aaa.com/2013/06/think-you-know-all-about-distracted-driving-think-again-says-aaa/",
+    "title": "Think You Know All About Distracted Driving? Think Again, Says AAA (AAA Newsroom)",
+    "anchor": "voice-activated technology",
+    "supports": "AAA's research rated listening and responding to voice-activated message features as an extensive-risk mental distraction, and AAA asked that voice-activated technology be limited to core driving tasks and that voice-to-text functions be inoperable while the vehicle is in motion."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/distracted-driving/about/index.html",
+    "title": "Distracted Driving (CDC)",
+    "anchor": "taking your mind off driving",
+    "supports": "CDC lists taking your mind off driving as one of the three kinds of distraction and tells drivers not to multitask at the wheel."
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "Siri already announces and sends messages in the car with nothing built on Happy's side, and a long message is announced but not read unless the driver asks."
+   }
+  ],
+  "fold_into": "F042",
+  "fold_note": "Carry one standing reply-style line: when a parent says they are driving, answer in at most two short sentences with no links or lists, hold back private detail, and offer the rest once parked (Apple says Siri announces a long message without reading it). Keep the no-build tip that Siri on the phone, in the car or on a Watch can dictate a text to Happy's contact, without presenting it as an invitation to chat at the wheel.",
+  "merge_hints": [],
+  "overturned": false,
+  "challenge_note": "Removal confirmed after opening all three pages: AAA does ask that voice-to-text messaging be inoperable while the vehicle moves, which round 1 had not consulted, and no other entry depends on this one; the reason is reworded in plainer terms."
+ },
+ {
+  "id": "G009",
+  "verdict": "edit",
+  "reason": "Kept: it implements the house rule that outbound messages go only to the family, through a recipient-pin hook that fails closed. Two gaps are closed: the scheduling tool that F007 gives the same agent can also name where a job's output goes, including a web address, so the hook has to cover it; and the roadmap's own Replies rule keeps sends inside the current conversation, so widening it to the other parent is now listed as a decision for Tony.",
+  "who_trigger_result": "Either parent, and Happy's scheduled jobs / 'tell Jordan...', 'ask Jordan if she can do Thursday pickup', or a job that needs to reach both parents / one text lands with the other parent or the parents' group and nowhere else, and an ask comes back with the yes or no.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/gateway/security/tool-permissions.md:35",
+   "title": "Tool and agent permissions",
+   "anchor": "send across conversations",
+   "supports": "OpenClaw documents that an agent holding the message tool can send to other conversations by default, which is the ability this entry switches on and then pins to the family with a hook that fails closed, as the roadmap's recipient-pin rule requires."
+  },
+  "edits": {
+   "how": "Delivery (G009): the `message` tool on <p>-main with a `before_tool_call` plugin hook that blocks any target not in family.json5 and fails closed. The live config has both `tools.message.crossContext` switches off, which confines sends to the current conversation, so `allowWithinProvider` is turned back on (`allowAcrossProviders` stays off) and the hook is then the only recipient limit. Host jobs use `openclaw agent --deliver` or `openclaw message send`. Request relay (G010), an optional second step that need not hold up the first: a pending_requests table in the household store, a `before_dispatch` plugin that matches a bare yes or no from the asked parent to that parent's one open request, and a one-shot `--at` automation for the reminder and the expiry. The same hook also has to check the scheduling tool from the moment F007 grants it: that tool's add and update calls accept a delivery target, a webhook address and separate completion and failure destinations, so the hook refuses webhook delivery and any job target other than the asking parent.",
+   "depends_on": [
+    "family.json5 registry (the list of allowed recipients)",
+    "Decision: the roadmap's Replies rule keeps both crossContext switches off (no sends into other conversations, scheduled jobs deliver only to their owner); this entry relaxes it to sends on the same channel, pinned to the family by the hook",
+    "F031 household store (pending requests; relay step only)",
+    "F007 timed reminders (reminder and expiry; relay step only). F007 itself waits for this entry's hook, so the order is: the hook, then F007, then the relay"
+   ]
+  },
+  "merge_hints": [
+   "F006",
+   "F007",
+   "F049"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed (the scheduling tool's webhook and failure-destination fields were read in the installed source); added what both rounds missed, that the roadmap's Replies row forbids sends into other conversations, as a decision line, and made the job-target rule match F007 and AUT-01 (the asking parent only)."
+ },
+ {
+  "id": "OCL-06",
+  "verdict": "edit",
+  "reason": "Kept, with /loop moved from the headline to a caveat: round 1 removed the watch-loop entry as advised against and recorded its /loop note under the multi-day project entry (AUT-01), yet this card still advertised /loop with the same weather-watch example. Two pointers to removed entries are dropped, and /update is named beside /restart because one default-on switch enables both.",
+  "who_trigger_result": "Either parent / types /stop, /new, /status, /usage or /tools in the iMessage thread / the answer stops, a clean conversation starts, or health, cost and available tools are listed, with no model call.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/slash-commands.md:212",
+   "title": "Slash commands",
+   "anchor": "Abort the current run",
+   "supports": "OpenClaw's command table documents the typed commands a chat user gets, including stopping the current run and starting a fresh session."
+  },
+  "edits": {
+   "name": "Built-in chat commands for parents (/stop, /new, /status, /usage, /tools)",
+   "description": "A handful of typed commands that already work in the iMessage thread: stop an answer that is going wrong, start a clean conversation, see what Happy can do right now, and check health and cost, all handled before any model call. One more does use the model: /btw asks a side question that is not remembered (its page does not list iMessage, so treat it as untested here).",
+   "example": "Jordan texts '/stop' when a long answer is heading the wrong way, then '/new'. Tony texts '/status' when Happy seems slow.",
+   "how": "Text commands are core and work on iMessage: command-only messages from allowlisted senders are handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary. /btw answers from the current session with a separate one-shot model query and writes nothing to history. Put the five everyday ones in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and Tony should decide whether /restart and /update, which one switch (commands.restart, on by default) opens to owners, stay available from chat.",
+   "depends_on": [
+    "G005 kill switch for the stop-everything case"
+   ],
+   "caveats": [
+    "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+    "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+    "/btw is a separate one-shot model call on the session's model; it is not free and not model-less.",
+    "/usage figures are local estimates, not the provider's bill.",
+    "In a plain iMessage bubble the /status and /tools output may be long.",
+    "/loop is left off the cheat sheet. It is an owner-only command that has the agent create a repeating job through the scheduling tool, so it does nothing until F007 grants that tool, and a job made this way sits outside the G003 jobs registry. Its prerequisites and house rule are recorded with the multi-day project entry (AUT-01); a loop on a parent's agent sees only search snippets, so watching a page or a feed belongs to the watchers (F029)."
+   ],
+   "safety": "No new capability for the five everyday commands: they are read from the sender's own message, authorised by the sender allowlist and the owner list, and handled before the model runs. /btw is a model turn on <p>-main under its normal tool policy, and <p>-main cannot browse."
+  },
+  "merge_hints": [
+   "G005"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed: round 1 kept /loop here only because the watch-loop entry was expected to fold into this card, but it was folded into AUT-01 instead, so the /loop caveat now points there and no longer names a removed entry."
+ },
+ {
+  "id": "F007",
+  "verdict": "edit",
+  "reason": "Kept, but it was marked low risk and ready now with an empty safety note: the scheduling tool lets the agent name where a job's output goes, including a web address, so it can be given to a parent's agent only after the family-only hook (G009) also covers it, as the multi-day project entry (AUT-01) already says. A caveat now separates a timed text from Happy from an item on an Apple Reminders list (F030).",
+  "who_trigger_result": "A parent who is a command owner / texts 'remind me at 4:30 to pick up the kids' or 'every Sunday 7 pm: bins out' / gets a text from Happy at that time, and can list and cancel what is scheduled.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/index.md:35",
+   "title": "Automation",
+   "anchor": "Remind me in 20 minutes",
+   "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, with one-shot and recurring schedules."
+  },
+  "edits": {
+   "risk": "medium",
+   "readiness": "build",
+   "how": "automations tool (cron alias) allowed on <p>-main, but only once the G009 before_tool_call hook also checks this tool's add and update calls; --at one-shots auto-delete; recurring --cron with --tz; every reminder job carries an empty tool list (--tools \"\" on the command line, the toolsAllow field when the agent creates the job); cron.triggers.enabled: false; only senders in commands.ownerAllowFrom may use it.",
+   "depends_on": [
+    "Decision: add Jordan to commands.ownerAllowFrom so she can set reminders from chat (the roadmap sets the command owner to Tony's handle only, and owner status also opens the owner-only commands such as /loop, /restart and /update)",
+    "G009 recipient-pin hook (its first step, not the relay), extended to the scheduling tool's add and update calls (refuse webhook delivery and any target but the asking parent)",
+    "cron.triggers.enabled: false (a plain config switch, listed under the jobs registry G003)"
+   ],
+   "caveats": [
+    "For a plain personal timer, Siri and the iPhone Reminders app already do the job, including reminders tied to a place or to messaging a chosen person. Happy's version earns its place for reminders that come out of something Happy just read or answered, and because the same scheduler carries the briefs, watchers and other timed jobs.",
+    "Once the Reminders bridge (F030) exists, 'remind me' can mean two things: a text from Happy at a set time (this entry) or an item on an Apple Reminders list. OpenClaw's bundled Reminders skill tells the agent to ask which is meant when it is unclear; the bridge here is an in-house plugin, so the same rule goes into AGENTS.md."
+   ],
+   "safety": "This is a control-plane tool: OpenClaw's guidance is to deny it by default to any agent that handles outside content (tool-permissions.md:21), and <p>-main reads search results, attachments and relayed research text. The tool lets the agent name where a job's output goes: another chat target, or a web address (delivery mode webhook, plus separate completion and failure destinations). On the agent that holds a parent's memory that would be a way to send data out, so the tool is granted only after the family-only hook (G009) refuses webhook delivery and any target other than the asking parent, and with cron.triggers.enabled: false so that no script payload or trigger script can be created. A job an agent creates keeps the tools of the turn that made it unless its tool list is set (payloads.md:60), so the hook should also require an empty tool list on a reminder job; its timed run can then only produce text."
+  },
+  "merge_hints": [
+   "G009"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed against tool-permissions.md:21 and the installed scheduling-tool source; one sentence corrected: a job made from chat is not empty-tooled by itself (payloads.md:60), so the hook has to require the empty tool list."
+ },
+ {
+  "id": "F009",
+  "verdict": "edit",
+  "reason": "Kept. The name carried an internal server name instead of saying what a parent gets, and the change-alert pointer led to an entry that round 1 merged into the calendar and feed watchers (F029). The safety note was empty and nine other entries build on this one, so it now says why the access is read-only and that event text written by outsiders is outside content, and the two prerequisites are written down.",
+  "who_trigger_result": "Either parent, and the scheduled briefs / 'what's on Saturday?' or 'is anyone free Friday at 1?' / the answer read from the family Google Calendar, with nothing written to it.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/delegate-architecture.md:48",
+   "title": "Delegate architecture",
+   "anchor": "read events, surface conflicts",
+   "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+  },
+  "edits": {
+   "name": "Family calendar, read-only: 'what's on Saturday?' and 'is anyone free Friday at 1?'",
+   "caveats": [
+    "Public feeds (the school district calendar, library and recreation events, team schedules) show up in Happy's calendar answers only after the family Google Calendar is subscribed to each feed link, which Google allows from a computer browser only; a search of the installed OpenClaw docs and skills found no .ics handling of its own. Google gives no refresh interval and TeamSnap says changes can take up to 24 hours to appear, so change alerts are a separate job (the calendar and feed watchers, F029)."
+   ],
+   "depends_on": [
+    "Decision: Google or iCloud for the family calendar (still open; the iCloud route needs the OpenClaw macOS app paired as a node, which is not installed)",
+    "gog installed, each parent's account added with --readonly, and the Google OAuth app published (a sign-in from an app left in Testing status expires after seven days)"
+   ],
+   "safety": "Read-only by construction: each account is added with gog's --readonly switch, which asks Google for read-only access and blocks changes at runtime, and only the events-listing tool is exposed. Event titles and descriptions can be written by people outside the family (an invitation, a subscribed public feed), and OpenClaw says its sender controls do not sanitize tool results (hardened-baseline.md:42), so calendar text is outside content read by the agent that holds a parent's memory. That agent cannot browse, and its ways out stay closed or pinned to the family (G009)."
+  },
+  "merge_hints": [],
+  "overturned": false,
+  "challenge_note": "Edit confirmed (delegate-architecture.md:48 opened); added the missing safety note and the two prerequisites from the item's own sources and open questions."
+ },
+ {
+  "id": "F019",
+  "verdict": "edit",
+  "reason": "Kept. It was marked low risk with a safety note saying the split 'breaks the trifecta', but the roadmap itself calls the hand-off from a parent's agent to the research helper the one remaining leak path, and OpenClaw's guidance is to deny the hand-off tool by default to an agent that handles outside content. Risk is now medium and the safety note says what is and is not closed.",
+  "who_trigger_result": "Either parent / asks something that needs a public web page ('what time does the town pool open Saturday?') / gets 'on it', then one answer with the link and when the page was fetched, read by a helper that holds no family data and cannot reach the home network.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/web-fetch.md:11",
+   "title": "Web fetch",
+   "anchor": "extracts readable content",
+   "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+  },
+  "edits": {
+   "risk": "medium",
+   "safety": "The research agent reads untrusted pages but holds no memory, no accounts and no family data, and the guardrails take the home network out of its reach. That keeps private data away from the agent that browses; it does not close every path. The guardrails do not stop an injected page making the helper request some public URL, and the roadmap names the hand-off as the one remaining leak path: the parent's agent holds memory, reads search results, attachments and the helper's relayed answer, and writes the task text that goes to a helper able to fetch any public address. OpenClaw's guidance is to deny sessions_spawn by default to an agent that handles outside content (tool-permissions.md:21), so this grant is deliberate and narrow: the allowlist names only research, the rule about what may go into the task text is a prompt rule, and the roadmap's exit test includes an injected result that asks the parent's agent to pass memory to research. The relayed answer is treated as untrusted."
+  },
+  "merge_hints": [],
+  "overturned": false,
+  "challenge_note": "Keep confirmed (web-fetch.md:11 opened), changed to an edit: the first reviewer applied tool-permissions.md:21 to the scheduling tool in F007 but not to sessions_spawn here, and the roadmap's own risk table names this hand-off as the remaining leak path."
+ },
+ {
+  "id": "F021",
+  "verdict": "edit",
+  "reason": "Kept. Two things were missing from the record: the roadmap names a different Google Maps connection for the same job, so there is a choice to make before building, and the errands entry folded in during round 1 had conceded that the phone's maps app already answers one-off lookups. The description now says the lookup's main use is as place data for the research helper, and its prerequisites are written down.",
+  "who_trigger_result": "The research helper while planning an outing or an errand, or a parent asking directly / 'is the pool open now, is it any good, what's the number?' / up to three picks with hours, rating, phone and a Maps link from Google Places.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/goplaces/SKILL.md:41",
+   "title": "Bundled goplaces skill",
+   "anchor": "--open-now --min-rating 4",
+   "supports": "OpenClaw ships a skill for asking Google Places which nearby places are open now and well rated, with details and reviews on request."
+  },
+  "edits": {
+   "description": "Happy can answer 'is it open now, is it any good, what is the phone number' from Google Places and return up to three picks with a Maps link. Its main use is as place data for the research helper's outing and errand answers; for a one-off lookup the maps app on a parent's phone is quicker.",
+   "depends_on": [
+    "F019 research agent (the lookup is a tool on that agent)",
+    "A Google Cloud project with billing switched on, a Places API key and a budget alert",
+    "Decision: the bundled goplaces command or Google's own hosted Maps server (Grounding Lite), which the roadmap names"
+   ],
+   "caveats": [
+    "The roadmap's research milestone names Google's own hosted Maps server (Grounding Lite) for this job; this entry instead wraps the goplaces command that OpenClaw bundles a skill for. Both read Google's place data, so choose one before building.",
+    "For a one-off 'is it open now?' the maps app on a parent's phone is quicker and has live traffic, as the errands entry folded in here (F027) conceded. This lookup earns its place as place data for the research helper's outing and errand answers (F028)."
+   ],
+   "safety": "The lookup is a tool on the research helper, which holds no family data. The Google key and the home coordinates sit in the host-side wrapper, not in the prompt, and every query goes to Google."
+  },
+  "merge_hints": [
+   "F028"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed (the skill file and roadmap line were opened); since the new caveat concedes the one-off use to the phone, the description now says so too, and the dependencies the build note implies (F019, a billed Google key, the goplaces-or-Grounding-Lite choice) are listed."
+ },
+ {
+  "id": "F030",
+  "verdict": "edit",
+  "reason": "Kept. The description stated as fact that changes reach both phones, though the record's own open question is whether a write made on the Mac lands on a list shared from someone else's account; it now says that is the first thing to prove, with an example added. The record also gains an honest note that Siri already adds a single spoken reminder, and a safety note, which was empty for a tool that writes to shared lists.",
+  "who_trigger_result": "Either parent / texts 'add oat milk' or 'what's on the shopping list?' / the shared Reminders list is read or updated, so the item shows on both parents' iPhones.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/apple-reminders/SKILL.md:37",
+   "title": "Bundled apple-reminders skill",
+   "anchor": "iPhone/iPad Reminders app",
+   "supports": "OpenClaw ships a skill for listing, adding and completing Apple Reminders from the Mac, meant for people who want the tasks to appear in the Reminders app on their phones."
+  },
+  "edits": {
+   "description": "Happy can read, add to and tick off items on the Reminders lists the family already shares, so changes show up on both parents' iPhones. That an item added from the Mac's command line reaches a list shared from a parent's account has not been tested; it is the first thing to prove.",
+   "example": "Jordan texts: 'add oat milk and stamps'. Both items appear on the shared grocery list on both parents' phones.",
+   "depends_on": [
+    "happy's Apple Account invited to the family's shared lists, with iCloud Reminders on",
+    "remindctl installed on the Mac mini and Reminders access granted in the gateway's own process context",
+    "First test: an item added from the Mac appears on a list shared from a parent's account"
+   ],
+   "caveats": [
+    "A shared Apple Note as a second filing target is not part of this build. The memo command-line tool edits notes only through an interactive editor, and an unattended AppleScript append to a shared iCloud note has no opened source and no test. Treat it as a later experiment once the Reminders bridge works.",
+    "For a single item spoken to the phone, Siri already creates reminders with nothing to build (Apple's Reminders page documents asking Siri). The bridge earns its place when the items come out of something Happy read or planned (a recipe link, the meal plan, a flyer) and when a job needs to read a list."
+   ],
+   "safety": "The tool offers only list, add and complete on named lists and has no delete. An item added to a shared list appears on the devices of everyone the list is shared with, so the lists Happy may write to should be shared only inside the family; otherwise an add would put text in front of someone outside it. Any participant can also type items, so list text read back by a parent's agent is outside content if a list is ever shared more widely."
+  },
+  "merge_hints": [],
+  "overturned": false,
+  "challenge_note": "Edit confirmed (the bundled skill's line 37 was opened and describes the use); added a safety note, the prerequisites from the build note and a caveat that Siri already adds single reminders, from Apple's Reminders page opened in this run."
+ },
+ {
+  "id": "F031",
+  "verdict": "edit",
+  "reason": "Kept as the one shared store that fourteen other entries build on; its credible mention is the same upkeep guidance as the upkeep calendar (F038), its first user. The name's 'ledgers' had nothing behind it, and the description now says where this store stops and the family handbook (F043) and personal memory (F041) begin, since all three were described as places for facts.",
+  "who_trigger_result": "Both parents' agents and the timed jobs / a parent texts 'did the furnace filter', or a job asks what is due / one shared record of dated schedules and single facts, so both parents get the same answer.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+   "title": "Maintenance Checklist | ENERGY STAR",
+   "anchor": "change air filters once a month",
+   "supports": "A US government energy programme tells households to check or change heating and cooling filters every month and to book yearly pre-season check-ups, the kind of dated upkeep schedule this store keeps."
+  },
+  "edits": {
+   "name": "Household store for dated schedules and single facts (in-house tool plugin)",
+   "description": "A small household database that both parents' agents and the timed jobs read and update: dated schedules (filter every 90 days, last oil change) and single facts a job needs. It is the shared back end of the upkeep nudges and the other dated features; handbook-style knowledge lives in the vault (F043) and each parent's own notes in memory (F041).",
+   "caveats": [
+    "The first version has only the schedule and fact tools. Features that keep their own rows here (the sick-day log in CRT-10, open requests in G009's relay step) add their own table and tool when they are built."
+   ],
+   "safety": "Both parents' agents and the timed jobs read and write the same rows, so anything stored here is shared between the two adults by design; something meant for one parent belongs in that parent's own memory (F041). The plugin refuses values that look like secrets. Like a memory note, a stored fact is read back later by the other parent's agent and by jobs, so it is a place where an injected instruction could persist: facts should stay short and typed (a date, an interval, a short label), not free text lifted from a page or a document."
+  },
+  "merge_hints": [
+   "F038",
+   "F043"
+  ],
+  "overturned": false,
+  "challenge_note": "Edit confirmed (the ENERGY STAR page was opened and carries the anchor; fourteen dependents counted); the new name swapped 'ledgers' for 'logs', which the build note does not have either, so it is dropped and a caveat says dependents add their own tables, and the empty safety note is filled."
+ },
+ {
+  "id": "F041",
+  "verdict": "edit",
+  "reason": "Kept. The name promised 'memory scopes' that the entry never describes, and the safety note was empty for the one place where an injected instruction could persist; both are fixed from the record's own notes.",
+  "who_trigger_result": "Either parent / texts 'remember that...' / the fact is saved in that parent's own notes and comes back in later chats, including after the daily reset.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/memory.md:31",
+   "title": "Memory overview",
+   "anchor": "Remember that I",
+   "supports": "OpenClaw's memory guide presents asking the agent to remember a fact, which it then writes to its memory files, as the normal way to use memory."
+  },
+  "edits": {
+   "name": "Durable per-person memory: 'remember this' is saved to that parent's own notes and found again",
+   "safety": "Each parent's notes stay in that parent's own agent, and shared agents such as research hold no memory. Writes are limited to the memory files by a before_tool_call hook, which fails closed, and apply_patch is denied by name. A saved note is also where an injected instruction could persist, so the plan is to refuse memory writes in a turn that carried web or research results; the hook has to track that itself and this is untested. The weekly memory review (F085) shows each adult what was saved."
+  },
+  "merge_hints": [],
+  "overturned": false
+ },
+ {
+  "id": "F042",
+  "verdict": "keep",
+  "who_trigger_result": "Both parents / every new chat, and 'put this school note in Chinese for grandma' / Happy already knows the kids' school, routines and each adult's standing preferences and reply language, and returns a short version to forward.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/user-model.md:12",
+   "title": "User model",
+   "anchor": "stable preferences, communication style",
+   "supports": "OpenClaw documents USER.md as the place for stable preferences, relationships and context that are loaded at session start to guide later chats."
+  },
+  "merge_hints": [],
+  "overturned": false
+ }
+]

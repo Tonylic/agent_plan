@@ -1,0 +1,38 @@
+[
+ {
+  "into": "G005",
+  "members": [
+   "G005",
+   "OCL-06"
+  ],
+  "why": "same purpose",
+  "note": "The built-in typed commands and stop words (OCL-06) become the first level of the stop-by-text card (G005): rounds 3 and 4 left the pair apart without knowing that OpenClaw already ends one answer on a bare 'stop' (a fixed list of 43 phrases, checked before any plugin hook and honoured only for senders authorised for commands, which today is Tony alone), so the in-house phrases, the one paper sheet and the one config line for the second parent have to be settled on one card, which states the part that works today and the part that needs the plugin separately.",
+  "record": {
+   "name": "Stopping and checking Happy by text: built-in stop words and commands (/stop, /new, /status, /usage, /tools), then 'Happy, stop everything' and locking one person out",
+   "description": "Built in, with nothing to build: a text that says only 'stop' (or /stop) ends the answer in progress, /new starts a clean chat, and /status, /usage and /tools show health, cost and what Happy can do, all without a model call; this works for Tony today, and for Jordan only /new and /reset do until one config line authorises her for commands. Built in-house as the second level: either parent texts one exact phrase and no agent runs and no tool is called until Tony switches Happy back on at the Mac (texts from jobs that use no model are cancelled only on a best-effort basis until he also switches the scheduler off), and a second phrase stops Happy answering one person's handle after a lost or stolen phone.",
+   "example": "Tony texts 'stop' when a long answer is heading the wrong way, then '/new'. Jordan texts 'Happy, stop everything' when briefs start arriving twice, and Tony texts 'Happy, lock out Jordan' after her phone is left in a taxi.",
+   "how": "Level 1, built in (from OCL-06): a text that is only `/stop` or one of OpenClaw's 43 fixed stop phrases ('stop', 'please stop', '停止' and others) aborts the current run in that chat, and `/new`, `/status`, `/usage` and `/tools` are answered before the model, for senders authorised for commands. Add both parents under `commands.allowFrom` for iMessage and print one sheet; /restart and /update are already off (`commands.restart: false`). Level 2, an in-house plugin (from G005): `before_dispatch` claims the exact phrase from an adult's handle and writes a kill file or a suspended-handle file; `before_agent_run` and `before_tool_call`, which fail closed, block runs and tools; `message_sending` cancels scheduled texts, best effort. Lifting is command-line only. Further levels for Tony: `cron.enabled: false`, then `openclaw gateway stop`.",
+   "depends_on": [
+    "family.json5 registry and gen-family (handles, and the operator path that removes one)",
+    "Config: both parents' handles under `commands.allowFrom` for iMessage (commands only; once set it is the only source of command authorisation, so Tony's handle has to be on it too), or the second parent added to `commands.ownerAllowFrom` (the wider decision listed under timed reminders, F007). Until then only Tony has the built-in stop, /status, /usage and /tools",
+    "First test after that change: 'stop' and /status sent from the second parent's phone are answered",
+    "One printed sheet for both parents: the five commands and the built-in stop words now, the two in-house phrases added once the plugin exists; the five commands, and not the phrases, also go in templates/person/AGENTS.md",
+    "For the in-house level: both phrases chosen so that neither is on OpenClaw's built-in stop-word list, and a first test with a throwaway scheduled job showing that a stop blocks it and that lifting the stop at the Mac restores it"
+   ],
+   "caveats": [
+    "With an owner list set and no `commands.allowFrom`, OpenClaw gives the second parent /new and /reset only: her /stop, a bare 'stop', /status, /usage and /tools are dropped without a reply until one config line authorises her (read from the installed docs and code, not tried from her phone).",
+    "/stop and the built-in stop words end one answer in one chat and pause no scheduled job, so the sheet has to say which words stop one answer and which stop everything.",
+    "OpenClaw checks its stop words, and a typed /approve, before any plugin hook (read from the bundled code, not tried on iMessage): neither in-house phrase may be on that list, and the lock-out's phrase hook does not see an approval typed from a locked-out handle.",
+    "The phrase matcher and the `message_sending` cancel both log and carry on when their handler throws or times out, and a job that uses no model can only be caught at `message_sending` (read from the bundled code, not tested), so the stop is enforced in the hooks that fail closed and the dependable stop for model-free jobs is the scheduler switch.",
+    "A stop leaves the scheduler running: a text the hook cancels is recorded as a delivery error that can alert Tony, and if a blocked run counts as a failed run (not tested) a recurring job that fails ten times in a row switches itself off and stays off after the stop is lifted, so for a stop longer than a day or two switch the scheduler off as well and check the full job list afterwards.",
+    "Either adult can lock the other out and only Tony, at the Mac, undoes it; a lock-out stops replies and texts to that person but not their scheduled jobs, which the mute and vacation controls (G001) pause.",
+    "The fixed emergency reply (CRT-13) is planned as a second phrase list in this plugin and must keep answering during a stop or a lock-out, so whatever cancels outgoing texts has to let that one line through.",
+    "/usage shows local estimates and not the provider's bill, /status and /tools may run long in an iMessage bubble, and /btw and /loop stay off the sheet: /btw is a model call whose page does not list iMessage, and /loop needs the scheduling tool that timed reminders (F007) grant."
+   ],
+   "safety": "The two phrases can only narrow what Happy does; nothing in chat adds a sender or lifts a stop. A locked-out handle stays on the iMessage allowlist, which is also the approver list, until Tony removes it and redeploys. Authorising both parents for commands opens every command and directive that is not owner-only (also /tts, /compact, /model), but no owner rights.",
+   "tier": 1,
+   "section": "Operator platform and guardrails",
+   "wave": "A"
+  }
+ }
+]

@@ -1,0 +1,752 @@
+[
+  {
+    "id": "F030",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Happy can read, add to and tick off items on the Reminders lists the family already shares, so changes show up on both parents' iPhones.",
+    "how_short": "In-house host-side tool plugin wrapping remindctl (list/add/complete, named lists only, no delete); happy's Apple Account joins the shared lists; Reminders permission granted in the gateway's own process context.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/tool-plugins.md:11",
+        "title": "Tool plugins (OpenClaw docs)",
+        "anchor": "defineToolPlugin",
+        "supports": "OpenClaw has a supported way to build a small plugin that only adds typed agent tools, which is the shape of the planned home-reminders bridge."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/remindctl",
+        "title": "steipete/remindctl README",
+        "anchor": "remindctl complete",
+        "supports": "The CLI lists, adds, completes and deletes Apple Reminders with JSON output, needs macOS 14 or later, and needs Reminders access granted to the app that runs it on that Mac."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:134",
+        "title": "Device commands (OpenClaw docs)",
+        "anchor": "reminders.list",
+        "supports": "The node reminders commands are offered by iOS and Android nodes only, and adding a reminder is a dangerous command that needs an explicit gateway allow, so a macOS node is not an alternative path."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/reminders/share-a-reminder-list-remnd509c0d9/mac",
+        "title": "Share a reminder list on Mac - Apple Support",
+        "anchor": "Share a reminder list",
+        "supports": "A shared list lives in iCloud Reminders, invitees must accept and also use iCloud Reminders, and accepted participants can create and edit items from any of their devices."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "No opened source confirms that remindctl can add to or complete items on a shared iCloud list owned by another family member; its README only says reminders sync through the normal iCloud path.",
+      "Which binary macOS records the Reminders permission against when the launchd gateway spawns remindctl is not documented in any opened source; it needs one test on happy's logged-in desktop.",
+      "The Notes half (appending to a shared folder with osascript) has no first-party Apple scripting reference opened in this run; the memo CLI page only confirms it relies on AppleScript and an editor."
+    ]
+  },
+  {
+    "id": "F031",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "A small household database for dated schedules and simple facts (filter every 90 days, last oil change) that both parents' agents can read and update.",
+    "how_short": "In-house defineToolPlugin over node:sqlite with schedule_get/upsert/mark_done and fact_get/set; allowlisted on both mains and in tools.sandbox.tools; secret check inside execute or via definePluginEntry.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/tool-plugins.md:11",
+        "title": "Tool plugins (OpenClaw docs)",
+        "anchor": "defineToolPlugin",
+        "supports": "A defineToolPlugin plugin adds agent-callable tools only (no hooks or services), which fits a local store with a handful of typed tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/tool-plugins.md:233",
+        "title": "Tool plugins (OpenClaw docs)",
+        "anchor": "definePluginEntry",
+        "supports": "A plugin that combines tools with hooks must be written with definePluginEntry instead, so a secret-rejecting hook cannot sit inside a plain defineToolPlugin."
+      },
+      {
+        "kind": "web",
+        "ref": "https://nodejs.org/api/sqlite.html",
+        "title": "SQLite | Node.js documentation",
+        "anchor": "node:sqlite",
+        "supports": "Node ships a built-in synchronous SQLite module (added in 22.5.0, release-candidate stability), so the store needs no extra database dependency on the installed Node 26."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/multi-agent-sandbox-tools.md:242",
+        "title": "Multi-agent sandbox and tools (OpenClaw docs)",
+        "anchor": "<safe-server>__<safe-tool>",
+        "supports": "The double-underscore server__tool name belongs to configured MCP servers; a native plugin tool is addressed by the name it declares."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct verifier note says the secret-rejecting before_tool_call hook can live in the same plugin as the defineToolPlugin store. docs/plugins/tool-plugins.md:11 says defineToolPlugin adds tools only, and :233 points to definePluginEntry when tools are combined with hooks.",
+      "The catalog chooses defineToolPlugin for the store but still names its tools home-store__schedule_* in the automations. docs/tools/multi-agent-sandbox-tools.md:242 gives that server__tool form to MCP servers only; a plugin's tools carry the names it declares, so job tool lists must use those."
+    ],
+    "unverified": [
+      "node:sqlite is labelled release candidate on nodejs.org; no long-run test of it inside the gateway process was done."
+    ]
+  },
+  {
+    "id": "F032",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Parents text 'add oat milk' any time; on Saturday morning each parent gets the open shopping list in one message.",
+    "how_short": "F030 reminders tools for capture; one isolated automation per parent (--cron, --tools, --announce on imessage); voice capture needs channels.imessage.includeAttachments plus transcription.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:77",
+        "title": "Standing orders (OpenClaw docs)",
+        "anchor": "openclaw automations add",
+        "supports": "A scheduled job is created with a cron expression, a timezone and an announce target on the iMessage channel, which is the shape of the Saturday list message."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:56",
+        "title": "Automation payloads (OpenClaw docs)",
+        "anchor": "--tools",
+        "supports": "A scheduled job can be limited to a named list of tools, so the Saturday run can hold only the list-reading tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments (OpenClaw docs)",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Voice memos and photos are dropped before the agent sees them unless inbound attachments are switched on, which is off on this install."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105086",
+        "title": "Create grocery lists in Reminders on your iPhone - Apple Support",
+        "anchor": "Create grocery lists in Reminders",
+        "supports": "The iPhone already sorts a Groceries-type list into store sections by itself (iOS 17 or later with iCloud Reminders), so Happy adds little to capture and sorting."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Flagging staples not bought in three weeks needs completion history; no opened source shows remindctl or Reminders exposing it, so it would need its own log in the F031 store.",
+      "Local voice transcription was not tested; by default the installed stack would send a voice memo to the configured cloud provider."
+    ]
+  },
+  {
+    "id": "F033",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "On Sunday afternoon the cook gets five dinner ideas fitted to the week's calendar and allergies; a reply swaps a night or adds missing ingredients to the list.",
+    "how_short": "Isolated automation reads recipes and calendar, saves the plan (store row or wiki synthesis) for the main session to use on reply; ask_user is main-session only; no ordering.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:267",
+        "title": "Automation payloads (OpenClaw docs)",
+        "anchor": "A new transcript/session id",
+        "supports": "Each isolated run starts a fresh session with no earlier conversation, so the Sunday job has to save the plan somewhere the parent's main session can read when they reply."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:15",
+        "title": "Ask user (OpenClaw docs)",
+        "anchor": "only in the main session",
+        "supports": "The structured question tool is not given to scheduled or other non-primary runs, so the plan message can only invite a normal reply."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/wiki.md:195",
+        "title": "openclaw wiki CLI reference (OpenClaw docs)",
+        "anchor": "apply synthesis",
+        "supports": "The wiki write path creates or refreshes a synthesis page with a managed body, which is how a recipe or the week's plan could be stored without free-form page edits."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.nutrition.gov/topics/shopping-cooking-and-meal-planning/food-shopping-and-meal-planning",
+        "title": "Food Shopping and Meal Planning | Nutrition.gov (USDA)",
+        "anchor": "Food Shopping and Meal Planning",
+        "supports": "Planning the week's meals first and deriving the grocery list from the plan is the standard household method that USDA's nutrition portal points families to."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "It depends on the calendar connection (F009) and the Reminders bridge (F030), neither of which exists yet.",
+      "The 9 Oct statement that AI meal-plan features have poor retention has no source opened in this run."
+    ]
+  },
+  {
+    "id": "F034",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Send a photo of an appliance's data plate once; later ask what filter the furnace takes or who fixed the boiler and get the stored answer.",
+    "how_short": "includeAttachments on; the vision model reads the plate; the agent saves a wiki synthesis page (wiki_apply) or a store fact; manual PDFs by URL go through the research agent.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments (OpenClaw docs)",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Photos sent over iMessage reach the agent only after inbound attachments are enabled; today they are dropped."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:143",
+        "title": "Media understanding (OpenClaw docs)",
+        "anchor": "supports vision natively",
+        "supports": "When the reply model accepts images, the original photo is passed to it directly, so reading a data plate needs no extra tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/wiki.md:195",
+        "title": "openclaw wiki CLI reference (OpenClaw docs)",
+        "anchor": "apply synthesis",
+        "supports": "The agent's only wiki write is creating or refreshing a synthesis page or editing metadata, so one synthesis page per appliance is the write shape; entity pages are seeded by the operator."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:68",
+        "title": "PDF tool (OpenClaw docs)",
+        "anchor": "rejected when the tool runs sandboxed",
+        "supports": "A sandboxed agent cannot hand the pdf tool a remote URL, so fetching a manual from the web is a job for the separate research agent, not the parent's main agent."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That gpt-6-sol accepts images on Tony's custom provider ids was not checked in this run.",
+      "The memory-wiki route needs that bundled plugin enabled (F043 step 2); with only the shared Markdown folder, the operator types the plate details in by hand."
+    ]
+  },
+  {
+    "id": "F035",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Ask for a birthday, a shoe size, the pediatrician or where the passports are, and get the answer with the date it was recorded.",
+    "how_short": "Folded into F043: operator-seeded shared Markdown indexed through extraPaths, later memory-wiki pages; wiki_search mode find-person; allergy lines carry trigger comments in MEMORY.md.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:467",
+        "title": "Memory configuration reference (OpenClaw docs)",
+        "anchor": "canonical path",
+        "supports": "A shared notes folder is indexed for an agent by adding its real (non-symlink) path to the extra memory paths."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:278",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "find-person",
+        "supports": "Wiki search has a person-lookup mode that boosts people pages, aliases and handles."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:134",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "evidence[]",
+        "supports": "Wiki claims carry status, confidence, evidence and an updated date, which is what lets an answer say when a fact was recorded."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/memory-architecture.md:232",
+        "title": "Memory architecture (OpenClaw docs)",
+        "anchor": "0.72",
+        "supports": "A fact line tagged with trigger phrases is injected automatically when a message matches strongly, at most three per turn, which is how an allergy line surfaces in a recipe chat."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "'Recorded by whom' needs a per-adult source id convention; no opened source defines one."
+    ]
+  },
+  {
+    "id": "F036",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "'Make the sitter sheet for Friday' returns one message with bedtimes, allergies, medicines and emergency contacts for the parent to forward.",
+    "how_short": "Prompt template referenced from AGENTS.md over F043 facts (plus calendar once connected); mains hold no message tool, so nothing is sent; the Wi-Fi password is never stored.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.healthychildren.org/English/safety-prevention/at-home/Pages/babysitting-reminders.aspx",
+        "title": "Babysitting Reminders: Checklist for Parents & Sitters - HealthyChildren.org (American Academy of Pediatrics)",
+        "anchor": "Babysitting Reminders",
+        "supports": "The paediatricians' own checklist lists what parents should always leave with a sitter (parent, neighbour, doctor and emergency contacts, address), which is the content of the sheet."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:34",
+        "title": "Standing orders (OpenClaw docs)",
+        "anchor": "arbitrary files in subdirectories",
+        "supports": "Only the top-level bootstrap files are loaded each session, so a sitter template kept in a subfolder must be pointed to from AGENTS.md."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:74",
+        "title": "Tool policy (OpenClaw docs)",
+        "anchor": "group:messaging",
+        "supports": "Sending is a separate tool (message) that an agent only has if granted; without it the sheet can only come back as the reply to the asking parent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:17",
+        "title": "Plugin hooks: tool policy (OpenClaw docs)",
+        "anchor": "before_tool_call",
+        "supports": "The tool-call hook sees tool names and parameters, not reply text, so it cannot scrub a password from an answer; the control is never storing the password."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "'Tonight's plan' needs the calendar connection (F009), which is not built yet."
+    ]
+  },
+  {
+    "id": "F037",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Ask for a text to the plumber, the coach or the carpool parents and get ready-to-paste wording; the parent sends it from their own phone.",
+    "how_short": "Prompt-only on <p>-main: no message tool is granted and iMessage Basic mode is plain send/receive to the allowlisted family; vendor names come from F034.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:74",
+        "title": "Tool policy (OpenClaw docs)",
+        "anchor": "group:messaging",
+        "supports": "Outbound sending is one named tool; an agent that is not granted it can only answer the person who asked, which is what keeps this drafts-only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/private-api.md:84",
+        "title": "iMessage private API (OpenClaw docs)",
+        "anchor": "falls back to basic mode",
+        "supports": "With SIP left on, the channel offers text and media send plus receive only, so there is no richer action surface to worry about."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Using tomorrow's calendar in a draft needs the calendar connection (F009), which is not built yet."
+    ]
+  },
+  {
+    "id": "F038",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Nudges for filter changes, car inspection, seasonal jobs and bins the night before pickup; 'did the furnace filter' updates the record.",
+    "how_short": "Per-parent isolated automations (--cron, --tz, --tools) over the F031 schedule tools; the run answers NO_REPLY when nothing is due; holiday shifts come from a table entered once.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:89",
+        "title": "openclaw automations CLI reference (OpenClaw docs)",
+        "anchor": "--cron <expression>",
+        "supports": "Jobs take a standard cron expression with a named timezone, enough for 'first of the month' and 'night before pickup' schedules."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads (OpenClaw docs)",
+        "anchor": "NO_REPLY",
+        "supports": "An unattended run that finds nothing to do returns the silent token and no message is delivered, so a daily check stays quiet until something is due."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+        "title": "Maintenance Checklist | ENERGY STAR",
+        "anchor": "Maintenance Checklist",
+        "supports": "The US government efficiency programme advises checking the HVAC filter monthly and a yearly pre-season service, so recurring upkeep reminders reflect real maintenance guidance."
+      },
+      {
+        "kind": "web",
+        "ref": "https://dmv.ny.gov/inspection/inspection-requirements",
+        "title": "About New York State Inspections - NY DMV",
+        "anchor": "every 12 months",
+        "supports": "A registered vehicle needs a safety inspection once a year, which makes the per-car inspection month a real recurring date worth tracking."
+      }
+    ],
+    "corrections": [
+      "The catalog writes this job's tools as home-store__schedule_*. docs/tools/multi-agent-sandbox-tools.md:242 gives that double-underscore form to MCP servers; if F031 ships as a defineToolPlugin, the job must list the plugin's own tool names instead."
+    ],
+    "unverified": [
+      "The opened scheduler docs show no holiday calendar; the holiday bin shift relies on the agent reading a table, which was not tested.",
+      "The 90-day filter interval in the catalog is a household choice; the ENERGY STAR page opened here says to check monthly."
+    ]
+  },
+  {
+    "id": "F039",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "A parent-run chore and after-school board: Sunday overview, weekday routine lines to the on-duty parent, a quick 'dishes done' to mark it, Saturday tally.",
+    "how_short": "Same automation primitives as F038 over F031 rows; school-holiday skip by returning NO_REPLY; the kids are not users, so parents do every check-off.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:284",
+        "title": "openclaw automations CLI reference (OpenClaw docs)",
+        "anchor": "NO_REPLY",
+        "supports": "When a scheduled run returns only the silent token nothing is posted, which is the only way to skip a weekday on a school holiday since cron itself has no holiday rule."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:56",
+        "title": "Automation payloads (OpenClaw docs)",
+        "anchor": "--tools",
+        "supports": "Each board job can be held to the store and calendar tools it needs."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+        "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+        "anchor": "Age-Appropriate Chores",
+        "supports": "Paediatric guidance supports regular chores, charts or checklists and praise for school-age children, so a weekly rota for an 8 and a 10 year old is a reasonable thing to track."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Picking the on-duty parent needs the calendar connection (F009), which is not built yet.",
+      "The 9 Oct market rating for chore nudges has no source opened in this run; a paper chart on the fridge may simply be less effort."
+    ]
+  },
+  {
+    "id": "F040",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "Photo a receipt and Happy proposes a return-by reminder; the FSA and donation ledgers from the first draft were dropped on 9 Oct.",
+    "how_short": "Folded into F011: includeAttachments on, llm-task extracts merchant, date and total into a fixed schema that omits card digits; a reminder is written only after a yes.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:9",
+        "title": "LLM task (OpenClaw docs)",
+        "anchor": "optional plugin tool",
+        "supports": "A bundled optional tool runs one JSON-only model call and can validate the result against a schema, which is the extraction step for receipts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:61",
+        "title": "Automation payloads (OpenClaw docs)",
+        "anchor": "capped to the tools available",
+        "supports": "A job created by an agent can never hold more tools than the turn that created it, which bounds what a chat-created return-by reminder could do."
+      },
+      {
+        "kind": "web",
+        "ref": "https://customerservice.costco.com/app/answers/answer_view/a_id/1191/~/what-is-costcos-return-policy%3F",
+        "title": "What is Costco's return policy? - Costco Customer Service",
+        "anchor": "within 90 days",
+        "supports": "The 90-day return window applies to a listed set of electronics and major appliances; other merchandise falls under an open-ended satisfaction guarantee."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/publications/p502",
+        "title": "Publication 502, Medical and Dental Expenses - IRS",
+        "anchor": "Medical and Dental Expenses",
+        "supports": "The IRS publication is the authority on which medical costs qualify, which is what any FSA eligibility hint would have to be checked against."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct description computes a return-by date from 'Costco 90 days' with a vacuum as the example. Costco's own policy page limits the 90-day window to listed electronics and major appliances; vacuums are not on that list and other merchandise has no stated time limit."
+    ],
+    "unverified": [
+      "Whether the family has an FSA at all is unknown.",
+      "Receipt photos are read by the cloud model; no local extraction path was checked."
+    ]
+  },
+  {
+    "id": "G013",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Ask for a number from the parent's own Google address book, mainly so sitter sheets and vendor drafts carry the right contact.",
+    "how_short": "gog on the host with the contacts service consented; a thin read-only stdio MCP wrapper around gog's contacts listing, registered per person with openclaw mcp add.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:68",
+        "title": "gog skill (bundled with OpenClaw)",
+        "anchor": "gog contacts list",
+        "supports": "The bundled Google Workspace skill documents a contacts listing command and lists contacts among the services chosen at sign-in."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/people/api/rest/v1/people.connections/list",
+        "title": "Method: people.connections.list - People API (Google for Developers)",
+        "anchor": "contacts.readonly",
+        "supports": "Google offers a read-only contacts scope that is enough to list a user's contacts."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/quickstart",
+        "title": "Quickstart - gog documentation",
+        "anchor": "--force-consent",
+        "supports": "gog authorises an account for a chosen list of services that includes contacts, re-authorising uses a forced consent with the full service list repeated, and refresh tokens from a Google app left in Testing expire after a week."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/mcp",
+        "title": "MCP server - gog documentation",
+        "anchor": "sheets_read_range",
+        "supports": "gog now ships its own stdio MCP server, but its documented tool list covers Gmail, Drive, Docs, Sheets and Calendar only, so contacts still need a small wrapper."
+      }
+    ],
+    "corrections": [
+      "The 9 Oct note says gog is a CLI and not an MCP server. gogcli.sh/mcp documents `gog mcp`, a stdio MCP server; its listed tools include no Contacts tool, so the planned contacts wrapper is still needed."
+    ],
+    "unverified": [
+      "gog is not installed on the Mac, so its version, its contacts subcommands and the exact scope it requests were not checked locally.",
+      "The Apple Contacts through a Shortcut alternative was not sourced in this cluster."
+    ]
+  },
+  {
+    "id": "F041",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "'Remember this' actually sticks: each parent's agent can save a fact to its own notes and find it again later.",
+    "how_short": "Allow write/edit (deny apply_patch) on <p>-main with rw workspace; in-house before_tool_call hook limits paths to MEMORY.md, USER.md, memory/*.md; memory_search FTS-only; session-memory hook.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/memory.md:149",
+        "title": "Memory overview (OpenClaw docs)",
+        "anchor": "three tools",
+        "supports": "The memory plugin gives the agent search, read and intent tools but no write tool, so saving a fact needs the general file tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:189",
+        "title": "Tool policy (OpenClaw docs)",
+        "anchor": "apply_patch",
+        "supports": "Allowing write also enables apply_patch, and denying write does not deny it, so apply_patch has to be denied by name when only narrow file writes are wanted."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:17",
+        "title": "Plugin hooks: tool policy (OpenClaw docs)",
+        "anchor": "before_tool_call",
+        "supports": "A plugin hook sees each tool call's name and parameters and can block it, which is the mechanism for limiting writes to the memory files."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/sessions-and-subagents.md:58",
+        "title": "Sessions and subagents config (OpenClaw docs)",
+        "anchor": "sessionToolsVisibility",
+        "supports": "A sandboxed session can only reach sessions it spawned unless the sandbox session-tools setting is widened, whatever the gateway-wide visibility says."
+      }
+    ],
+    "corrections": [
+      "The catalog relies on `sessions_search` with visibility `agent` to find pre-reset conversations. docs/gateway/config-tools/sessions-and-subagents.md:58 says a sandboxed session stays limited to sessions it spawned while agents.defaults.sandbox.sessionToolsVisibility is 'spawned' (the default); the mains run with sandbox mode all, so that key must change as well. docs/tools/multi-agent-sandbox-tools.md:372 adds that tools.sessions.visibility is gateway-wide, not per agent."
+    ],
+    "unverified": [
+      "Whether visibility 'self' already reaches the same chat's pre-reset history (the docs define self as the current session key) was not tested.",
+      "The opened hook docs expose no taint flag, so 'refuse writes after web results' means the hook plugin tracking web tool calls itself; untested.",
+      "'Most-asked family-assistant request' has no source opened in this run."
+    ]
+  },
+  {
+    "id": "F042",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "Both parents' agents start every chat already knowing the kids' school, routines and activities and each adult's standing preferences.",
+    "how_short": "Generator renders adult directives into USER.md (4,000-character cap) and kid and routine facts into MEMORY.md with trigger comments; nothing is rendered into shared agents.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:367",
+        "title": "User model (OpenClaw docs)",
+        "anchor": "4,000-character bootstrap cap",
+        "supports": "USER.md has a fixed small budget that config can only lower, so it cannot hold a full family fact sheet."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:360",
+        "title": "User model (OpenClaw docs)",
+        "anchor": "Durable non-profile fact",
+        "supports": "The docs route preferences to USER.md and durable facts to MEMORY.md, which is the split the generator should follow."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:34",
+        "title": "Standing orders (OpenClaw docs)",
+        "anchor": "arbitrary files in subdirectories",
+        "supports": "USER.md and MEMORY.md are among the files injected at the start of every session, which is why generated facts are known without re-typing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/memory-architecture.md:239",
+        "title": "Memory architecture (OpenClaw docs)",
+        "anchor": "trigger:",
+        "supports": "A fact line can carry trailing trigger phrases so it is pulled in when a message is about that topic."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The generator script and the family registry live in happy-config and were not opened in this run.",
+      "That a chat edit to a generated file is lost on the next deploy is a property of Tony's generator, not something an opened source states."
+    ]
+  },
+  {
+    "id": "F043",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "One shared family handbook both parents' agents can search: people, home systems, providers, renewal dates, sitter notes.",
+    "how_short": "Step 1: shared Markdown folder added to each main's memory.search.extraPaths. Step 2: enable bundled memory-wiki, vault.scope global, own vault dir; wiki_search/get/apply/lint on mains only.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:381",
+        "title": "Memory configuration reference (OpenClaw docs)",
+        "anchor": "agents.entries.<id>.memory.search.extraPaths",
+        "supports": "Extra folders to index can be set per agent and are combined with the global list, so only the two parent agents need to see the shared folder."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:23",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "openclaw plugins enable memory-wiki",
+        "supports": "The knowledge-vault plugin ships with OpenClaw and is switched on with one command."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:59",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "vault.scope: \"global\"",
+        "supports": "Global scope is the default and means every agent with wiki tools shares one vault, which is the household-level sharing wanted here."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:295",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "wiki_apply",
+        "supports": "The agent-side write tool is limited to synthesis pages and metadata, so people and provider pages have to be seeded by the operator."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The two installed pages disagree on whether enabling memory-wiki needs a gateway restart (docs/plugins/memory-wiki.md:26 says it applies to a running gateway, docs/cli/wiki.md:15 shows a restart).",
+      "That memory_search in a sandboxed main can read a shared folder outside its workspace was not tested."
+    ]
+  },
+  {
+    "id": "F044",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'File this as the car insurance policy' stores the PDF, keeps a short summary of the key dates and reminds a parent 30 days before it expires.",
+    "how_short": "New host tool copies the inbound attachment (includeAttachments on) to a fixed folder; pdf extracts text; `openclaw wiki ingest` takes the summary only; own expiry index; nightly --command automation.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:66",
+        "title": "PDF tool (OpenClaw docs)",
+        "anchor": "media://inbound/<id>",
+        "supports": "The built-in PDF tool can read an attachment that arrived in chat by its managed inbound reference."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/wiki.md:104",
+        "title": "openclaw wiki CLI reference (OpenClaw docs)",
+        "anchor": "Rejects binary files",
+        "supports": "Wiki ingest takes local Markdown or text only, so the PDF itself cannot go into the vault; only an extracted summary can."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:134",
+        "title": "Memory wiki (OpenClaw docs)",
+        "anchor": "evidence[]",
+        "supports": "The listed claim fields contain no expiry date, so renewal dates need a separate index kept by the filing tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:58",
+        "title": "openclaw automations CLI reference (OpenClaw docs)",
+        "anchor": "--command",
+        "supports": "The scheduler can run a plain script on a schedule without starting a model turn, which suits a nightly expiry scan."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "No opened page shows a plugin tool resolving an inbound media reference by itself; that step needs a spike.",
+      "A policy document would be read by the cloud model for field extraction; whether that is acceptable is Tony's call."
+    ]
+  },
+  {
+    "id": "F045",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Ask about the family's existing Google Sheets and Docs (chore chart, house projects) without moving them anywhere.",
+    "how_short": "Install gog, per-person OAuth; register `gog mcp` (write tools hidden by default; --allow-tool drive_search,drive_get,docs_get,sheets_read_range) with openclaw mcp add; allow only on that person's main.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:69",
+        "title": "gog skill (bundled with OpenClaw)",
+        "anchor": "gog sheets get",
+        "supports": "The bundled Google Workspace skill documents read commands for Sheets, Drive search and Docs, and also write commands, so access must be narrowed outside the skill."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/mcp",
+        "title": "MCP server - gog documentation",
+        "anchor": "sheets_read_range",
+        "supports": "gog ships its own stdio MCP server with fixed read tools for Drive, Docs and Sheets; write tools stay hidden unless explicitly allowed, and the tool set can be narrowed by name."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/drive/api/guides/api-specific-auth",
+        "title": "Choose Google Drive API scopes (Google for Developers)",
+        "anchor": "drive.readonly",
+        "supports": "Google has a view-and-download-only Drive scope, and classes it as restricted, so even read-only Drive access is a high-sensitivity grant."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/mcp.md:54",
+        "title": "Connect MCP servers (OpenClaw docs)",
+        "anchor": "openclaw mcp add",
+        "supports": "A local stdio MCP server is registered with a command and arguments and then probed, and its tools go through the normal per-agent tool policy."
+      }
+    ],
+    "corrections": [
+      "The catalog plans a custom `<p>-drive-ro` wrapper because gog was taken to be CLI-only. gogcli.sh/mcp documents `gog mcp`, a typed stdio MCP server exposing drive_search, drive_get, docs_get and sheets_read_range, so this feature needs no custom wrapper.",
+      "The 9 Oct note says no read-only option is documented for gog. The same upstream page documents that write tools stay hidden unless --allow-write is passed and that a read-only policy cannot be widened by it, and the gog README shows a global --readonly flag; the bundled skill file simply does not mention them."
+    ],
+    "unverified": [
+      "gog is not installed, so which version ships `gog mcp` and which OAuth scopes it requests for Drive and Sheets were not checked locally; no first-party page opened here shows a read-only Drive scope choice at consent time.",
+      "Whether the family keeps anything useful in Sheets is unknown."
+    ]
+  },
+  {
+    "id": "F046",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Search notes by meaning ('the kid's nut thing' finds 'tree-nut allergy') with embeddings computed on the Mac mini; photo search stays unavailable locally.",
+    "how_short": "Install @openclaw/llama-cpp-provider, run the embedding-only setup, set memory.search.provider local with fallback none, reindex; image indexing still requires gemini-embedding-2 (cloud).",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/memory-builtin.md:96",
+        "title": "Builtin memory engine (OpenClaw docs)",
+        "anchor": "@openclaw/llama-cpp-provider",
+        "supports": "Local embeddings come from an installable official plugin plus a local provider setting pointing at a small GGUF embedding model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/llama-cpp.md:123",
+        "title": "llama.cpp provider (OpenClaw docs)",
+        "anchor": "Set up only local embeddings",
+        "supports": "There is an embedding-only setup that installs the managed server and embedding model without adding or changing any chat model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:495",
+        "title": "Memory configuration reference (OpenClaw docs)",
+        "anchor": "gemini-embedding-2",
+        "supports": "Image and audio indexing works only with Google's cloud embedding model and only for files in the extra paths."
+      },
+      {
+        "kind": "web",
+        "ref": "https://ai.google.dev/gemma/docs/embeddinggemma",
+        "title": "EmbeddingGemma - Google AI for Developers",
+        "anchor": "EmbeddingGemma 2",
+        "supports": "Google describes the first EmbeddingGemma as a small text-only model that runs on-device, and a newer version as a multimodal model that also runs locally."
+      }
+    ],
+    "corrections": [
+      "The catalog ties this to M2 (local models). docs/plugins/llama-cpp.md:123 documents an embedding-only setup that adds no chat model, so the text leg does not depend on M2 and can be done on the installed stack.",
+      "The 9 Oct reason for dropping photo search is that no local multimodal embedder exists. Google's EmbeddingGemma page now describes EmbeddingGemma 2 as multimodal and local; the actual block is that OpenClaw 2026.9.7 only indexes images with gemini-embedding-2 (docs/reference/memory-config.md:495)."
+    ],
+    "unverified": [
+      "Whether the managed llama.cpp server in 2026.9.7 can load EmbeddingGemma 2 was not checked.",
+      "The gain over keyword search for a few hundred family notes is a judgement, not a sourced figure."
+    ]
+  }
+]

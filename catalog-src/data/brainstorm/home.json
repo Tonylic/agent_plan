@@ -1,0 +1,994 @@
+[
+  {
+    "id": "HOM-01",
+    "name": "Home Assistant as the house hub, reached over MCP",
+    "tier": 3,
+    "cluster": "home hub",
+    "description": "OpenClaw 2026.9.7 has no Home Assistant, HomeKit, Matter or MQTT integration of its own (none in the docs, none among the bundled plugins). The official route is Home Assistant's MCP Server integration: one endpoint through which a stateless home agent reads state and controls only the entities a parent has exposed, covering Hue, Sonos and the LG TV with one audited list instead of one plugin per brand.",
+    "example": "Are any lights or the TV still on downstairs?",
+    "how": "Run Home Assistant OS in a VM on the Mac mini (the roadmap already plans this VM for the kids' speaker). Add the Hue, Sonos and LG webOS integrations, then the 'Model Context Protocol Server' integration. In OpenClaw add mcp.servers.<name> with url http://<ha-host>:8123/api/mcp, transport 'streamable-http', the Home Assistant long-lived token through a secret reference (not a config literal), and toolFilter.include narrowed to the read and light/media tools. Allow the server only to the stateless 'home' agent from F076; the existing registry before_tool_call hook blocks it for every other agent and enforces quiet hours.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "build",
+    "depends_on": [
+      "Home Assistant OS VM (2 GB RAM, 2 vCPU, bridged network adapter)",
+      "stateless home agent (F076)",
+      "egress proxy exception for the Home Assistant LAN address",
+      "decision: direct CLIs (F076/F077) or Home Assistant as the single device path, not both"
+    ],
+    "value": 3,
+    "effort": "L",
+    "caveats": [
+      "Home Assistant's MCP option 'Expose all LLM APIs' is on by default and the token belongs to an administrator account by default; both need tightening before OpenClaw connects.",
+      "The MCP server does not support notifications or sampling, so Home Assistant cannot push a state change to Happy through MCP; events need a separate webhook (see HOM-06).",
+      "A HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration, not through HomeKit.",
+      "Home Assistant's macOS install page recommends dedicated hardware unless a hypervisor is already in use; it is one more service to patch and back up.",
+      "Running both the direct CLIs and Home Assistant doubles the paths to the same lamp; pick one.",
+      "With only Hue, two Sonos and one TV today, the hub pays off mainly if presence (HOM-05), announcements (HOM-03) or the kids' speaker are also wanted."
+    ],
+    "safety": "The home agent keeps no memory, has no web tool and no outbound message tool, so it holds neither private data nor untrusted content. Only exposed entities are reachable; locks, garage, alarm, gate and cameras are never exposed in Home Assistant, and toolFilter plus the fail-closed hook repeat that block on the OpenClaw side (HOM-12).",
+    "unverified": [
+      "Whether Home Assistant OS runs cleanly under VirtualBox or UTM on macOS 27 with an M5 chip.",
+      "Whether OpenClaw's MCP client completes Home Assistant's OAuth flow; the long-lived token path is assumed.",
+      "The exact tool names Home Assistant's MCP server exposes (not listed on the page fetched), so the toolFilter list must be written after a live probe.",
+      "Whether the Smokescreen egress proxy applies to MCP HTTP calls to a LAN address."
+    ],
+    "overlaps_existing": ["F076", "F077", "F078"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+        "title": "Model Context Protocol Server - Home Assistant",
+        "anchor": "/api/mcp",
+        "supports": "Home Assistant ships an MCP server at this path with OAuth or long-lived token auth, limited to exposed entities, without notifications or sampling, since release 2025.2."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/mcp.md:83",
+        "title": "MCP servers (OpenClaw docs)",
+        "anchor": "streamable-http",
+        "supports": "OpenClaw can register a remote Streamable HTTP MCP server by URL in mcp.servers and narrow it with toolFilter.include."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/openhue/SKILL.md:44",
+        "title": "openhue bundled skill",
+        "anchor": "HomeKit scenes or Shortcuts",
+        "supports": "The bundled Hue skill itself sends HomeKit scenes and Shortcuts to Apple's ecosystem, confirming there is no HomeKit path inside OpenClaw."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/start/why-openclaw/openclaw-and-hermes-agent.md:20",
+        "title": "OpenClaw and Hermes Agent comparison",
+        "anchor": "Home Assistant state-change subscriptions",
+        "supports": "The only mention of Home Assistant in the installed docs is as a feature of a different project, not of OpenClaw."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/installation/macos",
+        "title": "Install Home Assistant on macOS",
+        "anchor": "2 GB of RAM",
+        "supports": "On a Mac, Home Assistant OS runs in a VirtualBox or UTM virtual machine with at least 2 GB RAM, 2 vCPUs and a bridged network adapter."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+        "title": "HomeKit Device - Home Assistant",
+        "anchor": "single controller at once",
+        "supports": "A HomeKit accessory must be removed from Apple Home before Home Assistant can pair it, so sharing one accessory between both is not possible this way."
+      }
+    ]
+  },
+  {
+    "id": "HOM-02",
+    "name": "Bundled device skills: what each one controls and how it signs in",
+    "tier": 1,
+    "cluster": "device tools",
+    "description": "A decision record for the nine bundled skills in this lens. Two fit the house (openhue, sonoscli), one belongs to research (goplaces), one is already beaten by the in-house weather plugin, and five do not apply or should be skipped. All of them are instructions for running a command-line tool, so on this stack (no exec for any agent) each is reference material for a host-side plugin, not something to switch on.",
+    "example": "Operator question: which of the bundled home skills do we install?",
+    "how": "openhue: Hue Bridge on the LAN, lights, rooms and scenes only; pairing by pressing the bridge button once, after which a local app key sits in ~/.openhue/config.yaml. sonoscli: local UPnP/SOAP to each speaker on port 1400, no account; discovery needs the macOS Local Network permission for the Gateway's parent process. camsnap: RTSP/ONVIF cameras with a user and password in ~/.config/camsnap/config.yaml, plus local webcams on macOS; needs ffmpeg. eightctl: Eight Sleep account email and password against an unofficial, rate-limited API. spotify-player: Spotify Premium, with spogo importing browser cookies. blucli: Bluesound/NAD players only. songsee: turns an audio file into spectrogram images, not a home control. weather: wttr.in through web_fetch or curl, no key, and it defers to official services for severe alerts. goplaces: Google Places text search and details with GOOGLE_PLACES_API_KEY. Keep openhue and sonoscli as backends for the F076/F077 plugins in the home agent; leave the rest uninstalled.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": ["F076", "F077"],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Every skill assumes the agent can run shell commands; Happy's agents cannot, so nothing here works by enabling a skill alone.",
+      "eightctl and spotify-player hand an agent a full account login (password or browser cookies) for a convenience the vendor apps already give; skip both.",
+      "The house has no Bluesound, Eight Sleep or RTSP camera, so blucli, eightctl and the network-camera half of camsnap have nothing to talk to.",
+      "The bundled weather skill uses wttr.in; the in-house home_weather plugin on api.weather.gov is the better source for alerts."
+    ],
+    "safety": "No new grant is made by this entry. The two skills kept are wrapped by plugins with allowlists and caps in code and live only in the stateless home agent.",
+    "unverified": [
+      "Whether spogo's cookie import can be scoped to one browser profile; not checked because the skill is not recommended."
+    ],
+    "overlaps_existing": ["F076", "F077", "F079", "F083"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/openhue/SKILL.md:111",
+        "title": "openhue bundled skill",
+        "anchor": "First run requires button press",
+        "supports": "Hue pairing needs a physical press on the bridge, and the bridge must be on the local network."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.openhue.io/cli/setup",
+        "title": "OpenHue CLI setup",
+        "anchor": "openhue setup",
+        "supports": "The setup command discovers the bridge, waits for the button press and saves the bridge address and key in a YAML file under the user's home folder."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.meethue.com/develop/get-started-2/",
+        "title": "Philips Hue developer: Get started",
+        "anchor": "devicetype",
+        "supports": "The Hue API is served locally by the bridge and issues an application key only after the link button is pressed, as proof of physical access."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/sonoscli/SKILL.md:56",
+        "title": "sonoscli bundled skill",
+        "anchor": "Local Network",
+        "supports": "On macOS the Gateway's parent process needs the Local Network privacy permission or Sonos discovery fails."
+      },
+      {
+        "kind": "web",
+        "ref": "https://sonoscli.sh",
+        "title": "sonoscli",
+        "anchor": "UPnP/SOAP",
+        "supports": "sonoscli controls speakers over the local network on port 1400 and installs from a Homebrew tap."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/camsnap/SKILL.md:32",
+        "title": "camsnap bundled skill",
+        "anchor": "camsnap add",
+        "supports": "Cameras are added with a host, user and password kept in camsnap's own config file; ffmpeg is required."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/eightctl/SKILL.md:49",
+        "title": "eightctl bundled skill",
+        "anchor": "API is unofficial and rate-limited",
+        "supports": "Eight Sleep control uses an unofficial API with account email and password."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/spotify-player/SKILL.md:44",
+        "title": "spotify-player bundled skill",
+        "anchor": "spogo auth import --browser chrome",
+        "supports": "The preferred Spotify tool signs in by importing browser cookies and needs a Premium account."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/blucli/SKILL.md:27",
+        "title": "blucli bundled skill",
+        "anchor": "Bluesound/NAD players",
+        "supports": "blucli only controls Bluesound and NAD players."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/songsee/SKILL.md:27",
+        "title": "songsee bundled skill",
+        "anchor": "spectrograms",
+        "supports": "songsee renders pictures from audio files and controls nothing."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/weather/SKILL.md:85",
+        "title": "weather bundled skill",
+        "anchor": "official local weather services",
+        "supports": "The wttr.in based skill tells the agent to use official services for severe alerts."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/goplaces/SKILL.md:36",
+        "title": "goplaces bundled skill",
+        "anchor": "GOOGLE_PLACES_API_KEY",
+        "supports": "goplaces needs a Google Places API key and offers search, resolve and details."
+      }
+    ]
+  },
+  {
+    "id": "HOM-03",
+    "name": "Announce on Sonos",
+    "tier": 2,
+    "cluster": "audio",
+    "description": "A parent texts one short line and it is spoken on chosen speakers, with music lowered and then restored. The 9 Oct catalog parked this as a toy needing a LAN HTTP server; a supported route now exists through Home Assistant's Sonos integration, with the speech made locally.",
+    "example": "Announce in the family room: shoes on, the bus comes in ten minutes",
+    "how": "Route A (needs HOM-01): the home agent calls Home Assistant's media_player.play_media with announce set to true and a volume in the extra field; the Sonos integration overlays the clip and restores what was playing. Speech comes from a local engine (Home Assistant's own, or OpenClaw's tts-local-cli provider running the macOS say command), never a cloud voice. Route B (no Home Assistant): the home-sonos plugin renders a file with say, serves it from the Mac and calls sonos play-url; treat this as experimental. In both routes the plugin or hook caps text length, caps volume, applies quiet hours and a speaker allowlist, and accepts text only from the adult's own message.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "build",
+    "depends_on": ["HOM-01 or the F077 home-sonos plugin", "local text-to-speech", "stateless home agent (F076)"],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "Home Assistant states that older Sonos hardware and S1 firmware may not fully support announcements, and speakers must be reachable on TCP port 1443.",
+      "Route B depends on a short-lived local stream that the sonoscli documentation describes for internet media, not for a file on the Mac.",
+      "An injected instruction could at worst speak a short line at capped volume outside quiet hours; the length cap and the adult-only source keep that an annoyance.",
+      "Shouting up the stairs or a group text is still faster for one-off calls; the value is in scheduled lines such as the school-morning countdown."
+    ],
+    "safety": "Acts in the world, hence high by the catalog's convention, but the consequence is a capped sound. The text is written by a parent and synthesized on the Mac, so no kids' content reaches a cloud voice or model beyond the parent's own message. The home agent has no memory and no web tool.",
+    "unverified": [
+      "Whether the two speakers in the house are models that support clip overlay.",
+      "Whether sonos play-url accepts a plain audio file served from the Mac on the LAN.",
+      "Which local speech engine Home Assistant would use; not checked in this run."
+    ],
+    "overlaps_existing": ["F077", "F081"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/sonos/",
+        "title": "Sonos - Home Assistant",
+        "anchor": "announce",
+        "supports": "The Sonos integration can play a clip as an overlay with its own volume, lowering and then restoring the music, and needs port 1443 on the speakers."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/tts/configuration.md:138",
+        "title": "Text-to-speech configuration",
+        "anchor": "tts-local-cli",
+        "supports": "OpenClaw has a local command-line speech provider, shown with the macOS say command, so speech can be made without a cloud service."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/sonoscli",
+        "title": "sonoscli README",
+        "anchor": "play-url",
+        "supports": "sonoscli can play a media URL on a speaker by proxying it through a temporary local MP3 stream, and has no announce or speech command of its own."
+      }
+    ]
+  },
+  {
+    "id": "HOM-04",
+    "name": "Sonos scenes and play-by-search without Spotify keys",
+    "tier": 3,
+    "cluster": "audio",
+    "description": "Two additions to F077. Named Sonos scenes restore a saved grouping and per-room volume in one step, and play-by-search uses the music service already linked in the Sonos app, so Happy never holds a Spotify login. sonoscli also installs from Homebrew now, so the Go toolchain is not needed.",
+    "example": "Sonos: apply Evening",
+    "how": "Tony saves scenes once with sonos scene save. The home-sonos plugin adds sonos_scene_apply(name) limited to an allowlist of saved names, and sonos_search_play(query, room) that runs sonos smapi search against the linked service and opens the first match on an allowlisted speaker; if the service asks, sonos auth smapi begin and complete are run once by Tony. The F077 volume caps and quiet hours stay in plugin code. Tools live in the stateless home agent.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "build",
+    "depends_on": ["F077 home-sonos plugin", "a music service already linked in the Sonos app"],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "sonoscli states it is not an official Sonos project, so a Sonos firmware change can break it.",
+      "Search results are third-party catalogue text; the plugin should return only a few titles and never pass them on as instructions.",
+      "The Sonos app and voice control already play a named song faster; the realistic use is one text to reset the house at bedtime.",
+      "Explicit-content filtering depends on the music account's own setting, not on Happy."
+    ],
+    "safety": "Sound at capped volume on allowlisted speakers only. No music account credential is given to OpenClaw. The home agent holds no private data and reads no web content.",
+    "unverified": [
+      "Which music service is linked in this house's Sonos system.",
+      "Whether that service needs the one-time link flow."
+    ],
+    "overlaps_existing": ["F077"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://raw.githubusercontent.com/steipete/sonoscli/main/README.md",
+        "title": "sonoscli README (raw)",
+        "anchor": "sonos scene save",
+        "supports": "sonoscli saves, lists and applies scenes, searches linked services through Sonos without Spotify Web API credentials, and describes itself as unofficial."
+      },
+      {
+        "kind": "web",
+        "ref": "https://sonoscli.sh",
+        "title": "sonoscli",
+        "anchor": "brew install steipete/tap/sonoscli",
+        "supports": "A Homebrew formula exists, so the tool does not have to be built with Go."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/sonoscli/SKILL.md:41",
+        "title": "sonoscli bundled skill",
+        "anchor": "sonos smapi search",
+        "supports": "The bundled skill documents search through the Sonos music-service interface and marks Spotify Web API credentials as optional."
+      }
+    ]
+  },
+  {
+    "id": "HOM-05",
+    "name": "Is anyone home? (house-level presence)",
+    "tier": 3,
+    "cluster": "presence and location",
+    "description": "A who-is-home answer for parents and a condition for other jobs, such as lights left on with nobody in the house. OpenClaw's own presence tool and geolocation plugin do not answer this: they describe clients connected to the Gateway and turn a public IP into a rough city, which returns nothing on a tailnet or LAN.",
+    "example": "Is anyone home?",
+    "how": "Home Assistant Companion app on each adult's iPhone creates a device tracker; a person entity per adult follows it; the home zone's state is the number of people inside. Set the app's location reporting to 'Zone Name Only' so coordinates stay on the phone. The home agent reads the zone and person states through the MCP server (HOM-01). Without Home Assistant there is no reliable house-level signal on this stack.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": ["HOM-01", "Home Assistant Companion app on both adults' iPhones"],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The iOS app's cheapest location updates are the least accurate kind and can lag, so 'just left' may be a few minutes stale.",
+      "The kids have no phones, so 'anyone' means the two adults.",
+      "Watching for phones on Wi-Fi is brittle: iPhones present a private Wi-Fi address per network, with a rotating option, and sleep.",
+      "Apple Home tracks arrival and departure for its own automations but a Mac cannot trigger a location automation, and Happy cannot read that state.",
+      "The presence tool reports people as online when a client is connected, including idle tabs, which is unrelated to being at home."
+    ],
+    "safety": "Presence is private data. Only zone names are reported, only the stateless home agent and each adult's own main agent may read them, and neither browses the web. It is never available to the research agent or a kids agent.",
+    "unverified": [
+      "That Apple offers no programmatic way to read Home or Find My presence (a negative that could not be sourced).",
+      "The exact iOS location permission level the Companion app needs; the page fetched does not state it."
+    ],
+    "overlaps_existing": ["F081"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/presence.md:64",
+        "title": "Presence (OpenClaw docs)",
+        "anchor": "Online means connected, including idle tabs",
+        "supports": "The presence tool describes connected Gateway clients, not whether a person is in the house."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/geolocation.md:71",
+        "title": "Geolocation plugin",
+        "anchor": "100.64/10",
+        "supports": "The geolocation plugin maps public IPs to a rough city and answers 'not found' for tailnet and LAN addresses."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/zone/",
+        "title": "Zone - Home Assistant",
+        "anchor": "zone.home",
+        "supports": "A zone's state is the count of people inside it, and the home zone exists by default with a 100 m radius."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/person/",
+        "title": "Person - Home Assistant",
+        "anchor": "not_home",
+        "supports": "A person entity follows its device trackers and reports home, away or a zone name."
+      },
+      {
+        "kind": "web",
+        "ref": "https://companion.home-assistant.io/docs/core/location/",
+        "title": "Home Assistant Companion: Location",
+        "anchor": "Zone Name Only",
+        "supports": "The iOS app can report only the zone name instead of coordinates, sends data only to the user's own server, and its significant-change updates are the least accurate type."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102509",
+        "title": "Use private Wi-Fi addresses on Apple devices",
+        "anchor": "Rotating",
+        "supports": "iPhones use a per-network private Wi-Fi address with Off, Fixed and Rotating settings, which weakens presence detection by network address."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102313",
+        "title": "Create scenes and automations with the Home app",
+        "anchor": "People Arrive",
+        "supports": "Apple Home has arrive and leave automations tied to the person's primary iPhone, and a Mac cannot trigger a location-based automation."
+      }
+    ]
+  },
+  {
+    "id": "HOM-06",
+    "name": "Arrival and departure notices between parents",
+    "tier": 2,
+    "cluster": "presence and location",
+    "description": "One parent gets a text when the other leaves work or reaches home. OpenClaw has no geofence trigger: phone location is read on demand only, the iOS app's location wake-ups just refresh a last-seen stamp, and the iMessage channel does not parse shared locations. The trigger has to come from the phone itself or from Home Assistant zones.",
+    "example": "Trigger: Tony's phone leaves the Work zone on a weekday after 16:00; Jordan gets 'Tony left work 17:42'.",
+    "how": "Trigger A: a Shortcuts personal automation on the iPhone (Arrive or Leave, allowed to run without asking) whose action posts a small JSON body to a mapped OpenClaw hook over Tailscale. Trigger B: a Home Assistant automation on zone enter or leave that calls a rest_command to the same hook. In OpenClaw, turn on hooks with a dedicated token, restrict hooks.allowedAgentIds to one tool-less notify agent, and write a hooks.mappings transform that accepts only a fixed set of person, zone and event values and emits an agent action with channel and recipient fixed in the mapping. A cooldown in the transform drops repeats.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": ["Gateway hooks enabled (off today)", "family delivery pin (G009)", "Tailscale on the phones, or HOM-01"],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Find My already offers a built-in notice to a family member when your location changes, with no server at home.",
+      "Turning on Gateway HTTP hooks adds an inbound surface; keep it on the tailnet with its own token.",
+      "A hook token then lives inside a Shortcut on a phone.",
+      "Hook mappings produce a wake or an agent turn, so a model still phrases the line unless the mapping targets an agent given a fixed template.",
+      "Phone geofences lag and can fire twice; the kids are not covered."
+    ],
+    "safety": "Hook payloads are data: the transform maps a closed set of values to fixed sentences and discards free text, because wake text is handled as a trusted system event. The notify agent has no tools and no memory; the recipient is fixed in the mapping and checked again by the family-only delivery hook. No agent accumulates location history.",
+    "unverified": [
+      "Whether the Shortcuts 'Get Contents of URL' action can send the Authorization header the hook requires; the Apple page fetched covers methods and request body only.",
+      "The details of Find My's notices (one-time or recurring, approval rules); only the page title rendered in this run.",
+      "Whether a mapped hook can deliver a fixed line with no model call at all."
+    ],
+    "overlaps_existing": ["G017"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:11",
+        "title": "Location command",
+        "anchor": "location.get",
+        "supports": "OpenClaw's phone location feature is a command invoked on request, off by default, with no geofence or arrival event."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:566",
+        "title": "iOS app: background alive beacons",
+        "anchor": "node.presence.alive",
+        "supports": "When iOS wakes the app on a significant location change, the app only records a last-seen beacon with the Gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/location.md:14",
+        "title": "Channel location parsing",
+        "anchor": "Currently supported",
+        "supports": "Shared-location parsing is listed for LINE, Matrix, Telegram and WhatsApp; iMessage is not on the list."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:173",
+        "title": "Inbound webhooks",
+        "anchor": "hooks.mappings",
+        "supports": "Custom hook paths can be mapped through templates or local transforms into wake or agent actions, hooks are disabled by default and need a bearer token in a header."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/travel-triggers-apd8ebfc4e8e/ios",
+        "title": "Travel triggers in Shortcuts on iPhone or iPad",
+        "anchor": "Time Range",
+        "supports": "Shortcuts offers Arrive and Leave triggers for a chosen place, optionally limited to a time window."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+        "title": "Add automations to Shortcuts on iPhone or iPad",
+        "anchor": "Allow Running When Locked",
+        "supports": "Arrive and Leave are among the automations that can run without asking for confirmation."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios",
+        "title": "Request your first API in Shortcuts",
+        "anchor": "Get Contents of URL",
+        "supports": "A shortcut can send a POST request with a JSON body to a URL."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/rest_command/",
+        "title": "RESTful Command - Home Assistant",
+        "anchor": "rest_command",
+        "supports": "Home Assistant automations can call a configured HTTP request with custom method, headers and payload."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/iphone/notify-a-friend-when-your-location-changes-iph9bfec93b1/ios",
+        "title": "Notify a friend when your location changes in Find My on iPhone",
+        "anchor": "Notify a friend when your location",
+        "supports": "The page title confirms Find My has a built-in location-change notice for a chosen person; the body did not render in this run."
+      }
+    ]
+  },
+  {
+    "id": "HOM-07",
+    "name": "Where is the other parent? (phone location on demand)",
+    "tier": 3,
+    "cluster": "presence and location",
+    "description": "The only location feature OpenClaw has natively: one position fix pulled from an iPhone that runs the OpenClaw app. It works, but for this family it is a poor trade: Find My already answers the question, and the fix would pass through a cloud model and stay in chat history.",
+    "example": "Where's Tony, is he close?",
+    "how": "Install the OpenClaw iOS app from the App Store on the adult's own iPhone and pair it as a node over Tailscale Serve. In the app set location to Always and Precise. The owner's main agent calls the nodes tool's location_get action, which returns latitude, longitude, accuracy and a timestamp. With only While Using granted, a request while the app is in the background fails with LOCATION_BACKGROUND_UNAVAILABLE.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": ["OpenClaw iOS app on a personal iPhone", "HOM-08"],
+    "value": 1,
+    "effort": "M",
+    "caveats": [
+      "Pull only: no geofence, no arrival event, and background fixes are documented as best effort.",
+      "iOS may suspend the app's connection in the background, so the phone often will not answer.",
+      "Asking about the other parent means one person's agent reaching into the other person's phone, which breaks the one-agent-per-person rule.",
+      "Pairing a personal iPhone as a node opens far more than location by default (see HOM-08).",
+      "Find My and a shared ETA in Maps do this better and are already on both phones."
+    ],
+    "safety": "Coordinates are private data sent to the cloud model and kept in the transcript. If ever enabled, it must be self-only (an adult's agent reading that adult's phone), with every other phone command denied at the Gateway and never available to shared agents.",
+    "unverified": [
+      "How often a backgrounded iPhone with Always permission actually answers; the docs promise best effort only."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:81",
+        "title": "Location command",
+        "anchor": "LOCATION_BACKGROUND_UNAVAILABLE",
+        "supports": "Location is off by default, has While Using and Always modes plus a separate precise toggle, and is refused in the background without the Always grant."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/device-commands.md:87",
+        "title": "Node device commands",
+        "anchor": "background fetch is best-effort",
+        "supports": "Background location needs the system's Always permission and is only best effort."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:206",
+        "title": "iOS app",
+        "anchor": "iOS may suspend",
+        "supports": "The iPhone's node connection can be suspended by iOS once the app is in the background."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:15",
+        "title": "iOS app",
+        "anchor": "App Store",
+        "supports": "The official iPhone app is distributed through the App Store."
+      }
+    ]
+  },
+  {
+    "id": "HOM-08",
+    "name": "Phone-node command ceiling: deny first, then pair",
+    "tier": 1,
+    "cluster": "device tools",
+    "description": "A guardrail to set before any family iPhone, personal or the spare one, is paired with the Gateway. By default an iOS node may answer location, contact search, calendar events, reminders, latest photos and motion queries with no further opt-in; only camera capture, screen recording, writes and Health need an explicit allow.",
+    "example": "Operator step before HOM-07, HOM-09 or HOM-13.",
+    "how": "List everything a phone should not answer in gateway.nodes.commands.deny (deny always wins), and add to gateway.nodes.commands.allow only the single command a feature needs. Pair with a limited setup code so the phone's operator token carries no admin scope, then approve the node's command surface explicitly. Grant the nodes tool only to the agent that needs it, and have the registry before_tool_call hook block any call whose node is not the one assigned to that agent.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": ["happy-config change by Tony"],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "The default table is a ceiling, not a promise: a command works only if the phone app also declares it, but a later app update can start declaring more.",
+      "A phone paired with the default (full) setup code also becomes an admin client of the Gateway.",
+      "An operator client with write scope can invoke enabled node commands directly, not only agents."
+    ],
+    "safety": "This is the control that keeps a paired phone from turning a memory-holding agent into a reader of contacts, photos and location. It is enforced by Gateway policy and a fail-closed hook, not by prompt.",
+    "unverified": [
+      "No documented per-agent setting was found that limits which node the nodes tool may target, so the hook pin is assumed to be necessary."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:31",
+        "title": "Node command policy",
+        "anchor": "photos.latest",
+        "supports": "The iOS default allowlist includes location, contacts search, calendar events, reminders list, latest photos and motion commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "gateway.nodes.commands.deny",
+        "supports": "Camera, screen recording, write commands and health.summary need an explicit allow entry, and the deny list overrides everything."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/qr.md:56",
+        "title": "openclaw qr",
+        "anchor": "--limited",
+        "supports": "A limited setup code pairs the phone without the admin operator scope."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:46",
+        "title": "Plugin hooks: tool policy",
+        "anchor": "block?: boolean",
+        "supports": "A before_tool_call hook receives the agent id and can block a tool call or require approval."
+      }
+    ]
+  },
+  {
+    "id": "HOM-09",
+    "name": "Health day summary for an adult who opts in",
+    "tier": 3,
+    "cluster": "health",
+    "description": "Steps, sleep minutes, average resting heart rate and workout count and minutes for today, read from the adult's own iPhone, for example as one line in that person's evening brief. It is today only, computed on the phone, and read-only.",
+    "example": "How did I sleep, and how many steps so far?",
+    "how": "OpenClaw iOS app on that adult's iPhone, paired as a node. Add health.summary to gateway.nodes.commands.allow; on the phone turn on Apple Health Summaries and choose the categories in Apple's permission sheet; approve the node's widened command surface. The adult's main agent calls the nodes tool with invokeCommand health.summary and period today. For a weekly trend, a nightly job stores the five numbers in that person's own home-store, because the command has no history.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": ["OpenClaw iOS app on the adult's own iPhone", "HOM-08", "decision: health numbers to the cloud model under store:false"],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "When an agent asks, the numbers go to the configured AI provider and may stay in chat history; a CLI call returns them only to the operator.",
+      "Only the current day is supported; multi-day and historical requests fail.",
+      "A missing number can mean denied access, no data or an unsupported type; HealthKit hides which.",
+      "Sleep and resting heart rate usually need an Apple Watch or another tracker feeding Apple Health.",
+      "The Health and Fitness apps already show all of this; the only gain is having it inside the brief.",
+      "Never for the kids, and never read by one adult's agent from the other adult's phone."
+    ],
+    "safety": "Health numbers are private data and stay in the owner's main agent, which does not browse. Two independent gates (Gateway allowlist and the switch on the phone) plus the HOM-08 deny list keep the grant to this one command. It is context, not medical advice.",
+    "unverified": [
+      "Whether health.summary answers while the iOS app is in the background; the docs state the foreground rule for camera and screen and are silent for Health.",
+      "How the roadmap's data tiers classify health numbers for a cloud model; the 9 Oct catalog forbids handing health facts to the research agent."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:14",
+        "title": "HealthKit summaries",
+        "anchor": "average resting heart rate",
+        "supports": "The summary is a read-only current-day aggregate of steps, sleep, resting heart rate and workouts, computed on the device, with no samples, history or writes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:42",
+        "title": "HealthKit summaries",
+        "anchor": "health.summary",
+        "supports": "The command must be added to the Gateway's node command allowlist and is never allowed by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:126",
+        "title": "HealthKit summaries: privacy behavior",
+        "anchor": "configured AI provider",
+        "supports": "An agent request sends the aggregate to the AI provider and it may remain in chat history."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:168",
+        "title": "HealthKit summaries: troubleshooting",
+        "anchor": "Multi-day and historical",
+        "supports": "Only the current day can be requested."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:130",
+        "title": "HealthKit summaries: privacy behavior",
+        "anchor": "background health ingestion",
+        "supports": "Health data is read only when the command is invoked; nothing is collected in the background."
+      }
+    ]
+  },
+  {
+    "id": "HOM-10",
+    "name": "Family dashboard on a spare screen",
+    "tier": 3,
+    "cluster": "display",
+    "description": "An always-on kitchen screen with today's schedule, weather, bins, dinner and who does pickup. It is realistic as an OpenClaw session dashboard opened in a browser on an old tablet, or as a Home Assistant dashboard for device state. The macOS widget panel is not a wall display.",
+    "example": "Trigger: 06:00 and 16:00 jobs refresh the Today board; the kitchen tablet shows it.",
+    "how": "Create one persistent 'board' session on an agent with no tools beyond reading the home-store. A scheduled agent-turn automation bound to that session, with a scheduled tool policy that allows show_widget, replaces named native report widgets (metrics, table, text and link blocks) with pin set to true. The display is a browser on a spare tablet that opens the Control UI through Tailscale Serve at that session with the dashboard expanded; its device token is rotated down to read scope, and the tablet is locked to the browser with Guided Access. For lights and speaker state, a Home Assistant dashboard is the simpler second page.",
+    "who": "both",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": ["a spare tablet or screen (the spare iPhone is too small)", "home-store and calendar read (F031, F009)", "read-only device scope for the display"],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "show_widget is offered only to clients that declare inline widgets, or to a scheduled job bound to a persistent session and limited to pinned widgets; a parent cannot text Happy over iMessage and get a widget.",
+      "A Control UI on the wall is an operator client of the whole Gateway; unless its scope is read-only, anyone in the kitchen can chat with an agent from it.",
+      "A native report is capped at 24 blocks and 8 KB, with no scripts or images.",
+      "The expanded-dashboard link applies to that visit only, and a page reload starts fresh widget views.",
+      "The macOS panel needs the OpenClaw Mac app (not installed), shows one panel at a time near the menu bar and is render-only.",
+      "The Website widget needs an HTTPS address and refuses the Gateway's own host, so a plain-HTTP Home Assistant page cannot be embedded.",
+      "Guests see whatever is on it: first names and times only, no addresses, no health or money lines.",
+      "A printed week sheet (F080, HOM-14) gives most of the benefit with no screen to keep alive."
+    ],
+    "safety": "The board agent has no web tool and no outbound tool; it only formats data already in the family store. The display holds a read-only token and no chat. Content shown is limited to what the family would put on the fridge. Kids see it but do not use Happy through it.",
+    "unverified": [
+      "Whether a device limited to read scope can open another owner's session dashboard in Control UI 2026.9.7; the docs mention read-only viewers without naming the scope.",
+      "Whether tablet Safari keeps the Control UI connection alive for days without a reload.",
+      "What else a read-scope client can see (the presence roster shows other people's online timing to readers)."
+    ],
+    "overlaps_existing": ["F075", "F080", "F015"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/show-widget.md:44",
+        "title": "Show widget",
+        "anchor": "pinned-only",
+        "supports": "A scheduled agent turn bound to a persistent session may use show_widget without a connected client, but only to pin widgets to that session's dashboard."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/show-widget.md:42",
+        "title": "Show widget",
+        "anchor": "inline-widgets",
+        "supports": "The tool is exposed only when the originating client declares the inline-widgets capability or a channel presenter matches; other channel runs do not get it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/show-widget.md:229",
+        "title": "Show widget: native dashboard reports",
+        "anchor": "1–24 blocks",
+        "supports": "Native reports are structured text, metrics, tables, simple charts and links with fixed size limits and no HTML or scripts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/web/dashboards.md:180",
+        "title": "Session dashboards",
+        "anchor": "?dashboard=expanded",
+        "supports": "Every Control UI thread can own a dashboard, and a link can request the full-screen dashboard for one visit."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/web/dashboards.md:244",
+        "title": "Session dashboards: show a website fullscreen",
+        "anchor": "URLs must use HTTPS",
+        "supports": "The built-in Website widget only loads HTTPS pages and refuses the Control UI and Gateway hostnames."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/mac/canvas.md:30",
+        "title": "Widget panel (macOS)",
+        "anchor": "Only one widget panel",
+        "supports": "The Mac panel is a single borderless panel near the menu bar, render-only, and requires the macOS app as a paired node."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:34",
+        "title": "Operator scopes",
+        "anchor": "operator.read",
+        "supports": "A read-only operator scope exists, separate from the write and admin scopes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/devices.md:157",
+        "title": "openclaw devices",
+        "anchor": "openclaw devices rotate",
+        "supports": "A paired device's token can be rotated to a narrower scope set."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad",
+        "anchor": "Guided Access",
+        "supports": "An iPad or iPhone can be locked to a single app with touch areas and buttons disabled."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/dashboards/",
+        "title": "Dashboards - Home Assistant",
+        "anchor": "kitchen tablet",
+        "supports": "Home Assistant supports several dashboards for different devices and names a kitchen tablet as a typical one."
+      }
+    ]
+  },
+  {
+    "id": "HOM-11",
+    "name": "LG TV: off at bedtime, notice on screen",
+    "tier": 3,
+    "cluster": "tv",
+    "description": "Turn the TV off by text or at a set time on school nights, lower the volume, and optionally show a short notice on screen first. This adds a second route to F078's HomeKit Shortcut: Home Assistant's LG webOS integration, which can also put a message on the TV.",
+    "example": "20:30 on school nights: the TV shows 'TV off in 10 minutes', then switches off.",
+    "how": "Route A: an allowlisted Shortcut named 'TV off' in happy's account, run with the shortcuts command by the F078 plugin; happy's Apple Account must be a member of the Home. Route B (needs HOM-01): the home agent uses Home Assistant's webOS media player to turn off or change volume and the per-TV notify action for the on-screen line, with the text chosen from fixed strings. Power-on is left out. Scheduled runs are command or home-agent jobs with a skip-tonight file, as in F081.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "build",
+    "depends_on": ["F078 or HOM-01", "stateless home agent (F076)"],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "The TV is the only HomeKit accessory in the house, so this is the whole of 'HomeKit control' today.",
+      "Apple Home can already switch an accessory off at a time of day, but automations need a home hub (HomePod or Apple TV), which is not in the inventory.",
+      "The webOS integration cannot power the TV on by itself (it needs Wake-on-LAN) and requires the TV's 'LG Connect Apps' setting.",
+      "Because a HomeKit accessory pairs with one controller, the Home Assistant route uses LG's own network API, not HomeKit.",
+      "The remote on the sofa is still the fastest off switch; the value is the scheduled, argument-free cut-off."
+    ],
+    "safety": "Low-consequence actuation with a name allowlist; on-screen text is picked from fixed strings so nothing from the web or from a model's free text reaches the screen. The home agent has no memory or web tool.",
+    "unverified": [
+      "Whether the house has an Apple home hub.",
+      "The TV's webOS version and whether on-screen notifications work on its firmware.",
+      "Whether a HomeKit action in a Shortcut run on the Mac mini works for the non-admin happy user without a home hub."
+    ],
+    "overlaps_existing": ["F078", "F081"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/webostv/",
+        "title": "LG webOS TV - Home Assistant",
+        "anchor": "LG Connect Apps",
+        "supports": "The integration can turn the TV off, change volume and source and show a notification on screen, cannot power it on without another mechanism, and needs a network setting enabled on the TV."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+        "title": "Run shortcuts from the command line (Shortcuts User Guide for Mac)",
+        "anchor": "shortcuts run",
+        "supports": "macOS can run a named shortcut from the command line, with file input and output flags, and pauses if the shortcut asks for input."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102557",
+        "title": "Set up your HomePod, HomePod mini, or Apple TV as a home hub",
+        "anchor": "home hub",
+        "supports": "Apple Home automations, remote control and sharing depend on a HomePod or Apple TV acting as a home hub."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+        "title": "HomeKit Device - Home Assistant",
+        "anchor": "single controller at once",
+        "supports": "A HomeKit accessory cannot be paired to Apple Home and Home Assistant at the same time."
+      }
+    ]
+  },
+  {
+    "id": "HOM-12",
+    "name": "Never list in the house: locks, garage, alarm, gate, and room cameras",
+    "tier": 3,
+    "cluster": "guardrails",
+    "description": "Happy must not be able to unlock, open, arm or disarm anything, and should not watch rooms. Reading a door or garage sensor's state is the most that is reasonable. This entry records where the block lives so that adding a smart lock later does not quietly add the ability.",
+    "example": "Open the garage for the delivery driver (Happy declines and points to the Home app).",
+    "how": "Three independent blocks that a model cannot talk its way past: in Home Assistant, locks, covers, alarm panels and cameras are left unexposed to assistants and the MCP option that exposes every LLM API is turned off; on the OpenClaw side, toolFilter.include on the MCP server and the Shortcut name allowlist (F078) leave out anything touching those devices; and the registry before_tool_call hook returns block for any call whose entity or domain matches the never list, failing closed.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": ["HOM-01 if Home Assistant is used", "F078 allowlist"],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "Home Assistant's HomeKit Device integration supports locks, covers and alarm panels, so the capability appears the moment someone pairs one.",
+      "The 9 Oct review found a gate-opener Shortcut in Tony's own account; the allowlist must name gates as well.",
+      "Published research showed a poisoned calendar invite steering a production assistant into controlling home automation devices; the vendor's mitigations lowered but did not remove the risk.",
+      "A human approval prompt is not a substitute here: isolated scheduled runs cannot approve, and approval fatigue is real."
+    ],
+    "safety": "This is the never-list item itself. The block is enforced by exposure settings, tool filters and a fail-closed hook, never by instructions to the model.",
+    "unverified": [
+      "Which entity domains Home Assistant exposes to assistants by default for newly added devices; the page fetched explains the mechanism and names locks and garage doors as the reason, but not the default list."
+    ],
+    "overlaps_existing": ["F078", "F079"],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/voice_control/voice_remote_expose_devices/",
+        "title": "Exposing entities to Assist - Home Assistant",
+        "anchor": "Expose",
+        "supports": "Home Assistant controls assistant access per entity and gives locks and garage doors as the sensitive devices this protects."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+        "title": "Model Context Protocol Server - Home Assistant",
+        "anchor": "/api/mcp",
+        "supports": "MCP clients can act only on exposed entities, and an option that exposes all LLM APIs is enabled by default."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+        "title": "HomeKit Device - Home Assistant",
+        "anchor": "single controller at once",
+        "supports": "The integration pairs HomeKit accessories directly with Home Assistant, and its supported device types include locks, covers and alarm control panels."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2508.12175",
+        "title": "Invitation Is All You Need! Promptware Attacks Against LLM-Powered Assistants in Production Are Practical and Dangerous (Nassi, Cohen, Yair, 2025)",
+        "anchor": "Invitation Is All You Need",
+        "supports": "Indirect prompt injection through calendar invites, emails and shared documents led a production assistant to misuse tools, including control of home automation devices."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:46",
+        "title": "Plugin hooks: tool policy",
+        "anchor": "block?: boolean",
+        "supports": "A before_tool_call hook can terminally block a tool call in code."
+      }
+    ]
+  },
+  {
+    "id": "HOM-13",
+    "name": "Spare iPhone as a fixed camera",
+    "tier": 3,
+    "cluster": "camera",
+    "description": "The idle iPhone on a charger, paired as an OpenClaw node and pointed out of a window at the driveway or front step, can take one still on request. It fills the gap that put F079 on hold (no network camera in the house), but only while the OpenClaw app stays on screen.",
+    "example": "Is there a package on the front step?",
+    "how": "Install the OpenClaw iOS app on the spare iPhone under happy's Apple Account and pair it with a limited setup code. Add camera.snap to gateway.nodes.commands.allow and deny every other phone command (HOM-08). Keep the app in the foreground with Guided Access and the app's keep-awake setting. The adult's main agent requests a snapshot through the nodes tool; the JPEG goes to the vision model and the answer is one line with the picture. No motion watching.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": ["a spare iPhone", "HOM-08", "decision 3 from the 9 Oct catalog (images to the cloud vision model)"],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Camera commands work only while the app is in the foreground; a backgrounded app returns NODE_BACKGROUND_UNAVAILABLE.",
+      "Through glass at night the picture is mostly reflection.",
+      "A phone kept awake on a charger all year is a maintenance item of its own.",
+      "Outward-facing only; an always-available camera inside rooms where the kids are is not appropriate.",
+      "A low-cost network camera with camsnap (F079) is sturdier and can watch for motion; camsnap can also read a local webcam on the Mac."
+    ],
+    "safety": "Read-only capture, sent only to the requesting parent. The image passes through the cloud vision model, so it needs the same decision as other attachments. The node is restricted to this one command by Gateway policy; clips with audio are not enabled.",
+    "unverified": [
+      "How long the app stays in the foreground under Guided Access across iOS updates and restarts.",
+      "Whether the spare iPhone could instead serve as a Continuity Camera webcam for camsnap under the happy account."
+    ],
+    "overlaps_existing": ["F079"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:53",
+        "title": "Camera capture",
+        "anchor": "NODE_BACKGROUND_UNAVAILABLE",
+        "supports": "The iOS node takes photos and short clips on request but only while the app is in the foreground."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/command-policy.md:55",
+        "title": "Node command policy",
+        "anchor": "camera.snap",
+        "supports": "Camera capture is classed as dangerous and needs an explicit Gateway allow entry."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:69",
+        "title": "iOS app: settings",
+        "anchor": "keep-awake behavior",
+        "supports": "The iOS app has device settings for camera access and keeping the device awake."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/camsnap/SKILL.md:45",
+        "title": "camsnap bundled skill",
+        "anchor": "camsnap snap --device 0",
+        "supports": "camsnap can also capture from a local camera attached to the Mac."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad",
+        "anchor": "Guided Access",
+        "supports": "An iPhone can be held in a single app until a passcode ends the session."
+      }
+    ]
+  },
+  {
+    "id": "HOM-14",
+    "name": "Week sheet on paper as a no-model job",
+    "tier": 2,
+    "cluster": "print",
+    "description": "Adds one thing to F080: the Sunday fridge sheet produced and printed by a plain script on a schedule, with no model call, so there is nothing to inject and nothing to pay for. It is also the fallback when the kitchen screen (HOM-10) is not worth keeping alive.",
+    "example": "Trigger: Sunday 18:00, one page comes out of the printer.",
+    "how": "An automation with a command payload (--command-argv) runs a script from the config repo on the Gateway host. The script reads the family home-store and the calendar export, renders one letter-size PDF page and sends it with lp to the named queue, one copy, one-sided, then prints only NO_REPLY so no chat message is sent. The printer queue is added once as in F080. Failures surface through the job's failure alert.",
+    "who": "both",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": ["F080 printer queue", "F031 home-store", "F009 calendar read"],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "Command payloads run inside the Gateway process as an admin-authored job, outside the sandbox and outside agent tool policy; the script must be reviewed like any other code in the config repo.",
+      "The house printer is a photo inkjet, so a weekly plain-paper page is fine but daily printing is wasteful.",
+      "Every phone in the house can already print a PDF itself; the gain is only that the sheet appears without anyone asking.",
+      "The sheet is only as good as the calendar and list data behind it."
+    ],
+    "safety": "No model, no untrusted input and no outbound message: the script reads family data and writes paper. First names only, as for the kids' weekly card (F075).",
+    "unverified": [
+      "The printer's driverless (AirPrint) behaviour from the Mac mini; Canon's product page could not be fetched in this run and only the sibling model's manual was reachable.",
+      "Ink cost per plain-paper page on this printer."
+    ],
+    "overlaps_existing": ["F080", "F015", "F075"],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads: command payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "A scheduled command runs a script on the Gateway host with no model call and can deliver or suppress its output."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:189",
+        "title": "Automation payloads: command payloads",
+        "anchor": "--command-argv",
+        "supports": "The job can be given an exact argument vector, a timeout and output limits."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:191",
+        "title": "Automation payloads: command payloads",
+        "anchor": "NO_REPLY",
+        "supports": "A command that prints only the silent token posts nothing to chat, and a non-zero exit is recorded as an error."
+      },
+      {
+        "kind": "web",
+        "ref": "https://openprinting.github.io/cups/doc/options.html",
+        "title": "CUPS: Command-Line Printing and Options",
+        "anchor": "media=Letter",
+        "supports": "The lp command takes a destination, a copy count and options for paper size, sides and page ranges."
+      }
+    ]
+  }
+]

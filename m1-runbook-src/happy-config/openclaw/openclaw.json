@@ -1,0 +1,229 @@
+// happy-config/openclaw/openclaw.json  (JSON5)
+// Deployed to /Users/happy/.openclaw/openclaw.json by happy-deploy. M1 config for OpenClaw 2026.9.7.
+// No secrets live in this file: every credential is a SecretRef resolved from happy's login Keychain.
+// Per-person agents, their providers, handle bindings, allowFrom and the command owner come from
+// family.generated.json5 (scripts/gen-family.mjs). A root $include also makes the live config
+// read-only for OpenClaw's own writes (config set, Control UI saves, doctor --fix): the repo is the
+// only way to change it.
+{
+  $include: "./family.generated.json5",
+
+  gateway: {
+    mode: "local",
+    bind: "loopback",                 // never "lan"; remote access only through Tailscale Serve
+    port: 18789,
+    auth: {
+      mode: "token",
+      token: { source: "exec", provider: "keychain", id: "openclaw-gateway-token" },
+      allowTailscale: false,          // require the token even over the tailnet
+    },
+    tailscale: { mode: "serve" },     // OpenClaw runs `tailscale serve` itself; never "funnel"
+    terminal: { enabled: false },     // no host shell in the Control UI
+    cliAgents: { enabled: false },    // no Claude/Codex CLI sessions from the gateway
+    nodes: { pairing: { autoApproveLocal: false, sshVerify: false } },  // manual-only device pairing
+    // E0: promptfoo drives the eval clones through /v1/chat/completions. The token already grants
+    // full operator access over the WebSocket API, so this adds a surface, not a credential. It is
+    // also reachable through Tailscale Serve (with the token); there is no per-listener switch.
+    http: { endpoints: { chatCompletions: { enabled: true } } },
+  },
+  discovery: { mdns: { mode: "off" } }, // no Bonjour advertising on the LAN
+  browser: {
+    enabled: false,                     // no host browser-control service (sandboxed browsing comes in M3)
+    allowSystemProfileImport: false,    // default allows importing cookies from a local Chrome-family profile (M0 682aa73)
+  },
+
+  update: { channel: "stable", checkOnStart: false, auto: { enabled: false } }, // pinned; update by hand
+  telemetry: { enabled: false },
+
+  logging: {
+    level: "info",                    // E4 sets "debug" for E5–E6 (and I3); E6 switches it back
+    file: "/Users/happy/Library/Logs/openclaw/openclaw.log", // JSON lines, out of /tmp
+    maxFileBytes: 52428800,           // rotate at 50 MB; OpenClaw keeps five archives
+    consoleLevel: "warn",             // keeps the unrotated LaunchAgent stdout log small
+  },
+
+  secrets: {
+    providers: {
+      keychain: {
+        source: "exec",
+        command: "/Users/happy/.openclaw/bin/keychain-resolver",
+        trustedDirs: ["/Users/happy/.openclaw/bin"],
+        passEnv: ["HOME"],
+        jsonOnly: true,
+        timeoutMs: 5000,
+      },
+    },
+  },
+
+  models: {
+    catalogRefresh: { enabled: false }, // model metadata stays as shipped
+    // No models.providers.openai: there is no gateway-wide key left to fall back to. Each person's
+    // provider (openai-<person>) comes from the generated include. These two are not personal.
+    providers: {
+      "openai-shared": {              // the inbox agent only; OpenAI project "inbox"
+        api: "openai-responses",
+        baseUrl: "https://api.openai.com/v1",
+        auth: "api-key",
+        apiKey: { source: "exec", provider: "keychain", id: "openai-api-key-inbox" },
+        agentRuntime: { id: "openclaw" },
+        models: [
+          { id: "gpt-6-luna", name: "GPT-6 Luna", reasoning: true, input: ["text", "image"],
+            contextWindow: 1050000, contextTokens: 272000, maxTokens: 128000,
+            cost: { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
+            compat: { supportsReasoningEffort: true,
+                      supportedReasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+                      supportsTemperature: false } },
+        ],
+      },
+      "openai-eval": {                // eval clones only; OpenAI project "eval"
+        api: "openai-responses",
+        baseUrl: "https://api.openai.com/v1",
+        auth: "api-key",
+        apiKey: { source: "exec", provider: "keychain", id: "openai-api-key-eval" },
+        agentRuntime: { id: "openclaw" },
+        models: [
+          { id: "gpt-6-sol", name: "GPT-6 Sol", reasoning: true, input: ["text", "image"],
+            contextWindow: 1050000, contextTokens: 272000, maxTokens: 128000,
+            cost: { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 },
+            compat: { supportsReasoningEffort: true,
+                      supportedReasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+                      supportsTemperature: false } },
+          { id: "gpt-6-luna", name: "GPT-6 Luna", reasoning: true, input: ["text", "image"],
+            contextWindow: 1050000, contextTokens: 272000, maxTokens: 128000,
+            cost: { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
+            compat: { supportsReasoningEffort: true,
+                      supportedReasoningEfforts: ["none", "low", "medium", "high", "xhigh", "max"],
+                      supportsTemperature: false } },
+        ],
+      },
+    },
+  },
+
+  memory: { search: { provider: "none" } }, // keyword search only; no OpenAI embeddings
+  plugins: {
+    // Our own plugin (repo plugins/home-weather). happy-deploy installs it outside every auto-discovered
+    // plugin root, and it loads only from this explicit path.
+    load: { paths: ["/Users/happy/.config/happy/plugins/home-weather"] },
+    entries: {
+      // Dreaming is gateway-wide (one sweep across every agent workspace); keep it off.
+      "memory-core": { config: { dreaming: { enabled: false } } },
+      // Installed in D1 with --pin --no-enable, so the repo owns their activation.
+      imessage: { enabled: true },
+      brave: { enabled: true, config: { webSearch: {
+        apiKey: { source: "exec", provider: "keychain", id: "brave-api-key" },
+        mode: "web",
+      } } },
+      "diagnostics-prometheus": { enabled: true }, // /api/diagnostics/prometheus, gateway token required
+      // home_weather: National Weather Service forecast for home. place, latitude and longitude come
+      // from family.json5 through the generated include. NWS asks for an app name and a contact.
+      "home-weather": { enabled: true, config: { userAgent: "happy-home-agent/0.1 (redacted-happy-account@example.com)" } },
+    },
+  },
+
+  channels: {
+    imessage: {
+      enabled: false,                 // E4 sets true once Messages is signed in and has Full Disk Access
+      cliPath: "/opt/homebrew/bin/imsg",
+      dmPolicy: "allowlist",          // unknown senders are dropped before any agent runs
+      // allowFrom comes from the generated include: admitted people's handles, owner first.
+      // It is also the approver list for /approve on iMessage.
+      groupPolicy: "disabled",
+      includeAttachments: false,      // voice memos and photos arrive in M5
+      configWrites: false,            // no config changes started from iMessage
+      sendTransport: "applescript",   // Basic mode: SIP stays on, so no IMCore bridge
+    },
+  },
+
+  commands: {
+    // ownerAllowFrom comes from the generated include (the owner's first handle).
+    config: false, mcp: false, plugins: false, debug: false, bash: false,
+    restart: false,                   // no /restart or /update from chat; the patch window updates
+  },
+
+  // Approval prompts go back to the chat that asked ("session"), never to other approvers' DMs.
+  approvals: {
+    exec: { enabled: true, mode: "session" },
+    plugin: { enabled: true, mode: "session" },
+  },
+
+  session: {
+    dmScope: "per-channel-peer",      // each sender gets its own DM session
+    // identityLinks come from the generated include
+    // Fresh conversation every morning (default "none" keeps one session forever, and every
+    // turn resends all earlier messages and search results). /new still resets by hand.
+    reset: { mode: "daily", atHour: 4 },  // 04:00 on the Mac mini's clock
+  },
+
+  // Catch-all: an admitted iMessage sender with no per-handle binding lands in `inbox`.
+  // Concatenated after the generated per-handle bindings; peer bindings outrank it anyway.
+  bindings: [
+    { agentId: "inbox", comment: "catch-all for admitted but unassigned iMessage senders",
+      match: { channel: "imessage", accountId: "*" } },
+  ],
+
+  tools: {
+    profile: "minimal",               // onboarding would have written "full"
+    elevated: { enabled: false },
+    sessions: { visibility: "self" }, // default is "all"
+    agentToAgent: { enabled: false }, // default is true
+    message: { crossContext: { allowWithinProvider: false, allowAcrossProviders: false } },
+    swarm: false,                     // default is on in 2026.9.x
+    codeMode: false,                  // default "auto" runs model-written JS in the gateway process, outside the sandbox
+    exec: { host: "sandbox" },        // fails closed if the sandbox is unavailable
+    fs: { workspaceOnly: true },
+    web: { search: { enabled: true, provider: "brave" } },
+    // Direct tool schemas: Tool Search (on by default) hides web_search's options behind
+    // tool_search/tool_describe/tool_call, which only pays off for large tool catalogs.
+    toolSearch: false,
+  },
+
+  agents: {
+    ownership: "explicit",            // the roster lives in an include, so this must be written by hand
+    defaults: {
+      systemAgent: { agentId: "tony-main" }, // owner of ambient system work
+      // Workaround for OpenClaw #161976 (2026.9.7 and 9.8): the gateway's plugin registry uses this
+      // workspace (default ~/.openclaw/workspace), and an inbound turn whose workspace differs gets a
+      // separate registry, so every iMessage final reply is refused ("The reply channel changed or
+      // cannot preserve its sender"). Same path as tony-main, the first agent; every agent still has
+      // its own explicit workspace. Fixed upstream by #163742; drop this after the upgrade that has it.
+      workspace: "/Users/happy/.openclaw/people/tony/main/workspace",
+      // No defaults.model: every agent names its own model, so nothing inherits a shared route.
+      modelPolicy: {},                // keeps agents.defaults.models from acting as a legacy allowlist
+      heartbeat: { every: "0m" },     // default is 30m: a cloud call that DMs the first allowFrom handle
+      skipBootstrap: true,            // the repo supplies the bootstrap files; no first-run ritual
+      sandbox: {
+        mode: "all",                  // default is "off"
+        backend: "docker",            // Colima provides the Docker engine
+        scope: "agent",
+        workspaceAccess: "none",      // Colima mounts only ~/.openclaw/sandboxes
+        docker: {
+          image: "openclaw-sandbox:bookworm-slim",
+          network: "none",
+          readOnlyRoot: true,
+          capDrop: ["ALL"],
+        },
+        browser: { enabled: false },
+      },
+      subagents: { maxSpawnDepth: 1 },
+    },
+    entries: {
+      // tony-main, jordan-main and their eval clones come from the generated include.
+      inbox: {
+        name: "Inbox",
+        workspace: "/Users/happy/.openclaw/shared/inbox/workspace",
+        agentDir: "/Users/happy/.openclaw/shared/inbox/agent",
+        model: { primary: "openai-shared/gpt-6-luna", fallbacks: [] },
+        modelPolicy: { allow: ["openai-shared/gpt-6-luna"] },
+        utilityModel: "",             // no helper calls
+        // No tools at all. The sandbox allowlist must be explicitly empty too: left unset, it falls back
+        // to OpenClaw's default list, nothing on it survives deny "*", and 2026.9.7 then refuses the turn
+        // ("No callable tools remain after resolving explicit tool allowlist"; H2, 5 Oct).
+        tools: { profile: "minimal", deny: ["*"], sandbox: { tools: { allow: [] } } },
+        skills: [],
+        subagents: { allowAgents: [] },
+        memory: { search: { enabled: false, rememberAcrossConversations: false } },
+        sandbox: { scope: "session", workspaceRoot: "/Users/happy/.openclaw/sandboxes/shared/inbox" },
+      },
+    },
+  },
+}

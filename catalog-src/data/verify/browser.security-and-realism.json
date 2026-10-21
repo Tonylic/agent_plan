@@ -1,0 +1,1185 @@
+[
+  {
+    "id": "WEB-01",
+    "verdict": "revise",
+    "reason": "The guardrails are real and config-only, so 'now' and effort S hold. One caveat is wrong for the browser, the guards recorded under WEB-05 need a home in something that gets built, and the policy does not cover host-side helper tools or make the proxy an exfiltration allowlist.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/web-fetch.md:71",
+        "ok": true,
+        "note": "Read in context: the fetch step blocks private/internal hostnames and re-checks redirects."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:288",
+        "ok": true,
+        "note": "Read in context: the block list denies exact hosts and wildcard subdomains before DNS, also on redirects."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:287",
+        "ok": true,
+        "note": "Read in context: the allow list re-opens named hosts while other private targets stay blocked. True for web_fetch; the browser key of the same name behaves differently in explicit strict mode (see corrections on WEB-01)."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:216",
+        "ok": true,
+        "note": "Read in context: gateway proxy environment variables do not proxy the managed browser; managed Chrome launches direct."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:230",
+        "ok": true,
+        "note": "Read in context: the warning says configured headers go to every initial URL and the model chooses that URL."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:199",
+        "ok": true,
+        "note": "Read in context: Playwright routing is described as not a network firewall; redirect hops, a popup first request and Service Worker traffic are named as gaps."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:218",
+        "ok": true,
+        "note": "Read in context: strict mode blocks explicit browser proxy routing unless private-network browser access is enabled."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:54",
+        "ok": true,
+        "note": "Read in context: with the key unset, private, internal and special-use destinations stay blocked for the browser."
+      },
+      {
+        "ref": "docs/security/network-proxy.md:11",
+        "ok": true,
+        "note": "Read in context: OpenClaw does not ship, start or configure a proxy; it only routes its own clients through one."
+      }
+    ],
+    "corrections": {
+      "how": "Gateway config, applies to the research agent. Keep `tools.web.fetch.ssrfPolicy.dangerouslyAllowPrivateNetwork` and `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` unset (strict is the default). Add known paste and tracker hosts to `tools.web.fetch.ssrfPolicy.blockedHostnames` and `browser.ssrfPolicy.blockedHostnames`. Leave `tools.web.fetch.headers` empty, because the model picks the URL and any header goes wherever it points. Leave `tools.web.fetch.provider` unset and do not install a fetch-provider plugin, so a failed fetch is never retried through a third party. Set `browser.evaluateEnabled: false`. Second layer if the roadmap's egress proxy is built: `proxy.proxyUrl` for the gateway's own HTTP clients. Add two eval cases to the M3 exit test: a LAN address, and a public URL that redirects to one. Added in review: the current config already has `browser.enabled: false` and `browser.allowSystemProfileImport: false` from M0 (cookie import from a real browser profile is otherwise on by default, and the agent tool has an action for it). Keep the first until WEB-02 ships and the second for good. Add `gateway.nodes.browser.mode: \"off\"` and, when the browser is switched on, `browser.defaultProfile: \"openclaw\"`. These guards were listed only under WEB-05, a record that will not be built, so they belong here. Leave the private-network key truly unset; do not write `false` (see caveats).",
+      "caveats": [
+        "web_fetch blocks private hosts and re-checks redirects. The browser's check is weaker: the docs say its request interception is not a network firewall and can miss redirect hops, a popup's first request and Service Worker traffic.",
+        "The managed browser does not inherit the gateway's proxy environment, and strict SSRF mode blocks an explicit browser proxy flag unless private-network access is switched on. Putting the browser behind the roadmap's filtering proxy is therefore an open design conflict to settle before M3.",
+        "OpenClaw does not ship or run a proxy; `proxy.proxyUrl` only routes its own HTTP and WebSocket clients through one you operate.",
+        "For web_fetch there is no public-web allowlist: its `allowedHostnames` only re-opens named private hosts and `blockedHostnames` only denies. The browser is different. In the installed source, an explicitly written `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork: false` is not the same as leaving the key unset: hostname navigation is then refused unless the host matches `browser.ssrfPolicy.allowedHostnames`, while public IP-literal addresses still pass. That is a gateway-wide navigation allowlist in OpenClaw's own code: a useful second layer if the only browser on the gateway is a single-site one, unusable next to an open research browser, and a trap if someone writes `false` to be explicit (the research browser would stop loading hostnames). A per-agent site allowlist still has to be a hook (WEB-03).",
+        "The SSRF policy covers the `web_fetch` tool and the browser tool only. Host-side helpers that take a URL (the summarize wrapper in WEB-11, the print plugin's own download in F080, a feed watcher) run outside it and need their own scheme, host and resolved-address checks, or an injected URL reaches LAN devices through them.",
+        "Once research has web_fetch, the egress proxy cannot double as an exfiltration allowlist. Proxy routing is process-level, so one policy serves model calls, MCP traffic and research's fetches; a domain allowlist tight enough for the first two blocks the third. With research live, the proxy can deny private ranges and named hosts and nothing more. This is an inference from the routing description and it changes what the roadmap's Smokescreen allowlist can promise.",
+        "A hostname block list is not an exfiltration control: any host that is not on it works. Do not spend upkeep time curating paste and tracker lists. What counts is the private-network block, no headers, no fallback provider, and no private data in the agent that browses."
+      ],
+      "unverified": [
+        "The roadmap's plan to drop LAN access inside the Colima VM would not cover a browser that runs on the host; this follows from where the process runs and was not tested.",
+        "Which hosts belong on the blocklist is a judgment call, not something the docs prescribe.",
+        "The explicit-false behaviour of the browser policy was read in the installed source only; the docs do not describe it and it was not exercised."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/chrome-B5LltyxA.mjs:276",
+        "title": "Browser navigation guard (installed source)",
+        "anchor": "requires an IP-literal URL",
+        "supports": "When the browser policy carries an explicit false for private-network access, a hostname navigation is refused unless the host is on the allowed list; IP-literal URLs still pass."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/config-DLo8Wb5-.mjs:118",
+        "title": "Browser config resolution (installed source)",
+        "anchor": "hasExplicitPrivateSetting",
+        "supports": "An unset key resolves to a policy without the strict flag, while an explicitly written value resolves to true or false, so unset and false behave differently."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/security/browser-control.md:57",
+        "title": "Browser control risks: Browser SSRF policy",
+        "anchor": "wildcard-aware",
+        "supports": "In strict mode the browser allowed-hostnames list takes wildcard patterns and exact hosts, and the doc's own example lists public names."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/browser.md:122",
+        "title": "openclaw browser CLI: Profiles",
+        "anchor": "enabled by default",
+        "supports": "Cookie import from a real browser profile is on unless disabled, for both CLI and agent-triggered imports."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/security/network-proxy.md:232",
+        "title": "Network proxy: Limits",
+        "anchor": "process-level coverage",
+        "supports": "The managed proxy routes the whole gateway process, so one proxy policy applies to model calls and tool fetches alike."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser/setup.md:49",
+        "title": "Browser setup",
+        "anchor": "control service as one unit",
+        "supports": "The browser agent tool and control service exist only when both the browser plugin and the browser enabled setting are on."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-02",
+    "verdict": "revise",
+    "reason": "A safe holder exists (research has no private data), but risk is medium, not low: the host browser runs outside the planned container network rules as the macOS user that holds everything, and its LAN guard has documented gaps. The read-only action set also cannot operate the search widgets the description promised.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/browser/profiles.md:10",
+        "ok": true,
+        "note": "Read in context: openclaw is the managed isolated profile; user and chrome attach to a real signed-in Chrome."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:229",
+        "ok": true,
+        "note": "Read in context: headless can be set per local managed profile."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:28",
+        "ok": true,
+        "note": "Read in context: evaluateEnabled false disables act:evaluate."
+      },
+      {
+        "ref": "docs/tools/multi-agent-sandbox-tools.md:187",
+        "ok": true,
+        "note": "Read in context: per-agent sandbox.browser settings override the defaults."
+      },
+      {
+        "ref": "docs/tools/browser-login.md:19",
+        "ok": true,
+        "note": "Read in context: sandboxed browser sessions are said to be more likely to trigger bot detection."
+      },
+      {
+        "ref": "docs/tools/browser-login.md:55",
+        "ok": true,
+        "note": "Read in context: a sandboxed agent's browser calls default to the sandbox browser."
+      },
+      {
+        "ref": "docs/tools/browser/agent-tools.md:39",
+        "ok": true,
+        "note": "Read in context: target host from a sandboxed session requires allowHostControl=true (this line names the defaults key; the per-agent override is confirmed in multi-agent-sandbox-tools.md)."
+      },
+      {
+        "ref": "docs/gateway/sandboxing/images-and-setup.md:78",
+        "ok": true,
+        "note": "Read in context: the npm package lacks the browser Dockerfile and entrypoint; a source checkout is needed."
+      },
+      {
+        "ref": "docs/gateway/sandboxing/docker-backend.md:88",
+        "ok": true,
+        "note": "Read in context: sandbox browser network mode none is unsupported because CDP ports must be published."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:16",
+        "ok": true,
+        "note": "Read in context: keep host browser control disabled for sandboxed agents unless trusted. Note that research is the least trusted agent on the gateway, so the host placement in WEB-02 cuts against this line."
+      },
+      {
+        "ref": "docs/tools/browser/setup.md:84",
+        "ok": true,
+        "note": "Read in context: the bundled skill tells the agent to report login, 2FA and captcha blockers as manual action."
+      },
+      {
+        "ref": "docs/help/faq/sessions-and-chats.md:179",
+        "ok": true,
+        "note": "Read in context: anti-bot, CAPTCHAs and MFA can still block browser automation."
+      },
+      {
+        "ref": "docs/tools/subagents/tool-policy.md:23",
+        "ok": true,
+        "note": "Read in context: message is on the hard-deny list for sub-agents and allow entries cannot override it."
+      },
+      {
+        "ref": "https://arxiv.org/abs/2504.01382",
+        "ok": true,
+        "note": "Fetched. Abstract introduces Online-Mind2Web (300 tasks, 136 websites) and reports over-optimism in earlier results."
+      }
+    ],
+    "corrections": {
+      "risk": "medium",
+      "description": "Lets research read pages that plain fetch cannot: script-rendered calendars, rec-department listings. Logged out, no typing and no clicking: it reads what an address renders on load and nothing that sits behind a search box, a filter or a 'load more' button. New versus F020: a sourced comparison of the three places a browser can live, and a read-only action set enforced in code.",
+      "how": "Holder: `research` (stateless, memory off, no accounts). `agents.entries.research.tools.alsoAllow: [\"browser\"]`; a dedicated managed profile (for example `browser.profiles.research` with its own `cdpPort` and `headless: true`). Because sandbox mode is `all`, research's browser calls default to the sandbox target, so either set `agents.entries.research.sandbox.browser.allowHostControl: true` and use the host-managed profile, or build the sandbox browser image. `browser.evaluateEnabled: false`. The WEB-03 hook allows research only `status`, `tabs`, `open`, `navigate`, `snapshot`, `text`, `screenshot`, `close` and blocks `act`, `upload`, `download`, `dialog`, `importprofile`. Placement comparison: (1) host-managed profile: own user data directory, works headless, less bot-detection trouble than the sandbox browser according to the docs (though headless mode is itself a bot signal), but runs on the host so container network rules do not cover it; (2) sandbox browser container: strongest isolation, but the image is not in the npm package, it cannot run with network `none`, and the docs say it trips bot detection more often; (3) the `user` and `chrome` profiles attach to a real signed-in Chrome and are wrong for research (WEB-05). Added in review: because research is sandboxed, `browser` must also pass its sandbox tool policy (`agents.entries.research.tools.sandbox.tools.allow`). The hook's action list is an allowlist, so `profiles`, `pdf`, `start`, `stop`, `emulate`, `requests` and every other action are blocked along with the five named, and the `dashboard`, `node`, `browser` and `systemProfile` parameters are rejected. Preconditions from WEB-01: `browser.allowSystemProfileImport: false`, `gateway.nodes.browser.mode: \"off\"`, and no logged-in profile anywhere on this host.",
+      "caveats": [
+        "Anti-bot walls, CAPTCHAs and MFA still stop it. The bundled browser skill tells the agent to stop and report the blocker, and that is the behaviour to keep.",
+        "`allowHostControl: true` lets a sandboxed agent drive a host browser; the docs say to leave it off unless the agent is trusted, so the profile pin in WEB-03 is a precondition, not a nicety.",
+        "A page snapshot costs far more tokens than a fetch; use it only after web_fetch comes back empty.",
+        "For a one-off look, opening the link on the phone is quicker.",
+        "Independent testing on live sites finds web agents markedly less reliable than benchmark numbers suggest; keep tasks to 'open one page and read it'.",
+        "Read-only means read-on-load. With `act` blocked the agent cannot type into a search box, pick a date or press 'load more', so address-lookup and 'what goes where' widgets and listings behind a filter stay out of reach.",
+        "The host browser sits outside the Colima network rules the roadmap planned for a browser container (S2). OpenClaw's own LAN guard is request interception with documented gaps, so a hostile page's subresource or redirect could still poke devices on the home network (light bridge, speakers, TV, printer). Chrome 142 and later puts public-to-local requests behind its own permission prompt, which helps; how that behaves in an automation-launched profile with nobody to answer is untested. Risk is medium until one of these is shown to hold.",
+        "Chrome runs as the happy user, the account that holds the Keychain, the Messages history and every agent's state. On this Mac the only Chrome updater found is a per-user agent in the admin account, and the non-admin happy user cannot write to the app bundle, so the browser that reads model-chosen pages is patched only while the admin account is logged in. Put a Chrome version check in the weekly patch window.",
+        "`headless: true` is a bot signal in its own right: a major bot-management vendor documents a detection engine for headless browsers. Expect more walls headless than in a visible window.",
+        "A navigation that resolves to a file is saved under the managed downloads directory even when the `download` action is blocked. Nothing should read that directory automatically.",
+        "Today's config keeps the host browser-control service off, with a note that sandboxed browsing comes in M3. The host placement reverses that M0 choice. Effort M and risk medium describe the host placement; the container placement the roadmap assumed keeps the network rules and the M0 choice, at effort L (the image needs a source checkout) and with more bot walls.",
+        "Ship this only while no logged-in profile exists on the host. Once one does, the in-house hook is the only thing between the agent that reads the open web and that account, and the tool's own guidance tells the model to list profiles and pick one when logins matter."
+      ],
+      "safety": "Research holds no private data, so one trifecta leg is missing by construction. As a sub-agent it cannot hold the `message` tool, and read-only actions remove form submission, which narrows the way out; navigating to an address remains one, acceptable only because nothing private is in its context. Tool-requested navigation accepts only web addresses, so local files are not reachable that way. Task text from <p>-main must stay free of names, school and address (F019 handoff rule); that is a prompt rule and the one leak path the roadmap already tests. What this placement does not cover is the home network and the host account itself; see the caveats.",
+      "unverified": [
+        "Whether the happy account can launch headless Chrome under launchd without a logged-in desktop session on this Mac.",
+        "No per-agent browser-profile allowlist was found in the installed docs; the tool source contains a run-bound tab binding that pins profile and tab for a run, but whether an operator can set it per agent is not documented in what was read.",
+        "Whether Chrome's local-network permission gate denies page-initiated LAN requests in a profile launched by automation; the Chrome page read does not cover automated use.",
+        "Whether `open` launches the managed profile on demand or the action allowlist also needs `start`.",
+        "Whether the per-app firewall the roadmap chose can deny private address ranges for the Chrome binary alone; not checked."
+      ],
+      "depends_on": [
+        "F019 research agent",
+        "WEB-01",
+        "WEB-03",
+        "Google Chrome launchable from the happy account",
+        "WEB-01 import and node-routing guards",
+        "no logged-in browser profile on the host"
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://developer.chrome.com/blog/local-network-access",
+        "title": "Chrome for Developers: New permission prompt for Local Network Access",
+        "anchor": "Local Network Access",
+        "supports": "From Chrome 142, requests from public sites to private or loopback addresses need a user permission, aimed at request forgery against routers and other local devices; the page says nothing about automated or headless use."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.cloudflare.com/bots/concepts/bot-detection-engines/",
+        "title": "Cloudflare docs: Bot detection engines",
+        "anchor": "headless browsers",
+        "supports": "A major bot-management vendor documents a detection engine that identifies headless browsers."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/sandbox-vs-tool-policy-vs-elevated.md:69",
+        "title": "Sandbox vs tool policy vs elevated",
+        "anchor": "Sandbox tool policy",
+        "supports": "A sandboxed agent's tools must also pass the sandbox tool allow and deny lists."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:372",
+        "title": "Browser tool description (installed source)",
+        "anchor": "action=profiles",
+        "supports": "The tool's built-in guidance tells the model to list the available profiles and pick one by name when logins matter."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser.md:38",
+        "title": "Browser (OpenClaw-managed): What you get",
+        "anchor": "direct attachment navigations",
+        "supports": "A navigation that resolves to a file is saved under the managed downloads directory."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/chrome-B5LltyxA.mjs:212",
+        "title": "Browser navigation guard (installed source)",
+        "anchor": "NETWORK_NAVIGATION_PROTOCOLS",
+        "supports": "Tool-requested navigation accepts only http and https addresses, so local file addresses are refused."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-03",
+    "verdict": "revise",
+    "reason": "The right control and the right mechanism, but the rule set as written is a blocklist on act kinds and reads too few parameters: the installed schema also has batch, coordinate clicks, a nested request object, targetUrl, node and dashboard, each a way round it. Make every list default-deny and move the approval branch to M6.",
+    "source_checks": [
+      {
+        "ref": "docs/plugins/hooks/tool-policy.md:48",
+        "ok": true,
+        "note": "Read in context: the hook result type includes params, block and requireApproval with allowedDecisions."
+      },
+      {
+        "ref": "docs/plugins/hooks/tool-policy.md:102",
+        "ok": true,
+        "note": "Read in context: the example registers the hook with a matcher for one tool name."
+      },
+      {
+        "ref": "docs/tools/exec-approvals-advanced.md:306",
+        "ok": true,
+        "note": "Read in context: an approval that originates from a deliverable chat can be resolved in that chat with /approve by default."
+      },
+      {
+        "ref": "docs/plugins/hooks/tool-policy.md:20",
+        "ok": true,
+        "note": "Read in context: the hook receives event.params, and context fields including ctx.agentId and ctx.requester."
+      },
+      {
+        "ref": "docs/plugins/plugin-permission-requests.md:88",
+        "ok": true,
+        "note": "Read in context: timeoutMs defaults to 120000 and is capped at 600000."
+      },
+      {
+        "ref": "docs/plugins/plugin-permission-requests.md:162",
+        "ok": true,
+        "note": "Read in context: with no approval route the call is blocked."
+      },
+      {
+        "ref": "docs/channels/imessage/rich-messages.md:103",
+        "ok": true,
+        "note": "Read in context: the text fallback carries /approve commands; the same line maps a Like tapback to allow-once."
+      },
+      {
+        "ref": "docs/channels/imessage/rich-messages.md:105",
+        "ok": true,
+        "note": "Read in context: the approver list is read from the channel allowFrom list."
+      },
+      {
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:120",
+        "ok": true,
+        "note": "Read in context: 24 actions listed. The same file shows parameters the feature's rule list did not cover (targetUrl, request, node, dashboard)."
+      },
+      {
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:104",
+        "ok": true,
+        "note": "Read in context: 14 act kinds, including batch, clickCoords, drag and hover, which the feature's rule list did not mention."
+      },
+      {
+        "ref": "docs/tools/lobster.md:120",
+        "ok": true,
+        "note": "Read in context: the tool is disabled entirely for sandboxed tool contexts."
+      },
+      {
+        "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+        "ok": true,
+        "note": "Fetched. The Run safely section has the cited heading; it recommends an isolated browser or VM, an allow list of sites and actions, treating screen content as untrusted, and says typing sensitive information into a form counts as transmission."
+      },
+      {
+        "ref": "https://developers.openai.com/api/docs/guides/agent-builder-safety",
+        "ok": true,
+        "note": "Fetched. Heading present; says to keep tool approvals enabled, constrain data flow with structured outputs, and that mitigations do not fully remove the risk."
+      },
+      {
+        "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+        "ok": true,
+        "note": "Fetched. Both cited phrases appear in the four numbered precautions (dedicated VM, no login data, domain allowlist, human confirmation)."
+      }
+    ],
+    "corrections": {
+      "how": "Plugin with `api.on(\"before_tool_call\", handler, { matcher: [\"browser\"] })`. It reads `ctx.agentId` and `event.params`. Every rule is an allowlist and fails closed; a handler that throws or times out already blocks the call. Per agent: (1) `profile` must be present and equal to the assigned one (an omitted profile means the gateway default, so reject it); `target` must equal the assigned one; `node`, `dashboard`, `browser` and `systemProfile` must be absent. (2) `action` must be on the agent's list out of the tool's 24; `profiles` and `importprofile` are never on it. (3) For `open` and `navigate`, parse both `targetUrl` and `url`; require https, an exact hostname from the agent's list, and no IP literal. (4) For `act`, read the kind from the top level and from the nested `request` object and reject the call if they disagree; allow only listed kinds; `batch`, `evaluate`, `press`, `clickCoords`, `drag` and `type` with `submit` are never allowed. (5) Unknown agent, action, kind or parameter key, or a parse error, returns a block. For this batch only these deny rules are built; they are all WEB-02 needs. Later, for the M6 jobs agent: `requireApproval` with `allowedDecisions: [\"allow-once\", \"deny\"]` on `fill`, `type`, `select`, `click` and `upload`, answered in the chat that raised it with a typed `/approve <id> <decision>`; `approvals.plugin.enabled` adds native iMessage delivery. Lobster is not the gate here: it is disabled in sandboxed contexts.",
+      "caveats": [
+        "The hook sees tool parameters, not page meaning: a click carries a snapshot ref, not the button's label, so code cannot tell 'Next' from 'Submit'. The safe rule is an approval on every click inside a form, which becomes tedious after three prompts.",
+        "Approval waits are capped at ten minutes and an unanswered request denies.",
+        "Scheduled runs have no approval route, so approval-gated actions never happen unattended. That is the intended behaviour.",
+        "On iMessage the approver list is the channel allowlist, not the requester: the roadmap already notes that approvals are not tied to the person whose agent asked, so prompts must go only to the asking chat.",
+        "A navigation allowlist in a hook checks the URL the agent asked for, not where redirects or page scripts go next.",
+        "Every list has to be default-deny. The installed schema has more ways to act than click, type, fill, select and press: `batch` (a list of nested actions), `clickCoords`, `drag` and `hover`; an act can also arrive inside a nested `request` object; `open` takes `targetUrl` where other actions take `url`; `node` and `dashboard` choose a browser without naming a profile. A hook that checks only `kind`, `url` and `profile`, as first written, can be walked around.",
+        "The tool's schema can change with any OpenClaw update. Default-deny keeps a new action blocked until someone allows it, but the hook's eval cases still have to be rerun in each weekly patch window.",
+        "An approval prompt that shows the site and a field count does not tell the approver what is being sent; one that shows the values puts a child's details on the approval surface, which the docs advise against. Approval is a brake on mistakes, not a defence against exfiltration.",
+        "On iMessage the documented text fallback treats a Like tapback as allow-once. A reflex tapback on the prompt is an approval.",
+        "The approval branch has one consumer in the roadmap, the M6 jobs agent. Build and test it there, not in this batch."
+      ],
+      "safety": "This is what turns 'the model was told not to' into a limit the model cannot argue past: profile, site and action limits live in code and fail closed, in line with both vendors' guidance to restrict sites and confirm consequential actions. It does not by itself make a logged-in browser safe (see WEB-04). It is in-house code sitting on the security boundary: one parsing mistake is a bypass, so it needs its own injection eval cases before any profile on the host holds a login.",
+      "unverified": [
+        "Whether an approval raised by a spawned sub-agent is delivered to the parent chat that started the task; needs a test.",
+        "Whether tapback approval works in iMessage Basic mode; the typed /approve command is the documented fallback.",
+        "The parameter names were read from the browser tool's schema source, not observed in a live hook event.",
+        "Whether `ctx.agentId` carries the sub-agent's id when research runs as a spawned session; every per-agent rule depends on it.",
+        "Whether the hook sees the browser call before the tool applies its own defaults (profile, target), so that 'must be present' can be enforced."
+      ],
+      "example": "Trigger: an injected page tells the research agent to switch to another browser profile or to type into a form; the call is refused in code before the browser sees it, and the nightly eval has a case for each.",
+      "description": "One in-house plugin that decides in code what each agent's browser may do: which profile, which sites and which actions, all as allowlists that fail closed. Without it the browser tool is all-or-nothing. In this batch it only denies; asking a parent before typing is a later addition for the M6 jobs agent."
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:105",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "batch",
+        "supports": "The act kinds include a batch form that carries a list of nested actions."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:107",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "clickCoords",
+        "supports": "A coordinate click exists beside the ref-based click."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:275",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "BrowserActSchema",
+        "supports": "An act can also arrive as a nested request object, separate from the top-level kind."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:225",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "targetUrl",
+        "supports": "The tool has a targetUrl parameter in addition to url."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:220",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "default if omitted",
+        "supports": "A call that omits the profile falls back to the configured default profile."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:215",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "dashboard",
+        "supports": "A dashboard parameter selects a browser page without naming a profile."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:219",
+        "title": "Browser tool schema (installed source)",
+        "anchor": "node",
+        "supports": "A node parameter can point the call at a browser on a paired node."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:93",
+        "title": "Plugin hooks reference: timeouts and failures",
+        "anchor": "Fail closed",
+        "supports": "A before_tool_call handler that throws or times out blocks the tool call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/plugin-permission-requests.md:81",
+        "title": "Plugin permission requests",
+        "anchor": "Do not include secrets",
+        "supports": "Approval text should not carry secrets or private payloads because it is shown on chat approval surfaces."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/rich-messages.md:103",
+        "title": "iMessage: Approval polls and reactions",
+        "anchor": "allow-once",
+        "supports": "The iMessage text fallback treats a Like tapback as an allow-once decision."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-04",
+    "verdict": "reject",
+    "reason": "All three trifecta legs sit in one agent, and the only thing cutting the way out is an in-house hook over an interception layer the docs say is not a firewall; the roadmap places logged-in browsing at M6 behind S5. On realism it loses to the portal's own app and the notice emails: sessions expire and every re-login is the operator at the Mac mini's screen. Not recommended for this batch; reconsider with the M6 jobs agent.",
+    "source_checks": [
+      {
+        "ref": "docs/gateway/security/browser-control.md:13",
+        "ok": true,
+        "note": "Read in context: a profile with logged-in sessions gives the model those accounts; treat profiles as sensitive state."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:19",
+        "ok": true,
+        "note": "Read in context: advice to disable sync and password managers in the agent profile."
+      },
+      {
+        "ref": "docs/tools/browser-login.md:11",
+        "ok": true,
+        "note": "Read in context: manual sign-in is recommended; automated logins can lock the account. Three lines later the same page allows an agent to type owner-supplied credentials."
+      },
+      {
+        "ref": "docs/tools/browser-login.md:73",
+        "ok": true,
+        "note": "Read in context: CLI invocations always target the host browser."
+      },
+      {
+        "ref": "docs/tools/browser-control.md:562",
+        "ok": true,
+        "note": "Read in context: the managed profile may contain logged-in sessions and is to be treated as sensitive."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:199",
+        "ok": true,
+        "note": "Read in context: Playwright routing is described as not a network firewall; redirect hops, a popup first request and Service Worker traffic are named as gaps."
+      },
+      {
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+        "ok": true,
+        "note": "Read in context: subagents.allowAgents is the per-agent list of spawnable agent ids."
+      },
+      {
+        "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+        "ok": true,
+        "note": "Fetched. Both cited phrases appear in the four numbered precautions (dedicated VM, no login data, domain allowlist, human confirmation)."
+      },
+      {
+        "ref": "https://cdn.openai.com/pdf/6bcccca6-3b64-43cb-a66e-4647073142d7/chatgpt_agent_system_card_launch.pdf",
+        "ok": true,
+        "note": "Downloaded (42-page PDF, dated July 17, 2025) and text extracted locally. Section 3.1.2.4 describes Watch Mode on logged-in sites, 3.1.2.6 says memory is disabled at launch, and Table 12 gives 67 percent for active data exfiltration in the visual browser, model-only."
+      },
+      {
+        "ref": "https://claude.com/blog/claude-for-chrome",
+        "ok": true,
+        "note": "Fetched. 23.6 percent attack success without mitigations, 11.2 percent with; financial-service sites blocked. Dated 25 Aug 2025."
+      },
+      {
+        "ref": "https://www.anthropic.com/research/prompt-injection-defenses",
+        "ok": true,
+        "note": "Fetched. The sentence with the anchor is present; a 1 percent attack success rate is described as still a meaningful risk. Dated 24 Nov 2025."
+      },
+      {
+        "ref": "https://arxiv.org/abs/2510.09023",
+        "ok": true,
+        "note": "Fetched. Abstract: 12 recent defenses bypassed, attack success above 90 percent for most."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "value": 1,
+      "caveats": [
+        "Sessions expire and many portals re-ask for MFA. Expect 'needs login' texts and a hands-on re-login every few weeks; the agent must stop there and not retry.",
+        "Most of what these portals show is already emailed by the service (WEB-07, WEB-08, WEB-09), which needs no browser at all.",
+        "A logged-in profile is the account. The docs say to treat it as sensitive state, and any agent that holds the browser tool and knows the profile name can use it unless a hook says otherwise.",
+        "The portal's own phone app answers the same question in two taps.",
+        "The vendors' own consumer browser agents add live supervision on logged-in sites or block whole site categories; an unattended family build has neither safeguard.",
+        "Manual login needs a visible browser window in the happy desktop session, which only the operator can reach. The second parent's portal password is typed on the operator's screen or handed over, so the per-person split holds by convention only.",
+        "The platform's own guidance lets an agent type owner-supplied credentials into a login form. Here only the hook's no-typing rule stands between an expired session and the agent asking for the password in chat.",
+        "A one-hostname rule does not stop an open redirect on that hostname, and redirect hops are among the documented interception gaps.",
+        "The roadmap puts logged-in browsing at M6, behind the S5 action controls, and puts private data behind egress controls and local models that are not in place (M2 is being skipped). This is the same shape as the <p>-jobs agent and should be reconsidered there."
+      ],
+      "safety": "All three trifecta legs meet in one agent: account data, page content, and navigation as a way out. It is defensible only with the way-out leg cut hard: one hostname, read-only actions, no message tool, no memory, and a short structured return (a convention the model follows, not a platform gate). The hostname rule is a hook and the docs say the browser's request interception is not a firewall, so a residual leak path remains until the browser sits behind an egress proxy. No payments, no settings changes, no CAPTCHA solving. Recommendation: not in this batch. Reconsider at M6 next to <p>-jobs, after S5 and after WEB-03 has passed the injection suite; until then the portal's own app and its notice emails (WEB-08) answer the same questions.",
+      "depends_on": [
+        "WEB-01",
+        "WEB-03",
+        "Tony's decision to keep any site login on the Mac mini",
+        "Screen Sharing into the happy session for manual login",
+        "roadmap S5 action controls (M6)"
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser-login.md:14",
+        "title": "Browser login: Manual login",
+        "anchor": "owner-supplied credentials",
+        "supports": "The docs allow an agent to type credentials supplied by the owner into browser forms."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/browser-tool-description-TgkJWaCu.mjs:372",
+        "title": "Browser tool description (installed source)",
+        "anchor": "action=profiles",
+        "supports": "The tool's built-in guidance tells the model to list the available profiles and pick one by name when logins matter."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-05",
+    "verdict": "keep",
+    "reason": "Confirmed as a not-recommended decision record: every mechanism and guard was found in the installed docs as described, and no agent could hold a real signed-in browser without all three trifecta legs. Its config guards are also carried into WEB-01 so they get built; the import guard is already set in the current config.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/browser/profiles.md:12",
+        "ok": true,
+        "note": "Read in context: the user profile shows a blocking remote-debugging prompt, so someone must be at the computer."
+      },
+      {
+        "ref": "docs/tools/browser/existing-session.md:115",
+        "ok": true,
+        "note": "Read in context: the path is described as higher-risk than the isolated profile."
+      },
+      {
+        "ref": "docs/tools/browser/existing-session.md:92",
+        "ok": true,
+        "note": "Read in context: the target browser must be version 144 or newer."
+      },
+      {
+        "ref": "docs/tools/chrome-extension.md:13",
+        "ok": true,
+        "note": "Read in context: the extension uses chrome.debugger and needs no remote-debugging prompt."
+      },
+      {
+        "ref": "docs/tools/browser/configuration.md:265",
+        "ok": true,
+        "note": "Read in context: the extension driver is the only signed-in mode that works with nobody at the computer."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:22",
+        "ok": true,
+        "note": "Read in context: browser proxy routing through nodes can be disabled with this setting."
+      },
+      {
+        "ref": "docs/cli/browser.md:133",
+        "ok": true,
+        "note": "Read in context: the domains flag is required and cookie sync never sends an unrestricted jar."
+      },
+      {
+        "ref": "docs/tools/chrome-extension.md:24",
+        "ok": true,
+        "note": "Read in context: OpenClaw or a browser node must be on the same machine as that Chrome."
+      },
+      {
+        "ref": "docs/tools/chrome-extension.md:265",
+        "ok": true,
+        "note": "Read in context: fresh automatic pairings use All tabs."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:23",
+        "ok": true,
+        "note": "Read in context: existing-session mode is called not safer; it can act as the user."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:48",
+        "ok": true,
+        "note": "Read in context: node pairing is to be treated like admin access."
+      },
+      {
+        "ref": "docs/cli/browser.md:118",
+        "ok": true,
+        "note": "Read in context: import-profile decrypts cookies after a Keychain prompt and injects them into a managed profile; device-bound sessions may need re-authentication."
+      },
+      {
+        "ref": "docs/cli/browser.md:122",
+        "ok": true,
+        "note": "Read in context: system-profile import is enabled by default and one setting disables CLI and agent-triggered imports."
+      },
+      {
+        "ref": "https://developer.chrome.com/docs/devtools/agents/use-cases/auto-connect",
+        "ok": true,
+        "note": "Fetched. Flag present; the agent gets all data in the browser profile including tabs, storage and cookies; Chrome asks for permission; Chrome 144 or newer."
+      },
+      {
+        "ref": "https://developer.chrome.com/docs/web-platform/device-bound-session-credentials",
+        "ok": true,
+        "note": "Fetched. Describes binding a session to a device-held key. No platform list on the page, as the feature's unverified note says."
+      },
+      {
+        "ref": "https://support.claude.com/en/articles/12902428-using-claude-in-chrome-safely",
+        "ok": true,
+        "note": "Fetched. Both cited phrases present; advises a separate profile without sensitive accounts, lists bypassing captchas as prohibited, and says the risk is not zero."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-06",
+    "verdict": "revise",
+    "reason": "The not-recommended verdict on browser pre-fill holds: it would join child data, an arbitrary web page and a way out in one agent and end at a booking. The substitute card is wrongly described as mostly on the stack now; it needs three features that are not built and adds nothing beyond them.",
+    "source_checks": [
+      {
+        "ref": "https://www.activenetwork.com/information/terms-of-use",
+        "ok": true,
+        "note": "Fetched. Section 2 bans robots and similar tools; Section 11 covers automated registration processing beyond stated limits and a page-request cap."
+      },
+      {
+        "ref": "https://support.google.com/chrome/answer/142893?hl=en&co=GENIE.Platform%3DDesktop",
+        "ok": true,
+        "note": "Fetched. Title matches; Chrome saves and fills passwords, payment methods, addresses and contact details. Nothing about a child's health or birth-date fields."
+      },
+      {
+        "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+        "ok": true,
+        "note": "Fetched. The Run safely section has the cited heading; it recommends an isolated browser or VM, an allow list of sites and actions, treating screen content as untrusted, and says typing sensitive information into a form counts as transmission."
+      },
+      {
+        "ref": "https://arxiv.org/abs/2504.01382",
+        "ok": true,
+        "note": "Fetched. Abstract introduces Online-Mind2Web (300 tasks, 136 websites) and reports over-optimism in earlier results."
+      },
+      {
+        "ref": "docs/tools/browser-control.md:301",
+        "ok": true,
+        "note": "Read in context: the type command takes a submit flag."
+      },
+      {
+        "ref": "docs/tools/browser-control.md:312",
+        "ok": true,
+        "note": "Read in context: fill takes a list of fields in one call."
+      },
+      {
+        "ref": "docs/plugins/hooks/tool-policy.md:78",
+        "ok": true,
+        "note": "Read in context: requireApproval pauses the agent run and asks through plugin approvals."
+      }
+    ],
+    "corrections": {
+      "how": "Recommended path, available once F019, F007 and F067 exist (none is built; today's tools are web_search and home_weather only): <p>-main builds the copy-paste block from vault facts (F067); research confirms the opening time and the direct link with web_fetch (F026, F029); `automations` sets the reminder (F007); the parent fills the form with browser autofill and submits. Not-recommended path, for the record: a `<p>-forms` agent with `browser` on a managed profile, the WEB-03 hook with an exact registration-host allowlist, `fill` and `select` behind `requireApproval`, `type` with `submit` and `press` blocked, and the parent finishing over Screen Sharing.",
+      "caveats": [
+        "The form ends in a booking and usually a payment, both on the never list, so the agent would stop exactly where the time pressure is.",
+        "The browser lives on the Mac mini in the happy account. 'Finish it yourself' means Screen Sharing into that session from a phone, which is slower than filling the form on the phone.",
+        "A large registration platform's terms forbid robots and automated registration processing; expect waiting rooms and bot checks on popular sign-ups.",
+        "The form needs a child's name, birth date, health notes and emergency contacts. An agent that holds those and reads an arbitrary web page has all three trifecta legs, and vendor guidance treats typing sensitive data into a form as transmitting it.",
+        "Web agents are measurably unreliable on live sites; a mis-click on a timed registration costs the slot.",
+        "Browser autofill already stores names, addresses and contact details and fills them in one tap.",
+        "The substitute card is a use of F067, F029 and F007, not a new feature, and it cannot be assembled until the research agent, reminders and the vault exist.",
+        "The autofill page read lists contact details, addresses, payment methods and passwords. A child's birth date, health notes and emergency contacts are not on that list, so those fields still come from the copy-paste block and are typed by the parent.",
+        "The copy-paste block sends a child's health notes and emergency contacts through the cloud model and into an iMessage thread. That is the existing F067 decision, not a new one, but it is the sensitive part of this feature."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-07",
+    "verdict": "revise",
+    "reason": "Safe as designed (a reader with no tools and no memory), but it is a set-up note for F056, not a feature of its own: the parent already gets this email, the same vendor's automatic top-up removes the need, and the forwarding step has two traps.",
+    "source_checks": [
+      {
+        "ref": "https://www.myschoolbucks.com/ver2/help/gethelp",
+        "ok": true,
+        "note": "Fetched. FAQ documents a per-student low-balance email with three emails per event. The same FAQ documents AutoPay, an automatic top-up at a low-balance threshold."
+      },
+      {
+        "ref": "docs/gateway/security/prompt-injection.md:34",
+        "ok": true,
+        "note": "Read in context: a read-only or tool-disabled reader agent is recommended for untrusted content."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:13",
+        "ok": true,
+        "note": "Read in context: web_fetch does not run page scripts and points to the browser for login-protected pages."
+      }
+    ],
+    "corrections": {
+      "value": 2,
+      "how": "Mechanism choice: an email already sent by the service. One-time parent step in the lunch portal: enable the low-balance email for each student and set the amount; then get those messages into the school mailbox (F051): a forwarding rule in the parent's own mail if it survives the mailbox's sender check, otherwise the parent forwards the alert by hand. The lunch account's login email stays the parent's. Reader: the tool-less, memory-less `school-mail` agent with the sender on its allowlist; the line is rendered by the F056 digest job. No web_fetch, no browser, no API. Topping up stays with the parent.",
+      "caveats": [
+        "You hear about it only when the balance crosses the threshold. \"What is the balance right now\" needs a login and belongs to the parent's app.",
+        "One vendor documents a small fixed number of emails per low-balance episode, so a broken forwarding rule means silence. Test the rule once with a high threshold.",
+        "Balance pages sit next to stored payment methods, so a logged-in browser on this portal is not recommended even read-only (WEB-04 exclusion).",
+        "The service's app can already notify the phone; the gain is one digest instead of another app to check.",
+        "The parent already receives this email in their own inbox. The feature only repeats it as a digest line.",
+        "The cited service also offers AutoPay, an automatic top-up at a low-balance threshold. A family that turns it on never needs this alert. Turning it on is a payment set-up for the parent alone; Happy takes no part.",
+        "Forwarding has two traps. The mailbox plugin passes mail to the reader only when local verification finds an aligned DMARC pass for the allowlisted sender, and auto-forwarded mail can fail that; test with one real alert. And do not solve it by moving the lunch account's login email to the school mailbox: password-reset mail for an account with stored payment methods would then land in a mailbox an agent reads."
+      ],
+      "unverified": [
+        "Which lunch payment system the district uses and whether it offers the same alert; the cited service is one example.",
+        "No parent-facing balance API was found for the cited service; absence is not proven.",
+        "Whether a filter-forward of this vendor's alert from the parent's mail passes the mailbox plugin's sender check."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:90",
+        "title": "IMAP mail trigger: sender authentication",
+        "anchor": "dmarc=pass",
+        "supports": "By default a message reaches the reader only when local verification finds an aligned DMARC pass for the allowlisted sender."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.myschoolbucks.com/ver2/help/gethelp",
+        "title": "MySchoolBucks: Help / FAQ",
+        "anchor": "AutoPay",
+        "supports": "The same lunch service offers automatic recurring payments triggered by a low-balance threshold or a schedule."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-08",
+    "verdict": "revise",
+    "reason": "The email half is safe and cheap. The on-demand half rested on WEB-04, which is not recommended, so it goes. Value drops because the notice already reaches the parent and the library's app shows the full list.",
+    "source_checks": [
+      {
+        "ref": "https://www.spl.org/using-the-library/manage-your-account/notifications",
+        "ok": true,
+        "note": "Fetched. Lists due-date, overdue and hold-ready emails and says the third-party reminder service is ending. It does not say the library itself emails a reminder before the due date; the pre-due reminders it mentions came from the service that is ending."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:13",
+        "ok": true,
+        "note": "Read in context: web_fetch does not run page scripts and points to the browser for login-protected pages."
+      },
+      {
+        "ref": "docs/gateway/security/prompt-injection.md:34",
+        "ok": true,
+        "note": "Read in context: a read-only or tool-disabled reader agent is recommended for untrusted content."
+      }
+    ],
+    "corrections": {
+      "description": "Due-soon and hold-ready notices for every family library card folded into the daily digest, using the emails the library already sends. A full \"what is checked out\" list on demand is the one library question that needs a login, and it stays with the library's own app, because the logged-in portal agent (WEB-04) is not recommended.",
+      "how": "Mechanism choice: service email. Set every card's notification preference to email (parents' and kids' cards) and forward those notices to the household or school mailbox (F051). The tool-less reader extracts title, due date and pickup-by date for the digest (F056) and offers a day-before reminder (F007). Library events: subscribe the library's calendar feed if it has one (G012). Full list on demand: not built; the parent opens the library app. Plain web_fetch is not an option because account pages need a login. Renewing and placing holds stay with the parent.",
+      "value": 2,
+      "caveats": [
+        "Notices cover what is about to be due, not the whole shelf; the full list needs the login path.",
+        "The example library notes that a third-party reminder service that worked from patron accounts is being discontinued: tools built on library accounts from the outside are fragile.",
+        "Each card usually has one email address; a parent has to set the kids' cards up once.",
+        "The library's own app shows all of this already.",
+        "The cited library's page lists due-date, overdue and hold-ready emails but does not say the library sends a reminder before the due date; the pre-due reminders it mentions came from the third-party service that is ending. Whether a 'due soon' notice exists depends on the family's library.",
+        "The same page says the library's app sends push notifications, including when items are due. This feature adds a digest line and an optional day-before reminder, nothing more.",
+        "Same forwarding trap as WEB-07: the mailbox plugin wants an aligned DMARC pass, which auto-forwarded notices can fail. Setting each card's notification address to the school mailbox avoids it and is low-stakes for a library account."
+      ],
+      "depends_on": [
+        "F051 mailbox",
+        "F056 digest",
+        "F007 reminders"
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:90",
+        "title": "IMAP mail trigger: sender authentication",
+        "anchor": "dmarc=pass",
+        "supports": "By default a message reaches the reader only when local verification finds an aligned DMARC pass for the allowlisted sender."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-09",
+    "verdict": "reject",
+    "reason": "Nothing unique survives. The bill-due line is F060, gated on the personal-inbox decision, and autopay already covers it. The usage analysis needs the parent to log in to the portal that already holds the data, an attachment path that is off today, and arithmetic over a large data file with no local code tool. Not weekly.",
+    "source_checks": [
+      {
+        "ref": "https://www.energy.gov/data/green-button",
+        "ok": true,
+        "note": "Fetched. Both phrases present: customers log in to the utility portal to download their own data; Connect My Data transfers to authorised third parties with opt-in."
+      },
+      {
+        "ref": "https://www.energy.gov/data/green-button",
+        "ok": true,
+        "note": "Fetched. Both phrases present: customers log in to the utility portal to download their own data; Connect My Data transfers to authorised third parties with opt-in."
+      },
+      {
+        "ref": "docs/tools/code-execution.md:15",
+        "ok": true,
+        "note": "Read in context: code_execution runs on xAI servers."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "value": 1,
+      "caveats": [
+        "The download still requires the customer to log in to the utility portal; that step stays with the parent.",
+        "Many bill emails say only that a bill is ready, with the amount behind the login; then Happy can relay the due date and nothing more.",
+        "Autopay and the utility's own app already cover the reminder; the only new value is the comparison across months.",
+        "Do not push usage data through `code_execution` for charts: that tool runs on xAI's servers.",
+        "A Green Button file is raw interval data. With no local code tool (code_execution is remote and exec is not granted) the model would be adding up thousands of readings itself; a trustworthy answer needs an in-house parser tool, which is real effort for a question asked once or twice a year.",
+        "Inbound attachments are switched off today, so the file path waits on F001.",
+        "The parent has to log in to the utility portal to download the file, and that portal is where the same usage data already lives."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-10",
+    "verdict": "revise",
+    "reason": "The order of preference and the never-on-a-logged-in-profile rule are sound and safe. 'Now' is not honest: research, web_fetch, the watcher and the feed tool do not exist yet, watchers cannot be created from chat, and the first step needs no agent at all.",
+    "source_checks": [
+      {
+        "ref": "https://williamsburgva.gov/598/Recycle",
+        "ok": true,
+        "note": "Fetched. The schedule tool exports to iCal, Google Calendar and Outlook and offers reminders by email, phone or text."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:12",
+        "ok": true,
+        "note": "Read in context: plain HTTP GET; does not execute JavaScript."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/schedules.md:116",
+        "ok": true,
+        "note": "Read in context: each evaluation has a 30-second budget and up to 5 tool calls."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/schedules.md:123",
+        "ok": true,
+        "note": "Read in context: trigger scripts run unattended with the owning agent's full tool policy, including exec."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/schedules.md:120",
+        "ok": true,
+        "note": "Read in context: a watcher that goes quiet on failure looks healthy while broken."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/payloads.md:22",
+        "ok": true,
+        "note": "Read in context: a command payload runs a process on the gateway host with no model call. The same page says agent-created jobs are capped to the creating agent's tools."
+      },
+      {
+        "ref": "skills/blogwatcher/SKILL.md:3",
+        "ok": true,
+        "note": "Read: the skill wraps a third-party feed-watching CLI."
+      }
+    ],
+    "corrections": {
+      "readiness": "build",
+      "value": 2,
+      "caveats": [
+        "Each watcher check gets 30 seconds and five tool calls and runs with the owning agent's whole tool policy, so the owner has to be research (no exec).",
+        "A watcher that fails quietly looks healthy; alert on fetch failure as well as on change.",
+        "Address-lookup collection widgets are script apps, so plain fetch returns an empty shell; the calendar export is the practical route.",
+        "The town's own reminder does the weekly nudge better than Happy can. Happy adds the holiday-shift answer and the calendar entry.",
+        "`blogwatcher` is a Go-installed CLI and is not on this Mac yet.",
+        "Step 1 needs no agent: subscribing to the town's calendar and signing up for its reminders is something a parent does on the phone today.",
+        "Watchers are an operator job. A job created by an agent is capped to that agent's tools, and <p>-main has no web_fetch, so 'tell me when this page changes' means the operator adds the job at the command line each time.",
+        "A job the operator creates without a tools flag stores an unrestricted tool policy. Pass `--tools web_fetch` on every watcher, or it will run unattended with the browser as soon as research has one.",
+        "`blogwatcher` is third-party code that would run on the host outside the sandbox, and the feed titles it reports are untrusted text. Prefer the calendar subscription; add it only for a page that offers nothing but a feed."
+      ],
+      "safety": "Public data only, read by research (no memory, no accounts) or by a host job with no model in the loop. A watcher's message to the owner should be short and fixed-form, with no page text relayed. That is a rule in the script and the prompt, not a platform limit: the fired payload is a model turn by research that sees whatever the script put in its message, so keep that to a fixed phrase and the address.",
+      "unverified": [
+        "Whether the family's town publishes a calendar feed or uses a collection-schedule vendor; the cited city page is an example of the pattern.",
+        "Whether the calendar export on such tools is a live subscription or a one-time download.",
+        "Whether a trigger script can be paired with a command payload so that the notification involves no model at all."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:61",
+        "title": "Cron payloads: tool policy",
+        "anchor": "capped to the tools available",
+        "supports": "A job created by an agent can use only the tools that agent had in the creating turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:63",
+        "title": "Cron payloads: tool policy",
+        "anchor": "unrestricted `*` policy",
+        "supports": "A job an operator creates without a tools flag stores an unrestricted tool policy."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-11",
+    "verdict": "revise",
+    "reason": "A good low-risk workflow with a safe holder. Two claims need fixing: the schema check is something the model chooses to run, not a platform gate on what research hands back; and the version worth having is 'build', because the grocery hand-off needs the Reminders bridge and neither research nor web_fetch exists yet.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/web-fetch.md:74",
+        "ok": true,
+        "note": "Read in context: Readability main-content extraction runs on the HTML response."
+      },
+      {
+        "ref": "https://schema.org/Recipe",
+        "ok": true,
+        "note": "Fetched. recipeIngredient, recipeInstructions and recipeYield are defined."
+      },
+      {
+        "ref": "docs/tools/llm-task.md:84",
+        "ok": true,
+        "note": "Read in context: the schema parameter is an optional JSON Schema the output must validate against. llm-task is a tool the agent chooses to call, not a gate on sub-agent results."
+      },
+      {
+        "ref": "docs/tools/llm-task.md:174",
+        "ok": true,
+        "note": "Read in context: output is untrusted unless validated with schema."
+      },
+      {
+        "ref": "skills/summarize/SKILL.md:71",
+        "ok": true,
+        "note": "Read in context: the extract flag prints extracted content with no model summary. Two lines below, the CLI lists its own Firecrawl fallback flag."
+      }
+    ],
+    "corrections": {
+      "readiness": "build",
+      "value": 3,
+      "caveats": [
+        "The fetch returns the readable article text. It is not documented to return the page's embedded Recipe data, so the model parses ingredients from prose and can drop a line. Always include the source link.",
+        "Some recipe sites sit behind bot walls or paywalls and return nothing; say so instead of guessing.",
+        "The phone's reader view and recipe-keeper apps already do the clean-up; the added value is the hand-off to the shared grocery list.",
+        "Scaling quantities is arithmetic done by a language model: fine for a stew, worth a second look for baking.",
+        "'Add what is missing' assumes Happy knows what is in the kitchen. It does not; in practice it offers the whole ingredient list and the parent strikes what they have.",
+        "The summarize CLI named as the video fallback takes any address and has its own third-party extraction fallbacks. A wrapper must pass `--firecrawl off`, hold no third-party keys, and check the address itself (https, public host), because OpenClaw's SSRF policy does not cover a host-side CLI.",
+        "The reading half works the day the research agent exists; the grocery hand-off, which is the part the phone does not already do, waits on the Reminders bridge."
+      ],
+      "safety": "The untrusted page is read by research only, and nothing private goes to research: an address and a serving count. What comes back to <p>-main is text written by a model that has just read an untrusted page. Running it through `llm-task` with a schema fixes its shape, not its content: a step string can still carry instructions, and nothing in the platform forces the check to run. The limits that hold are that <p>-main has no browser or fetch and its recipients are pinned to the family. List writes wait for the parent's yes, a prompt rule that is acceptable at grocery-list stakes.",
+      "unverified": [
+        "Whether web_fetch output ever includes a page's JSON-LD blocks; not tested.",
+        "How many of the recipe sites this family uses embed schema.org Recipe data.",
+        "Whether a plugin hook can enforce a schema on a sub-agent's result before <p>-main reads it."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/summarize/SKILL.md:73",
+        "title": "Bundled skill: summarize",
+        "anchor": "--firecrawl auto|off|always",
+        "supports": "The summarize CLI has its own switch for a third-party extraction fallback."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/announce.md:12",
+        "title": "Sub-agent announce",
+        "anchor": "announce step",
+        "supports": "A sub-agent's result reaches the requester as an announce message written inside the sub-agent session."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-12",
+    "verdict": "reject",
+    "reason": "The phone already does this in two taps, including printing to an AirPrint printer. The agent version needs new plumbing that moves a file made by the untrusted-content agent to a printer-holding agent, for a request that is not weekly. The 'receipts are a mail job' guidance stands and already lives in F011.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/browser.md:36",
+        "ok": true,
+        "note": "Read in context: the managed browser offers snapshots, screenshots and PDFs."
+      },
+      {
+        "ref": "docs/tools/browser/existing-session.md:199",
+        "ok": true,
+        "note": "Read in context: PDF export and download interception need a Playwright-backed profile."
+      },
+      {
+        "ref": "docs/tools/browser-control.md:360",
+        "ok": true,
+        "note": "Read in context: the line constrains download and trace paths to the temp roots. It does not name PDF output; where the pdf action writes was not confirmed."
+      },
+      {
+        "ref": "docs/gateway/security/browser-control.md:18",
+        "ok": true,
+        "note": "Read in context: browser downloads are to be treated as untrusted input."
+      },
+      {
+        "ref": "docs/tools/pdf.md:68",
+        "ok": true,
+        "note": "Read in context: remote http(s) URLs are rejected when the pdf tool runs sandboxed."
+      },
+      {
+        "ref": "skills/nano-pdf/SKILL.md:3",
+        "ok": true,
+        "note": "Read: a PDF editing CLI; true but not relevant to saving pages."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "value": 1,
+      "caveats": [
+        "On the phone, Share then Print or Save to Files makes the same PDF in two taps. This is worth building only when the next step is the home printer.",
+        "PDF export and download interception do not work on existing-session (real Chrome) profiles.",
+        "Moving a file from research's browser output to the print plugin or to another agent is in-house plumbing; nothing in the docs read does it for you.",
+        "The `pdf` analysis tool rejects http(s) links when it runs sandboxed, so 'read this PDF link' has to go another way.",
+        "The bundled `nano-pdf` skill edits PDFs through an outside model and has no role here.",
+        "Apple documents printing from any app's Share menu straight to an AirPrint printer on the same Wi-Fi. The Mac mini adds nothing to that path.",
+        "The build needs a file to cross from the agent that reads untrusted pages to an agent or plugin that holds the printer. That is new plumbing across an isolation line for a request that is not weekly.",
+        "Blocking the `download` action does not stop files arriving: a navigation that resolves to a file is saved under the managed downloads directory. Any consumer of browser output has to treat that whole directory as untrusted."
+      ],
+      "unverified": [
+        "Whether the `message` tool can attach a file from the browser temp root in iMessage Basic mode without widening the attachment roots.",
+        "Whether a hook can leave `pdf` enabled while blocking `download` for the same agent; they are separate actions in the schema, so it should.",
+        "Where the `pdf` action writes its file; the cited line names download and trace paths only.",
+        "Whether the family's printer appears as an AirPrint printer on the phones; the earlier catalog pass recorded it as AirPrint-capable on the LAN and that was not re-checked."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/109349",
+        "title": "Apple Support: Use AirPrint to print from your iPhone or iPad",
+        "anchor": "No Printer Selected",
+        "supports": "An iPhone prints from an app's Share menu to an AirPrint printer on the same Wi-Fi network."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser.md:38",
+        "title": "Browser (OpenClaw-managed): What you get",
+        "anchor": "direct attachment navigations",
+        "supports": "A navigation that resolves to a file is saved under the managed downloads directory."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-13",
+    "verdict": "reject",
+    "reason": "By its own account the honest answer is usually 'could not verify'. A keyed API wrapper per retailer is real upkeep for a question asked a few times a year, the browser route is what bot management is built to stop, and the retailer's app set to the family's store is faster and more accurate. Safe, but not worth building; keep the 'could not verify, here is the link' rule inside F026.",
+    "source_checks": [
+      {
+        "ref": "https://bestbuyapis.github.io/api-documentation/",
+        "ok": true,
+        "note": "Fetched. In-Store Availability section: query by postal code or store id, API key required, described as near real time. Covers one retailer."
+      },
+      {
+        "ref": "https://developers.cloudflare.com/bots/concepts/bot-detection-engines/",
+        "ok": true,
+        "note": "Fetched. The JavaScript Detections engine is said to identify headless browsers."
+      },
+      {
+        "ref": "docs/tools/web-fetch.md:301",
+        "ok": true,
+        "note": "Read in context: web_fetch is described as best-effort, with some sites needing the browser."
+      },
+      {
+        "ref": "skills/ordercli/SKILL.md:3",
+        "ok": true,
+        "note": "Read: covers one food-delivery service."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "value": 1,
+      "caveats": [
+        "Bot-management products are built to flag headless browsers, so the browser route is unreliable on large retail sites.",
+        "The retailer's own app, set to the family's store, is faster and more accurate.",
+        "One API integration per retailer is real upkeep for a question asked a few times a year.",
+        "The bundled `ordercli` skill covers one European food-delivery service and has no use here.",
+        "The one official API found covers a single electronics retailer. Nothing comparable was found for general retailers, so the 'official API first' step has one user at most.",
+        "Asked a few times a year, answered 'could not verify' most of the time. The behaviour worth keeping (try a plain fetch, then say so and give the link and the store's phone number) is a rule inside F026, not a feature."
+      ],
+      "unverified": [
+        "Whether the general retailers this family uses offer any public stock API; none was found in this run.",
+        "How often the logged-out browser gets through on specific retail sites; not tested.",
+        "How closely retailers' online stock flags track the shelf; a phone call is the safer check.",
+        "Whether a personal email address can obtain that retailer's API key; the documentation page read does not say."
+      ]
+    },
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "WEB-14",
+    "verdict": "revise",
+    "reason": "Confirmed as a not-recommended decision record, and it keeps the never list intact. One gap: the summarize CLI planned as a reader has its own fallback to the same third-party extraction service, which the record's two guards do not cover.",
+    "source_checks": [
+      {
+        "ref": "docs/tools/firecrawl.md:18",
+        "ok": true,
+        "note": "Read in context: described as a hosted service that supports bot circumvention. The plugin is not bundled in this install."
+      },
+      {
+        "ref": "docs/tools/firecrawl.md:41",
+        "ok": true,
+        "note": "Read in context: the explicitly selected fetch fallback is keyless."
+      },
+      {
+        "ref": "docs/tools/firecrawl.md:171",
+        "ok": true,
+        "note": "Read in context: proxy mode auto retries with stealth proxies after a basic failure."
+      },
+      {
+        "ref": "docs/tools/browser/remote.md:180",
+        "ok": true,
+        "note": "Read in context: the hosted browser is described with built-in CAPTCHA solving, stealth mode and residential proxies."
+      },
+      {
+        "ref": "docs/tools/browser-login.md:12",
+        "ok": true,
+        "note": "Read in context: automated logins often trigger anti-bot defenses and can lock the account."
+      },
+      {
+        "ref": "dist/extensions/browser/skills/browser-automation/SKILL.md:41",
+        "ok": true,
+        "note": "Read in context: the skill tells the agent to stop and say what is needed on login, captcha or 2FA."
+      },
+      {
+        "ref": "https://support.claude.com/en/articles/12902428-using-claude-in-chrome-safely",
+        "ok": true,
+        "note": "Fetched. Both cited phrases present; advises a separate profile without sensitive accounts, lists bypassing captchas as prohibited, and says the risk is not zero."
+      },
+      {
+        "ref": "https://www.activenetwork.com/information/terms-of-use",
+        "ok": true,
+        "note": "Fetched. Section 2 bans robots and similar tools; Section 11 covers automated registration processing beyond stated limits and a page-request cap."
+      }
+    ],
+    "corrections": {
+      "how": "A decision record plus two config guards: leave `tools.web.fetch.provider` unset and do not install `@openclaw/firecrawl-plugin` (once selected, its fetch fallback works without a key); add no remote CDP profile for a hosted browser. Agent instructions for research and any portal agent: on a login wall, CAPTCHA, MFA prompt or a 403, stop and report the exact blocker, which is what the bundled browser skill already tells the agent to do. Added in review: the bundled summarize CLI has its own third-party extraction fallback, so any wrapper around it passes `--firecrawl off` and holds no key for that service.",
+      "caveats": [
+        "CAPTCHA solving is on the family's never list, and a model vendor's own browser agent is barred from bypassing captchas.",
+        "A hosted browser or fetch proxy sees every URL and page: a new third party for family traffic.",
+        "The docs warn that automated logins trip anti-bot defenses and can lock the account; a locked school or library account costs more than any feature here is worth.",
+        "Getting around a site's bot controls can breach its terms of use.",
+        "The price of saying no: stock checks and some rec-department pages will come back as 'could not verify'.",
+        "Absence is the control, so it has to be checked: a second door exists in the summarize CLI's own fallback switch, and a future plugin install or stray API key would open the first one again. Add 'no fetch provider, no hosted browser profile' to the deploy drift check."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/summarize/SKILL.md:73",
+        "title": "Bundled skill: summarize",
+        "anchor": "--firecrawl auto|off|always",
+        "supports": "The summarize CLI has its own switch for a third-party extraction fallback."
+      }
+    ],
+    "removed_sources": []
+  }
+]

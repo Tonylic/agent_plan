@@ -1,0 +1,157 @@
+{
+ "label": "Tony's decisions, 11 Oct",
+ "edits": [
+  {
+   "id": "G015",
+   "note": "Tony: school mail lands in both parents' personal Gmail and Happy should read it through an existing Gmail connector with a token, not a separate mailbox. This card moves to wave B as the connection the school digest (F051) needs; its 07:00 digest and lookup stay as later steps.",
+   "set": {
+    "name": "Read-only Gmail for each parent through an existing connector (a token, no password): the mail agent, then a 07:00 digest and 'did I get an email about X?'",
+    "wave": "B",
+    "description": "Each parent approves read-only access to their own Gmail once, on Google's consent screen; Google issues a token that stays on the Mac mini, and Happy never holds a password. One locked-down mail agent per adult uses that token through an existing Gmail connector. Its first job is the school digest (F051). Later steps on the same connection: a parent asks 'did the dentist confirm?' and gets the sender, the date and the gist, and at 07:00 the agent texts about ten lines on mail that needs a reply, has a deadline or involves money (from January to April a Saturday text adds which expected tax forms have had an arrival email). Nothing in Gmail is changed, labelled, drafted or sent, and the agent cannot browse, run code or message anyone but its owner."
+   },
+   "replace": [
+    {
+     "field": "how",
+     "old": "Agent (G015): one `<p>-mail` entry per adult",
+     "new": "Connector: nothing new is written. Recommended: gog's own MCP server (`gog mcp`, the CLI behind the bundled gog skill), run on the Mac mini with a token limited to Gmail read-only. Alternative: Google's hosted Gmail MCP server at `https://gmailmcp.googleapis.com/mcp/v1` (Streamable HTTP with OAuth, which OpenClaw can connect to with `auth: \"oauth\"` and `openclaw mcp login`); it is in Developer Preview, its setup lists `gmail.compose` next to `gmail.readonly`, and its tools include drafts and labels, so it is the wider grant and would need a tool filter. Either route needs a Google Cloud project with an OAuth client, set up once. Agent (G015): one `<p>-mail` entry per adult"
+    },
+    {
+     "field": "caveats",
+     "old": "this is Tony's open decision and the whole card waits on it.",
+     "new": "Tony's direction of 11 Oct is to read Gmail through an existing connector, and he has agreed to apply for Zero Data Retention; until OpenAI approves it the 30-day log applies."
+    },
+    {
+     "field": "depends_on",
+     "old": "decision: whether personal mail may be read by the cloud model with storage off (the roadmap's M4 rule is a local model only, and no local model is installed); the lookup and the digest both wait on it",
+     "new": "direction given 11 Oct: the parents' Gmail is read through an existing connector with a read-only token, on the cloud model (the roadmap's M4 rule was a local model only); still open: whether the 07:00 digest and the lookup ship with the school digest or later"
+    }
+   ],
+   "prepend": {
+    "caveats": [
+     "The read-only grant (`gmail.readonly`) lets the connector read every message in the account. Keeping a job to school senders is that job's fixed search, plus a hook check still to be built; it is not a limit of the token.",
+     "Both connectors need the same one-time Google setup: a Google Cloud project, an OAuth client and each parent's approval on the consent screen. A hosted connector does not remove that step."
+    ],
+    "unverified": [
+     "That Google offers no narrower Gmail read scope (per label or per sender) was not re-checked against its scope list in this step.",
+     "Google's page for its hosted Gmail MCP server does not say whether personal @gmail.com accounts can use it, and it requires membership of the Workspace Developer Preview Program."
+    ]
+   },
+   "add_sources": [
+    {
+     "kind": "web",
+     "ref": "https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server",
+     "title": "Configure the Gmail MCP server (Google for Developers)",
+     "anchor": "gmailmcp.googleapis.com/mcp/v1",
+     "supports": "Google runs a hosted Gmail MCP server over Streamable HTTP with OAuth; it is in the Workspace Developer Preview Program and its setup lists the gmail.readonly and gmail.compose scopes."
+    },
+    {
+     "kind": "installed",
+     "ref": "docs/tools/mcp.md:71",
+     "title": "Connect MCP servers",
+     "anchor": "openclaw mcp login",
+     "supports": "OpenClaw connects to stdio, SSE and Streamable HTTP MCP servers, can expose only some of a server's tools, and signs in to an HTTP server that uses OAuth."
+    }
+   ]
+  },
+  {
+   "id": "F051",
+   "note": "Tony: all school mail already arrives in the parents' personal Gmail. Redesigned to read it there through the read-only connection of G015, one digest per parent; the separate school mailbox, the IMAP plugin, forwarding and the provider question are dropped. Effort lowered from L to M because the connection work now sits in G015.",
+   "set": {
+    "name": "School digest from each parent's own Gmail: weekdays at 16:00, school senders only",
+    "effort": "M",
+    "description": "Weekday afternoons each parent gets a five-line text of the day's school and activity mail found in their own Gmail, with dates spelled out, a dated to-do list, and one line per child from the school platforms' own summary emails where the school uses them. Only mail from senders on the family's school list is searched. A parent who wants a day-before reminder for a line asks their own agent for it. Attachments are not opened in the first version.",
+    "how": "Reads through the read-only Gmail connection of G015: no separate mailbox, no forwarding and no IMAP plugin. One job per parent on that parent's mail agent: `automations create '0 16 * * 1-5' --agent <p>-mail --session isolated --announce --to <owner>` with `--tools \"<p>-gmail__*\"`. The job's search is fixed to the school sender list from family.json5 and to mail since the last run. Setup done once by a parent, per platform, so that one tidy email arrives per day: ParentSquare posts set to Digest with email on, PowerSchool's scheduled emails and Balance Alert, Google Classroom guardian summaries, the lunch service's low-balance alert, library notices; each sender goes on the list.",
+    "depends_on": [
+     "G015 read-only Gmail connection and mail agent (both parents approve access once)",
+     "the school sender list in family.json5",
+     "knowing which platforms the district uses",
+     "G003 jobs registry",
+     "F007 reminders (the parent asks their own agent for a day-before reminder)"
+    ],
+    "caveats": [
+     "Both parents receive the same school mail, so each digest is built from its owner's inbox and the two texts will mostly match. One digest from one inbox sent to both parents would need the family delivery primitive (G009).",
+     "The sender filter is a Gmail search on the From address, not an authenticity check. Gmail's own spam and spoofing filters are the only guard, so a faked school address that reaches the inbox would reach the digest. The mail agent can only text its owner, which limits the harm to a misleading line.",
+     "The read-only grant covers the whole mailbox; 'school senders only' is the job's fixed search and a hook check still to be built, not a limit of the token (see G015).",
+     "Urgent alerts are not this digest's job: the school's own alert system reaches the parents' phones first. Gmail's push route needs a public endpoint, which the house rules exclude, so a closure notice is not passed on before 16:00 unless a sweep job is added later.",
+     "PowerSchool emails carry grades and attendance and Classroom summaries carry assignment titles: these are a child's education records and they reach the cloud model, which is why the card is rated medium risk.",
+     "Classroom summaries (missing and upcoming work, no grades) arrive only if the school uses Classroom and the teacher switches them on.",
+     "Attachments are not opened in the first version, so a newsletter sent as a PDF or a picture shows up as a subject line only.",
+     "For a school or team app that sends no email, try the app's own email notifications first and a parent's screenshot to Happy second; Canvas and ClassDojo have no verified email path.",
+     "The reminder step is not wired end to end: the mail agent holds no reminder tool on purpose, because it reads untrusted mail, so a parent names the line when asking their own agent for a reminder.",
+     "The sender list lives in family.json5 and changes only with a reviewed deploy, so a parent who needs a new coach or teacher added asks Tony.",
+     "A calendar link that a school platform offers is subscribed in the family calendar (F009), not read by this job."
+    ],
+    "safety": "School mail is untrusted and is read only by each parent's locked-down mail agent, which has no web, file or code tools, cannot draft or send mail, and can only text its owner. Links are relayed only when their domain matches the listed sender. No agent logs in to a school portal and no portal credentials are stored. The open exposure is the model: mail text from the parents' inboxes goes to the cloud model, with Zero Data Retention applied for and not yet approved.",
+    "unverified": [
+     "Which platforms this family's district uses, and each platform's exact sender address.",
+     "Whether the school uses Google Classroom at all.",
+     "ClassDojo's notification behaviour and Canvas's calendar feed for observers; neither page could be opened.",
+     "Whether a parent's reply to the digest reaches an agent that can see the digest text.",
+     "That one job takes exactly one delivery target; only single-target examples were seen.",
+     "gog is not installed, so its Gmail search and read tools, and what they return for attachments, come from upstream docs.",
+     "That a before_tool_call hook can check the search query of an MCP tool call (implied by the docs, not stated)."
+    ],
+    "adds": [
+     "Lunch-balance line: from the lunch service's own low-balance email, once a parent switches that alert on.",
+     "Library overdue and hold-ready notice emails are one more sender class; the full checked-out list stays in the library's own app.",
+     "Absorbed in review: the urgent school alert relay (F055), the school platform feed map (SRC-08), Classroom guardian summaries (MKT-01) and the sender-list rule (G016)."
+    ]
+   },
+   "drop_sources": [
+    "automation/imap.md",
+    "extensions/imap/",
+    "support.apple.com/en-us/102525",
+    "pimalaya/himalaya",
+    "gog-sheets-append",
+    "spreadsheets.values/append"
+   ],
+   "add_sources": [
+    {
+     "kind": "web",
+     "ref": "https://gogcli.sh/mcp",
+     "title": "gog documentation: MCP server",
+     "anchor": "mcp",
+     "supports": "gog ships its own MCP server mode whose tools read Gmail for the signed-in account."
+    },
+    {
+     "kind": "web",
+     "ref": "https://support.google.com/mail/answer/7190",
+     "title": "Gmail Help: refine searches in Gmail",
+     "anchor": "from:",
+     "supports": "Gmail search can be limited to named senders and to a date range, which is how the job keeps to school senders."
+    }
+   ]
+  },
+  {
+   "id": "G005",
+   "note": "Tony: no need to add Jordan to the command list. The built-in stop words and commands stay Tony-only; the in-house stop phrase remains the way either parent stops everything.",
+   "replace": [
+    {
+     "field": "description",
+     "old": "this works for Tony today, and for Jordan only /new and /reset do until one config line authorises her for commands.",
+     "new": "this works for Tony. By Tony's decision of 11 Oct Jordan is not added to the command list, so for her only /new and /reset work."
+    },
+    {
+     "field": "how",
+     "old": "Add both parents under `commands.allowFrom` for iMessage and print one sheet;",
+     "new": "By decision these stay Tony-only: no `commands.allowFrom` entry is added for Jordan. Print one sheet;"
+    },
+    {
+     "field": "depends_on",
+     "old": "Config: both parents' handles under `commands.allowFrom` for iMessage (commands only; once set it is the only source of command authorisation, so Tony's handle has to be on it too), or the second parent added to `commands.ownerAllowFrom` (the wider decision listed under timed reminders, F007). Until then only Tony has the built-in stop, /status, /usage and /tools",
+     "new": "Decided 11 Oct: Jordan is not added to `commands.allowFrom`, so only Tony has the built-in stop, /status, /usage and /tools. Whether she becomes a command owner for timed reminders is the separate, still open question under F007"
+    },
+    {
+     "field": "depends_on",
+     "old": "First test after that change: 'stop' and /status sent from the second parent's phone are answered",
+     "new": "First test of the in-house level: 'Happy, stop everything' sent from the second parent's phone stops a throwaway job"
+    },
+    {
+     "field": "safety",
+     "old": "Authorising both parents for commands opens every command and directive that is not owner-only (also /tts, /compact, /model), but no owner rights.",
+     "new": "Jordan is not authorised for commands, so the commands and directives that authorisation would open (/tts, /compact, /model among them) stay closed to her."
+    }
+   ]
+  }
+ ]
+}

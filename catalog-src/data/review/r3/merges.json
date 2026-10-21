@@ -1,0 +1,228 @@
+[
+ {
+  "into": "G015",
+  "members": [
+   "G015",
+   "F016"
+  ],
+  "why": "same batch",
+  "note": "The locked-down per-adult mail agent with its read-only Gmail tool and the 07:00 digest (with its Saturday tax-form check) that runs on that agent are one M4 build behind one open decision, so they become one wave C card; round 1 kept the digest apart while it still carried reply drafts, which have since been removed, and effort rises to L for two medium-sized halves.",
+  "record": {
+   "name": "Per-person read-only mail agent: 'did I get an email about X?' on request, and a 07:00 digest of mail that needs action",
+   "description": "One locked-down mail agent per adult reads that adult's own Gmail under a read-only grant: a parent asks 'did the dentist confirm?' and gets the sender, the date and the gist, and at 07:00 the same agent texts about ten lines on mail that needs a reply, has a deadline or involves money (from January to April a Saturday text adds which expected tax forms have had an arrival email). Nothing in Gmail is changed, labelled, drafted or sent, and the agent cannot browse, run code or message anyone but its owner.",
+   "example": "Tony texts: 'Did the dentist confirm Thursday?' and gets the sender, the date and one line of gist from his own inbox. Trigger, 07:00, text to Tony: 'Mail that needs you: the plumber asks you to confirm Thursday's visit by tomorrow; the car insurance renewal is due on 20 October. Nothing else needs a reply.'",
+   "how": "Agent (G015): one `<p>-mail` entry per adult with `profile: \"minimal\"`, an explicit `<p>-gmail__*` allow plus the `tools.sandbox.tools` gate, web, fs, runtime and browser denied, memory search off; checked with `openclaw sandbox explain --agent`. Tool (F047): `gog mcp` as a host-side stdio entry under `mcp.servers`, narrowed with `--allow-tool` to the Gmail read tools (its default also registers Drive, Docs, Sheets and Calendar reads); one token per adult from `gog auth add` with `--services` limited to Gmail and `--gmail-scope readonly`. Lookup: `<p>-main` spawns `<p>-mail` through `subagents.allowAgents`. Digest (F016): an isolated 07:00 job on `<p>-mail` with `--tools \"<p>-gmail__*,llm-task\"`, announced to the owner only; health senders by subject line only. Tax forms (F061): a Saturday job, January to April, on the same agent.",
+   "depends_on": [
+    "decision: whether personal mail may be read by the cloud model with storage off (the roadmap's M4 rule is a local model only, and no local model is installed); the lookup and the digest both wait on it",
+    "gog installed and each adult's own Google sign-in, limited to Gmail with a read-only grant",
+    "a self-made Google sign-in app published to In production, because tokens from an app left in Testing expire after seven days",
+    "llm-task plugin enabled in config (for the digest job)",
+    "the family's own list of expected tax-form senders (for the Saturday check only)"
+   ],
+   "caveats": [
+    "The roadmap's M4 keeps each inbox on a local model and none is installed, so the lookup and the digest both send personal mail to the cloud model, and without Zero Data Retention the 30-day abuse-monitoring log applies to that text; this is Tony's open decision and the whole card waits on it.",
+    "Google already does much of this where the mail lives: the Gemini app answers questions from a person's own Gmail and lists a daily digest of calendar, to-dos and emails among its scheduled actions, and Gmail's 'AI Inbox' was announced in January 2026, so try those on one parent's account before building; Happy adds only asking, and being told, in the iMessage thread.",
+    "gog is not installed on this Mac, so its flags come from upstream docs and must be confirmed with `gog mcp --list-tools` and `gog auth add --help` on the installed version.",
+    "With sandbox mode all, MCP tools stay hidden unless `tools.sandbox.tools` names `bundle-mcp` or the server glob, and the minimal profile does not allow MCP tools implicitly.",
+    "A Google sign-in app left in Testing issues tokens that expire after seven days, so the app is published to In production (the consent screen then shows a warning) or each adult signs in again every week; whether both adults' tokens can share one keyring under the happy user is still open.",
+    "'Send pinned to owner' applies only when the mail agent runs its own scheduled turn, because a mail agent spawned from `<p>-main` always loses `message` and `session_status`; that a before_tool_call hook reaches MCP tool calls is implied by the docs but not stated.",
+    "'Memory off' is not one switch: memory search has a per-agent override, dreaming is plugin-wide, and the session-exclusion setting only matches hook sessions.",
+    "Reply drafts are left out, 'subject line only for health senders' and 'do not open the form' are instructions to the agent and not enforced limits, and the tax-form check only knows that a notice email arrived, so a form that came by post or sits in a portal shows as missing."
+   ],
+   "safety": "The mail agent holds private mail and reads untrusted mail text, so it gets no way out: no web, file, code or browser tools, no draft or send tool, and texts only to the mailbox's owner. The digest runs unattended on that same agent. The open question is the model: personal mail would go to the cloud model.",
+   "tier": 1,
+   "section": "Mail access",
+   "wave": "C",
+   "effort": "L"
+  }
+ },
+ {
+  "into": "G006",
+  "members": [
+   "G006",
+   "CRT-01"
+  ],
+  "why": "same batch",
+  "note": "The weekly review of what Happy did and remembered and 'undo that' both rest on one in-house journal that each write tool has to keep with the old value, so the write tools are changed once and the two become one wave B card (undo's wave C had no later dependency behind it) that states the report-only review, the undo with its guarded delete and the operator's forget step separately; effort rises to L.",
+  "record": {
+   "name": "Happy's change journal: a weekly review of what it did and remembered, 'undo that' for its last write, and forgetting a conversation on request",
+   "description": "Happy records every write it makes for a parent in one journal, so each parent can ask, or read in one Sunday text, what Happy did for them and what it saved to memory that week, and can say 'undo that' to reverse Happy's own last write from the past 24 hours after seeing what will be reversed. Anything already sent (a text, an email, a print job) cannot be recalled, and clearing what one conversation left in memory stays Tony's job at the Mac, previewed first.",
+   "example": "Sunday text: 'This week I set 4 reminders for you, added 6 items to Groceries, sent 2 texts to Jordan, asked you for 1 approval (given) and saved 3 notes to memory.' Or Tony texts 'undo that' after Happy replaced the furnace filter size in the household facts with the wrong one; Happy shows the old value, waits for a yes and restores it.",
+   "how": "Journal (shared): each in-house write tool (household store, Reminders bridge, calendar write, the reminder-pinning hook) writes a row from inside the tool, where the old value is known: who asked, when, which tool, the inverse call. `openclaw audit --kind tool_action` gives names and outcomes only. Approval rows come from the asking hook's `onResolution` callback. Review (G006, F085): a command automation renders the Sunday text with no model; a read tool returns only the asker's rows. Undo (CRT-01): an `undo_last` tool on `<p>-main`, limited by a `before_tool_call` hook to the requester's rows from the last 24 hours, shows the row, waits for a yes, runs the inverse. Forgetting (F085): `openclaw memory forget --agent <id> --session <id-or-key> --dry-run`, then without it, then hand-delete the `curatedWrites` lines.",
+   "depends_on": [
+    "F031 household store (holds the journal table)",
+    "F041 durable per-person memory (the write path whose saves are reviewed)",
+    "F030 Reminders bridge, with a delete added for undo that accepts only item ids the journal shows Happy created",
+    "F007 reminders",
+    "F010 calendar write, if built",
+    "Message audit rows switched on (`logging.audit.messages`), for the 'texts sent' line"
+   ],
+   "caveats": [
+    "The journal rows must be written by the write tools themselves from the start, with the old value: rows written by an after_tool_call hook carry no old value and would have to be redone for undo.",
+    "Sent things cannot be recalled (a text to the other parent, an email to the owner, a print job, a Sonos announcement), so the reply has to say so at the time of sending.",
+    "Undo covers only Happy's own writes: if a parent has since edited the same reminder or event on a phone the inverse could overwrite that edit, so the tool should refuse when the item changed after Happy wrote it.",
+    "The Reminders bridge (F030) was specified with no delete, so undo adds one, and it must accept only item ids the journal recorded as created by Happy, enforced inside the tool and not left to the model.",
+    "Most 'undo' requests are corrections that the same write tool already handles with a second write; undo earns its place for overwritten household facts, where the old value would otherwise be gone, so it is the second step and can be left out without changing the journal or the review.",
+    "OpenClaw's own ledger leaves out arguments on purpose, so the in-house table that holds item text and recipients needs a retention limit, which is not yet defined.",
+    "Forgetting works per conversation, not per topic: the forget command selects whole sessions, deletes at once unless `--dry-run` is passed, leaves the transcripts, and only lists the notes Happy wrote itself, which Tony then deletes by hand.",
+    "The review of actions, the memory list and the week-ahead brief (F014) would otherwise be three Sunday texts to the same parent, so the first two go out as one; lines in MEMORY.md carry no date, so the memory list is reliable only when it comes from the per-write record."
+   ],
+   "safety": "The review only reports, and each parent sees only their own rows, enforced in the read tool's code. Undo is the write half: it reverses a write the same person's agent made, adds no recipient or data source, and its hook blocks on error. Forgetting deletes memory at once, so it stays an operator command at the Mac.",
+   "tier": 2,
+   "section": "Operator checks and recovery",
+   "wave": "B",
+   "effort": "L"
+  }
+ },
+ {
+  "into": "G008",
+  "members": [
+   "G008",
+   "AUT-09"
+  ],
+  "why": "same purpose",
+  "note": "The host-side health, sign-in and audit checks and the handful of behaviour cases in the eval suite are both operator-only checks, run after each change, that tell Tony alone whether Happy is still sound, and round 2 already noted the cases could ride on this card; the four cases that apply today ship with wave A and the rest are added as their tools land.",
+  "record": {
+   "name": "Operator self-checks: daily integration health and credential expiry, a security audit after every update and monthly, and behaviour cases in the eval suite",
+   "description": "Checks that tell Tony, and only Tony, whether Happy is still sound: host-side, read-only scripts text him when something is broken or has changed (an expired or expiring sign-in, a failed channel probe, a plugin that did not load, a new audit finding, the firewall or FileVault off, a new listening port, automatic macOS update checks switched off) and carry his monthly checklist (spend caps, backups, standing approvals, key rotation). A few fixed cases in the existing eval suite also check Happy's behaviour after each change: no secret echo, no fake 'done', honest partial-failure reports, pending kept apart from done.",
+   "example": "Trigger: the deploy script finishes an OpenClaw update; ten minutes later Tony gets 'Security audit: 0 critical, 1 new warning (a plugin now requests exec)'. He then runs the eval suite and reads the pass or fail lines of the behaviour cases before telling the family that something new is on.",
+   "how": "Daily (G008): a command automation runs `openclaw health --json`, `channels status --probe`, `models status --check` and, once installed, `gog auth list --check`, reading each entry and not exit codes. After every update and monthly (OCL-13): a happy-deploy script runs `openclaw security audit --deep` with `--json`, `gateway status --deep`, `doctor --lint`, then ports, firewall, FileVault, Time Machine and the update schedule, compares with the previous run and prints `NO_REPLY` when nothing changed; findings accepted at M1 stay quiet. The commands already exist in happy-inspect; the new work is the schedule, the comparison and the text. Behaviour cases (AUT-09): promptfoo cases in happy-config/evals against the `<p>-main-eval` clones, with fixtures for reminders and approvals; the shipped benchmark pack cannot run on this install.",
+   "depends_on": [
+    "G003 jobs registry",
+    "gog installed on the Mac mini (for the Google sign-in check only)",
+    "roadmap E0 eval harness (exists)",
+    "F007 reminders and F041 memory, only so the later reminder and memory cases have something to test"
+   ],
+   "caveats": [
+    "The five-minute dead-man probe and the M1 Grafana alerts already cover 'gateway down' and 'iMessage unhealthy', so the new daily work is expiring sign-ins, model credentials and plugins that failed to load; do not build the same alert twice.",
+    "The Google half of the daily check waits until the gog command-line tool is installed.",
+    "Plain doctor can migrate state, so scheduled checks use the lint form, and the audit's fix flag is never used in a scheduled job.",
+    "The deep audit probes the live Gateway and has only been run on demand on this install, so a run from the scheduler is untested.",
+    "Spend caps, the daily budget alert and the nightly verified backup already exist, so the monthly part is checklist lines and not a feature; the backup archive holds sign-ins and keys unencrypted and must never be copied to iCloud.",
+    "The host checks call no model, but the behaviour cases run the real model and cost tokens on every run, and the daily cost alert does not see eval-clone spend.",
+    "A handful of cases is a regression tripwire, not a benchmark: Anthropic's guidance is to start from 20 to 50 tasks drawn from real failures and to read the transcripts, not only the scores.",
+    "Only four of the pack's ten themes apply today; the reminder round trip, preference recall and stopping after a denied approval are added as those tools land, and eval clones must keep messaging tools denied or a reminder test texts the family."
+   ],
+   "safety": "The host checks are read-only: no agent gains exec or any other tool, no model reads their output, and results go only to Tony. The behaviour cases do call the model, but only against eval clones with fake users and fake secrets: no live channel, no real memory, no accounts.",
+   "tier": 2,
+   "section": "Operator checks and recovery",
+   "wave": "A"
+  }
+ },
+ {
+  "into": "AUT-06",
+  "members": [
+   "AUT-06",
+   "MKT-02"
+  ],
+  "why": "same batch",
+  "note": "The parent-run practice quiz builds nothing but one operator-reviewed skill, which travels through the same skills step, review and `read` grant that the routines card sets up on the same agent in the same wave, so it becomes that card's first worked skill; the card carries the quiz's medium risk because a photographed worksheet goes to the cloud vision model unscreened.",
+  "record": {
+   "name": "Teach Happy a routine (operator-reviewed skills), with a parent-run practice quiz as the first skill",
+   "description": "A parent describes once how the family does something (party plan, ski-trip packing, school-form explainer); Tony turns it into a named skill, and after the next deploy Happy can load it when a later request fits the skill's one-line description. The first skill is a practice quiz that a parent runs from a study-guide photo, a pasted spelling list or a request for math facts: ten questions, one at a time, hint first, a running score and the answer key at the end.",
+   "example": "'Happy, learn our ski-trip packing routine: ask how many nights and who is coming, then list by person, and always include the kids' helmets.' Or Jordan sends a photo of the science study guide and texts: 'quiz us on this, 10 questions, one at a time.'",
+   "how": "Pipeline (AUT-06): Happy answers with the drafted procedure as plain text; Tony turns it into `skills/<name>/SKILL.md` in happy-config, reviews it, and happy-deploy copies it into that agent's workspace `skills/` folder. The model loads a skill by reading its SKILL.md, so `<p>-main` needs `read` in `tools.alsoAllow` and the sandbox tool allowlist; `skill_workshop` stays denied on every family agent. A routine of a few lines can live in AGENTS.md instead. Quiz (MKT-02): one such skill fixes the format (one question per message, one hint before revealing, a running score, the answer key at the end, no web lookups); a photo needs attachment intake (F002) and is read by the reply model's own vision; an optional one-shot reminder offers a re-quiz the night before.",
+   "depends_on": [
+    "a skills step in happy-deploy and gen-family",
+    "automatic self-learning switched off in config (`skills.workshop.autonomous.mode: \"off\"`)",
+    "decision: who may request a new skill",
+    "`read` allowed on <p>-main in tools.alsoAllow and the sandbox tool allowlist (group:fs is denied today; arrives with F041)",
+    "F002 photo and PDF reading with inbound attachments switched on, for the quiz's photo route only",
+    "F007 automations tool on <p>-main, only for the optional re-quiz reminder",
+    "F003 voice over iMessage, its local spoken replies, only for reading spelling words aloud"
+   ],
+   "caveats": [
+    "Asking Happy to save a skill from iMessage does not work on this stack: sandboxed runs do not construct the `skill_workshop` tool, and the documented exception would publish with no pending draft and so skip Tony's review, which is one more reason to keep that tool off every family agent.",
+    "A skill is know-how: it cannot add tools or accounts, so 'learn to order the groceries' still ends at a list.",
+    "A skill is instruction text loaded into future sessions, so one written from a pasted web page or an email is a stored injection: author only from the parent's own words, and install no marketplace skills (an audit reported by The Hacker News found 341 malicious entries among 2,857 ClawHub skills in early 2026).",
+    "Turnaround is 'when Tony next deploys', and Happy does not run a skill every time: the prompt lists only each skill's name and one-line description, so that line has to be precise, and calling the skill by name (`/skill <name>`) is the sure route where that command is accepted from the sender.",
+    "The quiz is parent-run only: the kids are not users, the parent holds the phone and sends the answers, and a version a child uses alone waits for the kids agent (F072) and never uses a cloud model or cloud speech.",
+    "The ChatGPT or Gemini app on a parent's phone already makes a quiz from uploaded material, with hints and an end summary; Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+    "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state, so tell it to quiz only from what is on the page and spot-check.",
+    "A text quiz shows spelling words on screen, so spelling practice needs the words read aloud with the local voice (F003), whose quality for spelling words is untried, and the running score lives in the conversation and is gone after the daily session reset."
+   ],
+   "safety": "Operator review is the gate: no model-written file reaches a skills root, and a skill cannot widen tool policy. The quiz is the riskier part: a photographed school worksheet is untrusted content, is not screened by the PDF privacy gate in F002, and goes to the cloud vision model under store:false. No child's account talks to a cloud model.",
+   "tier": 1,
+   "section": "Memory, knowledge and skills",
+   "wave": "B"
+  }
+ },
+ {
+  "into": "OCL-01",
+  "members": [
+   "OCL-01",
+   "VOX-01"
+  ],
+  "why": "same batch",
+  "note": "Talk mode is a control inside the same App Store app on the same phone, behind the same single pairing, wave-A deny list and access-level decision, and after round 2's edits the two cards gave different instructions for that one pairing (Full or Limited left open on one, Limited on the other), so they become one wave D card with three steps: the app, the experimental native Talk loop, and realtime voice as a later option.",
+  "record": {
+   "name": "OpenClaw iPhone app on Tony's phone: chat with files, tap approvals, then Talk mode (device commands denied first; operator only)",
+   "description": "Tony can also reach Happy in the free OpenClaw iPhone app, on his phone only: a native chat that takes photos, PDFs and other files, a native approval inbox and, as a second and experimental step, Talk mode, a spoken back-and-forth with his own agent. The Control UI already on his phone takes uploads and resolves approvals, so the app adds only the share sheet, an offline queue, the native inbox and Talk; realtime voice is a later option that swaps the Talk loop for a live call with an OpenAI voice model, with the raw audio going to OpenAI on its own key and budget.",
+   "example": "Tony attaches a 12-page camp packet PDF in the app with + -> File and asks 'what do I have to sign, and by when?'. With Talk set up, he presses the Action Button and says: 'what is on tomorrow, and do I need to pack anything for soccer?'",
+   "how": "1. Ceiling (HOM-08): the wave-A deny list (MAC-04) is deployed, with `gateway.nodes.pluginTools.enabled: false`. 2. Install and pair (OCL-01, IPH-01): the App Store app on Tony's iPhone, with a setup code from the Control UI or `openclaw qr` over the Tailscale Serve URL; one code issues a node session and an operator session, so read the approved command list afterwards. No agent gets the built-in nodes tool; uploads pass the F002 gate or `gateway.uploads.enabled: false`. 3. Talk (VOX-01, experimental): take the four push-to-talk commands off the deny list, set `talk.agentId` to a memory-less agent and a `talk.provider`, and leave `tts.modelOverrides.allowProvider` off; the loop is Apple Speech recognition, Gateway chat, then `talk.speak`. 4. Later (VOX-02): a `talk.realtime` block with `provider` openai, `transport` webrtc and `brain` agent-consult.",
+   "depends_on": [
+    "OpenClaw iOS app from the App Store (iOS 18 or later) on Tony's iPhone",
+    "Tailscale on the phone (already needed for the Control UI)",
+    "MAC-04 deny list deployed before pairing (iOS data commands and push-to-talk denied, pluginTools off)",
+    "decision: Full or Limited operator access on Tony's phone (start Limited with `openclaw qr --limited`: the Control UI already on the phone keeps admin, so nothing is given up; Full is what lets the app itself review approvals in general and open its Talk settings pages)",
+    "the local privacy gate in F002 extended to Gateway client uploads, or uploads switched off",
+    "a written device-revocation step for a lost phone",
+    "for Talk: a Talk speech provider under `talk.provider` (the local speech engine from F003 if it works for Talk, which is untested), or accept the iPhone system-voice fallback",
+    "for the realtime option only: an OpenAI Platform key dedicated to voice with its own spend cap, and a decision on Zero Data Retention for the organisation that owns that key",
+    "decision (only if a second adult's phone is ever wanted): a verified per-person identity with gateway.roles, proven on a test device first"
+   ],
+   "caveats": [
+    "The app is a chat client, an operator console for the whole Gateway and a device node at once: Limited access drops only operator.admin and keeps Gateway-wide write, read and approvals scopes, and since Tony's phone already holds two Control UI entries with admin scope, what is new is the node role and the hosted push relay.",
+    "Tony's phone only: operator scopes are not a boundary between people, so on a second adult's phone the other adult's agent memory would be readable, and `gateway.roles`, the one feature that could narrow that, refuses the device and setup-code tokens that pairing issues.",
+    "iMessage with attachment intake (F002) and the Control UI already on the phone cover most of this, and voice over iMessage (F003) already gives both parents voice memos in and spoken replies out, so the app adds the share sheet, the offline queue, the native inbox and, for Tony alone, a hands-free loop he can interrupt.",
+    "App Store builds receive push through OpenClaw's hosted relay, a service outside the tailnet, and iOS suspends the app in the background, so node commands need the app in front and voice is best-effort.",
+    "Audio can leave the house even in the native Talk loop: the docs say Apple Speech recognition on iOS may use network services, and the transcript then goes to OpenAI as text like any typed message.",
+    "Talk playback uses the Talk speech provider and not the general tts block, a Limited pairing cannot open the app's Talk settings pages, and `--voice-node` is not an option because typed chat and the Listen action need the write scope; plan on the inline Talk control and expect the iPhone's own system voice.",
+    "Realtime option: raw audio goes to OpenAI for the whole call, under 30 days of abuse-monitoring retention unless the organisation has Zero Data Retention, it is billed separately from chat, and `talk.realtime` is one gateway-wide block that replaces the native loop instead of sitting beside it.",
+    "There is no speaker identification anywhere in the stack: whoever is near the microphone is the user, and the spoken yes that gates a high-impact action in realtime mode does not identify who said it, so a child must not use Talk."
+   ],
+   "safety": "Tony's phone only, treated as an admin-adjacent credential. The app adds no tool, but uploads reach <p>-main as files, so the F002 gate applies, and show_widget stays denied on memory-holding agents. Talk is the riskier step: Apple Speech may send audio to Apple, and realtime voice streams raw room audio to OpenAI. Never for a child or a kids agent.",
+   "tier": 3,
+   "section": "iPhone, Android and other personal devices",
+   "wave": "D"
+  }
+ },
+ {
+  "into": "F072",
+  "members": [
+   "F072",
+   "VOX-11"
+  ],
+  "why": "same purpose",
+  "note": "The kitchen speaker is a second way for a child to reach the same tool-less, memory-less kids agent, belongs to the roadmap's one kids milestone ('text, then voice'), is blocked on the same local model and has no use without the kids agent, so the two become one later card that states the text route and the speaker route separately and carries the speaker's high risk.",
+  "record": {
+   "name": "Kids agent (waits for a local model): text with homework hints, chat hours, parent alerts and a nightly digest, then the kitchen speaker",
+   "description": "Later, each child texts Happy from their own Apple account and gets a helper with no tools and no memory, on a local model, that gives grade-level hints and short explanations and is told not to hand over a finished worksheet; the parents get chat hours per child, an immediate text when a message is flagged for safety or distress, and an evening digest of what each child asked. As a second step the same kids agent answers by voice through the roadmap's kitchen speaker (Home Assistant Voice Preview Edition), with wake word, speech-to-text and text-to-speech running locally so that only text reaches Happy.",
+   "example": "Trigger: at 21:40 the 8-year-old texts the kids agent and gets a fixed 'time for bed, ask me tomorrow' line. At the kitchen speaker: 'Okay Nabu, why is the sky blue?'",
+   "how": "Base (F072): `bindings[]` by DM handle to one agent per kid, the minimal profile with `session_status` and `gateway` denied, memory search off, a daily reset and an in-house kid-safety plugin with a local classifier on `before_dispatch` and `message_sending`. Hints (F073): hint-first rules and a grade band in AGENTS.md; no URLs. Hours and alerts (MKT-13): the same plugin gives a fixed reply outside each kid's hours and texts both parents the category and time on a safety label. Digest (G019): a host-side command job summarises the day's sessions on a local model. Speaker (VOX-11): the device, Home Assistant OS in a VM on the Mac, Whisper and Piper through the Wyoming integration, and a kids-only shim in front of the gateway, whose OpenAI-compatible chat endpoint is full operator access.",
+   "depends_on": [
+    "a local model and local safety classifiers (the roadmap's M2, currently skipped)",
+    "the kid-safety evals passing",
+    "each kid having an own Apple child account and handle (text route)",
+    "G009 family delivery primitive",
+    "decision: whether a child may chat with Happy alone or only with a parent alongside (Common Sense Media advises close parent supervision for ages 6 to 12)",
+    "for the speaker: the device ($69 on Home Assistant's page; the roadmap says $59) and a Home Assistant OS VM on the Mac (the same VM the later Home Assistant option for house devices, F076, would use)",
+    "for the speaker: a scoped endpoint or kids-only shim between Home Assistant and the gateway"
+   ],
+   "caveats": [
+    "Blocked until a local model and local classifiers exist and the kid-safety evals pass, because kids' content never goes to a cloud model or cloud speech.",
+    "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven: false alarms will annoy, misses matter more, and a home system has no human reviewer between the flag and the parent notice.",
+    "Common Sense Media rated Google's supervised assistant for under-13s high risk and says chatbot use at ages 6 to 12 should happen only with close parent supervision and in moderation; an alert and an evening digest are a look afterwards, not supervision, so whether a child may chat alone is a decision to take before building.",
+    "'Refuse whole-worksheet answers' is a prompt rule, and no source shows a model holds to it when a child pushes.",
+    "The alert is a heads-up to parents and not a crisis service, and the parents should be told so.",
+    "The speaker has no interim adult version: nothing identifies who is speaking, so without a local model a child's question would reach OpenAI as text, and speech stays in the house only while Home Assistant's own cloud speech option is left off.",
+    "The hop from Home Assistant to Happy is unsolved: Home Assistant's official OpenAI integration only talks to OpenAI's own endpoint, and with token auth OpenClaw's chat endpoint gives the caller the full operator scope set and lets the request choose the agent, so the bridge would be a community integration or a self-written kids-only shim.",
+    "The speaker adds an always-on VM to patch and back up, Home Assistant itself calls the device a preview, and open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware."
+   ],
+   "safety": "No cloud call touches kid content: the agent, its classifiers and the digest summariser are local, and with the classifier down the agent answers 'ask a grown-up'. Alerts carry a category, not the child's words. The riskier part is the speaker's bridge: the chat endpoint is equivalent to an operator secret, so the speaker must reach only the tool-less kids agent.",
+   "tier": 1,
+   "section": "People and access",
+   "wave": "later"
+  }
+ }
+]

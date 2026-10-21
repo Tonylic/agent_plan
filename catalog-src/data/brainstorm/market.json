@@ -1,0 +1,1041 @@
+[
+  {
+    "id": "MKT-01",
+    "name": "Google Classroom guardian summaries in the school digest",
+    "tier": 2,
+    "cluster": "school",
+    "description": "Google Classroom can email a guardian a daily or weekly summary of each child's missing work, upcoming work and class activity. Happy reads that summary in the school mailbox and adds one 'missing / due this week' line per kid to the afternoon school digest, with a day-before reminder for anything due.",
+    "example": "Trigger: the weekday Classroom summary arrives in the school mailbox. The 16:00 digest then carries: '4th grader: 1 missing (reading log); science poster due Thursday.'",
+    "how": "One-time human step: each teacher invites the dedicated school mailbox address (F051) as a guardian and a parent accepts the invitation from that mailbox; Google says summaries can go to any email address. The bundled IMAP plugin watches the mailbox with Google's Classroom sender in `allowedSenders` and `senderAuth.min: \"verified\"`; the tool-less, memory-less `school-mail` reader turns each summary into {kid, missing[], upcoming[]} with `llm-task` and a JSON Schema; the existing F056 digest job (isolated, `--tools` limited to the school-mail read server and home-store) relays titles and dates only, never links. Day-before reminders reuse F007.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F051 dedicated school mailbox",
+      "F056 school digest",
+      "the school uses Google Classroom and the teacher turns guardian summaries on"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "Only useful if the kids' classes run on Google Classroom; many elementary schools use other tools. Not checked for this family.",
+      "Google's teacher page says class summaries are turned off until the teacher enables them, and the invitation must be accepted within 120 days.",
+      "Summaries do not include grades.",
+      "Google already sends this email to the parent for free. Happy's added value is merging it into the one digest both parents read and setting the reminder.",
+      "If a parent stays the guardian and auto-forwards the summary instead, the forwarded mail may fail the IMAP plugin's sender authentication."
+    ],
+    "safety": "The reader has no tools and no memory, so school mail (untrusted content) cannot reach private data or a send path. The digest job relays structured fields, not raw text or URLs. Outbound goes only to the two parents through the pinned family delivery primitive. Kid first names and assignment titles reach the cloud model under store:false, the same exposure Tony already accepted for the school mailbox.",
+    "unverified": [
+      "The exact From address or domain Google uses for guardian summaries (needed for allowedSenders).",
+      "Whether this family's school uses Google Classroom at all.",
+      "Whether one student can have the school mailbox as an extra guardian next to both parents; Google's page implies several guardians but does not state a limit."
+    ],
+    "overlaps_existing": [
+      "F051",
+      "F055",
+      "F056",
+      "F007"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/edu/classroom/answer/6388136",
+        "title": "Get Classroom email summaries (for guardians) - Classroom Help",
+        "anchor": "Missing work",
+        "supports": "Guardian summaries list missing work, upcoming work and class activity, can be daily or weekly, can be sent to any email address, exclude grades, and the invitation expires after 120 days."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/edu/classroom/answer/6386354",
+        "title": "About guardian email summaries - Classroom Help",
+        "anchor": "guardian email summaries",
+        "supports": "A teacher or school administrator invites guardians, and summaries for a class stay off until the teacher turns them on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger: sender authentication",
+        "anchor": "allowedSenders",
+        "supports": "The IMAP plugin checks the From address against an allowlist before any message reaches a model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:9",
+        "title": "LLM task",
+        "anchor": "llm-task",
+        "supports": "A bundled optional tool runs one JSON-only model call and can validate the output against a JSON Schema."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads: --tools",
+        "anchor": "--tools",
+        "supports": "A scheduled job can be restricted to a named list of tools."
+      }
+    ]
+  },
+  {
+    "id": "MKT-02",
+    "name": "Study guide photo to practice quiz, run by a parent",
+    "tier": 2,
+    "cluster": "kids and school",
+    "description": "A parent photographs the study guide or vocabulary sheet and Happy quizzes from it: ten questions, one at a time, hint first, answer key at the end. Alexa+ and Gemini both ship this; the catalog only covers drills from a pasted word list.",
+    "example": "Jordan sends a photo of the science study guide and texts: 'quiz us on this, 10 questions, one at a time.'",
+    "how": "Needs inbound attachments on (`channels.imessage.includeAttachments: true`, F001) behind the F084 document gate. `<p>-main` reads the photo with the reply model's own vision, and a small workspace skill (see MKT-03) fixes the format: one question per message, wait for the answer, one hint before revealing, score at the end, no web lookups. An optional one-shot `automations` reminder offers a re-quiz the night before the test. No new tool: once attachments and the gate are in place this is a prompt-only addition.",
+    "who": "both",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F001 inbound attachments",
+      "F002 photo understanding",
+      "F084 privacy gate",
+      "MKT-03 skill (optional)"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Parent-run only: the kids are not users, and the parent holds the phone. The kid agent stays off the cloud model.",
+      "The ChatGPT or Gemini app on a parent's phone does the same thing today; Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+      "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state. Tell it to quiz only from what is on the page and spot-check.",
+      "A text quiz shows spelling words on screen, so spelling still needs the read-aloud variant in F074."
+    ],
+    "safety": "The photo is untrusted content read by an agent that holds memory, but `<p>-main` has no browse tool and can only reply to its owner, so the trifecta is not closed. School worksheets go to the cloud vision model under store:false, which is decision 3 in the catalog. No kid account talks to a cloud model.",
+    "unverified": [],
+    "overlaps_existing": [
+      "F074",
+      "F002",
+      "F001"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+        "title": "Introducing Alexa+, the next generation of Alexa",
+        "anchor": "turn them into a quiz",
+        "supports": "Alexa+ lets a user upload study materials and have them turned into a quiz."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/gemini/answer/16316416",
+        "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+        "anchor": "practice quizzes",
+        "supports": "Google lists daily practice quizzes as an example of a scheduled action in Gemini."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media: attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Inbound photos are dropped until this config key is set to true."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skills.md:451",
+        "title": "Skills: optional frontmatter keys",
+        "anchor": "user-invocable slash command",
+        "supports": "A skill can be exposed as a command the user invokes."
+      }
+    ]
+  },
+  {
+    "id": "MKT-03",
+    "name": "Family playbooks as skills with slash commands",
+    "tier": 1,
+    "cluster": "platform",
+    "description": "Named, reusable recipes a parent starts with a short command (pack list, sick-day note, party plan, quiz) instead of retyping long instructions. This is what Gemini Gems, Poke Recipes and Claude Skills are; Google is renaming Gems to skills in November 2026.",
+    "example": "Tony texts: '/skill packlist 3 nights camping, two kids, rain likely.'",
+    "how": "Plain Markdown: one `SKILL.md` folder per playbook under each `<p>-main` workspace `skills/` directory, generated from templates in the config repo. `user-invocable: true` (the default) exposes `/skill <name> [input]`, and text commands are parsed on iMessage. Use `disable-model-invocation: true` for playbooks that should run only when asked. Pin the visible set per agent with `agents.entries.<id>.skills`, and set `skills: []` on research and the mail readers so they see none. Skill bodies are instructions only; they grant no tools.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "a check that the sandboxed agent can read its skill files (docs mention sandbox sync)"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "The model is told to read the SKILL.md before acting, so the agent must be able to read that file inside the Colima sandbox; test with one skill first.",
+      "Without an explicit allowlist, any bundled skill whose requirements are met is offered to the agent as well. Set the list explicitly.",
+      "Each skill adds a few dozen tokens to every prompt; keep it to five to eight.",
+      "The catalog put this kind of rule in AGENTS.md standing orders. Skills are better when the recipe is long and used rarely, AGENTS.md when it applies to every turn."
+    ],
+    "safety": "Instructions only, no new tool, account or egress. Skill files deploy from the config repo, and the F041 write hook already limits what the agent can edit, so injected text cannot rewrite a playbook. Agents that read untrusted content get an empty skill list.",
+    "unverified": [
+      "Whether a bare command such as /packlist registers on iMessage or only the generic /skill form works there.",
+      "Skill file readability under sandbox mode 'all' on this install."
+    ],
+    "overlaps_existing": [
+      "F042",
+      "F082"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/gemini/answer/15146780",
+        "title": "Use Gems in Gemini Apps - Gemini Apps Help",
+        "anchor": "transition to skills",
+        "supports": "Gems are saved custom versions of Gemini that can be shared, and on personal accounts they become skills from November 2026."
+      },
+      {
+        "kind": "web",
+        "ref": "https://poke.com/",
+        "title": "Poke - Chat with Poke",
+        "anchor": "Poke Recipes",
+        "supports": "Poke, a messaging-based assistant, ships pre-built reusable setups it calls recipes."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.claude.com/en/articles/12512176-what-are-skills",
+        "title": "What are skills? | Claude Help Center",
+        "anchor": "progressive disclosure",
+        "supports": "Claude skills are folders of instructions loaded only when a task needs them, available on all plans."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skills.md:41",
+        "title": "Skills: loading order",
+        "anchor": "<workspace>/skills",
+        "supports": "Skills placed in an agent's workspace skills folder load with the highest precedence."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:386",
+        "title": "Slash commands: skill commands",
+        "anchor": "/skill <name> [input]",
+        "supports": "Any user-invocable skill can be run by name through a generic command."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:92",
+        "title": "Slash commands: commands.text",
+        "anchor": "iMessage",
+        "supports": "Text commands are parsed on iMessage, which has no native command surface."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skills.md:243",
+        "title": "Skills: agent allowlist rules",
+        "anchor": "agents.entries.*.skills",
+        "supports": "An agent can be given an explicit skill list, including an empty one."
+      }
+    ]
+  },
+  {
+    "id": "MKT-04",
+    "name": "Overnight interest brief on the research agent",
+    "tier": 2,
+    "cluster": "digests",
+    "description": "ChatGPT Pulse writes five to ten personalised cards overnight, and Gemini scheduled actions do daily topic tracking. Happy's version: each parent keeps a short topic list (town recreation sign-ups, a team, a hobby) and gets at most three sourced lines per topic in the morning, or nothing when there is no news.",
+    "example": "Trigger: 06:30 job. Tony receives: 'Rec dept: spring soccer registration opens Monday (link, fetched 06:31).'",
+    "how": "One `automations` job per parent owned by the stateless `research` agent: isolated session, tools limited to `web_search,web_fetch`, announce delivery pinned to that parent. Topics are literal text in the job message, rendered by gen-family from an `interests` list in family.json5, never read from memory. Output follows the F022 citation rule and the job returns `NO_REPLY` when nothing is new. 'More of this' or 'drop that topic' is a proposal the parent confirms; the jobs registry (G003) regenerates the job.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F019 research agent with web_fetch",
+      "G003 jobs registry",
+      "G001 notification policy"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "Pulse is good because it mixes memory, chat history and connected Gmail and Calendar. That mix is exactly what the trifecta rule forbids here, so Happy's brief is deliberately less personal.",
+      "The catalog already removed headlines from the morning brief and dropped the Sunday topic brief; this only fits because it is a separate job on an agent with no private data.",
+      "Gemini does this for free with up to 10 scheduled actions. If a parent already uses Gemini, skip this.",
+      "Without a seen-links state file it will repeat yesterday's item.",
+      "Topics travel to Brave and OpenAI, so keep them non-identifying: no kid names, no school name."
+    ],
+    "safety": "The research agent holds no memory and no accounts; the run contains no private data. Delivery is pinned to one parent by the job, so injected web text can at worst produce a misleading line to that parent. Links are shown with fetch time per F022.",
+    "unverified": [
+      "Pulse's plan availability in October 2026; the source is the September 2025 launch report (Pro plan first). OpenAI's own pages returned 403 in this run."
+    ],
+    "overlaps_existing": [
+      "F013",
+      "F017",
+      "F019",
+      "F022",
+      "F029"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://techcrunch.com/2025/09/25/openai-launches-chatgpt-pulse-to-proactively-write-you-morning-briefs/",
+        "title": "OpenAI launches ChatGPT Pulse to proactively write you morning briefs",
+        "anchor": "five to 10",
+        "supports": "Pulse generates a handful of personalised briefs overnight from memory, connected Gmail and Calendar and web news, launching on the Pro plan."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/gemini/answer/16316416",
+        "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+        "anchor": "10 active scheduled actions",
+        "supports": "Gemini offers recurring prompts such as daily topic tracking, capped at ten active actions."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:247",
+        "title": "Automation payloads: session targets",
+        "anchor": "isolated",
+        "supports": "A job can run in its own dedicated session, intended for reports and background chores."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:270",
+        "title": "Automation payloads: unattended run contract",
+        "anchor": "NO_REPLY",
+        "supports": "An unattended run returns a silent token when nothing needs doing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:11",
+        "title": "Web fetch",
+        "anchor": "web_fetch",
+        "supports": "The fetch tool does a plain HTTP GET with readable-content extraction and no JavaScript."
+      }
+    ]
+  },
+  {
+    "id": "MKT-05",
+    "name": "Grocery list to an Instacart link, parent checks out",
+    "tier": 1,
+    "cluster": "lists and household",
+    "description": "Commercial assistants hand the grocery list to a delivery service. Happy can turn the Saturday list or the week's meal plan into one Instacart shopping-list link; a parent opens it, picks the store and pays. Happy never touches a cart.",
+    "example": "Jordan texts: 'make the Instacart link for this week's list.'",
+    "how": "Preferred shape: a small host-side tool plugin `home-cart` with one tool that takes no free-text arguments. It reads the grocery list itself (Reminders bridge F030 or home-store), calls Instacart's `POST /idp/v1/products/products_link` and returns `products_link_url`. Held by `<p>-main`. Alternative: add Instacart's own remote MCP server (`openclaw mcp add ... --transport streamable-http --include 'create-shopping-list'`) with the key stored as a secret header and a `before_tool_call` hook that allows only short item names. Either way the result is a URL.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F030 or F031 grocery list",
+      "an Instacart Developer Platform API key",
+      "the family actually ordering through Instacart"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "Zero value if the family's store is not on Instacart or they shop in person.",
+      "Instacart matches items by search term, so brand and size are approximate; the parent still edits the cart.",
+      "Needs a developer key; the application process was not checked.",
+      "A shared Reminders grocery list plus the store's own app is what most families use and needs no build."
+    ],
+    "safety": "No purchase, cart or checkout happens on Happy's side; the never-list holds because the tool can only produce a link. The risk is egress: a tool that posts model-written text to a third party is a way to send data out from an agent that holds memory. Closing it means the tool reads the list itself and accepts no free text, or the hook rejects anything that is not a short item name.",
+    "unverified": [
+      "Ohai's Instacart connection: seen only on a non-canonical Ohai subdomain, so not cited.",
+      "How Instacart approves developer keys and whether a household can get one.",
+      "Whether the family uses Instacart."
+    ],
+    "overlaps_existing": [
+      "F032",
+      "F033",
+      "F030"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page",
+        "title": "Create shopping list page | Instacart Docs",
+        "anchor": "products_link_url",
+        "supports": "The endpoint builds a shopping list page from named line items and returns a link where the user selects a store and completes the order themselves."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.instacart.com/developer_platform_api/guide/tutorials/mcp",
+        "title": "Connect your AI agent to Instacart with MCP | Instacart Docs",
+        "anchor": "create-shopping-list",
+        "supports": "Instacart runs an official MCP server whose tools create recipe and shopping list pages, authenticated with a developer API key."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+        "title": "Introducing Alexa+, the next generation of Alexa",
+        "anchor": "Amazon Fresh",
+        "supports": "Alexa+ orders groceries from a delivery service on the user's behalf, the commercial version of this hand-off."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/mcp.md:66",
+        "title": "MCP: add a server from the CLI",
+        "anchor": "streamable-http",
+        "supports": "A remote MCP server can be added by URL and limited to selected tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks.md:164",
+        "title": "Plugin hooks: task table",
+        "anchor": "before_tool_call",
+        "supports": "A plugin hook can block a tool call or require approval before it runs."
+      }
+    ]
+  },
+  {
+    "id": "MKT-06",
+    "name": "Two-parent calendar conflict watch",
+    "tier": 2,
+    "cluster": "calendar",
+    "description": "Ohai sells avoiding conflicts across family members' calendars. Happy's version: when a new overlap appears in the next 14 days (both parents busy at a kid's pickup, two events needing the same driver), both parents get one line naming the clash, with an optional who-covers question.",
+    "example": "Trigger: Tony accepts a Thursday 16:00 meeting; Jordan already has the dentist then and the 10-year-old has practice. Both get: 'Thursday 16:00: both of you are busy and practice pickup has no driver.'",
+    "how": "A zero-model command job (`--command-argv`) every few hours runs a host script under the happy user: `gog calendar conflicts` (or `freebusy`) across the two parents' calendars and the family calendar with the read-only grant from F009, compares against a seen-id state file, and prints `NO_REPLY` when nothing is new. Output is announced to both parents; the follow-up question reuses the G010 relay.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F009 read-only calendar on the Google path (decision 4)",
+      "gog installed",
+      "G010 for the follow-up question"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Only applies if the calendar decision lands on Google; the iCloud path would need a different overlap script.",
+      "An overlap is not always a problem (both parents at the same recital). Without a rule such as 'kid event with no driver tag' it will cry wolf.",
+      "Happy reports; it does not move or decline anything.",
+      "Phone calendars do not warn about cross-person overlaps, so this is a gap the phone does not fill."
+    ],
+    "safety": "No model call and no untrusted content in the job; the calendar grant is read-only; the message goes only to the two parents. Event titles appear in the text, which is the same exposure as the evening brief.",
+    "unverified": [
+      "Flags and JSON output of `gog calendar conflicts`: gog is not installed, only its command list page was read.",
+      "Ohai's exact behaviour beyond the marketing phrase."
+    ],
+    "overlaps_existing": [
+      "F009",
+      "F014",
+      "F015",
+      "F018",
+      "G010"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.ohai.ai/",
+        "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+        "anchor": "avoid conflicts",
+        "supports": "Ohai markets cross-family schedule conflict avoidance as a core feature, with a premium tier from about ten dollars a month."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh/commands/",
+        "title": "Commands - gog",
+        "anchor": "gog calendar conflicts",
+        "supports": "The gog CLI has a subcommand that finds busy-time overlaps across calendars, plus freebusy and changed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:70",
+        "title": "CLI automations: command jobs",
+        "anchor": "--command-argv",
+        "supports": "A scheduled job can run an exact command without a model, deliver its output, and stay silent when it prints the silent token."
+      }
+    ]
+  },
+  {
+    "id": "MKT-07",
+    "name": "Voice front door: ask Siri to message Happy",
+    "tier": 1,
+    "cluster": "voice",
+    "description": "Alexa+ and Martin sell talking to the assistant. Because Happy is an iMessage contact, the phones already do it: 'Siri, message Happy: add milk and remind me at five about the permission slip' works hands-free with no build.",
+    "example": "In the car: 'Hey Siri, message Happy: what time is pickup tomorrow?'",
+    "how": "Nothing changes on the gateway: the dictated text arrives through `imsg` as a normal allowlisted direct message to that parent's `<p>-main`. Setup is on the phones: save Happy's handle as a contact with a name Siri hears reliably. Add one AGENTS.md line: when a message looks dictated, answer in two short sentences with no links or tables so it reads well aloud.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "One message per request, not a conversation.",
+      "Dictation mangles names and times; Happy should repeat back anything it schedules.",
+      "No always-listening room speaker; that is MKT-08 territory.",
+      "Current Siri can also create reminders and act in apps directly, so for a plain reminder Siri alone is faster than going through Happy."
+    ],
+    "safety": "No new tool, account, channel or sender. Speech recognition is Apple's, on the parent's own phone. The sender allowlist is unchanged.",
+    "unverified": [
+      "iOS reading Happy's reply aloud on headphones or CarPlay: Apple's iPhone guide pages were too long to read in this run."
+    ],
+    "overlaps_existing": [
+      "F003",
+      "F004"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/messages/icht35827",
+        "title": "Send a message on Mac - Apple Support",
+        "anchor": "Message Mom",
+        "supports": "Apple documents sending, hearing and answering messages by asking Siri."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.apple.com/apple-intelligence/",
+        "title": "Apple Intelligence and Siri - Apple",
+        "anchor": "Take action in more apps",
+        "supports": "Current Siri can act inside apps such as Messages and Reminders by voice."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.trymartin.com/",
+        "title": "Martin: Personal Assistant",
+        "anchor": "Call Martin",
+        "supports": "A commercial assistant markets voice access (calling it) as a headline channel."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage.md:19",
+        "title": "iMessage channel: status",
+        "anchor": "imsg rpc",
+        "supports": "The gateway receives iMessages through the imsg helper, so a Siri-dictated message is an ordinary inbound message."
+      }
+    ]
+  },
+  {
+    "id": "MKT-08",
+    "name": "Live voice with the OpenClaw iPhone app (Talk mode, wake words)",
+    "tier": 1,
+    "cluster": "voice",
+    "description": "A real back-and-forth spoken conversation with Happy, in the style of Alexa+ or ChatGPT voice. OpenClaw ships an App Store iPhone app with Talk mode, a 'Start Live Voice' Siri shortcut and wake words. It works in principle but is the wrong first step for this family.",
+    "example": "Tony says: 'Siri, start live voice with OpenClaw,' then talks through tomorrow's schedule.",
+    "how": "Install the OpenClaw iPhone app on a parent's phone, pair it to the gateway over the tailnet, and configure `talk` on the gateway. The native loop uses the phone's speech recognition and `talk.speak` with the `system` voice (no new cloud provider); realtime voice instead needs an OpenAI realtime provider entry. Wake-word routing can target an agent id. A 'Hey Happy' microphone on the Mac mini would need the macOS app, which is not installed, and macOS 26 or newer.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "OpenClaw iPhone app on each parent's phone",
+      "Tailscale on the phones",
+      "a device-pairing and per-person routing decision",
+      "node command policy denying camera, screen and location"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "The docs call voice best-effort when the app is not active, and the shortcut cannot bypass unlock or foreground limits.",
+      "Pairing a phone as a node also offers the gateway its camera, screen and location commands; these must stay denied.",
+      "The M1 design routes people by iMessage handle. How an app session maps to tony-main versus jordan-main on a two-adult gateway needs a test before anyone relies on it.",
+      "App Store builds deliver push through a relay hosted by OpenClaw, a third party in the loop that the iMessage path does not have.",
+      "Realtime voice would add the catalog OpenAI provider that the catalog deliberately avoided, and its retention terms were not checked.",
+      "The wake-word list is one global list for the whole gateway.",
+      "Siri to iMessage (MKT-07) covers most of the need for free."
+    ],
+    "safety": "Adds a second way into a memory-holding agent that does not pass through the iMessage sender allowlist, so the phone must be treated as an operator device and paired deliberately. Tools on the agent do not change, so the trifecta is unchanged as long as node capabilities stay denied.",
+    "unverified": [
+      "Per-person agent selection for app sessions on this gateway.",
+      "Data retention for realtime voice audio."
+    ],
+    "overlaps_existing": [
+      "F003",
+      "F004"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:15",
+        "title": "iOS app: availability",
+        "anchor": "App Store",
+        "supports": "An official iPhone app is distributed through the App Store."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:662",
+        "title": "iOS app: start live voice with Siri or Shortcuts",
+        "anchor": "Start live voice with OpenClaw",
+        "supports": "A Siri phrase and an App Shortcut open the app and start Talk."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:651",
+        "title": "iOS app: voice wake and talk mode",
+        "anchor": "best-effort",
+        "supports": "iOS may suspend background audio, so voice is best-effort when the app is not active."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk.md:12",
+        "title": "Talk mode",
+        "anchor": "talk.speak",
+        "supports": "Native Talk uses the device's speech recognition, gateway chat and a spoken reply command."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/voicewake.md:12",
+        "title": "Voice wake",
+        "anchor": "Requires macOS 26+",
+        "supports": "Wake words on a Mac need the macOS app's toggle and macOS 26 or newer."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:527",
+        "title": "iOS app: push relay",
+        "anchor": "ios-push-relay.openclaw.ai",
+        "supports": "App Store builds use a hosted push relay rather than sending push directly from the gateway."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+        "title": "Introducing Alexa+, the next generation of Alexa",
+        "anchor": "$19.99 per month",
+        "supports": "The commercial reference point: a conversational voice assistant sold as a monthly service, free with Prime."
+      }
+    ]
+  },
+  {
+    "id": "MKT-09",
+    "name": "Kitchen wall board in the style of Skylight or Hearth",
+    "tier": 1,
+    "cluster": "display",
+    "description": "Skylight and Hearth sell a wall touchscreen showing the family calendar, chores with rewards and meals. Happy could keep a 'Family board' page (today's events, who drives, dinner, bins, chores) that a spare tablet shows in the kitchen. It is possible, but a shared calendar on an old iPad does most of it for nothing.",
+    "example": "Trigger: 06:00 and 16:00 refresh. The tablet by the fridge shows today's four events with driver initials, tonight's dinner and 'bins out tonight'.",
+    "how": "Use the Control UI's session dashboard. One persistent session owned by a tool-limited board agent; an automation bound to that session calls `show_widget` with `pin: true` (the scheduled surface is pinned-only) to replace a native report built from the read-only calendar server and home-store. The tablet opens the Control UI over Tailscale, paired with the narrowest operator scope that still renders the dashboard.",
+    "who": "both",
+    "risk": "medium",
+    "readiness": "experimental",
+    "depends_on": [
+      "F009 calendar",
+      "F031 home-store",
+      "a spare tablet on the tailnet",
+      "a pairing-scope test for a read-only display"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "The Control UI is an operator console, not a kiosk. A display paired with write scope lets anyone in the kitchen chat with an agent, which breaks the rule that the kids are not users.",
+      "No kid check-off or reward stars, which is the main reason families buy Skylight or Hearth, unless kids get write access.",
+      "A native report is capped at 8 KB and a page reload starts widget views fresh.",
+      "Cost comparison: Skylight's 15-inch calendar lists at about 300 dollars plus 79 dollars a year for the Plus features; Hearth's membership is 9 dollars a month. A shared Apple or Google calendar full-screen on an old iPad plus a paper chore chart is free.",
+      "The printed weekly sheet already noted under F080 gets most of the benefit with no screen."
+    ],
+    "safety": "The board agent has no web and no send tools. Calendar titles become visible to anyone in the kitchen, the same exposure as a paper calendar. The display must never hold write or admin scope. Widget frames run sandboxed per the docs.",
+    "unverified": [
+      "Whether a device paired with only `operator.read` can open a session dashboard.",
+      "Kiosk behaviour of the Control UI in iPad Safari."
+    ],
+    "overlaps_existing": [
+      "F013",
+      "F014",
+      "F039",
+      "F080"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://myskylight.com/products/skylight-calendar",
+        "title": "Skylight Calendar | The Digital Calendar for Busy Families",
+        "anchor": "Magic Import",
+        "supports": "Skylight sells a wall calendar with tasks, reward stars, meal planning and import of events from forwarded emails and photos, with paid Plus features at 79 dollars a year."
+      },
+      {
+        "kind": "web",
+        "ref": "https://hearthdisplay.com/",
+        "title": "Hearth Display: Kids grow fast. Hearth grows with them.",
+        "anchor": "Kid-friendly routines",
+        "supports": "Hearth sells a wall display with a family dashboard, visual kid routines with built-in rewards, meal planning and an AI helper."
+      },
+      {
+        "kind": "web",
+        "ref": "https://hearthdisplay.com/blogs/hearth-at-home/meet-our-family-membership",
+        "title": "Meet Our Family Membership",
+        "anchor": "$9 per month",
+        "supports": "Hearth's routines, to-dos, meal planning and AI helper sit behind a monthly membership."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/show-widget.md:44",
+        "title": "Show widget: scheduled surface",
+        "anchor": "pinned-only",
+        "supports": "A scheduled automation bound to a persistent session may update pinned dashboard widgets without a connected client."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/web/dashboards.md:9",
+        "title": "Session dashboards",
+        "anchor": "Control UI",
+        "supports": "Each thread in the web UI can own a dashboard of widgets the agent builds."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:34",
+        "title": "Operator scopes",
+        "anchor": "operator.read",
+        "supports": "A read-only operator scope exists for clients that should not send messages or invoke tools."
+      }
+    ]
+  },
+  {
+    "id": "MKT-10",
+    "name": "Location and arrival alerts: use Find My, not Happy",
+    "tier": 1,
+    "cluster": "location",
+    "description": "'Is Jordan nearly home?' 'Tell me when the kids get to school.' Apple's Find My already notifies a family member when someone arrives at or leaves a place, free and with the other person's knowledge. Happy should answer these by pointing at Find My, not by collecting coordinates.",
+    "example": "Tony texts: 'let me know when Jordan leaves work.' Happy replies with the two taps to set a Find My alert.",
+    "how": "Possible but not advised: the OpenClaw iPhone app exposes a `location.get` node command to the gateway (off by default). It would need the app on every phone with Always permission, or background requests fail with `LOCATION_BACKGROUND_UNAVAILABLE`, and each fix would enter a cloud model prompt. iMessage is not among the channels whose shared-location messages OpenClaw parses. The recommended build is one AGENTS.md line telling Happy to hand location and 'when I arrive' requests to Find My and Apple Reminders.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "OpenClaw iPhone app on every phone (only if built)"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Find My does arrive and leave alerts natively; the phone also does location-based reminders. Happy has no location at all.",
+      "A standing location feed for two adults and later two children is the most sensitive data the house has, and no feature in the catalog needs it.",
+      "Leave-by nudges (G017) were deferred for the same reason: the phone already does it."
+    ],
+    "safety": "Coordinates are on the roadmap's list of things kept out of prompts. An always-on location source attached to an agent that holds memory and talks to a cloud model adds a high-value private-data leg with no matching benefit, so the rule is respected by not building it.",
+    "unverified": [
+      "The iPhone guide's fuller description of Find My alerts (including the 'is not at' schedule option) could not be read in this run; the Apple Watch guide page was read instead."
+    ],
+    "overlaps_existing": [
+      "G017",
+      "G018"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/watch/apd1132106dc/watchos",
+        "title": "Locate people in Find My on Apple Watch - Apple Support",
+        "anchor": "Add Location Alert",
+        "supports": "Find My can notify you when a person leaves their location or arrives at yours."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:11",
+        "title": "Location command",
+        "anchor": "location.get",
+        "supports": "Location is a node command invoked through the gateway, available only from a paired node."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:81",
+        "title": "Location command: errors",
+        "anchor": "LOCATION_BACKGROUND_UNAVAILABLE",
+        "supports": "A backgrounded app with only while-using permission refuses location requests."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/location.md:14",
+        "title": "Channel location parsing",
+        "anchor": "Currently supported",
+        "supports": "Shared-location parsing is listed for LINE, Matrix, Telegram and WhatsApp, not iMessage."
+      }
+    ]
+  },
+  {
+    "id": "MKT-11",
+    "name": "Screen Time and app requests by chat",
+    "tier": 3,
+    "cluster": "kids' devices",
+    "description": "'Happy, give the 8-year-old 30 more minutes' or 'approve that app.' This cannot be done and should not be: Apple delivers these requests to a parent's own Messages with approve buttons, and only an adult marked as parent or guardian in Family Sharing can answer.",
+    "example": "Jordan texts: 'approve the iPad time request.' Happy replies that only her phone can, and where the request is.",
+    "how": "No mechanism on this stack. Happy's Apple Account is deliberately outside the family group; the iMessage channel runs in Basic mode, where private-API actions are unavailable; and the approval lives in Apple's own interface. What Happy can do instead: a weekly 'review Screen Time' reminder (F007), keep the agreed limits as a fact in the vault (F043), and draft the family media rules.",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": [],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "The only technical route would be to make Happy's account a parent or guardian and drive the Messages window with screen automation. That would also let a bot approve purchases and downloads.",
+      "Approving takes one tap on the parent's phone; there is nothing to save.",
+      "Google's equivalent controls live in the Family Link app on the parent's device."
+    ],
+    "safety": "Approving a child's purchases and downloads is a purchase action and sits on the never-list. Parental-control authority stays with the two adults.",
+    "unverified": [
+      "Whether imsg surfaces Screen Time request bubbles at all; nothing in the installed docs mentions them."
+    ],
+    "overlaps_existing": [
+      "F078",
+      "F081"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/child-safety/dq4vly6fq1je/web",
+        "title": "Approve your child's purchases, downloads, and Screen Time requests - Apple Support",
+        "anchor": "Approve for 15 minutes",
+        "supports": "Requests arrive in the parent's Messages with fixed approve or decline choices, and only an adult set as parent or guardian can respond."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage.md:19",
+        "title": "iMessage channel: status",
+        "anchor": "private API probe",
+        "supports": "Anything beyond plain text and media on iMessage needs the private API mode, which this install does not run."
+      }
+    ]
+  },
+  {
+    "id": "MKT-12",
+    "name": "Kids' homework help today: Khanmigo or supervised Gemini, not a cloud Happy",
+    "tier": 2,
+    "cluster": "kids",
+    "description": "Products built for under-13s exist now. Khanmigo costs 4 dollars a month for up to 10 children, never gives the answer, and lets parents read chat history and get alerts. Google lets a parent switch on Gemini for an under-13 through Family Link, with its own warnings. Until Happy has a local model, either beats a home-built kid agent, which would break the providers' 13+ terms.",
+    "example": "The 10-year-old is stuck on fractions; a parent opens Khanmigo on the family iPad instead of asking Happy to tutor.",
+    "how": "No gateway change. A parent subscribes on a Khan Academy parent account and enables the children. Happy's part is small: a weekly reminder to glance at the Khanmigo chat history, and the parent-run drills (F074, MKT-02) keep going from `<p>-main`. Revisit the kid agent (F072, F073) when a local model exists.",
+    "who": "kid",
+    "risk": "low",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "local model before any Happy kid agent"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "The 'not recommended' is for building kid chat on Happy's cloud model now; the recommendation is to use the purpose-built product meanwhile.",
+      "Khanmigo requires a U.S. residence and billing address, and may be unavailable if the child's Khan account is managed by a school district.",
+      "Google's own page warns that filters are not perfect, that Gemini can present wrong information as fact, and that children should not treat it as a person to confide in.",
+      "Family Link supervises Google accounts; children on Apple child accounts would need a supervised Google account as well.",
+      "Neither product knows the family's schedule or routines, so the catalog's kid weekly card and check-in relay remain Happy's future territory."
+    ],
+    "safety": "Keeps the never-list rule intact: no cloud model or cloud speech for kids' content on Happy. The children's use moves to products whose terms cover under-13s with a parent's consent and give the parent visibility.",
+    "unverified": [
+      "Whether Gemini for under-13s is available on iPad with a supervised Google account in this family's setup."
+    ],
+    "overlaps_existing": [
+      "F072",
+      "F073",
+      "F074",
+      "G019"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.khanmigo.ai/parents",
+        "title": "AI-powered tutor Khanmigo by Khan Academy (parents page)",
+        "anchor": "up to 10 kids",
+        "supports": "The parent plan costs four dollars a month, covers up to ten children, guides rather than answers, and shows parents the chat history with flags."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/gemini/answer/16109150",
+        "title": "Guide your child's Gemini Apps experience - Gemini Apps Help",
+        "anchor": "Family Link",
+        "supports": "Google allows parents to enable Gemini for children under 13 through supervised accounts and lists its own cautions."
+      }
+    ]
+  },
+  {
+    "id": "MKT-13",
+    "name": "Parent alerts and quiet hours for the future kid agent",
+    "tier": 2,
+    "cluster": "kids",
+    "description": "ChatGPT's parental controls set the market baseline: quiet hours, feature switches, and a notice to parents when a teen shows signs of acute distress. When Happy's kid agent ships it should have the two pieces the catalog lacks: per-kid chat hours, and an immediate alert to both parents on a safety flag instead of waiting for the nightly digest.",
+    "example": "Trigger: at 21:40 the 8-year-old texts the kid agent. It answers with a fixed 'time for bed, ask me tomorrow' line. Separately, a message classified as distress sends both parents: 'Safety flag in the 10-year-old's chat at 16:12, please check in.'",
+    "how": "Inside the in-house kid-safety plugin already planned for F072: `before_dispatch` claims messages outside the allowed hours and returns a fixed reply with no model call; the same hook runs the local classifier on inbound text and, on a distress or safety label, sends a pre-written supportive reply and calls the family delivery primitive (G009) to both parents with a category and time, not the transcript. `message_sending` applies the outbound check. Hours per kid come from family.json5.",
+    "who": "kid",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "local model",
+      "F072 kid agent base",
+      "G009 family delivery primitive",
+      "each kid having an own Apple child account and handle"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven. False alarms will annoy; misses matter more.",
+      "OpenAI puts trained human reviewers between the flag and the parent notice; a home system has none.",
+      "This is a heads-up to parents, not a crisis service, and the parents should be told so.",
+      "Not buildable before the kid agent itself, which waits for a local model."
+    ],
+    "safety": "Alerts go only to the two parents through pinned recipients and carry a category, not the child's words, to keep sensitive content out of message history. No cloud call touches kid content. If the classifier is down, the kid agent falls back to a fixed 'ask a grown-up' reply.",
+    "unverified": [
+      "Whether ChatGPT's controls changed after the September 2025 launch report; OpenAI's own page returned 403 in this run."
+    ],
+    "overlaps_existing": [
+      "F072",
+      "G019",
+      "G001",
+      "G009"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://techcrunch.com/2025/09/29/openai-rolls-out-safety-routing-system-parental-controls-on-chatgpt/",
+        "title": "OpenAI rolls out safety routing system, parental controls on ChatGPT",
+        "anchor": "quiet hours",
+        "supports": "ChatGPT's parental controls include quiet hours and feature switches, and parents are contacted when a teen shows signs of acute distress."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:164",
+        "title": "Hook reference: message hooks",
+        "anchor": "before_dispatch",
+        "supports": "A plugin can claim an inbound message before the model is called."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "title": "Message hooks",
+        "anchor": "handled: true",
+        "supports": "The claiming hook can send its own final reply in place of a model reply."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:161",
+        "title": "Hook reference: message hooks",
+        "anchor": "message_sending",
+        "supports": "A plugin can rewrite or cancel outbound text before delivery."
+      }
+    ]
+  },
+  {
+    "id": "MKT-14",
+    "name": "Phone calls: call Happy, wake-up calls, calls to businesses",
+    "tier": 3,
+    "cluster": "voice",
+    "description": "Martin lets you phone your assistant and offers talking wake-up calls; other assistants place calls for you. OpenClaw has two ways to do calls, and both collide with this house's rules, so calls stay off.",
+    "example": "Tony asks: 'can Happy ring me if school closes?' Answer: no; it sends an urgent text instead.",
+    "how": "Option 1, the `@openclaw/voice-call` plugin with Twilio, Telnyx or Plivo: needs a phone number and a publicly reachable webhook URL, and setup fails when that URL resolves to loopback or private network space. Option 2, the FaceTime plugin: marked experimental and disabled by default, uses private Apple APIs, needs full Xcode, an administrator account and reduced SIP protections. For urgent alerts keep the existing path: the F055 relay text, marked urgent under the notification policy (G001).",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "a public webhook endpoint or reduced SIP (both ruled out)"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "A public webhook contradicts 'reachable only over Tailscale' and is the same class of exposure as the Gmail Pub/Sub endpoint on the never-list.",
+      "Reducing SIP weakens the one Mac that holds every credential.",
+      "Calls to anyone outside the family break the family-only outbound rule; calls to book something are on the never-list.",
+      "A realtime voice provider would be a new cloud audio path.",
+      "A per-contact Emergency Bypass setting on the parents' phones (not verified in this run) is the usual way to make an urgent text ring through, which covers the school-closure case."
+    ],
+    "safety": "Respected by not building: no public endpoint, SIP stays on, outbound stays inside the family.",
+    "unverified": [
+      "Emergency bypass behaviour for the Happy contact on current iOS was not checked in this run."
+    ],
+    "overlaps_existing": [
+      "F004",
+      "F055",
+      "G001"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.trymartin.com/",
+        "title": "Martin: Personal Assistant",
+        "anchor": "Wake Up Calls",
+        "supports": "A commercial assistant offers phoning the assistant and spoken wake-up calls."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/voice-call.md:89",
+        "title": "Voice call plugin: setup warning",
+        "anchor": "public webhook URL",
+        "supports": "Telephony setup fails unless the webhook resolves to a public address."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/facetime.md:22",
+        "title": "FaceTime plugin: warning",
+        "anchor": "reduced SIP debugging protections",
+        "supports": "The FaceTime integration uses private Apple APIs and needs weakened SIP protections."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/facetime.md:16",
+        "title": "FaceTime plugin: status",
+        "anchor": "experimental, disabled by default",
+        "supports": "The FaceTime plugin is experimental and off unless configured."
+      }
+    ]
+  },
+  {
+    "id": "MKT-15",
+    "name": "Agentic errands: reservations, orders, repair bookings",
+    "tier": 3,
+    "cluster": "acting in the world",
+    "description": "Alexa+ books restaurants and appointments, orders groceries and food, and arranges a repair by navigating a website itself. This is the largest thing commercial assistants do that Happy will not do: every one of these is on the never-list. Happy stops one step earlier and hands the parent a ready-to-tap result.",
+    "example": "Jordan texts: 'book the dishwasher repair for Friday.' Happy returns two providers with hours and a drafted message for her to send.",
+    "how": "Mechanically it would be the `browser` tool on a logged-in host profile; the docs advise signing in by hand because automated logins trip anti-bot defences. Happy's stop-short version uses pieces already in the catalog: research finds two or three options (F026, F027), drafts the outreach text for the parent to send (F037), attaches a tap-to-add calendar hold (F010), or builds a cart link (MKT-05).",
+    "who": "adult",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "A browser logged in to shopping or booking sites, on any agent that also reads web pages, puts private sessions, untrusted content and a way to act in one process.",
+      "Booking and retail sites use bot walls and CAPTCHAs, which are also on the never-list.",
+      "The human tap at the end costs seconds and removes the whole class of wrong-order and injected-order failures."
+    ],
+    "safety": "Payments, purchases and bookings are never-list items; the stop-short pattern keeps the model unable to commit money or appointments.",
+    "unverified": [
+      "How reliable Alexa+ bookings are in practice; only Amazon's own announcement was read."
+    ],
+    "overlaps_existing": [
+      "F010",
+      "F020",
+      "F026",
+      "F027",
+      "F037"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+        "title": "Introducing Alexa+, the next generation of Alexa",
+        "anchor": "OpenTable and Vagaro",
+        "supports": "Alexa+ makes reservations and appointments, orders groceries and food, and can navigate a site to arrange a repair."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/browser-login.md:12",
+        "title": "Browser login",
+        "anchor": "anti-bot defenses",
+        "supports": "Automated logins often trigger bot defences and can lock an account, so manual sign-in is advised."
+      }
+    ]
+  },
+  {
+    "id": "MKT-16",
+    "name": "Personal Gmail summaries and reply drafts: leave them to Gmail",
+    "tier": 2,
+    "cluster": "inbox",
+    "description": "Since January 2026 every Gmail user gets AI thread summaries, Help Me Write and Suggested Replies at no cost; asking questions across the whole inbox is for paid Google AI plans. So 'summarise this thread' and 'draft a reply' on a parent's own Gmail are already on the phone. This is a reason to keep the personal-inbox features behind the school mailbox, not to pull them forward.",
+    "example": "Tony asks: 'should Happy draft my email replies?' Answer: Gmail already does; Happy's job is the school mailbox and the one action list both parents see.",
+    "how": "Nothing to build. Order of work: the dedicated school mailbox through the IMAP plugin (F051, F055, F056, MKT-01) first. Lower the priority of F053 (draft a reply) and F054 (needs-reply tracker). Keep F016 (cross-sender action list pushed to iMessage at 07:00) and F052 (did I get an email about X) as the only personal-inbox items with a gap, and only after decision 1.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "decision 1 (personal email on the cloud model)"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Gmail's free features work one thread at a time inside the Gmail app. Nothing pushes a combined action list to iMessage, and nothing is shared between the two parents.",
+      "AI Inbox was limited to trusted testers at announcement; its current availability was not checked.",
+      "Using Gmail's features means Google's models read the mail; Tony may weigh that differently from OpenAI under store:false.",
+      "The 'not recommended' applies to building per-thread summary and reply drafting on Happy, not to the school mailbox."
+    ],
+    "safety": "Avoids handing any Happy agent a personal inbox token, the highest-risk grant in the catalog, for features the mail app already has.",
+    "unverified": [
+      "Apple Mail's own summaries and priority features on the parents' iPhones were not verified in this run."
+    ],
+    "overlaps_existing": [
+      "F016",
+      "F047",
+      "F048",
+      "F052",
+      "F053",
+      "F054"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://blog.google/products-and-platforms/products/gmail/gmail-gemini",
+        "title": "Gmail is entering the Gemini era",
+        "anchor": "for everyone at no cost",
+        "supports": "Thread summaries, Help Me Write and Suggested Replies are free for all Gmail users, while inbox-wide questions and Proofread need a paid Google AI plan."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:11",
+        "title": "IMAP email trigger",
+        "anchor": "does not send email",
+        "supports": "The bundled mail watcher starts an isolated reader per allowed message and cannot send mail or expose a public endpoint, which is the path used for the school mailbox."
+      }
+    ]
+  }
+]

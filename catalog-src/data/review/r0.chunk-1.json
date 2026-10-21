@@ -1,0 +1,1530 @@
+[
+ {
+  "id": "F001",
+  "origin": "9 Oct",
+  "name": "Inbound iMessage attachments (photos, PDFs, voice memos)",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Photos, PDFs and voice memos sent to Happy actually reach the agent; today a message that is only an attachment is dropped without a reply.",
+  "example": "",
+  "how": "Set channels.imessage.includeAttachments: true; Basic mode already carries media; default attachment root covers the happy user; inbound caps are 10 MB image, 20 MB audio.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON 'needs' asks for an attachmentRoots entry and treats mediaMaxMb 16 as the limit for incoming files. media.md:23-25 says the default root pattern already covers every user's Messages folder (configured roots are merged, not replaced) and mediaMaxMb is the outbound cap. The Markdown wording already reflects this.",
+   "'Under store:false' covers less than it reads. OpenAI's data-controls page says store only governs application state; abuse-monitoring logs with prompt and response content are still kept up to 30 days by default. Family photos sent to the model fall under that unless the OpenAI organisation has Zero Data Retention."
+  ],
+  "unverified": [
+   "That the gateway process under the happy account already has Full Disk Access to the Messages attachments folder comes from the 9 Oct notes and was not re-checked.",
+   "Whether OpenClaw treats the per-person custom provider ids exactly like the stock OpenAI provider for image input was not tested live (the config repo does declare image input for both models)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "includeAttachments",
+    "supports": "Inbound attachments are off by default and attachment-only messages are dropped before the agent until this key is set to true.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:84",
+    "title": "Enabling the imsg private API",
+    "anchor": "falls back to basic mode",
+    "supports": "With SIP left on, imsg still sends and receives text and media, so attachments do not need the Private API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:63",
+    "title": "Media understanding",
+    "anchor": "10MB image, 20MB audio",
+    "supports": "Inbound media understanding has default size limits of 10 MB for images and 20 MB for audio, separate from the outbound media cap.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/your-data",
+    "title": "Data controls in the OpenAI platform",
+    "anchor": "abuse monitoring logs",
+    "supports": "OpenAI keeps abuse-monitoring logs, which can include prompt and response content, for up to 30 days by default on all API usage unless Zero Data Retention is approved.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F002",
+  "origin": "9 Oct",
+  "name": "Photo and PDF understanding",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it.",
+  "example": "",
+  "how": "Images pass natively to gpt-6-sol; attached PDFs arrive as extracted text blocks; the optional pdf tool (group:media) adds page selection via local PDFium, 10 MB and 20 pages by default.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON 'needs' says view_image is already granted and sets agents.defaults.pdfModel to luna. The minimal profile contains only session_status and gateway (tool-policy.md:36), and pdfModel is an agents.defaults key that is unset by default (pdf.md:124). The Markdown already drops both."
+  ],
+  "unverified": [
+   "Reading accuracy on blurry phone photos and scanned image-only PDFs was not measured; pages with under 200 characters of text are rendered to images for the vision model (pdf.md:93).",
+   "Whether PDF links, as opposed to attachments, should be readable is left open; the pdf tool rejects remote URLs when it runs sandboxed (pdf.md:68)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:92",
+    "title": "PDF tool",
+    "anchor": "document-extract",
+    "supports": "For providers other than Anthropic and Google the pdf tool extracts text and page images locally with the bundled document-extract plugin (clawpdf, PDFium).",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:143",
+    "title": "Media understanding",
+    "anchor": "supports vision natively",
+    "supports": "When the reply model accepts images, OpenClaw hands it the original image instead of a text summary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:92",
+    "title": "Configuration — tool policy",
+    "anchor": "group:media",
+    "supports": "The pdf tool belongs to group:media, so under the minimal profile it must be allowed explicitly and any group deny removes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+    "title": "GPT-6 Sol model reference (OpenAI API docs)",
+    "anchor": "gpt-6-sol",
+    "supports": "OpenAI lists text and image as this model's input modalities and text as its only output; audio input is not listed.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F003",
+  "origin": "9 Oct",
+  "name": "Voice memos in, transcribed locally",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "A parent sends a voice memo instead of typing; the Mac mini transcribes it locally, echoes the text back and answers. Only the transcript reaches the cloud model.",
+  "example": "",
+  "how": "Explicit tools.media.models CLI entry (whisper-cli, capabilities audio, {{AttachmentPath}}) plus echoTranscript; needs brew whisper.cpp, ffmpeg and a GGML model file; OpenClaw converts to WAV itself.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Markdown pairs a whisper-cpp install with audio.preferredModel: \"cli:whisper\". The matcher compares that value with cli: plus the entry's exact command string (dist/resolve-KJuMET3H.mjs:148), so for whisper-cpp it must be cli:whisper-cli, or cli: plus the full path used in the entry; cli:whisper only matches the Python whisper CLI.",
+   "The Homebrew formula is now named whisper.cpp (formerly whisper-cpp) and its page says GGML model files are not downloaded by default. The 9 Oct note about a model that downloads automatically describes the Python whisper CLI (media-understanding.md:168), not whisper-cli.",
+   "ffmpeg is a hard requirement the Markdown leaves out: upstream whisper-cli reads only 16-bit WAV (github.com/ggml-org/whisper.cpp README), OpenClaw shells out to ffmpeg for that conversion (dist/ffmpeg-exec-VIr-PIWC.mjs:25 prints the brew install hint), and the formula does not pull ffmpeg in."
+  ],
+  "unverified": [
+   "The container format of iMessage voice memos, and whether ffmpeg decodes it cleanly, were not tested.",
+   "Transcription speed on the M5 Pro and accuracy for Chinese or mixed-language speech were not measured.",
+   "Whether the per-person custom provider ids count as OpenAI audio auth in auto-detection is undocumented; the explicit CLI entry sidesteps the question."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/audio.md:39",
+    "title": "Audio and voice notes",
+    "anchor": "Configured provider auth",
+    "supports": "In auto-detection a configured provider API key is tried before any local speech binary, which is why the local CLI has to be listed explicitly to keep audio on the Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/runner.entries-Du3EDemB.mjs:338",
+    "title": "OpenClaw media-understanding CLI runner (bundled source)",
+    "anchor": "whisper-cli",
+    "supports": "For whisper-cli the runner first converts any non-WAV attachment to 16 kHz mono WAV with ffmpeg, so ffmpeg must be present on the host.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://formulae.brew.sh/formula/whisper.cpp",
+    "title": "Homebrew Formulae: whisper.cpp",
+    "anchor": "GGML model files",
+    "supports": "The Homebrew formula (formerly whisper-cpp) installs whisper-cli but ships no model files and does not list ffmpeg as a dependency; both must be added separately.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F004",
+  "origin": "9 Oct",
+  "name": "Spoken replies (TTS) and voice round trip",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "On request, or after a voice memo, Happy's reply also arrives as an audio file to tap and play. The phone can already read texts aloud in the car.",
+  "example": "",
+  "how": "tts provider tts-local-cli running macOS say (WAV file, offline); tts.auto \"inbound\" per agent or /tts audio on demand; iMessage gets a plain attachment, not a voice bubble.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 2,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON description says the reply returns 'as an MP3 attachment'. With the free say path the file is WAV (tts/output.md:46, configuration.md:143); MP3 comes only from cloud speech providers. The Markdown already says WAV."
+  ],
+  "unverified": [
+   "That the documented say preset writes a valid WAV on macOS 27 without extra data-format flags was not run.",
+   "How Messages on iPhone presents a WAV attachment (inline player or plain file) was not tested.",
+   "The 1,500-character summarise-or-truncate threshold is documented (tts/commands.md:104) but its effect on long replies here was not tried."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:27",
+    "title": "Text-to-speech field reference",
+    "anchor": "inbound",
+    "supports": "Auto-TTS has an inbound mode that sends audio only after the user has sent a voice message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:141",
+    "title": "Text-to-speech configuration",
+    "anchor": "command: \"say\"",
+    "supports": "The documented Local CLI preset runs the macOS say command with a WAV output format and needs no API key.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:46",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "Local CLI",
+    "supports": "A Local CLI provider delivers audio in its configured output format, so the say preset yields WAV rather than MP3.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "With iOS 15 or later Siri can read incoming messages aloud in the car, so the phone already covers hands-free listening to Happy's text replies.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "unplaced",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-04",
+  "name": "Local neural voice for spoken replies (local-only once cloud speech is switched off)",
+  "tier": 1,
+  "cluster": "Text to speech",
+  "description": "Replaces the robotic macOS `say` voice from F004 with a natural voice synthesized entirely on the Mac mini, so read-aloud answers, briefs and later any kids' content never touch a cloud TTS provider. This is the piece every other voice feature borrows its speech from.",
+  "example": "Parent texts: read me today's brief. Or sends `/tts latest` after a long answer and gets an audio file back in iMessage.",
+  "how": "Gateway `tts` block. Documented option A: Speech Swift's local server on loopback (`brew install speech`, `speech-server --port 8080`) with the `openai` speech provider pointed at the loopback base URL, `model` tts-1 (which selects Kokoro) and `responseFormat` wav. Option B: `tts-local-cli` running the `speech` or `say` command. Option C: a Piper voice through sherpa-onnx; the bundled sherpa-onnx-tts skill runs a local binary from a shell, which needs an exec tool no agent here has, so in practice point `tts-local-cli` at that binary. In every option set `tts.providers.microsoft.enabled: false`, so the default-on Microsoft online provider cannot serve as a fallback when the local engine fails. Per-agent control through `agents.entries.<id>.tts` (off for research and inbox). `tts.auto: inbound` gives a voice answer to a voice memo; `/tts latest` reads the previous reply. ffmpeg on the host for conversions.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F004",
+   "Homebrew installs done from the admin account (speech, ffmpeg)",
+   "decision: which local engine"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+   "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+   "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+   "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+   "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio.",
+   "Local-only is not the default. The keyless Microsoft provider is enabled by default, and the docs say other configured providers act as fallbacks, so a stopped local server could end in a cloud call unless Microsoft is disabled.",
+   "`/tts provider <id>` is open to any authorized sender and writes one preference file on the gateway host, so a single text can move speech to another provider for everyone. Having no cloud provider configured is the control; a prompt rule is not.",
+   "Option A adds a third-party Homebrew package and a long-running loopback server under the happy user, plus a model download: an install, a launch agent, a firewall rule and a one-time egress exception.",
+   "The loopback route needs Speech Swift v0.0.23 or later. It is a 0.0.x project, so pin the version and expect rough edges; the server also needs its own launchd job to stay up.",
+   "None of `speech`, `speech-server` or `ffmpeg` is installed on this Mac today.",
+   "iMessage outbound media is capped by `channels.imessage.mediaMaxMb` (default 16 MB), which bounds the length of a WAV reply."
+  ],
+  "safety": "Speech synthesis is an output transformation on the gateway host and adds no new way for an agent to send data out. It is local-only, and so usable for kids' content later, only after the cloud speech providers are disabled in config and blocked at the proxy; the default provider chain and the provider slash command would otherwise allow a cloud voice. Long replies pass through a summary model before synthesis, which must be local or off for kids. Keep provider switching by directive off (VOX-03).",
+  "unverified": [
+   "Kokoro or Piper voice quality and speed on this Mac.",
+   "Whether pointing `tts.providers.openai` at loopback has any side effect on the earlier decision not to add a catalog openai model provider (it is a different config block).",
+   "Whether scheduled announce deliveries (briefs) pass through Auto-TTS or only interactive replies do.",
+   "Whether the fallback chain actually reaches the Microsoft online voice when the selected local provider errors.",
+   "Which hosts the Speech Swift package contacts to download its models.",
+   "Whether a failed local synthesis actually falls through to the Microsoft online provider when only one provider block is written. The docs say other configured providers are fallbacks and that Microsoft is enabled by default; this was not tested."
+  ],
+  "overlaps_existing": [
+   "F004",
+   "F074"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/configuration.md:297",
+    "title": "Text-to-speech configuration",
+    "anchor": "Speech Swift",
+    "supports": "OpenClaw documents Speech Swift and speech-core as local speech engines for macOS, Linux and Windows.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/quickstart.md:44",
+    "title": "Text-to-speech quickstart",
+    "anchor": "explicit-intent only",
+    "supports": "The tts agent tool stays silent unless the user asks for audio or Auto-TTS is enabled.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts.md:12",
+    "title": "Text-to-speech",
+    "anchor": "audio attachment",
+    "supports": "Only four channels get native voice messages; every other channel, including iMessage, receives an audio attachment.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:49",
+    "title": "iMessage rich messages",
+    "anchor": "asVoice",
+    "supports": "Sending a file as a voice message is part of the private-API action list.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:11",
+    "title": "iMessage private API",
+    "anchor": "SIP off",
+    "supports": "The private-API action set requires disabling SIP, which this install does not do.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:84",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "/tts latest",
+    "supports": "A slash command re-sends the latest assistant reply as audio once.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:28",
+    "title": "Text-to-speech field reference",
+    "anchor": "inbound",
+    "supports": "The inbound auto mode sends audio only after an inbound voice message.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sherpa-onnx-tts/SKILL.md:3",
+    "title": "sherpa-onnx-tts skill",
+    "anchor": "offline, no cloud",
+    "supports": "A bundled skill provides offline local TTS through sherpa-onnx.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/sag/SKILL.md:3",
+    "title": "sag skill",
+    "anchor": "ElevenLabs text-to-speech",
+    "supports": "The sag skill is a front end to the ElevenLabs cloud service.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/speech-provider-UuMpLqsM.mjs:150",
+    "title": "OpenClaw source: Microsoft speech provider",
+    "anchor": "isConfigured",
+    "supports": "The Microsoft provider reports itself as configured whenever its enabled flag is not set to false.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:85",
+    "title": "Text-to-speech output",
+    "anchor": "Summary on",
+    "supports": "Replies over the length limit are summarized by a model before synthesis, or truncated when summaries are off or unavailable.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:25",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.mediaMaxMb",
+    "supports": "Outbound iMessage media has a size cap that defaults to 16 MB.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The local engine is sound, but 'never touches a cloud TTS provider' is not true by default: the keyless Microsoft online voice is enabled and counts as a configured fallback, and any authorized sender can switch provider with a slash command. The neural-engine route is also an install and a service, not a small config change.",
+   "All 13 sources hold. One safety gap: the keyless Microsoft speech provider is an online service that is enabled by default, and configured providers act as fallbacks, so the promise that no text leaves the Mac only holds once `tts.providers.microsoft.enabled` is false. The sherpa-onnx option also needs rewording, since running it as a skill needs an exec tool no agent has."
+  ],
+  "reviewed_by": 2,
+  "wave": "C",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-06",
+  "name": "In the car: Siri plus iMessage, with a driving reply style",
+  "tier": 1,
+  "cluster": "Voice workflows",
+  "description": "While driving, a parent talks to Happy through what the car already has: Siri sends the iMessage and announces Happy's reply. Happy's part is a driving style: at most two short sentences, no links, no lists, numbers written for speech, details deferred until parked.",
+  "example": "Hey Siri, text Happy: driving, what time does practice end and who has pickup?",
+  "how": "No new tool or plugin. A rule in each <p>-main AGENTS.md: when a message starts with the word driving (or the person says they are in the car), answer in at most two plain sentences and offer to send the rest later. Siri's message announcements in CarPlay do the listening and speaking.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "I found no CarPlay surface in the installed OpenClaw docs or changelog (a search for the word returned nothing), so there is no Happy app on the car screen to plan for.",
+   "The OpenClaw Start Live Voice shortcut is not a car feature: it needs the phone unlocked and the app in the foreground.",
+   "Anything that needs a tap, such as an approval prompt, has to wait until parked.",
+   "This is mostly the phone doing its job; the only work is making Happy's replies fit to be read aloud.",
+   "Apple's page says that for long messages Siri announces only the sender and reads the text on request, which is the practical reason to keep replies to two sentences.",
+   "Announced replies are heard by everyone in the car, so the driving style should also hold back private detail (money, health, the other adult's plans) until parked.",
+   "The example needs calendar knowledge Happy does not have yet; today the rule only improves weather and search answers.",
+   "Apple's CarPlay page says that when a message is long, Siri announces only the sender's name and that a message arrived, and reads it in full only when asked. A long reply from Happy is therefore not heard unless the driver asks, which is the real reason for the two-sentence cap."
+  ],
+  "safety": "Identical to typed iMessage: allowlisted sender, same agent, same hooks, same family-only outbound pin. No new device credential and no audio leaves the phone other than through Apple's own Siri.",
+  "unverified": [
+   "How Siri handles long or multi-part replies in CarPlay.",
+   "Whether a voice memo (F003) can be recorded hands-free in CarPlay.",
+   "Apple's detailed CarPlay Messages pages returned only navigation when fetched, so only the general CarPlay support page is cited.",
+   "How long a message has to be before Siri stops reading it out, and how several messages in a row are announced.",
+   "A `before_dispatch` keyword hook that keeps a short-lived car flag on the session. The installed docs describe that hook as a claim on the inbound message, not a way to shape the reply, so the AGENTS.md rule is the mechanism to rely on."
+  ],
+  "overlaps_existing": [
+   "F003"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108415",
+    "title": "Use CarPlay with your iPhone - Apple Support",
+    "anchor": "announce your incoming messages",
+    "supports": "Apple states that Siri can announce incoming messages in the car and that CarPlay sends and receives messages.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:665",
+    "title": "iOS app",
+    "anchor": "foreground restrictions",
+    "supports": "The OpenClaw live-voice shortcut does not bypass iOS unlock or foreground requirements.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:18",
+    "title": "Plugin hooks: messages",
+    "anchor": "claim, not an API",
+    "supports": "The before_dispatch hook claims an inbound message; it is not a way to rewrite inbound or outbound content.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/messages/icht35827",
+    "title": "Send a message on Mac - Apple Support",
+    "anchor": "Message Mom",
+    "supports": "Apple documents sending, hearing and answering messages by asking Siri.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.apple.com/apple-intelligence/",
+    "title": "Apple Intelligence and Siri - Apple",
+    "anchor": "Take action in more apps",
+    "supports": "Current Siri can act inside apps such as Messages and Reminders by voice.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.trymartin.com/",
+    "title": "Martin: Personal Assistant",
+    "anchor": "Call Martin",
+    "supports": "A commercial assistant markets voice access (calling it) as a headline channel.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage.md:19",
+    "title": "iMessage channel: status",
+    "anchor": "imsg rpc",
+    "supports": "The gateway receives iMessages through the imsg helper, so a Siri-dictated message is an ordinary inbound message.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102536",
+    "title": "Announce notifications with Siri on AirPods or Beats - Apple Support",
+    "anchor": "Announce Notifications",
+    "supports": "With compatible headphones connected to a locked iPhone, Siri reads incoming messages aloud and can take a spoken reply.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "MKT-07"
+  ],
+  "adds": [
+   "Asking Siri to message Happy works today with no build; save Happy as a contact under a name Siri hears reliably."
+  ],
+  "review_notes": [
+   "Safe and available today, so it survives; the changes are small. Value is overstated for what is a reply-style rule on top of the phone's own feature, one item listed as unverified is answered by the Apple page already cited, and a passenger-privacy caveat is missing.",
+   "All 3 sources hold and nothing needs installing. The Apple page also settles one item listed as unverified (long messages are not read aloud automatically), and the optional `before_dispatch` car flag is not a documented use of that hook, so it moves to unverified."
+  ],
+  "reviewed_by": 2,
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G009",
+  "origin": "9 Oct",
+  "name": "Family delivery primitive: message an allowlisted family member or the group chat, recipient-pinned",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Happy can pass a short text from one parent to the other or to the parents' group, and can never message anyone outside the family.",
+  "example": "",
+  "how": "message tool on <p>-main with a before_tool_call plugin hook that blocks any target not in family.json5 (fails closed); host jobs use openclaw agent --deliver or openclaw message send.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Markdown adds message_sending 'as a second gate'. That hook can cancel a send, but when its handler throws or times out it is logged and skipped (hooks/reference.md:94), so it fails open; only the before_tool_call check is fail-closed.",
+   "The 9 Oct 'needs' implies that enabling the tool plus the hook is enough. The live config turns both crossContext switches off, and tool-permissions.md:39 says that confines sends to the current conversation, so the same-provider switch must be re-opened and the hook then becomes the only recipient limit."
+  ],
+  "unverified": [
+   "The exact parameter that carries the recipient in a message tool call, which the hook must match, was not read from source.",
+   "openclaw message send takes no agent flag and runs as the configured System Agent (cli/message.md:35-50); whether that suits per-person jobs was not tested.",
+   "The hook plugin and its family-only test case do not exist yet, so blocking an unknown recipient is unproven on this install."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Configuration — tool policy",
+    "anchor": "group:messaging",
+    "supports": "The message tool is the single member of group:messaging, so it is granted or denied as one unit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/tool-permissions.md:39",
+    "title": "Tool and agent permissions",
+    "anchor": "allowWithinProvider",
+    "supports": "The documented built-in limits on where the message tool may send are switches for other conversations, open by default; nothing on the page pins recipients, so a hook is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Hook reference",
+    "anchor": "Fail closed",
+    "supports": "A before_tool_call handler that throws or times out blocks the tool call, so a recipient check placed there cannot be skipped by an error.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/agent-send.md:80",
+    "title": "Agent send",
+    "anchor": "--deliver",
+    "supports": "A host-side script can run one agent turn and deliver the reply to a chat target from the command line.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G011",
+  "origin": "9 Oct",
+  "name": "Bilingual replies and grandparent-facing translations",
+  "tier": 1,
+  "cluster": "media-voice-channel",
+  "description": "Happy replies in the language each person writes in and, on request, turns a school note into short Chinese text a parent can forward to a grandparent.",
+  "example": "",
+  "how": "Per-person language directive rendered into USER.md (4,000-character cap); scheduled jobs need the language written into the job message; no new tool and no send path.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "A 9 Oct verifier note says there is no per-language voice switch. tts/output.md:56 documents one for the bundled Microsoft provider, which is an online service; it does not help the offline say path."
+  ],
+  "unverified": [
+   "Translation quality into Chinese by gpt-6-sol for school notices was not evaluated.",
+   "Which iPhone models and languages Apple's Live Translation covers for this family was not confirmed; the Apple page defers to an availability list.",
+   "Whether the macOS say default voice pronounces Chinese text was not tested."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:367",
+    "title": "User model",
+    "anchor": "4,000-character",
+    "supports": "USER.md is the always-injected per-person directive file with a small fixed size cap, which is where a language preference belongs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:140",
+    "title": "Automation delivery",
+    "anchor": "do not infer a reply language",
+    "supports": "Scheduled jobs do not pick up a language from the chat, so each digest or reminder must state its language in the job text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/output.md:56",
+    "title": "Text-to-speech output and Auto-TTS behavior",
+    "anchor": "zh-CN-XiaoxiaoNeural",
+    "supports": "Only the online Microsoft speech provider switches to a Chinese voice automatically for mostly-Chinese text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/123720",
+    "title": "Use Live Translation on iPhone - Apple Support",
+    "anchor": "Live Translation",
+    "supports": "On supported iPhones Messages can translate a conversation automatically and on device, which overlaps with the grandparent-translation use.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-06",
+  "name": "Built-in chat commands for parents (/stop, /new, /btw, /status, /usage, /tools, /loop)",
+  "tier": 1,
+  "cluster": "Everyday controls",
+  "description": "A handful of typed commands that already work in the iMessage thread: stop an answer that is going wrong, start a clean conversation, see what Happy can do right now, and check health and cost, all handled before any model call. Two more do use the model: /btw asks a side question that is not remembered, and /loop (owner only, once the scheduling tool is granted) starts a repeating check inside a thread.",
+  "example": "Jordan texts '/stop' when a long answer is heading the wrong way, then '/new'. Tony texts '/loop 30m tell me when the winter storm warning ends'.",
+  "how": "Text commands are core and work on iMessage: command-only messages from allowlisted senders are handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary. /btw answers from the current session with a separate one-shot model query and writes nothing to history. /loop is owner-only and asks the agent to create a recurring agent-turn job bound to the conversation through the cron (automations) tool, at a fixed interval or self-paced between one minute and one hour, so it works only after F007 grants that tool to <p>-main. Put the five everyday ones in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and Tony should decide whether /restart, which is on by default for owners, stays available from chat.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "F007 if Jordan should be able to use /loop (owner list)",
+   "G005 kill switch for the stop-everything case",
+   "F007 (automations/cron tool on <p>-main) before /loop works at all; Jordan in the owner list if she should use it"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+   "/loop needs owner status, which only Tony has today, and it asks the agent to create the job with the cron (automations) tool, so it does nothing until <p>-main holds that tool (F007).",
+   "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+   "/usage figures are local estimates, like G004.",
+   "In a plain iMessage bubble the /status and /tools output may be long.",
+   "A /loop job is written by the model in chat, outside the G003 jobs registry, and is capped to the tools of the turn that created it; a self-paced loop may run as often as once a minute, so count it under G004 and review it with /loop status.",
+   "/btw is a separate one-shot model call on the session's model; it is not free and not model-less."
+  ],
+  "safety": "No new capability for the five everyday commands: they are read from the sender's own message, authorised by the sender allowlist and the owner list, and handled before the model runs. /btw and /loop are model turns on <p>-main under its normal tool policy, and <p>-main cannot browse. /loop additionally needs the cron tool and creates a job outside the registry, visible in the automations list (G003, G020); the job cannot hold more tools than the turn that created it.",
+  "unverified": [
+   "Whether /btw works over the iMessage channel in 2026.9.7",
+   "How /status and /tools render in iMessage"
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G004",
+   "F007",
+   "G014",
+   "G020"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/slash-commands.md:623",
+    "title": "Slash commands: fast path",
+    "anchor": "bypass queue + model",
+    "supports": "Command-only messages from allowlisted senders are handled immediately without a model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/btw.md:9",
+    "title": "BTW side questions",
+    "anchor": "/btw",
+    "supports": "A side question uses the current session as context and is never written to history.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:77",
+    "title": "Automation schedules: /loop chat shortcut",
+    "anchor": "recurring agent-turn job",
+    "supports": "The loop command creates a recurring model-backed job bound to the conversation, self-paced between one minute and one hour when no interval is given.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:60",
+    "title": "Automation payloads: tool policy",
+    "anchor": "Jobs created by an agent",
+    "supports": "A job an agent creates is capped to the tools of the creating turn and the agent cannot widen it.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources check out, but two of the listed commands are not model-free as described: /btw runs a one-shot model query and /loop asks the agent to create a recurring agent-turn job through the cron tool, which <p>-main does not hold until F007. Description, dependencies and safety corrected; the five everyday commands remain ready now."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-15",
+  "name": "Video clips sent to Happy",
+  "tier": 1,
+  "cluster": "media",
+  "description": "Parents will send short videos as naturally as photos: the dishwasher's blinking error, a recital clip, a how-to from the coach. On this provider set Happy cannot watch them. The bundled video-understanding providers are Google, Qwen and Moonshot, and none is configured. A local wrapper can at least transcribe the sound track.",
+  "example": "Tony sends a 20-second clip of the furnace panel: 'What is it trying to tell me?'",
+  "how": "Turning on channels.imessage.includeAttachments (F001) forwards video along with photos and voice memos. Media understanding then looks for a video-capable entry: the bundled order for video is Google, then Qwen, then Moonshot, with a 50 MB default input cap, and OpenAI is not in that list. Without such an entry the reply flow continues and the docs say the original media is still passed to the model; whether gpt-6-sol accepts a video file that way is untested. Honest options: (1) a line in AGENTS.md telling the sender to send a photo or a few screenshots instead; (2) a local CLI entry in tools.media.models with the video capability that runs an in-house script, in which ffmpeg extracts the audio track for the same local whisper path as voice memos (F003); (3) a Google key for video, which is a new vendor outside the store:false arrangement and is not proposed.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "blocked",
+  "depends_on": [
+   "F001 inbound attachments",
+   "F003 local transcription",
+   "F084 privacy gate",
+   "ffmpeg on the Mac"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "A still photo answers most of these questions and already works with photo understanding (F002).",
+   "Family videos contain the children's faces and voices. Any frames sent as images go to the cloud model under the same decision as photos (9 Oct decision 3).",
+   "iPhone clips are large; anything over the cap is skipped.",
+   "The docs' own command-line example for video calls a Gemini tool, which is the cloud route under another name.",
+   "The furnace-panel example is not served by the sound-track route: a silent clip of blinking lights yields an empty transcript. For that case the only working answer is 'send a photo'.",
+   "The video capability's default output limit is 500 characters, so a transcript route must raise maxChars on its entry or longer clips are cut short.",
+   "The family's provider entries declare text and image as model inputs (read-only check of the config repo), so video is not a declared input for either model today.",
+   "Neither ffmpeg nor a whisper binary was found under /opt/homebrew/bin in this review, so the sound-track route starts from two installs.",
+   "A coach's or stranger's clip forwarded by a parent is third-party content; its transcript reaches the parent's private agent the same way a forwarded PDF does and should be labelled as untrusted text."
+  ],
+  "safety": "Option 2 keeps the audio on the Mac and sends only a transcript, like voice memos. No new vendor is added. Video from unknown senders never arrives because of the sender allowlist, and the document privacy gate still runs on the extracted text.",
+  "unverified": [
+   "Whether gpt-6-sol accepts video input at all through the custom provider ids.",
+   "Whether a CLI media entry can hand back still frames as well as text; the docs show text output only.",
+   "Whether ffmpeg is installed for the happy user.",
+   "Whether gpt-6-sol could accept video input if the provider entry declared it; today the family's provider entries declare text and image only."
+  ],
+  "overlaps_existing": [
+   "F001",
+   "F002",
+   "F003"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage media and attachments",
+    "anchor": "channels.imessage.includeAttachments",
+    "supports": "Inbound attachments, video included, reach the agent only when this switch is on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:178",
+    "title": "Media understanding: bundled provider order",
+    "anchor": "Video: Google",
+    "supports": "The bundled providers for video understanding are Google, Qwen and Moonshot; OpenAI is listed for images only.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "All five doc lines hold, but 'experimental' is the wrong label: watching a clip has no path on this provider set (blocked), and the sound-track route is ordinary build work that does not serve the entry's own example of a silent furnace panel. The honest deliverable today is a line telling the sender to send a photo."
+  ],
+  "reviewed_by": 1,
+  "wave": "later",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "OCL-04",
+  "name": "iMessage tapbacks, typing bubble, polls and tap-to-approve (Private API mode)",
+  "tier": 1,
+  "cluster": "Channels and surfaces",
+  "description": "What Happy's iMessage thread would gain if System Integrity Protection were turned off: a typing bubble and read receipts, a thumbs-up instead of a text reply, threaded replies, message effects, native polls, approving a request by tapback, and answering a multiple-choice question with a numbered reaction. All of it is unavailable in the current Basic mode.",
+  "example": "Happy acknowledges 'add milk to the list' with a thumbs-up instead of a sentence, or asks the parents' group 'Pizza or tacos on Friday?' as a native poll.",
+  "how": "channels.imessage in Private API mode: imsg injects a helper into Messages.app, which needs SIP disabled and library validation relaxed on the Mac mini; after that channels.imessage.actions.* and reactionNotifications apply. In Basic mode the plugin hides react, edit, unsend, reply, sendWithEffect and the group actions, and sends no typing or read signals.",
+  "who": "both",
+  "risk": "high",
+  "readiness": "blocked",
+  "depends_on": [
+   "SIP disabled on the Gateway Mac (the roadmap keeps SIP on)"
+  ],
+  "value": 3,
+  "effort": "L",
+  "caveats": [
+   "This is blocked by a deliberate rule rather than a defect: with SIP on, the channel is text and media send and receive only.",
+   "The docs warn that disabling SIP is a system-wide security trade-off and, on Apple Silicon, also stops iOS apps from being installed and run on that Mac.",
+   "The injected helper can drop out after a Messages restart or a macOS update and has to be relaunched.",
+   "The documented workaround is a second, dedicated Mac with SIP off just for iMessage, which means new hardware and a second machine to trust.",
+   "In Basic mode approvals stay as typed /approve; the tap-to-approve alternative is the iOS app or Control UI (OCL-01)."
+  ],
+  "safety": "Turning SIP off weakens the one machine that holds every family secret in order to gain convenience and polish, so it is not worth it. Tap-to-approve would also let any allowlisted handle resolve an approval with a reaction, which widens the approval surface the roadmap deliberately keeps narrow.",
+  "unverified": [
+   "Whether tapbacks sent by family members reach the agent as events in Basic mode; the docs list inbound tapbacks on the Private API page but describe Basic mode only as inbound watch",
+   "Whether audio replies arrive as a voice bubble or a file in Basic mode (already flagged in the roadmap)"
+  ],
+  "overlaps_existing": [
+   "F006",
+   "F010",
+   "F082",
+   "G010"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:17",
+    "title": "Enabling the imsg private API",
+    "anchor": "Basic mode",
+    "supports": "Without SIP changes, imsg offers outbound text and media, inbound watch and history, and chat listing only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:103",
+    "title": "iMessage private API actions: approval polls and reactions",
+    "anchor": "allow-once",
+    "supports": "Approval prompts on a private-API bridge can be answered by a like or dislike tapback or a native poll.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/reactions.md:88",
+    "title": "Reactions",
+    "anchor": "iMessage tapbacks",
+    "supports": "Outbound reactions on iMessage map to the six tapback kinds.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102149",
+    "title": "About System Integrity Protection on your Mac (Apple Support)",
+    "anchor": "System Integrity Protection",
+    "supports": "Apple describes SIP as the protection that stops malicious software, even with root access, from modifying protected system files and preinstalled apps.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "never",
+  "section": "Channel, media and voice",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F007",
+  "origin": "9 Oct",
+  "name": "Timed reminders over iMessage (one-shot and recurring)",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "\"Remind me at 4:30 to pick up the kids\" or \"every Sunday 7 pm: bins out\" becomes a scheduled text to the asker, and reminders can be listed and cancelled.",
+  "example": "",
+  "how": "automations tool (cron alias) allowed on <p>-main; --at one-shots auto-delete; recurring --cron with --tz; jobs capped with --tools \"\"; only senders in commands.ownerAllowFrom may use it.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON 'needs' lists --delete-after-run. One-shot --at jobs already delete themselves after confirmed delivery (how-it-works.md:19). The Markdown already says so."
+  ],
+  "unverified": [
+   "Creating a reminder from an iMessage owner turn has not been tried live on this install; managing-jobs.md:81 describes chat creation for Control UI administrators, and the owner-only /loop command is the documented chat shortcut for recurring jobs.",
+   "The comparison with Siri and Apple Reminders for one-off personal timers was not sourced."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:73",
+    "title": "Configuration — tool policy",
+    "anchor": "automations",
+    "supports": "The scheduler is exposed to agents as the automations tool, with cron kept as an alias, inside group:automation.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+    "title": "How automations work",
+    "anchor": "auto-delete after successful completion",
+    "supports": "One-shot reminders remove themselves once delivery is confirmed, so no clean-up flag is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:99",
+    "title": "Automation delivery",
+    "anchor": "preserved live delivery target",
+    "supports": "A reminder an agent creates from a live chat keeps that chat as its delivery target, so it texts the person who asked.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/hardened-baseline.md:38",
+    "title": "Hardened baselines",
+    "anchor": "non-owner senders cannot use",
+    "supports": "Only owner senders may use the scheduling tool from chat, so each parent has to be listed as an owner before they can set reminders.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:27",
+    "title": "Standing intents",
+    "anchor": "commands.ownerAllowFrom",
+    "supports": "Only channel owners receive the intent tool to create, list or cancel standing intents.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2606.23459",
+    "title": "TriggerBench: Investigating Prospective Memory for Large Language Models (arXiv 2606.23459)",
+    "anchor": "TriggerBench",
+    "supports": "A 2026 benchmark paper finds language models get much worse at acting on a remembered future trigger as context grows, the reason a structural matcher is used here.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "is not valid with",
+    "supports": "A timezone cannot be combined with a fixed-interval schedule, so fixed local dose times need cron expressions or dated one-shots.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Cron sessions do not load MEMORY.md, so each reminder must carry its own text and the refill arithmetic happens in the parent's normal chat.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105064",
+    "title": "Add and log medications with iPhone, iPad, and Apple Watch",
+    "anchor": "Skipped or Taken",
+    "supports": "Apple's Health app already schedules medication alerts and lets the user log each dose as taken or skipped, so per-dose pings duplicate the phone.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/memory.md:154",
+    "title": "Memory overview: memory tools",
+    "anchor": "creates, lists, or explicitly cancels",
+    "supports": "The intent tool is one of three memory tools provided by the active memory plugin, memory-core by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102484",
+    "title": "Use Reminders on your iPhone, iPad, or iPod touch - Apple Support",
+    "anchor": "When Messaging",
+    "supports": "The built-in Reminders app can raise a reminder when you message a chosen person and can tie a reminder to a location.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F008",
+   "F065",
+   "AUT-05"
+  ],
+  "adds": [
+   "The documented limits of topic-triggered intents (keyword match with no model call, 24-hour cooldown, three fires, 90-day expiry, owner-only tool) for the footnote on reminders."
+  ],
+  "wave": "A",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F009",
+  "origin": "9 Oct",
+  "name": "Family calendar read-only (<p>-calendar MCP)",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "\"What's on Saturday?\" or \"is anyone free Friday at 1?\" is answered from the family Google Calendar, read-only; it also feeds the daily briefs.",
+  "example": "",
+  "how": "Host-side stdio MCP per person: gog mcp with --readonly exposes calendar_events; freebusy and conflicts need a thin wrapper; allow bundle-mcp in the sandbox gate; publish the OAuth app.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct wording has Tony hand-write the calendar MCP server. gogcli.sh/mcp.html documents a built-in stdio server (gog --account <account> mcp) with a read-only calendar_events tool and an --allow-tool filter, so listing events needs no custom code. Freebusy and conflicts exist only as CLI commands (gogcli.sh/commands) and still need a wrapper.",
+   "Catalog JSON 'needs' expects a calendar.readonly scope from --services calendar. The documented switch is --readonly on gog auth add; Google's scope list does include calendar.readonly (developers.google.com/workspace/calendar/api/auth). The Markdown asked to verify the flag; gog's command page confirms it."
+  ],
+  "unverified": [
+   "gog is not installed on this Mac, so its flags were read from gogcli.sh and not from the binary; the bundled skill names the brew formula gogcli while the site shows a tap-qualified name.",
+   "Whether gog's calendar_events MCP tool can be pinned to a single calendar id was not confirmed.",
+   "Google or iCloud is still Tony's open decision; the iCloud route needs the OpenClaw macOS app paired as a node, which is not installed."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Configuration — tool policy",
+    "anchor": "bundle-mcp",
+    "supports": "Configured MCP servers are plugin-owned tools that sandboxed sessions only see when the sandbox tool allowlist includes bundle-mcp or the server's tool names.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/mcp.html",
+    "title": "gogcli docs: MCP server",
+    "anchor": "calendar_events",
+    "supports": "gog ships its own stdio MCP server whose only Calendar tool is a read tool that lists events; write tools stay hidden unless explicitly allowed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/gog-auth-add.html",
+    "title": "gogcli command reference: gog auth add",
+    "anchor": "--readonly",
+    "supports": "Adding an account with the read-only flag requests read-only OAuth scopes and blocks mutating requests at runtime.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/identity/protocols/oauth2",
+    "title": "Using OAuth 2.0 to Access Google APIs (Google for Developers)",
+    "anchor": "expiring in 7 days",
+    "supports": "An external OAuth app left in Testing status gets refresh tokens that expire after seven days, so the app must be published for an always-on agent.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "G012",
+  "origin": "9 Oct",
+  "name": "External calendar feeds (.ics): district calendar, team schedules, library and rec events",
+  "tier": 1,
+  "cluster": "calendar-reminders",
+  "description": "School district days off, team schedules and library events appear in Happy's calendar answers by subscribing the family Google Calendar to their public feed links.",
+  "example": "",
+  "how": "No .ics handling in OpenClaw; add each feed in Google Calendar (web, From URL) and read it through F009; a host fetch-and-parse job only if day-old data hurts.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON describes a host job refreshing every 6 hours into home-store; both reviewers replaced it with a Google Calendar subscription. Two details the 9 Oct notes lack: the subscription can only be created in a desktop browser (Google Help 37100), and Google's page gives no refresh interval; the 'up to 24 hours' figure is TeamSnap's.",
+   "gog cannot script the subscription: its calendar subscribe command takes a calendar id, not a feed URL (gogcli.sh/commands/gog-calendar-subscribe.html)."
+  ],
+  "unverified": [
+   "That events from a URL-subscribed calendar are returned through the Google Calendar API, and so through gog, was not confirmed.",
+   "Whether this family's district, club and library actually publish feed links was not checked.",
+   "A search of the installed docs and skills in this run found no .ics, webcal or iCalendar handling; an absence cannot be tied to a line."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/calendar/answer/37100",
+    "title": "Subscribe to someone else's calendar (Google Calendar Help)",
+    "anchor": "From URL",
+    "supports": "A public calendar link can be added to Google Calendar from a computer browser only; the phone apps cannot create the subscription.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule",
+    "title": "Subscribe to a Team Schedule - TeamSnap Playbook",
+    "anchor": "up to 24 hours",
+    "supports": "TeamSnap publishes a team schedule as a calendar link and says Google can take up to a day to show changes, so a cancelled practice may arrive late.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "Public calendar feeds use the standard iCalendar format, so a fallback parser would read a documented open format.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:18",
+    "title": "Automations (cron)",
+    "anchor": "Command-payload runs execute directly",
+    "supports": "A scheduled command payload runs in the gateway process on the host, which is where a fallback feed fetcher would live.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "later",
+  "section": "Calendar and reminders",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F019",
+  "origin": "9 Oct",
+  "name": "Stateless research agent with web_fetch (M3 slice 1)",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Happy can read any public web page: a memory-less research helper fetches the page and the parent's own agent relays the answer.",
+  "example": "",
+  "how": "New `research` agent, memory search off, tools `web_search` + `web_fetch`; <p>-main gains `sessions_spawn` and `subagents.allowAgents: [\"research\"]`; research stays sandboxed, its rules live in AGENTS.md.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct verifier notes advised turning the sandbox off for research; the installed docs say a sandboxed requester cannot spawn an unsandboxed target, so the catalog's final wording (keep mode all) is the only workable one.",
+   "A verifier note asked for research rules in AGENTS.md and SOUL.md; the installed docs say sub-agents keep only AGENTS.md, so every citation and no-login rule must be in that one file."
+  ],
+  "unverified": [
+   "That a cross-agent handoff returns its result with agent-to-agent messaging off: the roadmap lists this as untested on 2026.9.7 and the CLI was not run here.",
+   "The handoff privacy rule (ages yes, names and school no) is a prompt rule; nothing mechanical enforces what <p>-main writes into the task text."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:17",
+    "title": "Web fetch",
+    "anchor": "Enabled by default",
+    "supports": "Page fetching is built in and needs no key or plugin, so granting it is configuration only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:72",
+    "title": "Sub-agents: allowlist",
+    "anchor": "agents.entries.*.subagents.allowAgents",
+    "supports": "A person's agent may hand work to another configured agent only if that agent id is on its allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agents: tool policy",
+    "anchor": "session_status",
+    "supports": "A spawned helper always loses messaging, scheduling and status tools, so research cannot text anyone or create jobs.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/THREAT-MODEL-ATLAS/execution.md:35",
+    "title": "Threat model: T-EXEC-002 indirect prompt injection",
+    "anchor": "Separate execution contexts",
+    "supports": "OpenClaw's own threat model recommends a separate context for fetched content, which is what the research agent provides.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+    "title": "Simon Willison: The lethal trifecta for AI agents",
+    "anchor": "The lethal trifecta",
+    "supports": "Private data, untrusted content and a way to send data out are dangerous in one agent; keeping page reading away from the memory-holding agent removes one leg.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2510.09023",
+    "title": "arXiv 2510.09023: The Attacker Moves Second",
+    "anchor": "The Attacker Moves Second",
+    "supports": "Adaptive attacks defeated most published prompt-injection defences, so isolation and tool limits are used instead of trusting the model.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "WEB-01",
+  "name": "Web egress guardrails for fetch and browser (LAN, SSRF, blocklists)",
+  "tier": 1,
+  "cluster": "web safety",
+  "description": "Makes sure nothing Happy fetches or browses can reach the home network (Hue bridge, printer, router page) or carry a secret along, and records which protections are hard limits and which are best effort. Every other web feature in this lens sits on top of it.",
+  "example": "Trigger: an injected page tells the research agent to open the router's admin page; the call is refused before a request is sent, and the nightly eval has a case for it.",
+  "how": "Gateway config, applies to the research agent. Keep `tools.web.fetch.ssrfPolicy.dangerouslyAllowPrivateNetwork` and `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` unset (strict is the default). Add known paste and tracker hosts to `tools.web.fetch.ssrfPolicy.blockedHostnames` and `browser.ssrfPolicy.blockedHostnames`. Leave `tools.web.fetch.headers` empty, because the model picks the URL and any header goes wherever it points. Leave `tools.web.fetch.provider` unset and do not install a fetch-provider plugin, so a failed fetch is never retried through a third party. Set `browser.evaluateEnabled: false`. Second layer if the roadmap's egress proxy is built: `proxy.proxyUrl` for the gateway's own HTTP clients. Add two eval cases to the M3 exit test: a LAN address, and a public URL that redirects to one. Added in review: the current config already has `browser.enabled: false` and `browser.allowSystemProfileImport: false` from M0 (cookie import from a real browser profile is otherwise on by default, and the agent tool has an action for it). Keep the first until WEB-02 ships and the second for good. Add `gateway.nodes.browser.mode: \"off\"` and, when the browser is switched on, `browser.defaultProfile: \"openclaw\"`. These guards were listed only under WEB-05, a record that will not be built, so they belong here. Leave the private-network key truly unset; do not write `false` (see caveats).",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "now",
+  "depends_on": [
+   "F019 research agent",
+   "roadmap egress proxy (optional second layer)"
+  ],
+  "value": 4,
+  "effort": "S",
+  "caveats": [
+   "web_fetch blocks private hosts and re-checks redirects. The browser's check is weaker: the docs say its request interception is not a network firewall and can miss redirect hops, a popup's first request and Service Worker traffic.",
+   "The managed browser does not inherit the gateway's proxy environment, and strict SSRF mode blocks an explicit browser proxy flag unless private-network access is switched on. Putting the browser behind the roadmap's filtering proxy is therefore an open design conflict to settle before M3.",
+   "OpenClaw does not ship or run a proxy; `proxy.proxyUrl` only routes its own HTTP and WebSocket clients through one you operate.",
+   "There is no public-web allowlist setting: `allowedHostnames` only re-opens individual private hosts and `blockedHostnames` only denies. A per-agent site allowlist has to be a hook (WEB-03).",
+   "For web_fetch there is no public-web allowlist: its `allowedHostnames` only re-opens named private hosts and `blockedHostnames` only denies. The browser is different. In the installed source, an explicitly written `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork: false` is not the same as leaving the key unset: hostname navigation is then refused unless the host matches `browser.ssrfPolicy.allowedHostnames`, while public IP-literal addresses still pass. That is a gateway-wide navigation allowlist in OpenClaw's own code: a useful second layer if the only browser on the gateway is a single-site one, unusable next to an open research browser, and a trap if someone writes `false` to be explicit (the research browser would stop loading hostnames). A per-agent site allowlist still has to be a hook (WEB-03).",
+   "The SSRF policy covers the `web_fetch` tool and the browser tool only. Host-side helpers that take a URL (the summarize wrapper in WEB-11, the print plugin's own download in F080, a feed watcher) run outside it and need their own scheme, host and resolved-address checks, or an injected URL reaches LAN devices through them.",
+   "Once research has web_fetch, the egress proxy cannot double as an exfiltration allowlist. Proxy routing is process-level, so one policy serves model calls, MCP traffic and research's fetches; a domain allowlist tight enough for the first two blocks the third. With research live, the proxy can deny private ranges and named hosts and nothing more. This is an inference from the routing description and it changes what the roadmap's Smokescreen allowlist can promise.",
+   "A hostname block list is not an exfiltration control: any host that is not on it works. Do not spend upkeep time curating paste and tracker lists. What counts is the private-network block, no headers, no fallback provider, and no private data in the agent that browses."
+  ],
+  "safety": "Takes the home LAN out of reach of any agent that reads untrusted pages. It does not stop an injected page from making the agent request some public URL; that is contained by the research agent holding no private data and no accounts.",
+  "unverified": [
+   "The roadmap's plan to drop LAN access inside the Colima VM would not cover a browser that runs on the host; this follows from where the process runs and was not tested.",
+   "Which hosts belong on the blocklist is a judgment call, not something the docs prescribe.",
+   "The explicit-false behaviour of the browser policy was read in the installed source only; the docs do not describe it and it was not exercised."
+  ],
+  "overlaps_existing": [
+   "F019",
+   "F020",
+   "F025"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:71",
+    "title": "Web fetch: How it works",
+    "anchor": "Blocks private/internal hostnames",
+    "supports": "web_fetch refuses private and internal hosts and checks again after redirects.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:216",
+    "title": "Browser configuration: SSRF policy",
+    "anchor": "do not automatically proxy",
+    "supports": "The managed browser launches direct and ignores the gateway's proxy environment variables.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:54",
+    "title": "Browser control risks: Browser SSRF policy",
+    "anchor": "special-use destinations stay blocked",
+    "supports": "Private and internal destinations are blocked for the browser by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/security/network-proxy.md:11",
+    "title": "Network proxy",
+    "anchor": "does not ship, download, start",
+    "supports": "The egress proxy is operator-provided; OpenClaw only routes through it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:276",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "requires an IP-literal URL",
+    "supports": "When the browser policy carries an explicit false for private-network access, a hostname navigation is refused unless the host is on the allowed list; IP-literal URLs still pass.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/config-DLo8Wb5-.mjs:118",
+    "title": "Browser config resolution (installed source)",
+    "anchor": "hasExplicitPrivateSetting",
+    "supports": "An unset key resolves to a policy without the strict flag, while an explicitly written value resolves to true or false, so unset and false behave differently.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/browser.md:122",
+    "title": "openclaw browser CLI: Profiles",
+    "anchor": "enabled by default",
+    "supports": "Cookie import from a real browser profile is on unless disabled, for both CLI and agent-triggered imports.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:49",
+    "title": "Browser setup",
+    "anchor": "control service as one unit",
+    "supports": "The browser agent tool and control service exist only when both the browser plugin and the browser enabled setting are on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/firecrawl.md:25",
+    "title": "Firecrawl: Install plugin",
+    "anchor": "@openclaw/firecrawl-plugin",
+    "supports": "The only documented fetch-fallback provider is a separately installed plugin, so with nothing installed a failed fetch has no third party to be retried through.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-browser-ui-desktop.md:84",
+    "title": "Configuration: browser, UI, and desktop",
+    "anchor": "ssrfPolicy.blockedHostnames",
+    "supports": "The browser block has its own hostname deny list with the same exact-host and wildcard rules as the fetch one.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The guardrails are real and config-only, so 'now' and effort S hold. One caveat is wrong for the browser, the guards recorded under WEB-05 need a home in something that gets built, and the policy does not cover host-side helper tools or make the proxy an exfiltration allowlist."
+  ],
+  "reviewed_by": 2,
+  "wave": "A",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F022",
+  "origin": "9 Oct",
+  "name": "Citation and freshness rules",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Every factual, price or schedule answer carries a link and the time it was fetched; stale or conflicting sources are flagged and 'could not verify' is allowed.",
+  "example": "",
+  "how": "AGENTS.md rule on <p>-main and research: quote `web_fetch` `fetchedAt`, use `web_search` `published` when present, flag pages with no visible date or older than 30 days.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Nothing in the installed stack enforces citations; this is a prompt rule the model can ignore, and Tony's promptfoo evals are the only check.",
+   "The 30-day staleness threshold and the three-links-per-text cap are house choices with no source."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:44",
+    "title": "Web fetch: result",
+    "anchor": "fetchedAt",
+    "supports": "Every fetch result carries the time it was fetched, so quoting it is mechanical.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web.md:186",
+    "title": "Web search: result shape",
+    "anchor": "published?: string",
+    "supports": "Search hits carry a publication date only sometimes and no fetch time, so search-only claims need the weaker stamp.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:20",
+    "title": "Standing orders",
+    "anchor": "AGENTS.md",
+    "supports": "Rules placed in AGENTS.md are injected into every session, the right home for a citation rule.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2304.09848",
+    "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+    "anchor": "51.5%",
+    "supports": "A peer-reviewed audit found that only about half of generated search-engine sentences were fully backed by their citations, so the rule needs evals, not trust.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F021",
+  "origin": "9 Oct",
+  "name": "Places lookup: hours, ratings, distance, phone (goplaces)",
+  "tier": 1,
+  "cluster": "research-summaries",
+  "description": "Happy can answer 'is it open now, is it any good, what is the phone number' from Google Places and return a Maps link.",
+  "example": "",
+  "how": "`goplaces` CLI wrapped as a host-side stdio MCP for research; `GOOGLE_PLACES_API_KEY` supplied by the wrapper or Gateway environment, home coordinates fixed in the wrapper; Google Cloud billing must be on.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog says goplaces returns straight-line distance, not drive time; the upstream README now lists a `directions` command returning distance and duration through the Routes API. Check `goplaces --help` on the installed version.",
+   "Install line: upstream now gives `brew install openclaw/tap/goplaces`; the catalog and the bundled skill say steipete/tap/goplaces.",
+   "'Key as SecretRef': the installed SecretRef surface lists no `mcp.servers.*.env` target, so the key must be loaded by the wrapper (for example from Keychain) or set in the Gateway process environment."
+  ],
+  "unverified": [
+   "Current Places and Routes prices and free allowances were not read; the billing page points to separate price lists.",
+   "goplaces is not installed, so its flags were checked against the bundled skill and upstream README only.",
+   "Whether Grounding Lite is generally available or preview: the opened page did not label it."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/goplaces/SKILL.md:41",
+    "title": "Bundled goplaces skill",
+    "anchor": "--open-now --min-rating 4",
+    "supports": "The bundled skill documents text search with open-now and minimum-rating filters.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/mcp.md:54",
+    "title": "MCP servers",
+    "anchor": "openclaw mcp add local-tools",
+    "supports": "A local stdio MCP server is registered with one CLI command, the route for exposing a network CLI to a sandboxed agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/secretref-credential-surface.md:131",
+    "title": "SecretRef credential surface",
+    "anchor": "acpx.config.mcpServers",
+    "supports": "The supported SecretRef list has an MCP environment entry only for the acpx plugin, none for ordinary configured MCP servers.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/goplaces",
+    "title": "steipete/goplaces README",
+    "anchor": "GOOGLE_PLACES_API_KEY",
+    "supports": "Upstream describes a client for Places API (New) with search, details and, in the current version, route and directions commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+    "title": "Places API (New): Text Search",
+    "anchor": "openNow",
+    "supports": "Google's Text Search accepts open-now, minimum-rating and location-bias parameters and can return hours, rating, phone and a Maps link.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/usage-and-billing",
+    "title": "Places API usage and billing",
+    "anchor": "enable billing",
+    "supports": "The Places API works only on a project with billing enabled, so a budget alert is a real requirement.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Google Maps Platform: Grounding Lite",
+    "anchor": "search_places",
+    "supports": "Google's own Maps MCP server is the alternative: a hosted endpoint with place search, weather and route tools.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Web reading and research",
+  "includes": [],
+  "history": []
+ }
+]

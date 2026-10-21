@@ -1,0 +1,220 @@
+[
+ {
+  "id": "F002",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw documents reading inbound photos and documents as a built-in step, the roadmap plans attachment intake, and other entries build on this one. Three small fixes from this round stand: one caveat still pointed at the local-classifier card (OCL-14) that round 4 folded into this entry; the build note called the media-reading step's default input limits 'inbound caps'; and the safety note now records that OpenClaw's own advice for outside content is a separate reader agent, which this entry does not use. The classifier caveat is also reworded to match OpenClaw's pages: the gate is plugin code, and input over the limit is rejected, not cut.",
+  "who_trigger_result": "Either parent / sends a photo or a PDF in their own thread, with or without a question / Happy reads it and answers, and a text PDF that looks like a bank statement or tax form is refused on the Mac with a fixed line",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/media-understanding.md:10",
+   "title": "Media understanding",
+   "anchor": "summarize inbound media",
+   "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step before the reply, and says the original media is still handed to the reply model."
+  },
+  "edits": {
+   "how": "Gate first (F084): an in-house plugin whose `before_agent_run` hook returns `outcome: \"block\"` on pattern hits in the extracted file text; it needs `plugins.entries.<id>.hooks.allowConversationAccess: true` and is proven with a seeded statement PDF before the switch goes on. Switch (F002): set `channels.imessage.includeAttachments: true`; Basic mode already carries media; the media-reading step's default input limits (`maxBytes`) are 10 MB for an image and 20 MB for audio. Images then pass natively to the reply model and attached PDFs arrive as extracted text blocks; the optional `pdf` tool (`group:media`) adds page selection through local PDFium, 10 MB and 20 pages by default. Set `tools.media.audio.enabled: false` until local transcription (F003) exists, and add one eval case: a PDF carrying hidden instructions must cause no tool call.",
+   "caveats": [
+    "The gate reads only extracted text, so a scanned statement or a phone photo of one reaches the vision model unscreened; no local vision model exists to check photos.",
+    "Whether the extracted file text is inside the prompt the hook receives is untested, so the seeded-PDF test decides whether the gate works at all.",
+    "The same switch also lets voice memos and video in, and audio auto-detection tries a configured provider key before any local program, so audio understanding stays off until local transcription (F003) is in place and one live turn shows what a voice memo turns into.",
+    "Happy cannot watch video on this provider set, so an AGENTS.md line has it say so and ask for a photo or a few screenshots.",
+    "store:false covers less than it reads: OpenAI can keep abuse-monitoring logs, content included, for up to 30 days unless the organisation has Zero Data Retention, and family photos fall under that.",
+    "Whether medical bills and Explanation of Benefits statements are let through the gate is still to settle (from the folded 'explain this' entry).",
+    "A local classifier could later replace the pattern match: OpenClaw's decision models (the `decision_evaluate` tool for agents, the same interface for plugin code) with the installable on-device ONNX plugin, untried on this Mac. Each input, its rubric included, must fit 512 tokens and longer input is rejected, not cut, so the gate would send only the first lines of each page; its threshold would have to be set on a small labelled set of the family's own documents; and the gate must keep blocking when the classifier is unavailable, because OpenClaw's page says a failure must not be treated as a 'no'."
+   ],
+   "safety": "A photo or PDF is outside content read by the agent that holds a parent's memory. OpenClaw's own advice for outside content is a read-only or tool-disabled reader agent that summarises it for the main agent (prompt-injection.md:34); here the parent's own agent reads the attachment directly, so the limits on that agent carry the weight. That agent cannot browse, and its texts and the scheduled jobs it can create are pinned to the family by the hook in G009 (F007 waits for that hook). The roadmap names one way out that is neither closed nor pinned: the hand-off to the research helper (F019), which can fetch any public address and is guarded only by a prompt rule and an eval case. So the eval case listed here (a PDF carrying hidden instructions must cause no tool call) has to count a hand-off to research as a tool call. The gate runs on the Mac before any cloud call, can only block, and blocks if it fails. It is a tripwire for text PDFs, not a guarantee."
+  },
+  "merge_hints": [
+   "F003"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged: the reader-agent advice (prompt-injection.md:34) was opened and is a way to limit damage, not advice against reading attachments; the classifier caveat is reworded to match the decision-model and ONNX pages."
+ },
+ {
+  "id": "F003",
+  "verdict": "edit",
+  "who_trigger_result": "Either parent / sends a voice memo instead of typing; a sender authorised for commands can also type /tts latest after an answer / the Mac mini transcribes the memo, Happy echoes the text and answers, and the answer also arrives as an audio file made on the Mac",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/audio.md:2",
+   "title": "Audio and voice notes",
+   "anchor": "downloaded, transcribed, and injected into replies",
+   "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply, with local command-line transcribers among the options."
+  },
+  "merge_hints": [
+   "F072",
+   "F002",
+   "OCL-06"
+  ],
+  "reason": "Kept: OpenClaw documents transcribing voice notes on the machine itself, and the roadmap lists voice over iMessage as its own component; the point that a parent can already dictate a text was weighed in rounds 2 and 3 and is not re-argued. One thing no round recorded: the example offers `/tts latest` to 'a parent', but the config repo names Tony as the only command owner and sets no command allowlist, and OpenClaw then ignores every typed command except /new and /reset from the other parent. The example and a new caveat say so; the spoken reply after a voice memo does not depend on it.",
+  "edits": {
+   "example": "Jordan sends a voice memo: 'what's on tomorrow?' Happy echoes the transcript, answers in text and attaches the same answer as audio. Or Tony sends `/tts latest` after a long answer.",
+   "caveats": [
+    "A parent can already dictate a message with the iPhone keyboard and send it as text, and the roadmap schedules voice memos with the kids' voice milestone, so for the two adults this is a convenience and not a new ability.",
+    "Local-only is not the default in either direction: audio auto-detection tries a configured provider key before any local program, and the keyless Microsoft online voice is enabled by default and can serve as a fallback, so both are pinned in config.",
+    "`/tts provider <id>` is open to any authorized sender and changes the provider for everyone, so having no cloud speech provider configured is the control, and the bundled `sag` skill (ElevenLabs, a cloud voice) stays off.",
+    "The reply is a plain audio file attachment (WAV, several megabytes for a few minutes), not a voice bubble; the voice-bubble option belongs to the Private API actions, which need SIP off.",
+    "Long replies are summarised by the cloud chat model before synthesis, or truncated; for kids' content later that step must be local or off.",
+    "The natural-voice routes add a third-party Homebrew package from a 0.0.x project, a loopback server with its own launchd job and a model download; none of `speech`, `speech-server` or `ffmpeg` is installed today.",
+    "Transcription speed and accuracy for Chinese or mixed-language speech, and whether ffmpeg decodes the iMessage voice-memo format cleanly, were not measured.",
+    "Talk mode (part of the iPhone app entry, OCL-01) has its own speech setting and does not pick up this voice automatically.",
+    "`/tts latest` and the other /tts commands need a sender authorised for commands. The config repo names Tony as the only command owner and sets no command allowlist, and OpenClaw then silently ignores /tts from the other parent (slash-commands.md:173 and :628; the fix is listed under the chat commands entry, OCL-06). The spoken reply after a voice memo (`tts.auto: \"inbound\"`) does not depend on it."
+   ]
+  },
+  "overturned": true,
+  "challenge_note": "Changed keep to edit: OpenClaw's slash-commands page (lines 173-178) and the installed command-authorisation code show that an allowlisted sender who is not a command owner gets only /new and /reset, so `/tts latest` works for Tony alone today."
+ },
+ {
+  "id": "G009",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent, and Happy's own notices / a parent asks Happy to pass a note or a yes-or-no question to the other parent, or a feature has a notice for both / the text reaches the other parent or the parents' group and nobody else, and for a question the answer comes back, with one reminder before the ask expires",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/gateway/security/tool-permissions.md:35",
+   "title": "Tool and agent permissions",
+   "anchor": "send across conversations",
+   "supports": "OpenClaw documents that an agent holding the message tool can send to other conversations by default and names the two switches that confine it; this entry re-opens the same-channel switch and puts a family-only recipient check in front of it, which is the house rule that Happy's messages go only to the family."
+  },
+  "merge_hints": [
+   "F007",
+   "F006"
+  ],
+  "overturned": false,
+  "challenge_note": "No change: the co-parenting app page listed on the item as unchecked (OurFamilyWizard, Schedule Change Requests) was opened in this run and does describe the same ask, approve-or-refuse answer and expiry between two parents."
+ },
+ {
+  "id": "OCL-06",
+  "verdict": "edit",
+  "who_trigger_result": "Tony today, and Jordan once her handle is authorised for commands (she already has /new) / types /stop, /new, /status, /usage or /tools in their own thread / the answer in progress stops, a clean conversation starts, or a status, cost or tool list comes back, with no model call",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/slash-commands.md:212",
+   "title": "Slash commands",
+   "anchor": "Abort the current run",
+   "supports": "OpenClaw's command table documents the typed commands a chat user gets, including stopping the current run and starting a fresh session."
+  },
+  "merge_hints": [
+   "G005",
+   "CRT-05",
+   "F007"
+  ],
+  "reason": "Kept: these are documented chat commands, and stopping an answer or starting a clean conversation is worth a cheat sheet. Two things did not match this install. The entry said the commands already work for both parents, but the config repo names Tony as the only command owner and sets no command allowlist, and OpenClaw then gives the other allowlisted parent /new and /reset only: her /stop, /status, /usage and /tools are silently ignored until one config line authorises both parents for commands. And the open 'decision' about /restart and /update is already taken: the config repo sets commands.restart: false.",
+  "edits": {
+   "description": "A handful of typed commands in the iMessage thread: stop an answer that is going wrong, start a clean conversation, see what Happy can do right now, and check health and cost, all handled before any model call. They work today for Tony, the one command owner. Jordan's handle is allowlisted but is not a command owner, and OpenClaw then gives her /new and /reset only; the rest reach her after one config line authorises both parents for commands. One more does use the model: /btw asks a side question that is not remembered (its page does not list iMessage, so treat it as untested here).",
+   "example": "Tony texts '/stop' when a long answer is heading the wrong way, then '/new', and '/status' when Happy seems slow. Jordan can text '/new' today; her '/stop' is ignored until her handle is authorised for commands.",
+   "how": "Text commands are core and work on iMessage: a command-only message from a sender authorised for commands is handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary. /btw answers from the current session with a separate one-shot model query and writes nothing to history. Who is authorised: the config repo generates `commands.ownerAllowFrom` with the owner's handle alone and sets no `commands.allowFrom`; with an owner list configured, an allowlisted sender who is not an owner gets reset access only (/new and /reset), and other command-only texts from that sender are silently ignored. To give both parents the everyday commands without making the second parent an owner, add `commands.allowFrom` with both parents' handles under the `imessage` key; once set, that list is the only authorisation source for commands and directives, so Tony's handle has to be on it too. Owner-only commands and the scheduling tool still follow the owner list (the decision recorded under timed reminders, F007). Put the five everyday commands in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and the config repo already sets `commands.restart: false`, so /restart and /update are off from chat.",
+   "depends_on": [
+    "Config: both parents' handles under `commands.allowFrom` for iMessage (commands only), or the second parent added to `commands.ownerAllowFrom` (the wider decision listed under timed reminders, F007). Until then only Tony has /stop, /status, /usage and /tools",
+    "First test after that change: /stop and /status sent from the second parent's phone are answered",
+    "A one-screen cheat sheet for both parents, and the five commands listed in templates/person/AGENTS.md"
+   ],
+   "caveats": [
+    "With an owner list configured and no `commands.allowFrom`, an allowlisted sender who is not an owner gets only /new and /reset; /stop, /status, /usage, /tools, /btw and /tts from that sender are silently ignored (slash-commands.md:173 and :628). That is Jordan's position today.",
+    "Authorising a second sender for commands is wider than the five on the cheat sheet: it also turns on the other text commands and directives that are not owner-only, such as /tts, /compact and /model.",
+    "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+    "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+    "/btw is a separate one-shot model call on the session's model; it is not free and not model-less.",
+    "/usage figures are local estimates, not the provider's bill.",
+    "In a plain iMessage bubble the /status and /tools output may be long.",
+    "/loop is left off the cheat sheet. It is an owner-only command that has the agent create a repeating job through the scheduling tool, so it does nothing until F007 grants that tool, and a job made this way sits outside the G003 jobs registry. Its prerequisites and house rule are recorded with the multi-day project entry (AUT-01); a loop on a parent's agent sees only search snippets, so watching a page or a feed belongs to the model-free watchers (F018)."
+   ],
+   "safety": "No new capability for the five everyday commands: they are read from the sender's own message, authorised by the command allowlist and the owner list, and handled before the model runs. Listing both parents under `commands.allowFrom` authorises commands and directives only; it does not make the second parent an owner, so the owner-only commands and the scheduling tool stay closed to her. /btw is a model turn on <p>-main under its normal tool policy, and <p>-main cannot browse.",
+   "unverified": [
+    "Whether /btw works over the iMessage channel in 2026.9.7",
+    "How /status and /tools render in iMessage",
+    "That a non-owner allowlisted sender is limited to /new and /reset was read from the installed docs and source (slash-commands.md:173, dist/command-auth-B5U6QKCk.mjs:418) and not tried from the second parent's phone; the `commands.allowFrom` fix is untried as well."
+   ]
+  },
+  "overturned": true,
+  "challenge_note": "Changed keep to edit: every earlier round assumed any allowlisted sender can use these commands, but with an owner list configured OpenClaw limits a non-owner to /new and /reset (slash-commands.md:173-178, confirmed in the installed source), and the config repo already switches /restart and /update off."
+ },
+ {
+  "id": "F007",
+  "verdict": "edit",
+  "who_trigger_result": "A parent who is a command owner / texts 'remind me at 4:30 to ...' or 'every Sunday 7 pm: ...' / a text from Happy at that time, to the asker only, and a list or a cancel on request",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/index.md:35",
+   "title": "Automation",
+   "anchor": "Remind me in 20 minutes",
+   "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, as a one-shot job with exact timing."
+  },
+  "merge_hints": [
+   "G009",
+   "F030",
+   "OCL-06"
+  ],
+  "reason": "Kept: a timed reminder is OpenClaw's own standard example for its scheduler, and eleven entries build on this one. One correction to the owner decision: it said making Jordan an owner would open /restart and /update to her, but the config repo already switches both off for everyone (commands.restart: false). It now also says what else rides on that decision: as a non-owner she has none of the everyday chat commands today, and that part alone can be given through the command allowlist without making her an owner (see OCL-06).",
+  "edits": {
+   "depends_on": [
+    "Decision: add Jordan to commands.ownerAllowFrom so she can set reminders from chat (the roadmap sets the command owner to Tony's handle only; owner status also opens the owner-only /loop command and lets her agent manage every scheduled job on the gateway, not only her own; /restart and /update stay off for everyone because the config repo sets commands.restart: false). As a non-owner she also has none of the everyday chat commands today; that part alone can be given through commands.allowFrom without making her an owner (see OCL-06)",
+    "G009 recipient-pin hook (its first step, not the relay), extended to the scheduling tool's add and update calls (refuse webhook delivery and any target but the asking parent, and require an empty tool list on a reminder job)",
+    "cron.triggers.enabled: false (a plain config switch, listed under the jobs registry G003)",
+    "First test: a reminder set from a parent's iMessage turn is created, fires at the set time and reaches only the asker (creating one from an iMessage owner turn has not been tried on this install)"
+   ]
+  },
+  "overturned": true,
+  "challenge_note": "Changed keep to edit: the owner decision still listed /restart and /update as opened by owner status, which the config repo has already switched off, and it now points to the command-allowlist route recorded under OCL-06."
+ },
+ {
+  "id": "F009",
+  "verdict": "edit",
+  "reason": "Kept: read-only calendar access is the lowest-risk tier in OpenClaw's own guide, and many entries read the calendar through this one. The name and the description still offered 'is anyone free Friday at 1?', which round 4's own caveat says this entry cannot answer: it reads the family calendar and the asker's own, not the other parent's. The wording now promises only 'is Friday at 1 clear?'; telling whether both parents are busy stays with the conflict watch (MKT-06). The build note and one caveat still used the old question, so they are reworded to match.",
+  "who_trigger_result": "Either parent, and the daily briefs / asks what is on a day or whether a time is clear / the events on the family calendar for that time, with nothing changed",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/delegate-architecture.md:48",
+   "title": "Delegate architecture",
+   "anchor": "read events, surface conflicts",
+   "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+  },
+  "edits": {
+   "name": "Family calendar, read-only: 'what's on Saturday?' and 'is Friday at 1 clear?'",
+   "description": "\"What's on Saturday?\" or \"is Friday at 1 clear?\" is answered from the family Google Calendar, read-only. 'Clear' means nothing shows on the calendars the asking parent's sign-in can see; the other parent's work or personal calendar is not read, so Happy cannot say whether both parents are free. It also feeds the daily briefs.",
+   "example": "Jordan texts: 'What's on Saturday?' and gets the day's events from the family calendar. Tony asks 'is Friday at 1 clear?' and gets what the family calendar shows for that hour (Jordan's work calendar is not read); nothing on the calendar is changed.",
+   "how": "Host-side stdio MCP server per person. Sign-in: `gog auth add <account> --services calendar --readonly`, so the grant covers Calendar only (the default, `--services user`, authorizes gog's whole default set of user services). Server: `gog --account <account> mcp --allow-tool calendar_events`, because by default the server registers every read tool, mail and Drive search included. 'Is Friday at 1 clear?' is answered by listing that hour's events with the same tool. gog's free/busy and conflicts exist only as command-line commands; a wrapper for them belongs to the conflict watch (MKT-06) and is not part of this entry. Allow bundle-mcp in the sandbox gate; publish the OAuth app.",
+   "caveats": [
+    "Public feeds (the school district calendar, library and recreation events, team schedules) show up in Happy's calendar answers only after the family Google Calendar is subscribed to each feed link, which Google allows from a computer browser only; a search of the installed OpenClaw docs and skills found no .ics handling of its own. Google gives no refresh interval and TeamSnap says changes can take up to 24 hours to appear, so change alerts are a separate job (the model-free watchers, F018).",
+    "'Is Friday at 1 clear?' is answered only from events the asking parent's sign-in can see: the family calendar, and that parent's own calendars unless the tool can be pinned to one calendar. The other parent's work or personal calendar is not read, so 'clear' does not mean both parents are free. gog's server offers one calendar tool, the events list, and no free/busy tool; reading each parent's own calendar as busy-only is the wider grant described under the conflict watch (MKT-06)."
+   ]
+  },
+  "merge_hints": [
+   "MKT-06"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict unchanged: the build note and one caveat still said 'is anyone free?', so the first reviewer's rewording is carried into them."
+ },
+ {
+  "id": "F019",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / asks a question that needs a public web page / the answer with its link and the time it was fetched, an 'on it' for a slow lookup and a way to cancel",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/web-fetch.md:11",
+   "title": "Web fetch",
+   "anchor": "extracts readable content",
+   "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+  },
+  "merge_hints": [
+   "F020"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F030",
+  "verdict": "keep",
+  "who_trigger_result": "Either parent / texts 'add these to the grocery list', 'what's still on the list?' or 'tick off the milk' / the shared Reminders list changes on both phones, or its open items are read back",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/apple-reminders/SKILL.md:37",
+   "title": "Bundled apple-reminders skill",
+   "anchor": "iPhone/iPad Reminders app",
+   "supports": "OpenClaw ships a skill for listing, adding and completing Apple Reminders from the Mac, meant for people who want the tasks to appear in the Reminders app on their phones."
+  },
+  "merge_hints": [
+   "F033",
+   "F007"
+  ],
+  "overturned": false
+ }
+]

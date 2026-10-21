@@ -1,0 +1,219 @@
+[
+ {
+  "id": "OCL-01",
+  "verdict": "edit",
+  "reason": "Kept on the vendor's own description of the app. Round 3's merge left the build note saying Talk runs on an agent with no memory, which contradicts the card's own example and description; OpenClaw's docs say Talk goes through the chat that is open in the app, and the no-memory setting is only the fallback for a voice session that names no agent, so the note now says that.",
+  "who_trigger_result": "Tony only, as operator / he opens the OpenClaw app on his iPhone, attaches a file or starts Talk / a native chat that takes files, an approval inbox and, as an experimental second step, a hands-free spoken exchange with his own agent.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/platforms/ios.md:28",
+   "title": "iOS app: What it does",
+   "anchor": "Office documents from Files",
+   "supports": "The vendor describes its official iPhone app as a native chat that takes PDFs, Office documents and audio from Files; the same page describes a native approval inbox and an inline Talk control."
+  },
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:19",
+    "title": "Talk mode",
+    "anchor": "through the active session",
+    "supports": "The native Talk loop sends the spoken transcript to the model through the session that is active in the app, not to a separately configured agent."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/session-ownership.md:15",
+    "title": "Talk session ownership",
+    "anchor": "Otherwise, Talk uses `talk.agentId`",
+    "supports": "talk.agentId decides the owner only when a Talk session's key is not agent-prefixed; an agent-prefixed key selects that agent."
+   }
+  ],
+  "edits": {
+   "how": "1. Ceiling (HOM-08): the wave-A deny list (MAC-04) is deployed, with `gateway.nodes.pluginTools.enabled: false`. 2. Install and pair (OCL-01, IPH-01): the App Store app on Tony's iPhone, with a setup code from the Control UI or `openclaw qr` over the Tailscale Serve URL; one code issues a node session and an operator session, so read the approved command list afterwards. No agent gets the built-in nodes tool; uploads pass the F002 gate or `gateway.uploads.enabled: false`. 3. Talk (VOX-01, experimental): take the four push-to-talk commands off the deny list, set a `talk.provider`, and leave `tts.modelOverrides.allowProvider` off; the loop is Apple Speech recognition, Gateway chat, then `talk.speak`. OpenClaw's Talk page says the native loop sends the transcript through the active session, which in the app is the chat that is open, so Tony's Talk runs on the agent he has picked there (tony-main), with that agent's tools and memory. `talk.agentId` is a separate setting: the one gateway-wide fallback owner for a Talk session that arrives without an agent-prefixed key. Set it explicitly to a memory-less agent, so that such a session never lands on an agent that holds memory. 4. Later (VOX-02): a `talk.realtime` block with `provider` openai, `transport` webrtc and `brain` agent-consult."
+  },
+  "merge_hints": [
+   "MAC-04"
+  ]
+ },
+ {
+  "id": "F020",
+  "verdict": "keep",
+  "who_trigger_result": "A parent / asks about a public page that shows nothing without JavaScript, or sends a link to a long article, a captioned video or a podcast with a published transcript / the research helper reads it logged out in a browser held read-only by code, and the parent's own agent relays the answer with the link.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/tools/browser.md:37",
+   "title": "Browser (OpenClaw-managed): What you get",
+   "anchor": "readable page text",
+   "supports": "OpenClaw documents a separate, agent-only browser whose listed uses include answering questions from a page's readable text; the roadmap gives the research agent a sandboxed browser at its third milestone."
+  },
+  "merge_hints": [
+   "F019"
+  ]
+ },
+ {
+  "id": "F076",
+  "verdict": "edit",
+  "reason": "Kept on OpenClaw's own bundled Hue and Sonos skills. Four places still pointed to the kids' kitchen speaker under its old number (VOX-11), which round 3 made part of the kids agent (F072) after this card had been edited; they now name F072 and nothing else changes.",
+  "who_trigger_result": "A parent / texts 'downstairs lights off and pause the music', or nothing at all for the 22:30 check / Hue rooms and Sonos speakers switch inside a room list, a volume cap and quiet hours set in code, and a text at 22:30 only if something is still on.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "skills/openhue/SKILL.md:33",
+   "title": "OpenHue CLI (bundled skill): When to Use",
+   "anchor": "Turn on/off the lights",
+   "supports": "OpenClaw ships a Hue skill whose stated uses are switching lights on or off, dimming a room and setting a scene when someone asks; a bundled Sonos skill covers play, pause and volume the same way."
+  },
+  "edits": {
+   "description": "A parent texts Happy to switch Hue rooms and scenes by name, or to play a Sonos favourite, pause everything or set a room's volume, inside a room allowlist, a hard volume cap and quiet hours enforced in code. Separately, at 22:30 a parent gets a text only if lights or speakers are still on; that check switches nothing. The first build uses two command-line tools on the Mac mini. A later option replaces them and is not an addition: Home Assistant, running in a VM on the Mac mini and reached through its own MCP Server integration, puts Hue, Sonos and the LG TV on one list of devices a parent has exposed, and adds the one thing the command-line tools have no command for: a parent texts 'announce: ...' and the Sonos speakers say it over the music, which is turned down and then restored. OpenClaw 2026.9.7 has no Home Assistant, HomeKit, Matter or MQTT integration of its own, so that route goes through Home Assistant's MCP server. It is worth an always-on VM mainly if the announcements are wanted or the VM already exists for the kids' kitchen speaker (a later step of the kids agent, F072).",
+   "how": "Step 1, read-only (F081): a command payload with no model runs openhue and sonos status on the Gateway host at 22:30 and prints `NO_REPLY` when everything is off; nothing is actuated. Step 2, switching: a sandboxed, stateless home agent reached by `sessions_spawn` holds two in-house plugins. Hue (F076) wraps the openhue CLI on the host, with the bridge key in ~/.openhue/config.yaml, a room allowlist and quiet hours in code. Sonos (F077) wraps the sonos CLI: favourites and allowlisted scenes only, a volume cap and a lower night cap in code; it needs the macOS Local Network permission for the gateway's node process, or `--ip` per speaker. Scheduled bedtime scenes are left to the Hue app, and the other bundled device skills stay uninstalled. Later option, Home Assistant as the single route (a separate, large piece of work that replaces the two plugins; the home agent stays): run Home Assistant OS in a VM on the Mac mini (the roadmap already plans this VM for the kids' kitchen speaker, a later step of the kids agent, F072). Add the Hue, Sonos and LG webOS integrations, then the 'Model Context Protocol Server' integration; turn off 'Expose all LLM APIs' and expose only the wanted entities. In OpenClaw add mcp.servers.<name> with url http://<ha-host>:8123/api/mcp, transport 'streamable-http' written out (when it is omitted OpenClaw uses sse), and the Home Assistant long-lived token in headers.Authorization, supplied through a secret reference and not a config literal (auth 'oauth' with openclaw mcp login is the documented alternative). This Gateway uses tools.profile 'minimal', which hides MCP tools, so grant them only to the stateless home agent by listing the <server>__<tool> names in that agent's alsoAllow and in its sandbox tool allow list (tools.sandbox.tools.alsoAllow); no other agent then sees the server. Write toolFilter.include after a live probe (openclaw mcp doctor <name> --probe), since it selects tools by name. The registry before_tool_call hook stays as the second, fail-closed gate and enforces quiet hours. Announcements: Home Assistant's Sonos integration plays speech with its `announce` option as an overlay, lowering the music and restoring the volume afterwards; it needs TCP port 1443 on each speaker to be reachable from the Home Assistant host. Because the MCP server offers intents and exposed scripts only, a parent writes one Home Assistant script that wraps the announce call and exposes it, and picks a local speech engine in Home Assistant, since its text-to-speech page also lists cloud engines. The trigger is deterministic: a `before_dispatch` claim on a fixed prefix such as `announce:` from an adult's handle, so no agent that reads web results decides to speak to the house. The code that claims the text then starts the Home Assistant script itself, with no model turn, through Home Assistant's REST API (`/api/services/<domain>/<service>` with the same host-side bearer token); that call path is a design choice and was not tried. The first version offers a short list of fixed phrases; the parent's own words, verbatim, come later, and model-written text never. Text length, volume, quiet hours (G001), a speaker allowlist and a daily cap are enforced in code.",
+   "caveats": [
+    "This switches things in the house, so the room allowlist, the volume caps and quiet hours are enforced in plugin code and not by the prompt.",
+    "Neither command-line tool is installed, and the bridge and the two speakers (living room and family room) come from the 9 Oct scan and were not re-checked.",
+    "Play-by-search is left out of this build: it would use the music service already linked in the Sonos app, so Happy would hold no music login, but auto-playing the first search hit has no content filter. Favourites and saved scenes only.",
+    "The Hue app can already switch lights at a set time and when you leave home, so Happy's part at night is the reminder and not the switching.",
+    "Home Assistant is a replacement route to the same devices, not an addition: running both doubles the paths to the same lamp. With only Hue, two Sonos speakers and one TV in the house, it pays off mainly if the announcements or the kids' kitchen speaker (F072) are also wanted.",
+    "Home Assistant option: the VM is one more service to patch, back up and bring back after every reboot and FileVault unlock, and until it is up every home tool fails. Home Assistant's macOS page documents VirtualBox (UTM only as a fallback for people used to virtual machines) and points anyone not familiar with virtual machines to a dedicated board.",
+    "Home Assistant option: its MCP server offers Assist intents plus any scripts exposed to Assist, not arbitrary actions, and supports neither notifications nor sampling, so Happy can only ask and Home Assistant cannot push a state change. Because the tools are generic intents, toolFilter.include narrows verbs, not device classes; the exposure list in Home Assistant and a before_tool_call check on each call's target are the real limits.",
+    "Home Assistant option: 'Expose all LLM APIs' and 'Require an administrator account' are both on by default, and new entities in the cover domain (garage doors and gates) are exposed to Assist by default. Tighten the first before OpenClaw connects and review the exposure list after each device is added.",
+    "Home Assistant option: the long-lived token is a ten-year credential for Home Assistant's APIs as one user; the exposed-entity limit applies to the MCP tools, not to the token, so it stays host-side and is rotated by hand.",
+    "Home Assistant option: state text it returns (now-playing titles, device names) is third-party text read by an agent that can actuate; allowlists and caps in code have to bound the result.",
+    "Home Assistant option: a HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration. That brings 'TV off by text' (the integration's page lists turning the TV off; turning it on needs an extra automation); a fixed nightly cut-off stays with the TV's own Power Off Timer.",
+    "Announcements reach only the two Sonos speakers (living room and family room in the 9 Oct scan), and Home Assistant's Sonos page warns that older Sonos hardware or S1 firmware may not fully support them. A talking house at the wrong moment is worse than no feature: quiet hours and a low daily cap matter more than voice quality.",
+    "Without Home Assistant there is no good announcement route: Sonos documents its audio-clip command under the cloud Control API, which would put a Sonos account token on the gateway, and the sonos command-line tool has no announce command (its play-uri sets the speaker to the new audio and documents no way to bring the music back)."
+   ],
+   "depends_on": [
+    "openhue CLI installed and the Hue bridge paired",
+    "sonos CLI installed (Homebrew tap or prebuilt archive; no Go toolchain needed)",
+    "macOS Local Network permission for the gateway's node process",
+    "sessions_spawn from each parent's agent to the home agent (the F019 hand-off pattern)",
+    "for the later Home Assistant option only: a Home Assistant OS VM on the Mac mini (2 GB RAM, 2 vCPU, bridged network adapter; the same VM the kids' kitchen speaker in F072 needs), an egress proxy exception for its LAN address, and the two command-line plugins retired so each device has one path",
+    "for announcements only: a Home Assistant script that wraps the Sonos announce call, a local speech engine chosen in Home Assistant, and the quiet hours from G001"
+   ]
+  },
+  "merge_hints": [
+   "F072"
+  ],
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+    "title": "Model Context Protocol Server (Home Assistant integration)",
+    "anchor": "/api/mcp",
+    "supports": "Home Assistant's own MCP server gives a client control of only the entities exposed to it, with 'Expose all LLM APIs' and 'Require an administrator account' on by default and no support for notifications or sampling; this backs the later-option notes on the card. Opened in this run."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/sonos/",
+    "title": "Sonos (Home Assistant integration)",
+    "anchor": "TCP port 1443",
+    "supports": "Home Assistant's Sonos integration plays an announcement over the music and restores the volume afterwards, needs port 1443 on each speaker reachable from the Home Assistant host, and warns that older hardware or S1 firmware may not fully support it. Opened in this run."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.amazon.com/en-US/blogs/alexa/device-makers/2020/12/Enable-Alexa-to-Proactively-Act-on-Hunches",
+    "title": "Now Available: Enable Alexa to Proactively Act on Hunches Without Customers Needing to Ask",
+    "anchor": "accidentally left on",
+    "supports": "Amazon's assistant offers the goodnight check's household function: noticing lights left on by accident (Alexa goes further and switches them off). Listed on the item as unchecked; opened in this run."
+   }
+  ]
+ },
+ {
+  "id": "F080",
+  "verdict": "edit",
+  "reason": "Kept on the paediatricians' advice to post the chore list on the refrigerator, which is the Sunday sheet. 'Print this' promised any web link, but the Mac's printing system takes PDF and image files and not web pages (and saving a page as a PDF was ruled out earlier as a two-tap phone job), so the card now says a link must point straight at a PDF or an image.",
+  "who_trigger_result": "Both parents and the kids who read the fridge / the Sunday schedule, or a parent away from home who texts a PDF or photo with 'print this' / the week's sheet on the fridge, or the file waiting on the home printer, one copy unless asked.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.healthychildren.org/English/family-life/family-dynamics/communication-discipline/Pages/Chores-and-Responsibility.aspx",
+   "title": "Age-Appropriate Chores for Children - HealthyChildren.org (American Academy of Pediatrics)",
+   "anchor": "on the refrigerator",
+   "supports": "The paediatricians' body says chore lists or star charts posted in the child's room or on the refrigerator should show the family's expectations clearly, which is what the printed Sunday sheet does. Opened in this run."
+  },
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://openprinting.github.io/cups/doc/options.html",
+    "title": "Command-Line Printing and Options (OpenPrinting CUPS)",
+    "anchor": "PostScript, PDF, and image files",
+    "supports": "The printing system behind the lp command reads text, PostScript, PDF and image files directly; web pages are not on the list. Opened in this run."
+   },
+   {
+    "kind": "web",
+    "ref": "https://epson.com/epson-connect-wireless-printing?pg=1",
+    "title": "Epson Email Print",
+    "anchor": "Print from wherever you are",
+    "supports": "A printer maker offers households printing to the home printer from anywhere by sending attachments, the same file-based function as the 'print this' half. Opened in this run."
+   }
+  ],
+  "edits": {
+   "description": "Happy sends pages to the home printer: the ones it makes itself (the Sunday fridge sheet, the emergency card) and, when a parent texts 'print this', a PDF or photo they attach or a link that points straight at a PDF or an image, with a copies cap. Ordinary web pages are not printed. A phone on the home Wi-Fi can already print by itself, so the on-request part earns its keep mainly when the parent is away from home.",
+   "how": "Two parts over one print queue, which is added once on the Mac mini with lpadmin. (1) Pages Happy makes: a scheduled command job with no model call runs a reviewed script that renders the Sunday fridge sheet (the week's schedule and chore turns) from the household store (F031) and the family calendar (F009) and sends it with `lp -d <queue> -n 1`, with no chat message; the emergency card (CRT-13) goes to the same queue when a parent asks. (2) 'Print this': an in-house plugin calls `lp -d <queue> -n <copies>` on the host with a copies cap in code. It downloads an https link itself, because web_fetch returns text and not the file, and prints the download only when it is a PDF or an image, the file types the print system takes directly; a link to an ordinary web page is refused. A texted file needs attachment intake first (`channels.imessage.includeAttachments`, F002).",
+   "caveats": [
+    "Canon's spec sheet for the PIXMA PRO-100 lists AirPrint, so an iPhone on the same home network can already print a PDF or photo to it by itself. Happy's gain is printing pages it produces (the week sheet, formerly HOM-14 and now part of this entry, and the emergency card in CRT-13) and printing when nobody is on that Wi-Fi.",
+    "The one-time print queue on the Mac mini has not been added, and a driverless queue for this printer has not been tried.",
+    "The fridge sheet cannot run before the household store (F031) and the calendar read (F009) exist.",
+    "'Print this' handles files, not web pages: the printing system's own guide lists text, PostScript, PDF and image files as what it reads directly, so a link has to point straight at a PDF or an image. Printing or saving a web page stays a two-tap job on the phone."
+   ],
+   "safety": "Printing goes to one named queue with a copies cap enforced in code. The fridge sheet is made by a script with no model in the path and shows first names and times only, because guests read the fridge. 'Print this' acts only on a parent's own request. A link to print is fetched from the host at an address the agent passes in, which is a way out for an agent that holds memory and reads search results; the plugin should accept only an https link that appears word for word in the parent's own message, must refuse private-network addresses, and should print the download only if it is a PDF or an image. These checks are design requirements to build and test, not existing features."
+  },
+  "merge_hints": []
+ },
+ {
+  "id": "AUT-01",
+  "verdict": "edit",
+  "reason": "Kept on the vendor's own guidance for follow-up work; searches for a consumer product that offers project check-ins found only plain scheduled reminders. One build conflict had been missed: the reminders entry (F007) has its safety hook insist that a reminder job carries no tools, and a check-in that reads the project note is the same kind of job but needs some, so the card now lists that as a decision to make first.",
+  "who_trigger_result": "A parent / hands Happy a project with an end date / one project note of decisions and open items, a check-in text every few days listing what is still open, research only when asked in chat, and check-ins that stop after the date.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/system-prompt.md:58",
+   "title": "System prompt: long-running-work guidance",
+   "anchor": "use cron for future follow-up",
+   "supports": "OpenClaw's built-in guidance tells an agent to handle future follow-up, such as checking back later and recurring work, with scheduled jobs; its standing-intents page adds that a longer aim belongs in a project note with a review date. Together these are the feature's pattern."
+  },
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads: agent-turn options",
+    "anchor": "capped to the tools available",
+    "supports": "A job an agent creates keeps the creating turn's tools unless its tool list is set, which is why the reminders entry has the hook require an empty list and why a check-in that needs tools conflicts with that rule."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/standing-intents.md:22",
+    "title": "Standing intents: choose the right intention tier",
+    "anchor": "Put aspirations",
+    "supports": "The vendor advises keeping a longer aim in a project note or another maintained file with an explicit review date."
+   }
+  ],
+  "searched": [
+   "web search: ChatGPT scheduled tasks help page, check-in or project follow-up (found one-off and recurring tasks only; the help page itself returned 403)",
+   "web search: family AI assistant that plans a birthday party and sends check-in reminders until the event (no product page describing it)",
+   "web search: Gemini scheduled actions (recurring prompts and reminders only)",
+   "opened https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents (to-do lists and reminders, no project check-ins)",
+   "installed docs: docs/automation/index.md, docs/automation/standing-orders.md, docs/concepts/standing-intents.md"
+  ],
+  "edits": {
+   "caveats": [
+    "Scheduled runs do not get MEMORY.md injected, so a check-in must read the project note with a tool or carry the state in the job message.",
+    "A job created from chat is capped to the tools the creating turn had and cannot be widened later, so a check-in can never do more than the parent's own main agent.",
+    "The conversation resets every morning at 04:00 and that also wipes any /goal; the project note is the only continuity between days.",
+    "Every check-in is a cloud model turn. Pace in days, not minutes, and cap active projects per person (three is plenty).",
+    "No bookings, purchases or invitations sent: the output is options, links and drafts. A static checklist is still easier in a shared Notes or Reminders list; Happy adds the nudging and the research.",
+    "Command-owner status is gateway-wide: an owner can ask their agent to list, inspect, update, run or remove any job on the gateway, whoever created it. Once Jordan is an owner, each parent's agent can read and change the other's check-in jobs, so job messages must not carry private detail.",
+    "The F041 plan refuses memory writes in a turn tainted by web results, and a turn that received a research result is tainted. Research findings therefore cannot be saved into the project note in that turn: they stay in the chat thread, and the note holds only what the parent states or confirms afterwards.",
+    "OpenClaw's own guidance is to deny the scheduling tool by default on any agent that handles untrusted content (docs/gateway/security/tool-permissions.md). <p>-main reads search snippets, so granting it `automations` is a deliberate exception that rests on the delivery pin and on triggers staying off.",
+    "The reminders entry (F007) has the delivery-pin hook require an empty tool list on a reminder job, so that a timed run can only produce text, and to that hook a check-in is the same call: a parent's agent adding a job. A check-in that reads the project note and sets its own next gap needs tools, so one of two things has to be decided first: the hook admits one more exact tool list (the note-read tool and `automations`, nothing else), or the check-in carries the open items in its job message and keeps the empty list. Whether self-pacing and self-removal still work with the empty list is already on the open-checks list."
+   ],
+   "depends_on": [
+    "F041 memory write path or F031 home-store",
+    "F007 automations tool on <p>-main",
+    "F019 research agent",
+    "G009 delivery pin, extended to cover automations/cron add and update and to refuse webhook delivery",
+    "G001 notification policy",
+    "decision: Jordan as a command owner",
+    "cron.triggers.enabled: false (set in G003, which absorbed AUT-08)",
+    "decision: how a check-in job gets past the F007 hook rule that a reminder job created by a parent's agent carries an empty tool list (one more exact tool list admitted by the hook, or the open items carried in the job message)"
+   ]
+  },
+  "merge_hints": []
+ }
+]

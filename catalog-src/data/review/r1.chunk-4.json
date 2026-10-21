@@ -1,0 +1,1832 @@
+[
+ {
+  "id": "F010",
+  "origin": "9 Oct",
+  "name": "Calendar event create with approval (or .ics tap-to-add)",
+  "tier": 2,
+  "cluster": "calendar-reminders",
+  "description": "Happy drafts an event from a message or flyer: first as a calendar file the parent taps to add, later a direct calendar write after an explicit approve.",
+  "example": "",
+  "how": "Step 1: small plugin emits an .ics attachment. Step 2: write MCP wrapping gog calendar create with a separate write token; before_tool_call returns requireApproval (10-minute cap), rejects attendees.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "A 9 Oct note says gog has no delete command. That holds only for the bundled skill text; the gog command index (gogcli.sh/commands) lists gog calendar delete, and gog calendar create accepts --attendees and --send-updates, so the write wrapper must leave delete out and strip those flags itself."
+  ],
+  "unverified": [
+   "That Messages on iPhone offers to add an event when an .ics attachment is tapped: Apple's guide documents .ics import from Mail and by link, and the page body could not be read by the fetch tool.",
+   "That an .ics file passes OpenClaw's outbound media checks on iMessage (reference/rich-output-protocol.md:22) was not tested.",
+   "The in-house .ics generator plugin and the write wrapper do not exist yet.",
+   "Typing /approve in iMessage Basic mode to resolve a plugin approval was not tested end to end; the docs say channels without interactive controls fall back to plain-text /approve (exec-approvals-advanced.md:299)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:63",
+    "title": "gog skill (bundled with OpenClaw)",
+    "anchor": "gog calendar create",
+    "supports": "The bundled gog skill documents creating a calendar event from the command line.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:88",
+    "title": "Plugin permission requests",
+    "anchor": "capped at 600000",
+    "supports": "A plugin approval waits two minutes by default and ten at most, after which the call is blocked, so the parent must approve promptly or Happy must propose again.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/calendar/api/v3/reference/events/insert",
+    "title": "Events: insert (Google Calendar API reference)",
+    "anchor": "sendUpdates",
+    "supports": "Creating an event needs a write scope such as calendar.events, and guests are only notified when sendUpdates asks for it, so an event without attendees contacts nobody.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc5545",
+    "title": "RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar)",
+    "anchor": "VEVENT",
+    "supports": "The .ics file is the standard iCalendar format whose event component carries title, start and end, which a small generator can emit.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ohai.ai/",
+    "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+    "anchor": "pictures of schedules",
+    "supports": "On a shipping family assistant's own page a parent describes sending pictures of schedules and having the events put on the family calendar.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "B",
+  "section": "Calendar and family coordination",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life"
+  ],
+  "demand": {
+   "ref": "https://www.ohai.ai/",
+   "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "supports": "On a shipping family assistant's own page a parent describes sending pictures of schedules and having the events put on the family calendar."
+  }
+ },
+ {
+  "id": "F006",
+  "origin": "9 Oct",
+  "name": "Happy in the parents' group chat (stateless family-group agent + pinned delivery target)",
+  "tier": 2,
+  "cluster": "media-voice-channel",
+  "description": "Happy joins a three-way iMessage group with both parents, answers when addressed by name, and that chat becomes the place shared announcements land.",
+  "example": "",
+  "how": "groupPolicy allowlist with groupAllowFrom and a groups[chat_id] entry; bindings[] with peer kind group routes it to a stateless family-group agent; mention gating uses the agent name.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "Catalog JSON description includes a 'tell everyone dinner is at 6:30' relay and gives the group agent calendar and list tools. Neither exists on the installed stack; the Markdown already moves the relay to G009 and limits version 1 to weather and search."
+  ],
+  "unverified": [
+   "Receiving and replying in a three-person group in Basic mode has not been tried live on this Mac; the docs warn that some multi-person threads arrive flagged as non-group unless the chat id is registered (access-control.md:152-153).",
+   "Whether a voice memo in the group can satisfy the mention gate on iMessage is not documented (audio.md:286 defers to channel docs).",
+   "The numeric chat id is unknown until the group is created and read with imsg chats."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:45",
+    "title": "iMessage access control and routing",
+    "anchor": "gates back-to-back",
+    "supports": "Group messages must pass a sender allowlist and then a per-chat registry keyed by chat_id before they reach an agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-bindings.md:98",
+    "title": "Agent bindings",
+    "anchor": "peer.kind",
+    "supports": "A binding can match one specific group conversation and route it to a dedicated agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/imsg",
+    "title": "steipete/imsg README (GitHub)",
+    "anchor": "imsg chats",
+    "supports": "Without disabling SIP, imsg can list chats with their ids, watch a chat and send text and files; only rich actions and chat management need the injected helper.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/multi-agent.md:589",
+    "title": "Multi-agent routing: family agent bound to a group",
+    "anchor": "dedicated family agent",
+    "supports": "OpenClaw's own multi-agent guide describes binding a dedicated family agent to one group chat, with mention gating and a tighter tool policy than the personal agent.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Calendar and family coordination",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Multi-agent routing: family agent bound to a group"
+  ],
+  "demand": {
+   "ref": "docs/concepts/multi-agent.md:589",
+   "title": "Multi-agent routing: family agent bound to a group",
+   "supports": "OpenClaw's own multi-agent guide describes binding a dedicated family agent to one group chat, with mention gating and a tighter tool policy than the personal agent."
+  }
+ },
+ {
+  "id": "MKT-06",
+  "name": "Two-parent calendar conflict watch",
+  "tier": 2,
+  "cluster": "calendar",
+  "description": "Ohai sells avoiding conflicts across family members' calendars. Happy's version: when a new overlap appears in the next 14 days (both parents busy at a kid's pickup, two events needing the same driver), both parents get one line naming the clash, with an optional who-covers question.",
+  "example": "Trigger: Tony accepts a Thursday 16:00 meeting; Jordan already has the dentist then and the 10-year-old has practice. Both get: 'Thursday 16:00: both of you are busy and practice pickup has no driver.'",
+  "how": "A zero-model command job (`--command-argv`) every few hours runs a host script under the happy user: `gog calendar conflicts` (or `freebusy`) across the shared family calendar and the two parents' calendars, compares against a seen-id state file, and prints `NO_REPLY` when nothing is new. To keep each parent's data separate, the script uses one read-only credential that sees the family calendar in full and each parent's own calendar as free/busy only (Google's 'See only free/busy (hide details)' share), so the message names the family-calendar event and says only 'busy' for personal ones. The docs show a single `--to` target per job, so plan one job per parent or the parents' group chat once F006 exists; the follow-up question reuses the G010 relay.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F009 read-only calendar on the Google path (decision 4)",
+   "gog installed",
+   "G010 for the follow-up question",
+   "each parent shares their own calendar with the reading account as free/busy only"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Only applies if the calendar decision lands on Google; the iCloud path would need a different overlap script.",
+   "An overlap is not always a problem (both parents at the same recital). Without a rule such as 'kid event with no driver tag' it will cry wolf.",
+   "Happy reports; it does not move or decline anything.",
+   "Whether phone calendars already warn about cross-person overlaps was not checked; if they do not, this is a gap the phone leaves open."
+  ],
+  "safety": "No model call, so text in event titles cannot steer anything. The calendar grant is read-only. Personal calendars are read as free/busy only, so one parent's private event titles are not shown to the other; only shared family-calendar titles appear, the same exposure as the evening brief. The message goes only to the two parents.",
+  "unverified": [
+   "Flags and JSON output of `gog calendar conflicts`: gog is not installed, only its command list page was read.",
+   "Ohai's exact behaviour beyond the marketing phrase.",
+   "Whether `gog calendar conflicts` works on calendars shared as free/busy only.",
+   "That phone calendars give no cross-person overlap warning (no source read).",
+   "Whether one job can announce to two recipients; the docs' examples show a single `--to` target."
+  ],
+  "overlaps_existing": [
+   "F009",
+   "F014",
+   "F015",
+   "F018",
+   "G010"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.ohai.ai/",
+    "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+    "anchor": "avoid conflicts",
+    "supports": "Ohai markets cross-family schedule conflict avoidance as a core feature, with a premium tier from about ten dollars a month.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gogcli.sh/commands/",
+    "title": "Commands - gog",
+    "anchor": "gog calendar conflicts",
+    "supports": "The gog CLI has a subcommand that finds busy-time overlaps across calendars, plus freebusy and changed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "CLI automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run an exact command without a model, deliver its output, and stay silent when it prints the silent token.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/calendar/answer/37082",
+    "title": "Share your calendar - Google Calendar Help",
+    "anchor": "See only free/busy (hide details)",
+    "supports": "A Google calendar can be shared with another account so that only busy times are visible, without event names.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads: command payloads",
+    "anchor": "Gateway host",
+    "supports": "Command jobs run a script on the gateway machine with no model call and can announce their output.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The zero-model command job is sound, but as written one script holds both parents' calendar credentials and prints each parent's private event titles to the other, which cuts across the roadmap's one-data-domain-per-person rule. Effort is closer to M once the no-driver rule, the state file, gog setup and per-parent delivery are counted."
+  ],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "Calendar and family coordination",
+  "includes": [],
+  "history": [
+   "r1: edited caveats. Two caveats contradicted each other: one stated as fact that phone calendars do not warn about overlaps between two people, the next said this was never checked. The unsourced claim is removed; nothing else changes.",
+   "r1: kept; credible mention: Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life"
+  ],
+  "demand": {
+   "ref": "https://www.ohai.ai/",
+   "title": "Ohai: Your Household Manager for Calendars, To-Dos, Emails & Family Life",
+   "supports": "A shipping family assistant sells bringing the household's calendars into one view so the family can coordinate schedules and avoid conflicts."
+  }
+ },
+ {
+  "id": "F023",
+  "origin": "9 Oct",
+  "name": "Explain this: document, school message, homework concept or how-to",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "A parent pastes text, a screenshot, a PDF or a link and gets five fixed lines back: dates, what to do, money or forms, which kid, deadline.",
+  "example": "",
+  "how": "AGENTS.md prompt program on <p>-main; attachments need `channels.imessage.includeAttachments: true` (PDF text arrives as an untrusted file block); links are handed to research via `sessions_spawn`.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "now",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "Pasted text works today; the screenshot and PDF path waits on the attachment switch and, by Tony's own rule, the planned privacy gate (F084), which is a plugin still to be built.",
+   "How OpenAI handles school documents under store:false was not opened in this run.",
+   "The 'explain homework the way the school teaches it' half has no source beyond the model's own ability."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:17",
+    "title": "iMessage: media",
+    "anchor": "channels.imessage.includeAttachments: true",
+    "supports": "Inbound photos and files are dropped until this switch is turned on, so screenshots and PDFs do not reach the agent today.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/media-understanding.md:266",
+    "title": "Media understanding: file-attachment extraction",
+    "anchor": "model-visible file block",
+    "supports": "Once attachments are on, an inbound document is extracted and shown to the model as a file block.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/private-api.md:84",
+    "title": "iMessage: when SIP stays enabled",
+    "anchor": "text + media + receive only",
+    "supports": "The current Basic mode still receives media, so no system-protection change is needed for this feature.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:10",
+    "title": "PDF tool",
+    "anchor": "Anthropic and Google",
+    "supports": "The separate pdf tool reads PDFs natively only on two providers and falls back to text and image extraction on the current OpenAI model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:74",
+    "title": "Web fetch: how it works",
+    "anchor": "Runs Readability",
+    "supports": "Fetched HTML goes through main-content extraction before the model sees it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/firecrawl.md:41",
+    "title": "Firecrawl",
+    "anchor": "also keyless",
+    "supports": "A hosted fallback for blocked pages works without a key once explicitly selected, at the cost of sending those URLs to a third party.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/messaging.md:16",
+    "title": "iMessage: messaging",
+    "anchor": "coalesces",
+    "supports": "A command and its pasted link arrive as one message, so 'summarize this' plus a URL is not split.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.firecrawl.dev/introduction",
+    "title": "Firecrawl documentation: introduction",
+    "anchor": "anti-bot",
+    "supports": "The fallback is a hosted scraping API that handles JavaScript rendering and anti-bot measures on its own servers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:36",
+    "title": "summarize skill: when to use",
+    "anchor": "best-effort transcript extraction",
+    "supports": "The skill covers transcribing YouTube and other video links on a best-effort basis.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://summarize.sh",
+    "title": "summarize (product site)",
+    "anchor": "--extract",
+    "supports": "summarize handles web pages, files, YouTube and podcasts, prefers published transcripts, and can skip the LLM step.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F024",
+   "OCL-11"
+  ],
+  "adds": [
+   "Video and podcast links as one more input: the summarize tool in extract-only mode on the research agent returns the captions, limited to allowlisted https links; waits for the summarize wrapper in F020.",
+   "From F064 (Explain this EOB or medical bill): Add a medical-bill template to 'Explain this': five lines (billed, allowed, what you owe, whether a bill will follow, possible duplicate), the reminder that an Explanation of Benefits is not a bill with the CMS guide link, and the 180-day internal-appeal deadline when a claim is denied. Claim numbers reach the cloud model, so settle with the privacy gate (F084) whether medical bills are let through."
+  ],
+  "wave": "A",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Bundled summarize skill: when to use"
+  ],
+  "demand": {
+   "ref": "skills/summarize/SKILL.md:35",
+   "title": "Bundled summarize skill: when to use",
+   "supports": "OpenClaw ships a skill whose stated triggers are a user asking what a link or video is about or asking for an article to be summarised."
+  }
+ },
+ {
+  "id": "F026",
+  "origin": "9 Oct",
+  "name": "Product and program research with sourced prices and links",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "'Best kids bike helmet under $60' or 'summer camps for a 9-year-old' returns three to five options with links and, where the page could be read, the price or dates and when it was fetched. Shops behind bot walls and brochures that are remote PDFs come back as 'could not verify'. The parent does the buying.",
+  "example": "",
+  "how": "Research composes `web_search`, `web_fetch` and, for JavaScript pages, the F020 browser; prices only from tool results with `fetchedAt`; no payment or booking tool is granted.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The 9 Oct notes resolved brochure PDFs by running research unsandboxed; the installed docs forbid a sandboxed caller from spawning an unsandboxed target, so remote PDFs need another path (the parent forwards the file, or the answer says it could not read it)."
+  ],
+  "unverified": [
+   "How often shop pages block a plain fetch was not measured; one large retailer's help page returned HTTP 503 to this run's fetch tool, which is an observation, not a citable source.",
+   "Whether web_fetch returns usable text for a PDF address is not stated in the installed docs.",
+   "The long-table email leg depends on the mailout server (F049), which is not built."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:301",
+    "title": "Web fetch: limits and safety",
+    "anchor": "best-effort",
+    "supports": "The docs themselves say plain fetching fails on some sites and a browser is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/pdf.md:68",
+    "title": "PDF tool",
+    "anchor": "rejected when the tool runs sandboxed",
+    "supports": "A sandboxed agent cannot open a PDF by web address with the pdf tool, which affects camp brochures.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+    "title": "Sub-agents: allowlist",
+    "anchor": "rejects targets",
+    "supports": "Research cannot be run unsandboxed to get round that, because its sandboxed caller could then not spawn it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+    "title": "Cloudflare docs: Bot Fight Mode",
+    "anchor": "Bot Fight Mode",
+    "supports": "Retail and ticketing sites commonly sit behind bot challenges, so live prices will often come back as 'could not verify'.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2304.09848",
+    "title": "arXiv 2304.09848: Evaluating Verifiability in Generative Search Engines",
+    "anchor": "51.5%",
+    "supports": "Unsupported claims are common in generated answers, which is why prices must come only from tool results.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.retaildive.com/news/openai-launches-chatgpt-shopping-research-feature/806656/",
+    "title": "ChatGPT launches shopping research feature (Retail Dive)",
+    "anchor": "shopping research",
+    "supports": "OpenAI ships product research in ChatGPT that returns a buyer's guide with several matching products and current retailer information, with the purchase made on the retailer's own site.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": [
+   "r1: edited name, description. 'Live prices' overclaimed: the record's own sources say shop pages often block a plain fetch, so many prices will come back as 'could not verify', and camp brochures that are remote PDFs cannot be read. Name and description now promise prices and dates only where the page could be read.",
+   "r1: kept; credible mention: ChatGPT launches shopping research feature (Retail Dive)"
+  ],
+  "demand": {
+   "ref": "https://www.retaildive.com/news/openai-launches-chatgpt-shopping-research-feature/806656/",
+   "title": "ChatGPT launches shopping research feature (Retail Dive)",
+   "supports": "OpenAI ships product research in ChatGPT that returns a buyer's guide with several matching products and current retailer information, with the purchase made on the retailer's own site."
+  }
+ },
+ {
+  "id": "F028",
+  "origin": "9 Oct",
+  "name": "Trip and outing planner (day trip, weekend, multi-day)",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "'Plan Saturday for us, kids 8 and 10, rain likely' returns two options with hours, cost, weather and links; a longer plan can be emailed; parents book.",
+  "example": "",
+  "how": "One research sub-agent run via `sessions_spawn` with `runTimeoutSeconds`, composing `web_fetch`, the Places MCP and `home_weather`; calendar free time crosses as date ranges only; the Friday 16:00 job reuses it.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 4,
+  "effort": "L",
+  "caveats": [],
+  "corrections": [
+   "Drive time was dropped from the 9 Oct wording because goplaces was thought to lack it; upstream goplaces `directions` or Grounding Lite `compute_routes` can supply it."
+  ],
+  "unverified": [
+   "Hotel and train price snapshots: no opened source shows these sites are readable logged-out; expect links instead of prices.",
+   "The weather plugin returns 12-hour periods today (read in ~/src/happy-config, not citable), so an hourly rain window needs the plugin change in F083.",
+   "The emailed long version depends on the mailout server (F049), not built."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-reference.md:178",
+    "title": "Sub-agents: sessions_spawn parameters",
+    "anchor": "runTimeoutSeconds",
+    "supports": "A long planning run can be given its own time limit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:301",
+    "title": "Web fetch: limits and safety",
+    "anchor": "best-effort",
+    "supports": "Booking and transport sites often need a browser, so price snapshots are best effort.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service API Web Service documentation",
+    "anchor": "A User Agent is required",
+    "supports": "The government weather API also offers an hourly forecast endpoint, the basis for a rain window once the weather plugin exposes it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/ai/grounding-lite",
+    "title": "Google Maps Platform: Grounding Lite",
+    "anchor": "compute_routes",
+    "supports": "Google's Maps MCP includes a route tool, one of two sourced ways to add drive time.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/maps/documentation/places/web-service/text-search",
+    "title": "Places API (New): Text Search",
+    "anchor": "openNow",
+    "supports": "Opening hours and ratings for each stop come from the Places API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "CLI reference: automations (cron)",
+    "anchor": "--agent <id>",
+    "supports": "A job must be pinned to an agent at creation, otherwise it falls back to the default agent rather than research.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/brave-search.md:86",
+    "title": "Brave search",
+    "anchor": "`day` is 24 hours",
+    "supports": "The search tool has a freshness filter, which the topic-brief variant would have used.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/websearch/answer/4815696",
+    "title": "Google Search Help: Create an alert",
+    "anchor": "Google Alerts",
+    "supports": "Google already emails new search results for saved topics, which is why the Sunday topic brief was judged redundant.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/mozilla/readability",
+    "title": "mozilla/readability README",
+    "anchor": "Firefox Reader View",
+    "supports": "The extractor behind page fetching is the Firefox Reader View library, built for article-style HTML rather than feeds or calendars.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+    "title": "5 ways Google parents are using Gemini",
+    "anchor": "kid-friendly activities",
+    "supports": "Google's own post shows parents using its assistant to find kid-friendly activities and to build a multi-day family trip itinerary.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F017"
+  ],
+  "adds": [],
+  "wave": "C",
+  "section": "Research and page watchers",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: 5 ways Google parents are using Gemini"
+  ],
+  "demand": {
+   "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+   "title": "5 ways Google parents are using Gemini",
+   "supports": "Google's own post shows parents using its assistant to find kid-friendly activities and to build a multi-day family trip itinerary."
+  }
+ },
+ {
+  "id": "F029",
+  "origin": "9 Oct",
+  "name": "Public calendar, feed and page watchers: a text when a game moves or a site posts something new",
+  "tier": 2,
+  "cluster": "research-summaries",
+  "description": "Tony registers a team's calendar link, a site's feed or a public page; a script with no model checks it on a schedule and texts a parent once when a practice or game moves or is cancelled, when camp registration opens, or when the school, district or town site posts something new. Subscribing the same team link in the family calendar also puts practices and games into Happy's calendar answers and briefs.",
+  "example": "Trigger: the Saturday game's start time changes in the team's feed. Text: 'Soccer Saturday moved from 9:00 to 10:30, same field.'",
+  "how": "All are operator-created host command jobs with no model call, the pattern of the weather watch (F018). Schedule watch (SRC-09): add the subscription link from TeamSnap, SportsEngine or GameChanger to the family calendar so F009 reads it; then `node scripts/ics-watch.mjs <feed name>`, hourly in season, fetches the link from a file only the happy user can read, keeps each event's start, location and status in a state file, and prints one line per changed event in the next seven days. Page and feed watch (F029): `node scripts/watch-page.mjs <watch name>` every 6 hours uses the site's RSS/Atom feed when there is one, otherwise a plain https GET, keeps seen ids or a text hash, and prints one templated line with a link on the registered host only. Both print `NO_REPLY` when nothing is new.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "A parent cannot start a watch from chat: a command job is created by the operator, so each new watch is a request to Tony.",
+   "Subscribed calendars can lag by up to a day (TeamSnap says Google can take up to 24 hours), which is why the change text needs its own script, and the team app's own push is still the fastest signal for a same-day change.",
+   "A team's subscription link is a bearer secret, since anyone with it can read the schedule, so keep it out of family.json5 if that file is committed.",
+   "Many school and town pages change for reasons that do not matter (a date, a banner), so a hash watch can fire falsely; a per-watch keyword that must appear cuts this down.",
+   "Pages that render only with JavaScript are out of reach of a host command job, and many school portals and social pages publish no feed.",
+   "Command jobs run on the Gateway host as the happy user, outside the sandbox, agent tool policy and OpenClaw's fetch guardrails, so the scripts check each address themselves (https, public host) and are reviewed like the rest of the config repo.",
+   "Run one job per parent with its own state file, or one job delivering to the parents' group chat once F006 exists, because with a shared state file the second parent's job stays silent.",
+   "The text says that something changed and gives the link; reading the page is a separate ask to the research agent (F019), and price drops are not covered."
+  ],
+  "corrections": [
+   "The catalog's needs used `--once` and the verifier said no CLI flag exists (JSON or Control UI only); the installed CLI source defines `--trigger-once`."
+  ],
+  "unverified": [
+   "Which of the family's school, town and camp sites publish a feed, and which registration pages can be read without JavaScript.",
+   "The five-watchers-per-person cap is a convention; nothing enforces it.",
+   "Which agent's session transcript receives the mirrored announce line of a command job (see SRC-03); keep the line short and templated.",
+   "GameChanger's exact rules on who can sync practices versus games.",
+   "How quickly each service's .ics link itself reflects a change (only the downstream calendar lag is documented).",
+   "Rate limits or terms for polling the subscription links hourly."
+  ],
+  "safety": "No model reads the feed or the page: the scripts relay only a fixed line, with coach-typed titles and locations stripped to plain characters and capped, so outside text cannot steer an agent. Requests go only to addresses Tony registered. Team schedules say where the kids will be and when, so they stay on the host and go only to pinned parent handles.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:109",
+    "title": "Automation schedules: event triggers",
+    "anchor": "once: true",
+    "supports": "A condition script returns fire, message and state; state is capped at 16 KB and a one-shot watcher disables itself after firing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/cron-cli-BE7bR0yR.mjs:30",
+    "title": "Installed CLI source: automations options",
+    "anchor": "--trigger-once",
+    "supports": "The installed CLI has a flag that disables the watcher after its first successful triggered run.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:61",
+    "title": "Automation payloads",
+    "anchor": "capped to the tools available",
+    "supports": "A job created by an agent in chat is limited to that agent's tools, so a watcher made from <p>-main could not fetch pages.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.rfc-editor.org/rfc/rfc9309.html",
+    "title": "RFC 9309: Robots Exclusion Protocol",
+    "anchor": "Robots Exclusion Protocol",
+    "supports": "The robots standard is the published etiquette for automated page reads, and it states its rules are not access control.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://williamsburgva.gov/598/Recycle",
+    "title": "City of Williamsburg, VA: Recycle (example municipal collection page)",
+    "anchor": "iCal, Google Calendar, Microsoft Outlook",
+    "supports": "Example of a municipal collection-schedule tool that exports the pickup calendar to standard calendar formats and sends its own reminders by email, phone or text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:12",
+    "title": "Web fetch",
+    "anchor": "execute JavaScript",
+    "supports": "web_fetch is a plain HTTP GET with readable-content extraction and runs no page scripts.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/blogwatcher/SKILL.md:3",
+    "title": "Bundled skill: blogwatcher",
+    "anchor": "RSS/Atom feeds",
+    "supports": "The bundled blogwatcher skill wraps a CLI that tracks feed updates.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:449",
+    "title": "openclaw automations CLI",
+    "anchor": "--agent <id>",
+    "supports": "The owning agent of a job is pinned at creation with the agent flag; without it the default agent is used.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://visualping.io/",
+    "title": "Visualping: website change detection, monitoring and alerts",
+    "anchor": "whenever a change is detected",
+    "supports": "A shipping consumer service sells this same function: it watches a web page for the user and sends an alert when the page changes.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "web",
+    "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule",
+    "title": "TeamSnap Playbook: Subscribe to a team schedule",
+    "anchor": "Sync Calendar / Export",
+    "supports": "TeamSnap members copy a calendar link from the web schedule settings and add it to Google, Apple, Outlook or any iCal-compatible calendar, with Google taking up to 24 hours to populate.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://help.sportsengine.com/en/articles/6311504-how-to-sync-your-team-schedule-to-a-calendar-application",
+    "title": "SportsEngine Help: Sync your team schedule to a calendar application",
+    "anchor": "Sync Schedule",
+    "supports": "SportsEngine gives a copyable calendar link under Sync Schedule and Other Calendar.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://gc.com/app-features/team-management",
+    "title": "GameChanger: Team management features",
+    "anchor": "personal iOS or Google calendar",
+    "supports": "GameChanger advertises syncing the team schedule to a personal iOS or Google calendar and automatic team notifications.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/delivery.md:101",
+    "title": "Automation delivery",
+    "anchor": "delivery.to",
+    "supports": "A scheduled job that texts a person proactively needs an explicit delivery target that is on the channel allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, which is why coach-typed titles must be sanitised.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-10",
+   "SRC-09"
+  ],
+  "adds": [
+   "An order of preference for every watcher: the town's own feed or reminder first, plain fetch second, a browser last; and the rule that a watcher never runs on a logged-in profile.",
+   "From OCL-10 (Feed watch for school, PTA, town and library sites (RSS/Atom)): Carry over the feed-first check, the model-free command job that relays only new titles with links limited to the registered host, and the rule to first count how many of the family's sites publish a feed. Prefer a small in-house feed script over the third-party blogwatcher binary, which has no tagged releases and no machine-readable output."
+  ],
+  "wave": "B",
+  "section": "Research and page watchers",
+  "includes": [
+   {
+    "id": "SRC-09",
+    "name": "Sports schedule feeds with change alerts"
+   }
+  ],
+  "history": [
+   "r1: edited name, description, how, depends_on, caveats, safety, unverified. The name still promised price drops, which the item's own notes had dropped, and its trigger-script design needs a switch that the scheduler guardrails (AUT-08) keep off and that the OpenClaw docs call unattended code execution. Reworded as one model-free watcher for pages and feeds that Tony sets up, taking in the feed watch (OCL-10); MKT-04 would keep its seen links in a state file instead, and CRT-11's 'registration opens' watchers are unchanged.",
+   "r1: kept; credible mention: Visualping: website change detection, monitoring and alerts",
+   "r1: merged with SRC-09 (same batch). The sports-schedule change alert and the public page and feed watcher are the same operator-created no-model command job with a state file and one templated line, so they become one watcher card in wave B."
+  ],
+  "demand": {
+   "ref": "https://visualping.io/",
+   "title": "Visualping: website change detection, monitoring and alerts",
+   "supports": "A shipping consumer service sells this same function: it watches a web page for the user and sends an alert when the page changes."
+  },
+  "depends_on": [
+   "F018 command-job pattern",
+   "G003 jobs registry",
+   "G001 notification policy",
+   "F009 family calendar read-only and decision 4 (Google or iCloud calendar), for showing the schedule in calendar answers",
+   "First check which of the family's school, town, library and camp sites publish a feed"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "WEB-11",
+  "name": "Recipe link to ingredients and steps",
+  "tier": 2,
+  "cluster": "public pages",
+  "description": "Text a recipe link and get the ingredient list and the steps without the life story and the ads, scaled to the number of people, with an offer to add the ingredients to the shared grocery list.",
+  "example": "\"<recipe link> What do I need for this for six people?\"",
+  "how": "Mechanism choice: plain `web_fetch`, which reduces a page to its main content; schema.org also defines a Recipe vocabulary (`recipeIngredient`, `recipeInstructions`, `recipeYield`) that recipe sites can embed. <p>-main hands the URL to research with `sessions_spawn` and `completionTarget: \"parent\"`; research fetches, makes one `llm-task` call with a small schema (title, yield, ingredients[], steps[], source URL, fetched-at) and returns that JSON as its result; <p>-main scales quantities and proposes items for the shared grocery list (F030), written only after a yes. The schema shapes the answer but is not an enforced gate: the result reaches <p>-main as ordinary sub-agent text. Fallbacks in order: the F020 research browser for script-rendered pages; a host-side `summarize --extract` wrapper for video recipes (the CLI is not installed; pin `--firecrawl off` in the wrapper).",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F019 research agent",
+   "F082 llm-task",
+   "F030 Reminders bridge for the grocery list"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "The fetch returns the readable article text. It is not documented to return the page's embedded Recipe data, so the model parses ingredients from prose and can drop a line. Always include the source link.",
+   "Some recipe sites sit behind bot walls or paywalls and return nothing; say so instead of guessing.",
+   "The phone's reader view and recipe-keeper apps already do the clean-up; the added value is the hand-off to the shared grocery list.",
+   "Scaling quantities is arithmetic done by a language model: fine for a stew, worth a second look for baking.",
+   "'Add what is missing' assumes Happy knows what is in the kitchen. It does not; in practice it offers the whole ingredient list and the parent strikes what they have.",
+   "The summarize CLI named as the video fallback takes any address and has its own third-party extraction fallbacks. A wrapper must pass `--firecrawl off`, hold no third-party keys, and check the address itself (https, public host), because OpenClaw's SSRF policy does not cover a host-side CLI.",
+   "The reading half works the day the research agent exists; the grocery hand-off, which is the part the phone does not already do, waits on the Reminders bridge.",
+   "On today's config no agent has `web_fetch` or `sessions_spawn` and the `llm-task` plugin is not enabled; all three are config changes that arrive with F019 and F082."
+  ],
+  "safety": "The untrusted page is read by research only, and nothing private goes to research: an address and a serving count. What comes back to <p>-main is text written by a model that has just read an untrusted page. Running it through `llm-task` with a schema fixes its shape, not its content: a step string can still carry instructions, and nothing in the platform forces the check to run. The limits that hold are that <p>-main has no browser or fetch and its recipients are pinned to the family. List writes wait for the parent's yes, a prompt rule that is acceptable at grocery-list stakes.",
+  "unverified": [
+   "Whether web_fetch output ever includes a page's JSON-LD blocks: a search of the installed code found no JSON-LD handling in the fetch extractor, but no live recipe page was fetched.",
+   "How many of the recipe sites this family uses embed schema.org Recipe data.",
+   "Whether a plugin hook can enforce a schema on a sub-agent's result before <p>-main reads it.",
+   "Whether llm-task's isolated completion works through the family's per-person custom provider ids; its allowed-model list has to name them."
+  ],
+  "overlaps_existing": [
+   "F023",
+   "F032",
+   "F033"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:74",
+    "title": "Web fetch: How it works",
+    "anchor": "Runs Readability",
+    "supports": "web_fetch extracts the main content of an HTML page.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://schema.org/Recipe",
+    "title": "schema.org: Recipe",
+    "anchor": "recipeIngredient",
+    "supports": "The standard vocabulary recipe sites use to publish ingredients, instructions, times and yield in machine-readable form.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/llm-task.md:84",
+    "title": "llm-task",
+    "anchor": "JSON Schema",
+    "supports": "llm-task can validate a model's JSON output against a supplied schema.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:71",
+    "title": "Bundled skill: summarize",
+    "anchor": "--extract",
+    "supports": "The summarize CLI can return extracted content from a URL or video without a model summary.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/announce.md:12",
+    "title": "Sub-agent announce",
+    "anchor": "announce step",
+    "supports": "A sub-agent's result reaches the requester as an announce message written inside the sub-agent session.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://help.anylist.com/topics/recipes/",
+    "title": "Recipes - AnyList Help",
+    "anchor": "Scaling Recipes",
+    "supports": "A shipping family list app offers the same three steps: import a recipe from a website, scale it, and add its ingredients to the shopping list.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "A good low-risk workflow with a safe holder. Two claims need fixing: the schema check is something the model chooses to run, not a platform gate on what research hands back; and the version worth having is 'build', because the grocery hand-off needs the Reminders bridge and neither research nor web_fetch exists yet.",
+   "Mechanism and sources are sound and it is config-only once the research agent exists. The safety claim is too strong: llm-task validates one completion inside research, but what research hands back to <p>-main is ordinary sub-agent text that nothing schema-checks, and a string field can hold any text anyway. Also, the `summarize` fallback is not installed and has its own Firecrawl switch."
+  ],
+  "reviewed_by": 2,
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": [
+   "r1: edited description, how, depends_on. The description promised to add 'what is missing', but the item's own caveat says Happy does not know what is in the kitchen. The grocery hand-off now points to the Reminders bridge (F030), and the browser fallback to F020, because F032 and WEB-02 are no longer separate items.",
+   "r1: kept; credible mention: Recipes - AnyList Help"
+  ],
+  "demand": {
+   "ref": "https://help.anylist.com/topics/recipes/",
+   "title": "Recipes - AnyList Help",
+   "supports": "A shipping family list app offers the same three steps: import a recipe from a website, scale it, and add its ingredients to the shopping list."
+  }
+ },
+ {
+  "id": "F033",
+  "origin": "9 Oct",
+  "name": "Sunday meal plan to grocery list (with recipe box)",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "On Sunday afternoon the cook gets five dinner ideas fitted to the week's calendar and allergies; a reply swaps a night or adds a dinner's ingredients to the grocery list.",
+  "example": "",
+  "how": "Isolated automation reads recipes and calendar, saves the plan (store row or wiki synthesis) for the main session to use on reply; ask_user is main-session only; no ordering.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [],
+  "unverified": [
+   "It depends on the calendar connection (F009) and the Reminders bridge (F030), neither of which exists yet.",
+   "The 9 Oct statement that AI meal-plan features have poor retention has no source opened in this run."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:267",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "A new transcript/session id",
+    "supports": "Each isolated run starts a fresh session with no earlier conversation, so the Sunday job has to save the plan somewhere the parent's main session can read when they reply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/ask-user.md:15",
+    "title": "Ask user (OpenClaw docs)",
+    "anchor": "only in the main session",
+    "supports": "The structured question tool is not given to scheduled or other non-primary runs, so the plan message can only invite a normal reply.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/wiki.md:195",
+    "title": "openclaw wiki CLI reference (OpenClaw docs)",
+    "anchor": "apply synthesis",
+    "supports": "The wiki write path creates or refreshes a synthesis page with a managed body, which is how a recipe or the week's plan could be stored without free-form page edits.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.nutrition.gov/topics/shopping-cooking-and-meal-planning/food-shopping-and-meal-planning",
+    "title": "Food Shopping and Meal Planning | Nutrition.gov (USDA)",
+    "anchor": "Food Shopping and Meal Planning",
+    "supports": "Planning the week's meals first and deriving the grocery list from the plan is the standard household method that USDA's nutrition portal points families to.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+    "title": "5 ways Google parents are using Gemini",
+    "anchor": "create weekly meal plans",
+    "supports": "Google's own post shows a parent having its assistant create weekly meal plans, share recipes and create grocery lists.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": [
+   "r1: edited description, depends_on. Kept. 'Adds missing ingredients' assumed Happy knows what is in the kitchen, which it does not, and the unbuilt items the plan rests on are now listed.",
+   "r1: kept; credible mention: 5 ways Google parents are using Gemini"
+  ],
+  "demand": {
+   "ref": "https://blog.google/products-and-platforms/products/gemini/gemini-tips-for-parents",
+   "title": "5 ways Google parents are using Gemini",
+   "supports": "Google's own post shows a parent having its assistant create weekly meal plans, share recipes and create grocery lists."
+  },
+  "depends_on": [
+   "F009 calendar read",
+   "F030 Reminders bridge for the grocery list",
+   "F031 household store or F043 vault for the saved plan and recipe box"
+  ]
+ },
+ {
+  "id": "F038",
+  "origin": "9 Oct",
+  "name": "Home upkeep calendar: maintenance, car care, bins, seasonal nudges",
+  "tier": 2,
+  "cluster": "lists-household",
+  "description": "Nudges for filter changes, car care such as oil changes, seasonal jobs and bins the night before pickup; 'did the furnace filter' updates the record. Inspection and registration dates are in the renewals list (F063).",
+  "example": "",
+  "how": "Per-parent isolated automations (--cron, --tz, --tools) over the F031 schedule tools; the run answers NO_REPLY when nothing is due; holiday shifts come from a table entered once.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [],
+  "corrections": [
+   "The catalog writes this job's tools as home-store__schedule_*. docs/tools/multi-agent-sandbox-tools.md:242 gives that double-underscore form to MCP servers; if F031 ships as a defineToolPlugin, the job must list the plugin's own tool names instead."
+  ],
+  "unverified": [
+   "The opened scheduler docs show no holiday calendar; the holiday bin shift relies on the agent reading a table, which was not tested.",
+   "The 90-day filter interval in the catalog is a household choice; the ENERGY STAR page opened here says to check monthly."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:89",
+    "title": "openclaw automations CLI reference (OpenClaw docs)",
+    "anchor": "--cron <expression>",
+    "supports": "Jobs take a standard cron expression with a named timezone, enough for 'first of the month' and 'night before pickup' schedules.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:270",
+    "title": "Automation payloads (OpenClaw docs)",
+    "anchor": "NO_REPLY",
+    "supports": "An unattended run that finds nothing to do returns the silent token and no message is delivered, so a daily check stays quiet until something is due.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+    "title": "Maintenance Checklist | ENERGY STAR",
+    "anchor": "Maintenance Checklist",
+    "supports": "The US government efficiency programme advises checking the HVAC filter monthly and a yearly pre-season service, so recurring upkeep reminders reflect real maintenance guidance.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://dmv.ny.gov/inspection/inspection-requirements",
+    "title": "About New York State Inspections - NY DMV",
+    "anchor": "every 12 months",
+    "supports": "A registered vehicle needs a safety inspection once a year, which makes the per-car inspection month a real recurring date worth tracking.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://policy.recollect.net/terms.en-US.html",
+    "title": "ReCollect terms of service",
+    "anchor": "phone call or mobile app notification",
+    "supports": "ReCollect lets residents sign up for collection reminders by email, text message, phone call or app notification.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/recollect_waste",
+    "title": "Home Assistant: ReCollect Waste integration",
+    "anchor": "not an official API",
+    "supports": "Municipalities on ReCollect usually offer a calendar subscription whose URL carries place and service ids, and the JSON endpoint the integration uses is not an official ReCollect API.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "--tz",
+    "supports": "Cron schedules can be pinned to an IANA timezone, which the night-before bins line needs.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "SRC-10"
+  ],
+  "adds": [
+   "If the town or hauler uses ReCollect, its address-specific pickup calendar replaces the hand-typed bins table; ReCollect already sends its own reminders, so Happy only folds the line into the evening brief."
+  ],
+  "wave": "B",
+  "section": "Lists, meals and home upkeep",
+  "includes": [],
+  "history": [
+   "r1: edited description, depends_on. Kept. The car's inspection date is already in the renewals list (F063), so it is dropped here to avoid two reminders for one date, and the household store this item is built on is now named as a dependency.",
+   "r1: kept; credible mention: Maintenance Checklist | ENERGY STAR"
+  ],
+  "demand": {
+   "ref": "https://www.energystar.gov/saveathome/heating-cooling/maintenance-checklist",
+   "title": "Maintenance Checklist | ENERGY STAR",
+   "supports": "The government efficiency programme tells households to check heating and cooling filters every month and book a yearly pre-season check-up, the kind of recurring upkeep these nudges track."
+  },
+  "depends_on": [
+   "F031 household store (schedule rows)",
+   "F007 timed reminders",
+   "The town's pickup calendar or a bins table entered once"
+  ]
+ },
+ {
+  "id": "F061",
+  "origin": "9 Oct",
+  "name": "Tax document checklist (January to April)",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "January to April, a Saturday text listing which expected tax forms have had an arrival email and which are still missing. It reports that a notice arrived and does not read the form.",
+  "example": "",
+  "how": "A Saturday job from January to April on the owner's mail agent: `automations create '0 9 * 1-4 6' --agent <p>-mail --session isolated --announce --to <owner>`, with `--tools` limited to the read-only Gmail search tool (F047). The job prompt carries the family's expected-forms list with each sender; the run searches for mail from each sender since 1 January and reports 'arrived' with the date, or 'missing'. Nothing is stored between runs. The earlier design, an IMAP watch on payroll, broker and bank senders (F050) feeding a job with `--tools \"\"`, applies only if that watcher is ever built.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "M4-mail",
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "It only knows that a notice email arrived. Forms that come by post, or sit in a portal without an email, show as missing even when they are in hand.",
+   "It is useful four months a year, and cron has no end date, so the job is switched off by hand after filing.",
+   "'Does not read the form' is an instruction to the mail agent, not an enforced limit, because the same agent can read the owner's mail. The stricter design, an allowlisted-sender watch feeding a job with no tools, needs the personal-inbox watcher (F050) and its whole-mailbox Google app password."
+  ],
+  "corrections": [],
+  "unverified": [
+   "The family's own expected-forms list (Form 1098, 529 and childcare statements) is theirs to write; the IRS page fetched does not name Form 1098.",
+   "Sender domains for payroll, brokerage and the 529 plan.",
+   "Whether personal mail may be read by the cloud model at all is Tony's open decision for every personal-mail feature (see F016)."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools \"\"",
+    "supports": "An empty tool list disables every agent tool for the job, so the digest run cannot read files or fetch anything and its checklist must be in the prompt.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:20",
+    "title": "Automation schedules",
+    "anchor": "5-field or 6-field cron expression",
+    "supports": "Recurring jobs accept standard cron expressions with an optional time zone flag.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:86",
+    "title": "IMAP email trigger",
+    "anchor": "allowedSenders",
+    "supports": "The plugin checks the parsed From address against the account's sender allowlist before any message reaches a model; entries are full addresses or @domain, and an empty list disables the account.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/filing/gather-your-documents",
+    "title": "IRS: Gather your documents",
+    "anchor": "Form 1095-A",
+    "supports": "The IRS lists the records a household collects before filing (W-2, 1099 variants, 1095-A, childcare, mortgage, property tax and donation records) and says information returns arrive in January or February.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "C",
+  "section": "Inbox workflows",
+  "includes": [],
+  "history": [
+   "r1: edited value, description, how, depends_on, caveats, unverified. Kept, but rated lower: it runs four months a year for a handful of forms and only knows that a notice email arrived. It no longer rests on the personal-inbox watcher (F050), which has no wave and uses a whole-mailbox Google app password; a Saturday search by the owner's read-only mail agent (F047) does the same job with nothing stored between runs.",
+   "r1: kept; credible mention: IRS: Gather your documents"
+  ],
+  "demand": {
+   "ref": "https://www.irs.gov/filing/gather-your-documents",
+   "title": "IRS: Gather your documents",
+   "supports": "The tax agency tells households to collect their W-2, 1099 and other forms before filing and says they arrive in January or February, which is what this checklist tracks."
+  },
+  "depends_on": [
+   "F047 read-only Gmail with the G015 mail agent (the Saturday search)",
+   "The family's own list of expected forms and their senders, kept in the job prompt",
+   "F050 personal-inbox watcher only for the stricter no-tools design; it is not placed in any wave"
+  ]
+ },
+ {
+  "id": "F018",
+  "origin": "9 Oct",
+  "name": "Severe-weather, snow-day and weather-chore watch",
+  "tier": 2,
+  "cluster": "digests-briefs",
+  "description": "Both parents get a three-line heads-up once per new winter storm, wind, flood or freeze alert for home, with a school-night closure reminder and a chore checklist.",
+  "example": "",
+  "how": "Host command job, `--command-argv '[\"node\",\"scripts/nws-alerts.mjs\"]'` every 30 minutes, polls api.weather.gov `/alerts/active?point=`, dedups on alert `id`, prints `NO_REPLY` otherwise; zero model calls.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Phones receive Wireless Emergency Alerts only for the most extreme warnings (tornado, hurricane, extreme wind, snow squall, the worst flash floods and thunderstorms); winter storm, freeze and ordinary high-wind warnings are not sent that way.",
+   "Apple's Weather app can also notify about government-issued severe weather alerts, but only once a parent switches that on for the home location. With it on, what Happy adds is one text to both parents with the school-night line and the chore checklist, not earlier notice.",
+   "Happy is down in a power cut or a network outage, so this is a convenience and not a warning system; the phones' own emergency alerts stay switched on."
+  ],
+  "corrections": [],
+  "unverified": [
+   "That an NWS update to an existing alert arrives under a new id pointing back through `references`: the fields were seen, their semantics were not read, so the dedup rule needs a test.",
+   "The current weather plugin returns alerts without an id (read in ~/src/happy-config, not a citable source kind), which is why the script calls the API directly.",
+   "Which alert types the Weather app's severe-weather notification covers: Apple's pages say government-issued severe weather alerts without listing them."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:22",
+    "title": "Automation payloads",
+    "anchor": "--command-argv <json>",
+    "supports": "A command payload runs a process on the Gateway host with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-alerts",
+    "title": "NWS Alerts Web Service documentation",
+    "anchor": "point=39,-90",
+    "supports": "Active alerts can be requested for a single latitude and longitude, and the service asks clients not to poll more often than every 30 seconds.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service API Web Service documentation",
+    "anchor": "A User Agent is required",
+    "supports": "The alert API is free and open, needing only an identifying User-Agent header.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/alerts?limit=1",
+    "title": "api.weather.gov /alerts response (live sample)",
+    "anchor": "messageType",
+    "supports": "Each alert record carries an id plus references, message type, event, severity, headline and end time, enough for once-only delivery and a three-line text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102516",
+    "title": "Apple Support: Government, Emergency, and Enhanced Safety Alerts on iPhone",
+    "anchor": "AMBER alerts",
+    "supports": "iPhones already receive government extreme-weather alerts, so the added value is the school-night and chore framing, not the alert itself.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/webservices",
+    "title": "AirNow API: Web Services",
+    "anchor": "Zip Code",
+    "supports": "AirNow lists current forecast and current observation services that can be queried by ZIP code or latitude and longitude.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/faq",
+    "title": "AirNow API: FAQ",
+    "anchor": "until the next hour",
+    "supports": "Calls are tied to an API key and a web service that reaches its hourly maximum stops returning data until the next hour.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/",
+    "title": "AirNow API: Home",
+    "anchor": "preliminary",
+    "supports": "The API is open to the public and its data are described as preliminary and subject to change.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/docs/AirNowAPIUpdates2026June.pdf",
+    "title": "AirNow API updates notice, June 2026 (PDF)",
+    "anchor": "retired on September 30th, 2026",
+    "supports": "Six existing web services were retired on 30 Sep 2026 and replaced by new ones such as Current Forecasts by Reporting Area at /aq/forecast/current/.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.airnowapi.org/docs/AirNowAPIFactSheet.pdf",
+    "title": "AirNow API fact sheet (PDF)",
+    "anchor": "An AirNow API account is required",
+    "supports": "An account is required for the web services and feeds, and output is available as CSV, JSON or XML.",
+    "check": "reachable"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/alerts/types",
+    "title": "NWS API: alert event types",
+    "anchor": "Air Quality Alert",
+    "supports": "The NWS alert API that Happy already polls includes an Air Quality Alert event type among its event types.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105038",
+    "title": "Apple Support: Feature availability and data sources in the Weather app",
+    "anchor": "BreezoMeter",
+    "supports": "Apple's Weather app shows air-quality information in the United States using a commercial provider, so the phone already displays an AQI figure; the page mentions no air-quality notification.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript, so announced text is later visible to the agent that owns that session.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/winter-weather",
+    "title": "Winter Weather | Ready.gov",
+    "anchor": "warnings of freezing weather",
+    "supports": "The federal preparedness site tells households to pay attention to warnings of freezing weather and winter storms and to sign up for their community's warning system.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "SRC-01"
+  ],
+  "adds": [
+   "The weather-alert feed Happy will poll already carries an Air Quality Alert type, so the same watch can cover smoke and ozone days; an AirNow forecast key is optional and only worth adding if such days recur."
+  ],
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": [
+   "r1: edited caveats, unverified. Kept; several other watches reuse its command-job pattern. The caveats now say what phones really do: emergency alerts cover only the most extreme warnings (weather.gov/wrn/wea), and Apple's Weather app can notify about other government-issued alerts once that is switched on, so Happy's gain is the school-night line and the chore checklist in one text to both parents, not earlier notice.",
+   "r1: kept; credible mention: Winter Weather | Ready.gov"
+  ],
+  "demand": {
+   "ref": "https://www.ready.gov/winter-weather",
+   "title": "Winter Weather | Ready.gov",
+   "supports": "The federal preparedness site tells households to pay attention to warnings of freezing weather and winter storms and to sign up for their community's warning system."
+  }
+ },
+ {
+  "id": "SRC-03",
+  "name": "Recall watch matched to what the family owns: products (CPSC), food and medicine (FDA)",
+  "tier": 2,
+  "cluster": "Recalls and safety",
+  "description": "A script checks the Consumer Product Safety Commission's recall list each day and FDA's recall and safety notices twice a day, and texts a parent only when a notice matches something the family owns, an allergen it cares about, a staple brand or a children's medicine in the cabinet. The agencies publish far more notices than anyone reads, so the filter is the feature.",
+  "example": "Trigger: a new recall whose product name contains a brand on the family's owned-items list. Text: 'CPSC recall 26-xxx: <product title>. Hazard: burn. Remedy: refund. Link: cpsc.gov/...'",
+  "how": "Two operator-created command jobs with no model, each announced to a pinned parent. Products (SRC-03): `node scripts/cpsc-recalls.mjs` once a day asks the CPSC recall web service for recalls since the last run (a date filter only), keeps seen RecallID values in a state file and matches product, maker, retailer and UPC fields locally against owned-item keywords and a short kid-category list; an owned match texts now, a category match waits for a Sunday digest of at most five. Food and medicine (SRC-04): `node scripts/fda-recalls.mjs` twice a day reads FDA's Recalls/Safety Alerts RSS feed and matches titles against allergen, staples and medicine keywords from family.json5. Both print a templated line or `NO_REPLY`. Cars are not polled: parents add VINs and car seats to NHTSA's SaferCar app.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "F018 command-job pattern",
+   "G003 jobs registry",
+   "G001 notification policy",
+   "the home systems registry in F043 or a hand-kept owned-items list",
+   "allergen, staples and medicine keyword lists in family.json5"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "The match is only as good as the family's lists: substring matching on brand names gives some false positives and misses unlisted items, and FDA titles that do not name the allergen or brand are missed.",
+   "Both agencies already offer their own recall sign-ups, so Happy adds the match against the family's own list and not earlier notice.",
+   "FDA's own list says not every recall has a press release or is posted there, so silence from this watch is not an all-clear.",
+   "openFDA enforcement data is updated weekly and FDA says it must not be used to issue alerts or to make medical decisions, so the RSS notices give timeliness and openFDA is only a detail lookup.",
+   "Meat, poultry and egg-product recalls come from USDA FSIS, whose developer page refused the fetch, so that leg is not included.",
+   "The food and medicine leg is worth most if a child has a diagnosed food allergy; otherwise it is a low-frequency nudge.",
+   "Run one job per parent with its own seen-id state file, because with a shared file the second parent's job finds nothing new and stays silent.",
+   "No key or rate limit is documented for the CPSC service, so poll once a day and not more."
+  ],
+  "safety": "No model runs in either job, and nothing about the family leaves the house: the lists are pulled by date or whole and filtered locally. Recall titles are untrusted and a delivered line is mirrored into the owning agent's transcript, so the scripts print a fixed template with stripped, capped titles and only the official link. Not medical advice.",
+  "unverified": [
+   "Formal terms of use or rate limit for the recall web service (the page read gives none).",
+   "Documentation for the RecallDateStart parameter (it is not on the API information page read; it is confirmed only by the live response).",
+   "Which agent's session receives the mirrored line for a command job, to be checked by reading the transcript after the first run.",
+   "The USDA FSIS recall API (endpoint, fields, terms): the page returned 403.",
+   "Whether the FDA RSS feed has a documented polling limit."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information",
+    "title": "CPSC Recalls API information",
+    "anchor": "RestWebServices/Recall",
+    "supports": "CPSC publishes a recall retrieval web service at saferproducts.gov that returns XML by default or JSON with format=json and shows no access key.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2026-09-20",
+    "title": "CPSC recall web service, live response",
+    "anchor": "RecallNumber",
+    "supports": "A keyless request filtered by RecallDateStart returned 31 recall records dated 24 Sep to 8 Oct 2026 with fields such as RecallID, Title, Products, Retailers, ProductUPCs, Hazards and Remedies.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cpsc.gov/Recalls",
+    "title": "CPSC Recalls",
+    "anchor": "Recall RSS",
+    "supports": "CPSC itself offers recall email subscriptions, an RSS feed and a recall app, which is the baseline this feature has to beat.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:191",
+    "title": "Automation payloads: command output",
+    "anchor": "NO_REPLY",
+    "supports": "A command job that prints only NO_REPLY posts nothing to chat, which keeps a daily poll silent when nothing matches.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518",
+    "title": "Installed source: transcript mirror for direct cron delivery",
+    "anchor": "appendDirectCronDeliveryTranscriptMirror",
+    "supports": "After a successful cron announce, the delivered text is appended as an assistant message to a session transcript.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/server-cron-JBzIvkak.mjs:377",
+    "title": "Installed source: cron announce sender",
+    "anchor": "completion announcement mirror",
+    "supports": "The function that sends a cron announce payload resolves a route session for an explicit target and mirrors the completion text into it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml",
+    "title": "FDA Recalls/Safety Alerts RSS feed",
+    "anchor": "Recalls/Safety Alerts",
+    "supports": "FDA publishes a keyless RSS feed of recall and safety notices; at fetch time it held 20 items dated 24 Sep to 9 Oct 2026 covering foods, drugs and supplements.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/food/enforcement/",
+    "title": "openFDA: Food enforcement reports",
+    "anchor": "issue alerts to the public",
+    "supports": "The food enforcement dataset is updated weekly and FDA says it should not be used to issue public alerts or to track a recall's lifecycle.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/drug/enforcement/",
+    "title": "openFDA: Drug enforcement reports",
+    "anchor": "updated weekly",
+    "supports": "The drug recall dataset has the same weekly cadence and the same warnings against use for alerts or medical decisions.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://open.fda.gov/apis/authentication/",
+    "title": "openFDA: Authentication",
+    "anchor": "240 requests per minute",
+    "supports": "Without a key the API allows 240 requests a minute and 1,000 a day per IP address, far above a household lookup.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.fda.gov/food/enforcement.json?limit=1",
+    "title": "openFDA food enforcement endpoint, live response",
+    "anchor": "distribution_pattern",
+    "supports": "The endpoint answers without a key and returns fields such as recalling_firm, product_description, reason_for_recall, classification and distribution_pattern.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
+    "title": "Recalls, Market Withdrawals, & Safety Alerts | FDA",
+    "anchor": "Sign up to receive Recalls",
+    "supports": "FDA publishes its recall and safety notices for the public and invites people to subscribe to them, which is the notice stream this watch filters for one family.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "SRC-04"
+  ],
+  "adds": [
+   "From SRC-05 (Vehicle recall check by make, model and year (NHTSA)): Do not poll NHTSA. In the recall watch's setup notes, tell each parent to add the family cars' VINs, and the car seats, to NHTSA's free SaferCar app, which alerts per vehicle."
+  ],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [
+   {
+    "id": "SRC-04",
+    "name": "Food and medicine recall watch (FDA)"
+   }
+  ],
+  "history": [
+   "r1: edited description, unverified. Kept: the safety agency itself urges people to subscribe to recalls, and Happy adds the match against what this family owns. Two small fixes: the description carried a dated research note, and the list of open questions still asked something the item's own safety text already answers from the installed source.",
+   "r1: kept; credible mention: Recalls & Product Safety Warnings | CPSC.gov",
+   "r1: merged with SRC-04 (same batch). The CPSC product-recall watch and the FDA food-and-medicine recall watch are the same no-model command job with a seen-id file and a local match against the family's own lists, so they become one recall-watch card."
+  ],
+  "demand": {
+   "ref": "https://www.cpsc.gov/Recalls",
+   "title": "Recalls & Product Safety Warnings | CPSC.gov",
+   "supports": "The safety agency itself urges consumers to subscribe so they never miss a recall, and its emails, feed and app are the unfiltered baseline that this owned-items match improves on."
+  },
+  "corrections": []
+ },
+ {
+  "id": "CRT-10",
+  "name": "Sick-day mode with a shared what-was-given log",
+  "tier": 2,
+  "cluster": "kids' health days",
+  "description": "When a child is ill, both parents log what they gave and when, and either can ask 'when was the last dose?' and get the same answer; a poison control centre lists medicine given by more than one person who do not communicate as a cause of double dosing, and recommends a log that is marked at every dose. The same mode drafts the absence note and lists what tomorrow needs cancelling. Happy records and recalls. It never advises a dose.",
+  "example": "Jordan texts: 'L has a fever, gave the children's acetaminophen at 7:40.' Later Tony texts: 'When was the last dose?'",
+  "how": "Rows in the household store (F031): child nickname, what the parent typed, time, who. A care_last tool, built with defineToolPlugin like the store, returns the latest rows and the elapsed minutes, computed in code and not by the model. Both parents' agents read the same table. The reply always ends with a fixed line: check the label for dose and timing, and ask the pediatrician or poison control if unsure. There is no dose arithmetic and no 'you can give more now'. Add-ons from features already in the catalog: a draft absence note the parent sends through the school's own channel (F037), tomorrow's calendar items that need a cancel or a cover (F009), a tracked ask to the other parent about staying home (G010), and a one-shot check-in reminder ('--at'). For 'can she go back tomorrow?' Happy quotes CDC's general rule with its link (symptoms improving overall and no fever for 24 hours without fever-reducing medicine) and says the school's policy wins. Rows delete themselves after 14 days and are kept out of memory writes. To make 'no dose advice' a limit and not a request, care_last returns the finished reply text (the rows as typed, the elapsed time and the fixed line) and the agent is told to send it unchanged; an exact 'last dose' phrase can instead be answered by a before_dispatch claim with no model at all, which also keeps the lookup working when the model is down.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F007 reminders",
+   "F009 calendar read",
+   "G010 parent-to-parent relay",
+   "9 Oct decision 3, if photos of labels are sent"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "This is a log, not a clinician. A wrong elapsed time is worse than none, so the time comes from the message timestamp unless the parent states one, and the reply repeats it back.",
+   "FDA says more than 600 medicines contain acetaminophen and that a child's dose should never be guessed. The log stores the product name as typed so a parent can spot two products with the same ingredient; Happy does not make that judgement.",
+   "Child health notes pass through a cloud model under store:false. Use a nickname or initial and keep diagnoses out.",
+   "For one parent alone, a note on the phone does the same job. The value is the shared view across two people."
+  ],
+  "safety": "Runs on <p>-main only: private data, no untrusted content in the turn (the CDC and FDA lines are fixed text, not fetched), and output only to the two parents through the pinned delivery. Nothing about the child's health is handed to the research agent, per the roadmap's handoff rule. The elapsed time and the fixed line come from code. The rule against dose advice is an AGENTS.md instruction, and a model can still break it by volunteering a 'next dose' remark from its own knowledge; rendering the lookup reply in code, or answering the lookup phrase with a no-model claim, is what turns it into a limit. Add an eval case that asks 'can I give more now?' and must get only the fixed line.",
+  "unverified": [
+   "Whether the iPhone Health app's medication log can be shared live between two parents; if it can, that is the better tool.",
+   "Whether the school takes absence notes by email or only through its attendance line or app.",
+   "Session transcripts that mention the illness follow the general retention setting; only the rows are auto-deleted."
+  ],
+  "overlaps_existing": [
+   "F007",
+   "F031",
+   "F037",
+   "G010",
+   "F060"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.fda.gov/consumers/consumer-updates/dont-overuse-acetaminophen",
+    "title": "Don't Overuse Acetaminophen | FDA",
+    "anchor": "Overuse Acetaminophen",
+    "supports": "FDA warns against combining products that contain acetaminophen, says hundreds of medicines contain it, and tells parents to follow the label and never guess a child's dose.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.cdc.gov/respiratory-viruses/prevention/precautions-when-sick.html",
+    "title": "Preventing Spread of Respiratory Viruses When You're Sick | CDC",
+    "anchor": "Preventing Spread of Respiratory Viruses",
+    "supports": "CDC's general guidance is to stay home when sick and return to normal activities after 24 hours of overall improvement with no fever and no fever-reducing medicine.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/tool-plugins.md:11",
+    "title": "Tool plugins",
+    "anchor": "defineToolPlugin",
+    "supports": "A small plugin can add typed agent tools without channels, providers or hooks, which is how the log tool would be added.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:85",
+    "title": "openclaw automations: schedule types",
+    "anchor": "--at <when>",
+    "supports": "A one-shot job can be scheduled for a time or a duration from now, which is the check-in reminder.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "more than 1 person",
+    "supports": "A poison centre names medicine given by several people who do not communicate as a cause of double dosing and advises deciding who gives each dose and marking every dose in a log.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The claim that two caregivers is 'the usual way' a double dose happens had no source; a poison centre page supports a weaker statement. 'Never advises a dose' was only an instruction to the model, which this stack's rules do not count as a control, so the lookup reply should be rendered in code."
+  ],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)"
+  ],
+  "demand": {
+   "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+   "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "supports": "A poison centre names medicine given by several caregivers who do not tell each other as a cause of double dosing and recommends a log that is marked at every dose."
+  }
+ },
+ {
+  "id": "CRT-13",
+  "name": "Emergency card and sitter sheet from one set of family facts, plus a fixed reply to emergency texts",
+  "tier": 2,
+  "cluster": "emergencies",
+  "description": "Happy helps write and keep current a one-page family emergency plan to print, and from the same facts makes a sitter or grandparent sheet (bedtimes, allergies, medicines, emergency contacts) for a parent to forward. Happy is never the emergency channel: a text that looks like an emergency gets one fixed line at once, telling the person to call emergency services, without waiting for a model.",
+  "example": "A parent texts 'make the sitter sheet for Friday' and gets one message to forward or print. A parent who texts 'He swallowed something, what do I do?' gets the fixed call-emergency-services line immediately.",
+  "how": "Plan (CRT-13): Ready.gov's four steps (talk it through, consider the household's needs, write the plan, practise it) become a short interview on <p>-main; the result is a page in the family folder (F043) and a printed sheet (F080), and a yearly reminder re-checks the contacts. Sitter sheet (F036): a prompt template referenced from AGENTS.md over the same facts, prompt-only and able to go first; nothing is sent by Happy and the Wi-Fi password is never stored. Fixed reply: the kill-switch plugin's `before_dispatch` hook matches a short list of emergency phrases and returns a canned final reply (call the local emergency number now; for a possible poisoning call poison control; Happy cannot call anyone). It answers before model dispatch, so it still works during a model outage.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "G005 kill-switch plugin (shares the hook)",
+   "F043 family folder",
+   "F080 print",
+   "F007 reminders (the yearly contact re-check)",
+   "F009 calendar read (only for 'tonight's plan' on the sitter sheet)"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Happy can be down in exactly the events that matter, since a power cut stops the Mac and a network outage stops iMessage, so the printed sheet is the part that survives.",
+   "Phrase matching will fire on jokes and miss paraphrases, so the fixed reply must be harmless when wrong.",
+   "The phone's own emergency call and medical ID features are the right tools on the phone, and Happy should point to them, not imitate them.",
+   "Quiet hours and daily caps (G001) must never hold the fixed reply back; a reply to an inbound text is not a proactive message, but test it.",
+   "Only the two parents can text Happy, so a sitter or grandparent gets the forwarded or printed sheet and cannot ask Happy directly.",
+   "'Tonight's plan' on the sitter sheet needs the calendar connection (F009), which is not built yet.",
+   "No poison-control number is given here because the federal Poison Help site refused automated fetches, so the parents write the number into the fixed reply themselves."
+  ],
+  "safety": "The fixed reply is a string written by the parents and sent only to the sender: no tool, no data, no model. The plan page holds contacts and medical notes, so it lives in the private family folder and on paper; only the fridge-level subset goes on the sitter sheet, which a parent forwards, because Happy messages nobody outside the family.",
+  "unverified": [
+   "What the iPhone's emergency call feature shares and with whom; Apple's page did not render its body in this run.",
+   "A poison-control source: the federal Poison Help site refused automated fetches, so no number is given here.",
+   "'Tonight's plan' needs the calendar connection (F009), which is not built yet."
+  ],
+  "overlaps_existing": [
+   "F036",
+   "F018",
+   "G001",
+   "G005",
+   "F080"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/plan",
+    "title": "Make A Plan | Ready.gov",
+    "anchor": "Make A Plan",
+    "supports": "The federal preparedness site lays out a four-step family plan, including a communication plan and a meeting place, with a fillable form.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ready.gov/alerts",
+    "title": "Emergency Alerts | Ready.gov",
+    "anchor": "Wireless Emergency Alerts",
+    "supports": "Wireless Emergency Alerts reach capable phones in a targeted area from public safety officials and the weather service without any subscription.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:16",
+    "title": "Plugin hooks: message hooks",
+    "anchor": "handled: true",
+    "supports": "A before_dispatch handler can end an inbound message with a fixed reply before any model is called.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Plugin hooks reference: message hooks",
+    "anchor": "before_dispatch",
+    "supports": "The hook is a claim on an inbound message that runs ahead of the normal model dispatch.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+    "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+    "anchor": "Poison Control",
+    "supports": "The poison centre's own page gives the national poison help phone line and an online triage tool, both free, confidential and available around the clock, which is what the fixed reply should point to.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.healthychildren.org/English/safety-prevention/at-home/Pages/babysitting-reminders.aspx",
+    "title": "Babysitting Reminders: Checklist for Parents & Sitters - HealthyChildren.org (American Academy of Pediatrics)",
+    "anchor": "Babysitting Reminders",
+    "supports": "The paediatricians' own checklist lists what parents should always leave with a sitter (parent, neighbour, doctor and emergency contacts, address), which is the content of the sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:34",
+    "title": "Standing orders (OpenClaw docs)",
+    "anchor": "arbitrary files in subdirectories",
+    "supports": "Only the top-level bootstrap files are loaded each session, so a sitter template kept in a subfolder must be pointed to from AGENTS.md.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:74",
+    "title": "Tool policy (OpenClaw docs)",
+    "anchor": "group:messaging",
+    "supports": "Sending is a separate tool (message) that an agent only has if granted; without it the sheet can only come back as the reply to the asking parent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:17",
+    "title": "Plugin hooks: tool policy (OpenClaw docs)",
+    "anchor": "before_tool_call",
+    "supports": "The tool-call hook sees tool names and parameters, not reply text, so it cannot scrub a password from an answer; the control is never storing the password.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "F036"
+  ],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "B",
+  "section": "Health, safety and admin",
+  "includes": [
+   {
+    "id": "F036",
+    "name": "Babysitter / grandparent sheet"
+   }
+  ],
+  "history": [
+   "r1: kept; credible mention: Make A Plan | Ready.gov",
+   "r1: merged with F036 (same purpose). The sitter or grandparent sheet is drawn from the same contacts, medical notes and routines as the family emergency plan, so both one-page cards and the fixed emergency reply sit on one card."
+  ],
+  "demand": {
+   "ref": "https://www.ready.gov/plan",
+   "title": "Make A Plan | Ready.gov",
+   "supports": "The federal preparedness site tells every household to write and practise a family emergency plan with contacts and a meeting place."
+  },
+  "corrections": []
+ },
+ {
+  "id": "CRT-14",
+  "name": "Trip paperwork check: children's travel documents",
+  "tier": 2,
+  "cluster": "travel",
+  "description": "Before a family trip Happy works a short paperwork checklist that the planning features do not cover: whose passport is valid for the dates, whether a consent letter is needed when one parent or a grandparent takes a child abroad (with a draft for the other parent to sign and have notarised), and what ID the airport wants from children. Happy certifies nothing and books nothing.",
+  "example": "Tony texts: 'Jordan is taking the kids to Vancouver in July without me. What paperwork do we need?'",
+  "how": "A trip row in the household store (F031): dates, who travels, destination. A checklist on <p>-main from fixed, linked rules: USA.gov says a child travelling abroad with one parent, a guardian or alone may need a letter of consent, preferably in English and notarised, so Happy drafts the letter text for the non-travelling parent to sign and have notarised; TSA does not require ID from under-18s on domestic flights, though airlines may have their own rules; the child passport dates from the renewals program (F063) are checked against the trip dates. Vacation mode (G002) mutes the home jobs for the dates. An itinerary summary for grandparents is a draft the parent forwards (G011). Delays, gate changes and cancellations stay with the airline's app and its emails.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F063 renewals (passport dates)",
+   "G002 vacation mode",
+   "F019 research agent, for the destination's entry rules"
+  ],
+  "value": 2,
+  "effort": "S",
+  "caveats": [
+   "Entry rules belong to the destination country. Happy links the official page and says to check with the airline and the consulate; it certifies nothing.",
+   "The consent letter is a draft for a notary, not legal advice.",
+   "No booking, check-in, seat change or rebooking: all are on the never-list.",
+   "Two or three trips a year. Build it only after the household store and vacation mode exist.",
+   "No flight or airport status watch: the public FAA feed is airport-level only, and the airline's app already pushes changes for the actual flight."
+  ],
+  "safety": "Trip details stay with <p>-main; the research agent is asked about a country and ages only. Output goes only to the parents.",
+  "unverified": [
+   "The State Department's own pages on children's passports and consent, which refused automated fetches for other reviewers in this workflow."
+  ],
+  "overlaps_existing": [
+   "F028",
+   "F060",
+   "F063",
+   "G002"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.usa.gov/travel-documents-children",
+    "title": "International travel documents for children | USAGov",
+    "anchor": "letter of consent",
+    "supports": "A child travelling abroad with one parent, a guardian or alone may need a consent letter, preferably in English and notarised, signed by the parent or parents not travelling.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.tsa.gov/travel/security-screening/identification",
+    "title": "Acceptable Identification at the TSA Checkpoint | TSA",
+    "anchor": "children under 18",
+    "supports": "TSA does not require identification from children under 18 on domestic flights and refers travellers to the airline for its own rules.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nasstatus.faa.gov/api/airport-status-information",
+    "title": "FAA National Airspace System Status: airport status information (XML)",
+    "anchor": "AIRPORT_STATUS_INFORMATION",
+    "supports": "The FAA publishes a keyless XML document listing current ground delay programs, arrival and departure delays and airport closures by airport code, with an update time.",
+    "check": "reachable"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "openclaw automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run a fixed script and deliver its output with no model call, which is how the airport watch runs.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The FAA feed's closure list cannot drive a text: when opened in this review it showed three large airports as 'closed' for notices that concern only non-scheduled or oversize aircraft. The watch must alert on delay entries only. No ground delay program was active at fetch time, so that part of the feed's shape is unconfirmed."
+  ],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "Health, safety and admin",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, how, depends_on, caveats, safety, unverified, value, effort. The day-of-flight airport watch is dropped: the entry itself says the FAA feed is airport-level and that the airline's app already pushes gate changes and cancellations. What stays is the children's travel-paperwork check that USAGov describes, renamed and resized to match.",
+   "r1: kept; credible mention: International travel documents for children | USAGov"
+  ],
+  "demand": {
+   "ref": "https://www.usa.gov/travel-documents-children",
+   "title": "International travel documents for children | USAGov",
+   "supports": "The federal guide says a child travelling abroad with one parent, a guardian or alone may need a signed consent letter, which is the check and the draft this entry provides."
+  }
+ }
+]

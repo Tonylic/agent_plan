@@ -1,0 +1,263 @@
+[
+ {
+  "id": "CRT-10",
+  "verdict": "edit",
+  "reason": "Kept: a poison centre names medicine given by two people who do not compare notes as a cause of double dosing and recommends a log marked at every dose. Two promises were stronger than the build, so they are reworded: 'never advises a dose' is a hard limit only for the last-dose lookup, and the 14-day deletion misses other copies of what the parents typed (the chat transcript, Happy's change journal and the chat snapshots that per-person memory will save).",
+  "who_trigger_result": "Either parent / a child is ill and a parent texts what was given, or asks 'when was the last dose?' / the last dose logged, who logged it and how long ago, with a fixed check-the-label line, plus a draft absence note and tomorrow's items to cancel.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.poison.org/articles/medication-errors-double-dosing",
+   "title": "Double dosing: What to do if you take too much | Poison Control (National Capital Poison Center)",
+   "anchor": "more than 1 person",
+   "supports": "A poison centre lists medicine given by more than one person who do not communicate as a cause of double dosing and advises keeping a log that is marked each time a dose is given."
+  },
+  "edits": {
+   "description": "When a child is ill, both parents text Happy what they gave and when, and either can ask 'when was the last dose?' and get the same answer: the last dose that was logged, who logged it and how long ago. A poison control centre lists medicine given by more than one person who do not communicate as a cause of double dosing, and recommends a log that is marked at every dose. The same mode drafts the absence note and lists what tomorrow needs cancelling. Happy records and recalls: the answer to 'when was the last dose?' is put together in code and carries no dose advice. For any other question the agent is told never to advise a dose, which is an instruction backed by a test case and not a hard limit.",
+   "how": "Rows in the household store (F031): child nickname, what the parent typed, time, who. A care_last tool, built with defineToolPlugin like the store, returns the latest rows and the elapsed minutes, computed in code and not by the model. Both parents' agents read the same table. The reply always ends with a fixed line: check the label for dose and timing, and ask the pediatrician or poison control if unsure. There is no dose arithmetic and no 'you can give more now'. Add-ons from features already in the catalog: a draft absence note the parent sends through the school's own channel (paste-ready wording, as G009 describes), tomorrow's calendar items that need a cancel or a cover (F009), a tracked ask to the other parent about staying home (the ask-and-relay step of G009), and a one-shot check-in reminder ('--at'). For 'can she go back tomorrow?' Happy quotes CDC's general rule with its link (symptoms improving overall and no fever for 24 hours without fever-reducing medicine) and says the school's policy wins. Rows delete themselves after 14 days, and the agent is told not to save illness details as notes. The same sweep also has to delete the matching rows in the change journal (G006) once that exists, because the journal records every write Happy makes for a parent. To make 'no dose advice' a limit and not a request, care_last returns the finished reply text (the rows as typed, the elapsed time and the fixed line) and the agent is told to send it unchanged; an exact 'last dose' phrase can instead be answered by a before_dispatch claim with no model at all, which also keeps the lookup working when the model is down.",
+   "caveats": [
+    "This is a log, not a clinician. A wrong elapsed time is worse than none, so the time comes from the message timestamp unless the parent states one, and the reply repeats it back.",
+    "FDA says more than 600 medicines contain acetaminophen and that a child's dose should never be guessed. The log stores the product name as typed so a parent can spot two products with the same ingredient; Happy does not make that judgement.",
+    "Child health notes pass through a cloud model under store:false. Use a nickname or initial and keep diagnoses out.",
+    "A note the two parents share on their phones already gives both of them one log: Apple's support page (support.apple.com/en-us/102462) says up to 100 people can collaborate on a note in the Notes app. Such a note also works when Happy is down and keeps the child's health notes away from a cloud model. What Happy adds is the time taken from the message, the elapsed time worked out in code, the fixed check-the-label line and the sick-day add-ons (the absence-note draft, tomorrow's cancellations, the check-in reminder).",
+    "The same poison centre page says the log should stay with the medicine and be marked at every dose. Happy's log is not next to the bottle and cannot be reached when Happy or the network is down, so it works beside a note kept with the medicine and does not replace one.",
+    "Happy knows only the doses that were texted to it. A dose given and not logged is missing from the answer, so the reply says 'last dose logged' and who logged it, never 'last dose given'.",
+    "The 14-day deletion covers the log rows only. What the parents typed can stay in three other places: the chat transcript; the change journal (G006), which records every household-store write and has no retention rule yet; and, once per-person memory (F041) turns on the bundled session-memory hook, a dated file in that parent's memory folder, because that hook saves the recent messages of a chat at each reset or daily rollover. The sweep must clear the journal rows. The other two are not cleared by it: the transcript follows the general retention setting, and OpenClaw's forget command (the forget step in G006) leaves transcripts in place and is not shown to remove the dated file, so Tony deletes that file by hand if it should go."
+   ],
+   "unverified": [
+    "Whether Apple's Health app could serve as the shared dose log. Apple's Medications page (support.apple.com/en-us/105064) says a person who shares health data can include which medications they take, and that Medications is not available with Apple Watch For Your Kids; it does not describe two parents logging doses for a child, so it is not shown to replace this log.",
+    "Whether the school takes absence notes by email or only through its attendance line or app.",
+    "Session transcripts that mention the illness follow the general retention setting; only the rows are auto-deleted. Whether a sick-day chat can be kept out of the session-memory hook's saved files was not found: its page lists options for the number of messages and the file name only, and says incognito sessions create no memory files, but whether a parent can start one over iMessage was not checked."
+   ]
+  },
+  "merge_hints": [
+   "F031",
+   "G006",
+   "F041",
+   "CRT-13"
+  ],
+  "overturned": false,
+  "challenge_note": "Kept the first reviewer's edit and corrected one line of it: OpenClaw's forget command leaves chat transcripts in place and is not shown to remove the dated memory file, so the new caveat no longer says the forget step clears them."
+ },
+ {
+  "id": "CRT-13",
+  "verdict": "edit",
+  "reason": "Kept on the federal family-plan guide, opened again this round. The round 4 merge left one clash: the build note kept each document's end date on the child's page while this card's own caveat and the family handbook (F043) say such dates live in the renewals table, so the date is now kept once; the card also says that a text matching an emergency phrase gets only the fixed line, not a model answer as well.",
+  "who_trigger_result": "A parent / a request for the emergency plan page, the sitter sheet or a form's answers, a form due date coming up, or a text with an emergency phrase / a page to print or forward, where each document is and a paste-ready answer block (the parent signs and submits), or one fixed call-emergency-services line with no model.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.ready.gov/plan",
+   "title": "Make A Plan | Ready.gov",
+   "anchor": "Make A Plan",
+   "supports": "The federal preparedness site tells every household to meet, write down and practise a family emergency plan with contacts, in four steps, and offers a fillable form for it."
+  },
+  "edits": {
+   "how": "Facts: a plan page and a page per child in the shared family folder (F043), entered once. Emergency plan (CRT-13): an interview on the parent's agent following Ready.gov's four steps, with a yearly reminder to re-check contacts. Sitter sheet (F036): a prompt template in AGENTS.md over the same facts. Form kit (CRT-12): the child's page also records where each official document lives; the date it stops being accepted is kept once, as a row in the renewals table (F063), not as a second copy on the child's page, because the family folder's own rule is that dates needing a reminder are not kept in it, and the index shows that row's date; a household-store row per form (F031) is the checklist, the due-date warning is a timed reminder (F007) offered through the dates-after-a-yes flow (F010), and a form sent as a photo or PDF (F002) gets its answers drafted as one block under a drafts-only rule. Fixed reply: the stop plugin's (G005) `before_dispatch` hook matches a short phrase list and returns a canned line before any model call.",
+   "depends_on": [
+    "F043 family folder (the plan page and the per-child pages)",
+    "G005 stop-by-text plugin (the fixed reply shares its hook)",
+    "F007 reminders (the yearly contact re-check and the form due dates)",
+    "F031 household store (one dated row per form)",
+    "F063 renewals look-ahead (its table holds the date each official document stops being accepted; whether that table lives in Tony's registry or in the household store is the open decision on that card)",
+    "F002 photo and PDF reading with inbound attachments on, for a form sent as a photo or PDF",
+    "F010 dates-after-a-yes flow (offers the reminder for a form's due date; until it exists a parent asks for a timed reminder directly)",
+    "F009 calendar read (only for 'tonight's plan' on the sitter sheet)",
+    "F080 print, optional: until it exists a parent prints the page from a phone"
+   ],
+   "caveats": [
+    "Happy can be down in exactly the events that matter, since a power cut stops the Mac and a network outage stops iMessage, so the printed sheet is the part that survives, and the phone's own emergency call and medical ID features remain the right tools.",
+    "Phrase matching will fire on jokes and miss paraphrases, and the hook that does it lets the text through to the model if it fails, so the fixed reply is a backstop and must be harmless when wrong. A matched text is claimed by the hook, so the model does not also answer it; the fixed line should end by telling the parent to text again in other words if this is not an emergency.",
+    "The poison-help number in the fixed reply comes from the poison centre's own page listed in the sources, and a parent checks it before the reply goes live.",
+    "A stop by text or a lock-out (G005) and the quiet hours and daily caps (G001) must never hold the fixed reply back: the emergency phrases are checked before the stop file, whether a locked-out handle still gets the line is a choice to write down, and all of it is tested with a stop in force.",
+    "The children's health facts (allergies, medicines, conditions) reach the cloud model whenever a sheet or an answer block is drafted, and they stay out of hand-offs to the research agent.",
+    "Happy never signs, fills in or submits a form; the drafts-only rule is a prompt instruction that holds only because the agent has no tool that could fill in or send one.",
+    "Requirements differ by state, district and camp: Happy tracks what each form asked for last time and does not know the rules, and the official immunization record has to come from the doctor, the state registry or the school, since portal logins are out of scope.",
+    "Keep ID, policy and certificate numbers and the Wi-Fi password off these pages, and keep expiry dates in the renewals look-ahead (F063) and form due dates in timed reminders (F007, F010), so nothing is tracked twice."
+   ]
+  },
+  "merge_hints": [
+   "F043",
+   "F063",
+   "G005",
+   "F031",
+   "CRT-10"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F063",
+  "verdict": "edit",
+  "reason": "Kept on the federal passport guide, which tells people to renew early. Round 4 made sure every date gets its full notice, but only if the monthly text arrives: the notification policy (G001) drops a text stopped by the daily cap or a mute and never sends it later, so the card now says how the look-ahead avoids losing a short-notice date, and it promises an official link only where one exists.",
+  "who_trigger_result": "Each parent / the monthly job, plus a parent's 'file this' or 'did the furnace filter' to add a row or restart an interval / one text listing what is coming due with the official link; nothing is renewed, booked or paid.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.usa.gov/renew-adult-passport",
+   "title": "Renew an adult passport | USAGov",
+   "anchor": "less than 6 months",
+   "supports": "The federal guide tells people to renew early because processing times vary and some countries and airlines deny entry when a passport has under six months left, which is the case for a long-lead reminder."
+  },
+  "edits": {
+   "caveats": [
+    "The build note has the dates table generated from Tony's registry, which a parent cannot change by chat. The carried-over extras that let a parent add a row ('file this as the car insurance policy', a typed benefit deadline) need either an edit by Tony or the household store (F031) as the table's home; decide which before building.",
+    "The text goes out once a month, so timing is to the month and not to the day: a row first appears in the last text before its lead time starts, which can be up to a month earlier than the lead itself. A row a parent adds mid-month with a date before the next run misses the text altogether, so the agent should offer an ordinary reminder (F007) when it files one; a nudge on a particular day is always an ordinary reminder.",
+    "Reading a policy PDF to pull out its end date sends that document to the cloud model; whether that is acceptable is still an open decision.",
+    "If the fallback is used (a model run with no tools and the table in its prompt), the model works out the lead times itself and can get a date wrong; the script does the sums in code.",
+    "Command jobs are created by the operator and run on the Gateway host as the happy user, outside the sandbox, so the script is reviewed like the rest of the config repo.",
+    "The notification policy (G001) drops a text that its daily cap or a mute stops; it does not send it later. This text goes out once a month, so one dropped run can cost a short-lead row (a gift date, a domain renewing in three weeks) its only notice. Give the look-ahead a class that the daily cap does not stop, and for a mute or vacation have the script read the paused-until row itself and send on the first day after the pause ends (a daily run that sends at most once a month), because the script has already finished when the delivery hook stops its text."
+   ],
+   "depends_on": [
+    "G003 jobs registry (the monthly job)",
+    "F042 family facts in family.json5 (the dates table is generated from it)",
+    "A small reviewed script that works out the lead times in code (the preferred build)",
+    "F031 household store, only if parents are to add rows by chat or restart an upkeep interval",
+    "F002 photo and PDF reading, only for 'file this' on a policy or warranty PDF",
+    "G001 notification policy, once built: the monthly text needs a class the daily cap does not drop, and the script checks the pause row itself"
+   ],
+   "description": "A monthly text lists what is coming due, with the official link where there is one. Each item appears from the last monthly text before its own lead time starts, so it gets at least that much notice (a house choice of about nine months for an adult passport, shorter for a driver's licence, inspection, registration, domains and Global Entry). A child's passport lasts five years and cannot be renewed, so its row says 'apply again in person'. The same table holds each child's yearly check-up, home and car upkeep on a repeat interval (furnace filter, oil change), the end date of a policy or warranty a parent asked Happy to file, and any tax, benefit or gift dates a parent typed in. Nothing is renewed, booked or paid."
+  },
+  "merge_hints": [
+   "F031",
+   "G001",
+   "F018",
+   "F043",
+   "CRT-13"
+  ],
+  "overturned": false,
+  "challenge_note": "Kept the first reviewer's edit and added one wording fix: the text can carry an official link for a passport or a registration but not for a furnace filter or a gift date, so the description now says 'where there is one'."
+ },
+ {
+  "id": "G008",
+  "verdict": "edit",
+  "reason": "Kept on OpenClaw's own health-check guide and the roadmap's standing rules (an audit after every update and each month). One build line is corrected: the model sign-in check reports through its exit code, so the script must read that code, while the health, channel and Google checks are read entry by entry.",
+  "who_trigger_result": "Tony as operator / a daily job, the end of every update and a monthly run, plus the eval suite he runs after a change / a text only when something is broken or has changed (an expiring sign-in, a plugin that did not load, a new audit finding, a host protection switched off), and pass or fail lines for the behaviour cases.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/gateway/health.md:9",
+   "title": "Health checks",
+   "anchor": "channel health without guessing",
+   "supports": "OpenClaw's own guide gives the health commands, probe endpoints and uptime monitoring as the operator's way to verify that the Gateway and its channels work."
+  },
+  "edits": {
+   "how": "Daily (G008): a command automation runs `openclaw health --json`, `channels status --probe`, `models status --check` and, once installed, `gog auth list --check`. For health, channels and Google the script reads each entry, because a top-level `ok` or a zero exit status does not prove that every account and plugin is sound; for the model check the exit code is the answer (1 for a missing or expired sign-in or a model route that cannot run, 2 for a sign-in that is expiring). After every update and monthly (OCL-13): a happy-deploy script runs `openclaw security audit --deep` with `--json`, `gateway status --deep`, `doctor --lint`, then ports, firewall, FileVault, Time Machine and the update schedule, compares with the previous run and prints `NO_REPLY` when nothing changed; findings accepted at M1 stay quiet. The commands already exist in happy-inspect; the new work is the schedule, the comparison and the text. Behaviour cases (AUT-09): promptfoo cases in happy-config/evals against the `<p>-main-eval` clones, with fixtures for reminders and approvals; the shipped benchmark pack cannot run on this install."
+  },
+  "merge_hints": [
+   "MAC-04",
+   "CRT-04",
+   "CRT-05",
+   "G003"
+  ],
+  "overturned": false,
+  "challenge_note": "Changed keep to a small edit: the build note told the script to ignore exit codes for all four daily checks, but OpenClaw's models page, opened this round, reports missing, expired or expiring sign-ins through the exit code of that check."
+ },
+ {
+  "id": "G006",
+  "verdict": "edit",
+  "reason": "Kept on OpenAI's guidance, read again this round, that whoever deploys an agent should give its user a ledger of what it did. Round 4 covered notes saved with the write tools but missed that per-person memory (F041) also switches on a bundled hook that saves the recent messages of every chat to the memory folder with no tool call, so the weekly text now counts those files, and the journal is told to drop a sick-day dose note (CRT-10) when its 14 days are up.",
+  "who_trigger_result": "Each parent, and Tony for forgetting / the Sunday job, a 'what did you do for me?' question, or 'undo that' / one text of what Happy did and saved that week, the last write reversed after a yes, and on request Tony clears what one conversation left in memory.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+   "title": "Practices for Governing Agentic AI Systems (OpenAI), section 4.4 Legibility of Agent Activity",
+   "anchor": "ledger of actions",
+   "supports": "OpenAI's guidance says it may be particularly important that whoever deploys an agent gives the user a ledger of what the agent did, as a lighter way than approvals to show a wider range of actions, and that actions reviewed only afterwards should be easier to reverse."
+  },
+  "edits": {
+   "how": "Journal (shared): each in-house write tool (household store, Reminders bridge, calendar write, the reminder-pinning hook) writes a row from inside the tool, where the old value is known: who asked, when, which tool, the inverse call. `openclaw audit --kind tool_action` gives names and outcomes only. Memory saves (F041) are made with the built-in `write` and `edit` tools, not an in-house tool, so their rows come from an observe-only `after_tool_call` hook on those two tools, filtered to the memory files: who, when, which file and the text saved, with no inverse. The bundled session-memory hook that F041 also turns on is a second writer: at each reset and each daily or idle rollover it saves the recent messages of a chat to a dated file in the same memory folder. A hook writes that file, not a tool, so it leaves no `after_tool_call` row, and the review counts those files from their dated names. Approval rows come from the asking hook's `onResolution` callback. Review (G006, F085): a command automation renders the Sunday text with no model; a read tool returns only the asker's rows. Undo (CRT-01): an `undo_last` tool on `<p>-main`, limited by a `before_tool_call` hook to the requester's rows from the last 24 hours, shows the row, waits for a yes, runs the inverse; for a row with no inverse (a memory save) it says so, and the parent asks Happy to correct or delete the note. Forgetting (F085): `openclaw memory forget --agent <id> --session <id-or-key> --dry-run`, then without it, then hand-delete the `curatedWrites` lines.",
+   "caveats": [
+    "The journal rows for lists, reminders, the calendar and household facts must be written by the write tools themselves from the start, with the old value: rows written by an after_tool_call hook carry no old value and would have to be redone for undo. Memory saves are the one exception: they go through the built-in write and edit tools, are logged by a hook with no inverse, and so appear in the review but cannot be undone.",
+    "Sent things cannot be recalled (a text to the other parent, an email to the owner, a print job, a Sonos announcement), so the reply has to say so at the time of sending.",
+    "Undo covers only Happy's own writes: if a parent has since edited the same reminder or event on a phone the inverse could overwrite that edit, so the tool should refuse when the item changed after Happy wrote it.",
+    "The Reminders bridge (F030) was specified with no delete, so undo adds one, and it must accept only item ids the journal recorded as created by Happy, enforced inside the tool and not left to the model.",
+    "Most 'undo' requests are corrections that the same write tool already handles with a second write; undo earns its place for overwritten household facts, where the old value would otherwise be gone, so it is the second step and can be left out without changing the journal or the review.",
+    "OpenClaw's own ledger leaves out arguments on purpose, so the in-house table that holds item text and recipients needs a retention limit, which is not yet defined.",
+    "Forgetting works per conversation, not per topic: the forget command selects whole sessions, deletes at once unless `--dry-run` is passed, leaves the transcripts, and only lists the notes Happy wrote itself, which Tony then deletes by hand.",
+    "The review of actions, the memory list and the week-ahead brief (F014) would otherwise be three Sunday texts to the same parent, so the first two go out as one; lines in MEMORY.md carry no date, so the memory list is reliable only when it comes from the per-write record.",
+    "The journal row for a memory save keeps a copy of the saved text in the household store. The forget command does not clean other plugins' stores or backups, so correcting or deleting a note, and forgetting a conversation, must also delete the matching journal rows, or the forgotten text lives on there.",
+    "Not everything Happy keeps in memory passes through a tool. Once per-person memory (F041) turns on the session-memory hook, the recent messages of each chat are saved to a dated file at every reset or daily rollover, and OpenClaw's memory provenance page says its admission rules are not applied to session hooks. The weekly text has to count those files as well, or it under-reports what was kept.",
+    "A sick-day dose row (CRT-10) is a household-store write, so the journal would still hold a child's health note after the row's own 14-day deletion. The journal's retention rule has to drop those rows at the same time, or record them without their text."
+   ],
+   "unverified": [
+    "Whether turning on message audit rows needs a Gateway restart: the audit CLI page says restart, the Gateway audit page says audit settings apply without one.",
+    "Retention for the custom side-effect table in home-store is undefined.",
+    "With dreaming switched off (roadmap decision) the session-exclusion setting has little to act on today; its effect was not tested.",
+    "The memory-wiki dashboards named on 9 Oct (privacy review, stale pages) are documented, but the plugin is not enabled on this install.",
+    "What a forget preview reports on this install was not run; the docs say direct edits are listed for review and are not given per-entry lineage.",
+    "That an `after_tool_call` hook on the built-in `write` and `edit` tools is handed the file path and the text written, so that each memory save becomes one dated journal row; this was read in the hook types, not run. Without those rows the weekly list cannot tell this week's saves from older lines in MEMORY.md, which carry no date.",
+    "That an approval hook's `onResolution` callback is a workable source for the 'approvals given' line; it was read in the hook reference, not run, and no approval hook exists in the config repo yet.",
+    "That no built-in undo for tool effects exists anywhere in 2026.9.7: searches of the installed docs for undo, rewind, revert and checkpoint found none, but the dist source was not read.",
+    "Whether the Reminders command-line tool and the calendar server return stable item ids that an inverse can target; neither is installed yet.",
+    "Whether `memory forget` for a conversation also removes the dated file the session-memory hook saved for it; the deletion page opened in this run does not name those files."
+   ],
+   "description": "Happy records every write its tools make for a parent in one journal, so each parent can ask, or read in one Sunday text, what Happy did for them and what it kept in memory that week (the notes it saved and the chat snapshots the memory hook filed), and can say 'undo that' to reverse Happy's own last write to a list, a reminder, the calendar or the household facts from the past 24 hours, after seeing what will be reversed. Anything already sent (a text, an email, a print job) cannot be recalled, a saved note is corrected by asking Happy to change it, and clearing what one conversation left in memory stays Tony's job at the Mac, previewed first."
+  },
+  "merge_hints": [
+   "F041",
+   "F031",
+   "CRT-10",
+   "F014",
+   "G001"
+  ],
+  "overturned": false,
+  "challenge_note": "Kept the first reviewer's edit and added the matching description change: the journal holds the writes Happy's tools make, and the weekly text also counts the chat snapshots the memory hook files, which pass through no tool."
+ },
+ {
+  "id": "CRT-05",
+  "verdict": "edit",
+  "reason": "Kept: the roadmap says Happy stays down after a power cut until Tony unlocks the Mac from home, and 1Password, opened this round, tells customers to print a recovery sheet and give a copy to someone they trust such as a spouse. The description still promised that Jordan can pause Happy, while the card's own caveat says there is no pause step until the stop phrase (G005) is built, so it now says so.",
+  "who_trigger_result": "Jordan, with the card prepared by Tony / Happy stops answering while Tony is away, for example after a power cut / a printed page and a sealed envelope that let her unlock the Mac, log in the happy user and restart the gateway, and later pause Happy.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.1password.com/emergency-kit/",
+   "title": "Get to know your Emergency Kit (1Password Support)",
+   "anchor": "Give a copy to someone",
+   "supports": "A shipping password manager tells customers to print a recovery sheet, keep it somewhere safe and hand a copy to a trusted person such as a spouse, so access survives when the owner is unavailable."
+  },
+  "edits": {
+   "description": "One printed page and a sealed envelope so Jordan can tell that Happy is down and bring it back after a power cut while Tony is travelling, and, once the stop phrase exists (G005), pause it. Today every recovery step, including the disk unlock after a reboot, depends on Tony being at home.",
+   "depends_on": [
+    "decision: what goes in Jordan's envelope: the happy user's password only (enough for a restart if it unlocks the disk; it already opens every person's agent data) or also an admin credential (break-glass access that adds Tony's own account and the config repo)",
+    "G005 stop phrase, only for the pause step: the rest of the card can be printed and rehearsed before it exists",
+    "decision: whether Jordan's card carries the step that lifts a stop (G005 makes lifting command-line only, at the Mac) or a pause simply lasts until Tony is back",
+    "the existing nightly backup (its checklist lines are now in G008)",
+    "a small UPS (already suggested in the roadmap)"
+   ]
+  },
+  "merge_hints": [
+   "G005",
+   "OCL-06",
+   "G008"
+  ],
+  "overturned": false,
+  "challenge_note": "Kept the first reviewer's edit and added the matching change to the prerequisites: the stop phrase (G005) was listed as a plain prerequisite of a card marked ready now, so it now says it is needed only for the pause step."
+ },
+ {
+  "id": "MAC-04",
+  "verdict": "edit",
+  "reason": "Kept: OpenClaw's computer-use guide tells an operator who does not want screen control to put the command on the Gateway deny list. The card said no agent could pull data from a paired phone, but the list as written leaves a few low-risk default commands allowed (device details, the camera list, notifications and, on a Mac, the list of installed apps), so the wording is narrowed to personal data and a caveat names what is left.",
+  "who_trigger_result": "Tony as operator / once, now, before any Mac or phone is paired, and again as the off switch during a pilot / a Gateway deny list that withholds screen control, shell, screen viewing and phone-data commands from every paired device, whatever tools an agent is later given.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/nodes/computer-use.md:220",
+   "title": "Computer use",
+   "anchor": "wants the command off",
+   "supports": "OpenClaw's computer-use guide tells an operator who does not want screen control to put the command on the Gateway deny list, and says a denied command is withheld from the device and logged."
+  },
+  "edits": {
+   "description": "Make 'no agent can drive, run commands on or view any Mac, or pull personal data (location, contacts, calendar, reminders, photos, motion) from a paired phone' an explicit Gateway setting instead of a side effect of no app being installed, and write down the three ways to switch computer control off. No Mac or phone is paired as a node today (the two Control UI entries on Tony's iPhone are operator consoles, not nodes), so the family sees no change; it is the gate the iPhone app (OCL-01) and the screen-control pilot (MAC-02) must pass first.",
+   "caveats": [
+    "Without this, once OpenClaw.app is installed on any family Mac, its pairing is approved and the macOS permissions are granted, pointer and keyboard control is available to any agent later given `computer` and to any caller with operator write access, because `computer.act` is in the macOS default allowlist and the app switch defaults on.",
+    "The deny list is global, not per Mac. The per-Mac controls are the pairing approval and the switch inside the app, so a pilot that lifts a deny entry lifts it for every paired node.",
+    "`screen.record` is already off unless explicitly allowed; `screen.snapshot` and `desktop.stream` are not, once a pairing that declares them is approved.",
+    "The two-step approval (device, then command surface) is not unconditional: SSH-verified pairing and setup-code enrollment can approve a node's first surface automatically. SSH-verified pairing is already switched off in this config; setup codes remain.",
+    "The same pairing that would arm `computer.act` also brings shell execution, a browser proxy, node MCP calls and a desktop stream, which is why the deny list names those commands too.",
+    "The deny list does not empty a device's command list. OpenClaw's default table still allows `camera.list`, `device.info`, `device.status` and `system.notify` on an iPhone, those four plus `camera.ptz.status` and `device.apps` (the list of installed apps) on a Mac, and the Canvas panel commands for the Mac app. The same page says the current Mac app does not declare the device and personal-data commands, so read each device's declared commands at pairing and add to the deny list any of these that is not wanted."
+   ]
+  },
+  "merge_hints": [
+   "OCL-01",
+   "MAC-02",
+   "G008"
+  ],
+  "overturned": false,
+  "challenge_note": "Changed keep to a small edit: OpenClaw's default command table, opened this round, still allows `device.apps`, `device.info`, `device.status`, `camera.list` and `system.notify` after the listed denials, which the 'no data from a paired phone' wording overlooked."
+ }
+]

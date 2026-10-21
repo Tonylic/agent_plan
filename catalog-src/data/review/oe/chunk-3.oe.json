@@ -1,0 +1,257 @@
+[
+  {
+    "id": "G005",
+    "kind": "over-engineering",
+    "part": "In-house 'Happy, stop everything' plugin (four hooks and a kill file)",
+    "where": "how",
+    "problem": "A whole in-house plugin is planned for wave A so that either parent can halt Happy with one text. Tony never asked for a family stop phrase; his only word on the subject was 'no need' to give Jordan the stop commands, and the plugin was kept as a way round that answer.",
+    "checked": "owner-facts.md ('No need' to add Jordan to the command allowlist; nothing about a stop phrase); the card's history line r6, where the assistant adds 'the in-house stop phrase remains the way either parent stops everything'; frame.json findings[2] and decisions[10], both the assistant's recommendation; the roadmap text (no rule asks for a family-triggered stop); the card's demand source docs/gateway/security/operator-incident-response.md:15, which describes the operator stopping the Gateway process, not a text phrase; the card's own caveats (the phrase matcher and the outgoing-text cancel fail open, a stop can leave jobs switched off after ten failures, the dependable stops are the scheduler switch and stopping the Gateway).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Question: when you said 'no need' to add Jordan to the command list, did you also mean she needs no stop-everything of her own? Default: yes. G005 then becomes: print the sheet of what already works for you (stop, /stop, /new, /status, /usage, /tools); your stop is the two switches that exist today (`cron.enabled: false`, then `openclaw gateway stop`); Jordan's stop is to tell you, or at home to shut the Mac mini down, which the recovery card (CRT-05) already knows how to bring back. No plugin."
+    },
+    "loses": "One text from either parent that halts every agent run and tool call while Tony cannot be reached and nobody is at home. Three other cards lean on this plugin and would need a line changed: the fixed emergency reply in CRT-13 (planned inside the same hook), the pause step on the recovery card (CRT-05), and the 'kill switch' dependency of the parked screen-control pilot (MAC-02).",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "G005",
+    "kind": "over-engineering",
+    "part": "Lock-out phrase for a lost or stolen phone (folded in from CRT-02)",
+    "where": "how",
+    "problem": "A second phrase lets either adult suspend the other's handle by text, with per-handle checks in three hooks. The card itself says the phrase does not end that phone's approver rights (only removing the handle and redeploying does), so it is a second, weaker control for a risk the real fix already covers, and it adds a new way for one adult to lock the other out by mistake.",
+    "checked": "The card's adds entry from CRT-02 ('removing the handle from family.json5 and redeploying is the only thing that ends that handle's approver rights', 'Find My Lost Mode on the phone side'); its safety field ('A locked-out handle stays on the iMessage allowlist, which is also the approver list'); its caveat that either adult can lock the other out and only Tony undoes it; its unverified lines on tapbacks and typed approvals from a suspended handle; owner-facts.md (no request for this); the roadmap text (no such rule).",
+    "proposal": {
+      "action": "drop",
+      "text": "Drop the lock-out phrase and its suspended-handle file. Keep the three lost-phone steps as lines on the printed sheet: Lost Mode on the phone; Tony removes the handle in family.json5 and redeploys; `openclaw devices revoke` if that phone ever ran the app."
+    },
+    "loses": "Stopping Happy's replies to a lost phone during the time before Tony can reach a keyboard to redeploy. The phone's own lock screen and Lost Mode cover that gap unless the phone was lost unlocked.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "G001",
+    "kind": "over-engineering",
+    "part": "Daily cap, quiet hours and priority classes enforced by an in-house delivery plugin",
+    "where": "how",
+    "problem": "Tony has never asked for a cap or for quiet hours, and every unprompted text in the catalog already has a time he sets himself, so a second check at delivery guards against nothing that is planned. Because a hook can only cancel a text, each one it stops is logged as a failed delivery, and that side effect then needs workarounds on three other cards.",
+    "checked": "owner-facts.md lists 'preferred times of day for any text from Happy, quiet hours, or a daily cap on texts' under never stated; the roadmap text has no notification rule; the card's demand source docs/reference/templates/AGENTS.md:119 is a prompt rule answered with NO_REPLY, not a plugin; the card's own how ('schedules are generated inside the allowed windows in the first place') and caveats (a stopped text is dropped, not sent later; a one-off reminder inside a mute is lost; no job id reaches the hook, so 'each job may have to write its own tag into the text'); docs/automation/cron-jobs/managing-jobs.md:159 (a hook veto is recorded as a delivery error); the knock-on notes on G003 (last caveat), CRT-04 (last caveat) and F014 (the evening brief needs a store read only for this).",
+    "proposal": {
+      "action": "simplify",
+      "text": "No plugin. gen-family refuses any scheduled text outside a daytime window Tony picks (the storm alert is the one exception) and prints how many scheduled texts each parent gets per day; each job starts its text with its own label, written in the job message or the script. Add a runtime cap only if a job is ever seen to flood. Question for Tony: do you want a daily cap or quiet hours enforced at all? Default: no, the fixed schedule is the policy."
+    },
+    "loses": "A runtime backstop if a faulty job or watcher repeats itself (Tony would switch that job off by hand), and any cap on texts an agent sends because a parent asked it to.",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "G001",
+    "kind": "over-engineering",
+    "part": "Mute and vacation mode by chat (folded in from G002): paused-until row, self-checking jobs, delivery-hook cancel, host helper",
+    "where": "how",
+    "problem": "A pause is specified four ways (a store row that some jobs read, a hook that cancels the rest, a helper that disables jobs, and the scheduler switch) and by the card's own account is dependable for only some jobs. Nobody asked for a vacation mode, the phone can silence Happy's thread, and Tony can switch a person's jobs off.",
+    "checked": "owner-facts.md (no request; 'whether Jordan wants any of this' is unknown); Apple Support, 'If you don't receive Messages notifications on your iPhone or iPad' (https://support.apple.com/en-us/108127), opened in this run: Hide Alerts 'stops notifications only for that conversation'; docs/automation/cron-jobs/managing-jobs.md:113-115 (enable and disable a job without deleting it) and :216 (`cron.enabled: false`); the example on G003 ('Turning Jordan's school digest off is a one-line change Tony reviews'); the card's description (pause 'dependable only for a job that holds the household-store tool', 'best effort' for the rest).",
+    "proposal": {
+      "action": "defer",
+      "text": "First version has no chat mute. For a week away Tony disables the briefs (`openclaw automations disable`, or `cron.enabled: false` for everything) and enables them again afterwards; a parent who wants quiet turns on Hide Alerts for the Happy thread. Build a chat mute only when a parent asks for one."
+    },
+    "loses": "Jordan pausing her own briefs without asking Tony, and urgent alerts still sounding during a mute (Hide Alerts silences the storm alert too; the text still arrives).",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F051",
+    "kind": "over-engineering",
+    "part": "'School senders only': sender list in family.json5, fixed search, a hook check on the search, and a link-domain rule",
+    "where": "how",
+    "problem": "Tony's reason for moving mail to wave B was that the school digest becomes 'very trivial' once the whole inbox is read. The card still builds a sender list that only Tony can change by deploy, plus a hook to police the search, although the same agent with the same token already reads the whole inbox at 07:00, so the limit protects nothing extra.",
+    "checked": "owner-facts.md (Tony's 'very trivial' remark; school platforms and senders never stated); family.json5 (records no children, school or senders); G015 how and description (the 07:00 job on the same mail agent reads the whole inbox with the same read tools); this card's caveats ('school senders only' is 'a hook check still to be built, not a limit of the token'; the From filter 'is not an authenticity check'; a parent who needs a new coach or teacher added 'asks Tony'); its unverified line that a hook can check an MCP search query; the roadmap's mail-agent rules (no tools beyond one read-only mail tool, output only to the owner), which the card meets without the list.",
+    "proposal": {
+      "action": "simplify",
+      "text": "The school digest is one more job per parent on the G015 template with its own prompt: 'from the last day's mail, list what is from the children's school, teachers, teams and activities'. No sender list in family.json5, no hook, no stored last-run marker (a fixed one-day search window), and no links in the text (the parent opens the mail in Gmail), which replaces the link-domain rule. A hint line of known sender names can sit in the job message if the first week shows misses. Effort drops from M to S."
+    },
+    "loses": "A deterministic scope: 'school' becomes the model's judgement, so a line can be missed or a non-school mail included, and the 16:00 run reads more mail than a From-filtered search would.",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "F051",
+    "kind": "assumption",
+    "part": "Per-platform setup list (ParentSquare, PowerSchool, Google Classroom, lunch service, library)",
+    "where": "how",
+    "problem": "The build note has a parent configure five kinds of school platform before anyone knows which of them the family's schools use. The family record names no school or platform, and Tony has only said that school mail arrives in both parents' Gmail.",
+    "checked": "owner-facts.md ('which school platforms the district uses, and whether the school uses Google Classroom' is never stated); family.json5 (two adults, nothing about children or schools); the card's own unverified lines ('Which platforms this family's district uses', 'Whether the school uses Google Classroom at all') and its dependency 'knowing which platforms the district uses'; the lunch-balance and library lines arrive from absorbed items listed under adds.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Before any platform setup, a parent looks at one ordinary week of school mail in their inbox, or the first week of digests. Only if the mail is too noisy or too thin is a platform's own digest setting touched, and only for a platform that actually shows up. Replace the five-platform list on the card with that one step."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F051",
+    "kind": "over-engineering",
+    "part": "Two digests of the same school mail, one per parent",
+    "where": "caveats",
+    "problem": "School mail lands in both inboxes, so two jobs read two inboxes and send two texts that 'will mostly match'. Whether Jordan wants the digest has not been asked.",
+    "checked": "owner-facts.md ('School mail arrives in both parents' Gmail'; 'whether Jordan wants any of this, and which features she would use' is never stated); the card's first caveat; the roadmap rule that a scheduled job delivers only to its owner, which is why one inbox feeding both parents is not the simple route.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Question: should the 16:00 school text go to both of you from the start, or to one? Default: switch it on for Tony's inbox first and add Jordan's job when she asks for it; the per-person switch in the registry makes that one line."
+    },
+    "loses": "Until her job is on, Jordan gets no digest and a school mail sent only to her is not covered.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "G003",
+    "kind": "over-engineering",
+    "part": "Jobs generator that reconciles the registry against the live scheduler, built in wave A",
+    "where": "how",
+    "problem": "No scheduled job exists today, and in wave A the only card that needs the registry is the operator's own health check; the per-person jobs it is meant for arrive in wave B. Jobs live in the Gateway's database and not in the config files, so this is a live add, edit, remove and diff tool whose access from Tony's account is itself unverified.",
+    "checked": "config repo: openclaw/openclaw.json has no cron block and scripts/gen-family.mjs only writes files (generated config, bootstrap files, eval files); depends_on across r7.json (in wave A only G008 depends on the registry; F007 needs only the triggers switch); docs/automation/cron-jobs/managing-jobs.md:212 (jobs are stored in SQLite and changed through the CLI or API); the card's first unverified line (whether gen-family can reach the Gateway with the scope needed); its own how ('These three switches are plain config and can go in before the generator exists'); roadmap section 1b 'Source of truth', which backs generating delivery targets from the registry but not building it before there are jobs.",
+    "proposal": {
+      "action": "defer",
+      "text": "Wave A: set the three switches (`cron.failureAlert` to Tony, `cron.skipMissedJobs: true`, `cron.triggers.enabled: false`) and add G008's job with one `openclaw automations add` line kept in the repo. Build the generator with the first per-person job in wave B, starting as: gen-family writes one add line per person per switched-on job and a deploy step adds the names that are missing. Add edit and remove diffing when a job definition first has to change."
+    },
+    "loses": "Nothing in wave A. Later, a changed job is edited by hand until the diff step is written.",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "G003",
+    "kind": "over-engineering",
+    "part": "A generated '## Program' charter per job in AGENTS.md (folded in from AUT-04)",
+    "where": "how",
+    "problem": "The planned jobs read a calendar, the weather or a mailbox and send one text to their owner under a tool cap, so there is no authority to grant and no approval to gate. The charter is prompt text, it is loaded into every ordinary chat as well as the job, it forbids the lighter job context, and the parents have no way to open the file it lives in.",
+    "checked": "The card's caveats ('A charter is prompt text, not enforcement', the 20,000-character budget) and description ('a short charter the parents can read'); docs/automation/standing-orders.md (the pattern is for programs given operating authority; AGENTS.md is injected every session); docs/concepts/agent-workspace.md:74 (AGENTS.md is loaded at the start of every session); docs/automation/cron-jobs/payloads.md:53 (`--light-context` skips the bootstrap files); roadmap M1 ('Hard rules ... live in the injected bootstrap files and in tool policy'), already met by the existing Hard rules section in templates/person/AGENTS.md and by the `--tools` cap; the roadmap's operating model (the config repo is in Tony's account only).",
+    "proposal": {
+      "action": "simplify",
+      "text": "Each job carries its own five to ten lines of instruction in its job message, loaded only when that job runs. The `--tools` cap and the timeout stay as the enforced limits. gen-family prints a one-line-per-job list (name, time, person, tools) that Tony can send to Jordan if she wants to see what Happy does unprompted."
+    },
+    "loses": "The agent cannot describe its scheduled jobs from memory in an ordinary chat, and the layout departs from what OpenClaw's standing-orders guide recommends (a job prompt that points at a program in AGENTS.md).",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-04",
+    "kind": "over-engineering",
+    "part": "Outage notice: a host script that texts both parents 'the model is down' and later 'back'",
+    "where": "how",
+    "problem": "A script with its own timer, its own allowed-hours check, a 'limit reached' variant and an unsettled send path is planned so both parents hear about an outage unprompted. A parent who texts Happy already gets OpenClaw's own failure line, the scheduler already has a failure notice and a recovery notice (which the jobs registry routes away from the family), and Tony is already alerted.",
+    "checked": "The card's own caveats ('A parent who texts during an outage is not met with silence today'; the hours check that has to live in this script; the unverified System Agent and recipient-pin questions about `openclaw message send`); its description (the wording of the built-in line 'has not been seen'); docs/automation/cron-jobs/delivery.md:105-107 (alert after two failures in a row, one recovery notice, default route is the job's own announce target); docs/concepts/model-failover.md:489 (a more specific line when every model fails); config repo observability/grafana/provisioning/alerting/rules.yaml ('Agent run error ratio above 10%' already alerts Tony); owner-facts.md (no request for outage notices).",
+    "proposal": {
+      "action": "test-first",
+      "text": "Before building, provoke one failed turn on an eval clone and read the line a parent would see. If it is understandable, build nothing: a parent who texts sees that line, a missed brief is simply missed, and Tony has the existing alert and can tell Jordan. If the family should hear about a failed brief, leave that brief's failure alert on its default target (its owner) and do not write a new sender."
+    },
+    "loses": "The plain-language, unprompted 'model is down' and 'back' lines to both parents; with the built-in route the wording is OpenClaw's and arrives only after a job has failed twice.",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-04",
+    "kind": "over-engineering",
+    "part": "Rebuilding fixed reminders (bin day) as no-model command jobs",
+    "where": "how",
+    "problem": "A second kind of reminder, created by Tony as a command job, is added so that a fixed reminder survives a model outage. Nobody asked for outage-proof reminders, and no routine such as bin day is on record.",
+    "checked": "owner-facts.md (no routines recorded; nothing about reminders surviving an outage); the card's review_notes ('bin reminders work through an outage' is true only if they are rebuilt as command jobs); F007 (reminders are model-backed jobs a parent sets in chat).",
+    "proposal": {
+      "action": "drop",
+      "text": "Drop this step. A reminder that falls inside an outage is missed, as the card already accepts for the briefs; a reminder that must never be missed belongs in the phone's own alarm or reminders."
+    },
+    "loses": "A Happy-sent fixed reminder arriving during a model outage.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "CRT-04",
+    "kind": "over-engineering",
+    "part": "Optional same-vendor fallback kept as a step and in the card's name",
+    "where": "how",
+    "problem": "The card carries a fallback to the smaller model as an optional step, although the catalog's own recommendation is not to use it and OpenClaw's guidance warns against it for agents with tools. It keeps an open decision in front of Tony for something nobody asked for.",
+    "checked": "frame.json decisions[9] (recommendation '(b) for now'); the card's first caveat and its dependency line (OpenClaw's guidance not to run tool-enabled agents on smaller model tiers); config repo openclaw/family.generated.json5 (`fallbacks: []` on every agent today); owner-facts.md (no request for a fallback).",
+    "proposal": {
+      "action": "drop",
+      "text": "Remove the fallback step from the card and its name, and close decision 9 as 'no fallback'. `fallbacks: []` stays as it is; it remains a one-line change if Tony ever wants it."
+    },
+    "loses": "Answers from the smaller model during an incident that affects only the main model.",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F083",
+    "kind": "over-engineering",
+    "part": "Snowfall from the raw gridpoint endpoint, and an alert id in the tool's output",
+    "where": "how",
+    "problem": "Two of the three additions have no user in the catalog. The alert id is used only by the weather watch, which has its own script, and the snowfall number needs a third endpoint with its own units and time format, seen only in the API description, while the tool already passes the forecaster's own text for each period.",
+    "checked": "config repo plugins/home-weather/nws.js (each period already carries shortForecast and up to 300 characters of detailedForecast; alerts carry event, severity, headline and end time); a search of r7.json (only F018 mentions an alert id, and it polls the alerts feed itself; F014 and F028 ask F083 only for the hourly rain window); the card's unverified line on the snowfall field. Not checked: a winter forecast, because the repo's test fixture is from October and has no snow.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Build the hourly forecast only (follow forecastHourly from the points lookup). When the first snow forecast arrives, look at what the existing period text and the new hourly lines say about amounts; add the raw gridpoint read only if that is not enough. Leave the alert id out."
+    },
+    "loses": "An hour-by-hour snowfall amount in numbers on day one.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F072",
+    "kind": "over-engineering",
+    "part": "Nightly digest of everything each child asked, summarised by a host job on a local model (folded in from G019)",
+    "where": "how",
+    "problem": "The roadmap asks for a weekly parent digest of flagged exchanges only. The card adds a nightly summary of every question, which needs a second local-model job, a way to read the chat database that was not tried, and a delivery route that might copy a child's words into a cloud-backed chat.",
+    "checked": "Roadmap M5 ('Weekly parent digest of every flagged exchange') and S4 ('weekly parent review of flagged items'); the card's safety field (the digest's delivery route 'has to be checked before the digest quotes anything') and unverified lines (reading the per-agent database from a command job 'was not tried'; which session transcript a delivered digest is copied into); the history line r1 that merged G019 in.",
+    "proposal": {
+      "action": "simplify",
+      "text": "Keep to the roadmap: a weekly text listing flagged exchanges by category and time, with no quoted words and no summarising model. A parent who wants the detail reads it with Tony on the Mac."
+    },
+    "loses": "A daily view of ordinary, unflagged questions.",
+    "saves": "M",
+    "severity": "low"
+  },
+  {
+    "id": "F072",
+    "kind": "over-engineering",
+    "part": "Chat hours per child enforced by the kid-safety plugin (folded in from MKT-13)",
+    "where": "how",
+    "problem": "The plugin is given a per-child timetable and a fixed 'time for bed' reply. The text route already requires each child to have an Apple child account, and Apple's Screen Time lets a parent set when a child's apps can be used from the parent's own phone.",
+    "checked": "The card's dependency 'each kid having an own Apple child account and handle'; Apple Support, 'Use Screen Time to manage your child's iPhone or iPad' (https://support.apple.com/en-us/108806), opened in this run: 'With Screen Time Schedules, you can choose which apps your child can access at different times of the day'; the roadmap's M5 and S4 lists, which have no chat-hours item.",
+    "proposal": {
+      "action": "drop",
+      "text": "Drop chat hours from the plugin. Hours for the text route are set in Screen Time on the child's device. The kitchen speaker, if it is built, has a physical mute switch and can get its own rule then."
+    },
+    "loses": "The friendly fixed reply after hours (the child's Messages app is simply unavailable), and hours for a child who reaches Happy from a device a parent does not manage.",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F072",
+    "kind": "over-engineering",
+    "part": "One agent per child",
+    "where": "how",
+    "problem": "The build note binds each child's handle to an agent of their own, while the roadmap has one shared kids agent with no memory and no tools. With nothing held per child there is nothing for separate agents to keep apart, and each one is another set of folders, bindings and eval clones.",
+    "checked": "Roadmap section 1 ('each kid's handle to kids'; the agents table lists kids as Shared), M5 ('kids agent bound to each kid's handle, shared by the kids and stateless') and the rule 'one agent per distinct set of permissions and per person whose data it holds'; the card's own description, which speaks of 'the same kids agent'.",
+    "proposal": {
+      "action": "simplify",
+      "text": "One shared kids agent, as the roadmap has it. The grade band per child is a short table in its AGENTS.md keyed on who is writing."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "F072",
+    "kind": "assumption",
+    "part": "Children aged 8 and 10 who text from their own Apple accounts",
+    "where": "caveats",
+    "problem": "The card's caveats and open questions speak of '8 and 10-year-olds' as if that were known, and the text route assumes each child has an Apple device. Neither the ages nor the devices are on record.",
+    "checked": "owner-facts.md ('Kids 8 and 10' appear only in example texts written by agents; how many children, their ages and whether they have devices are never stated); family.json5 (two adults, no children); roadmap section 1 (the speaker is 'for kids without Apple devices') and section 9 (kids voice chosen by Tony), which leave open whether any child has an Apple device.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Reword the caveat and the two open questions to 'the children's ages', and ask before this card is ever scheduled: how old are the children, and does each have an Apple device and account of their own? Default until answered: no ages on the card, and the text route marked as unconfirmed."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  }
+]

@@ -1,0 +1,1047 @@
+[
+ {
+  "id": "HOM-01",
+  "verdict": "revise",
+  "reason": "Placement holds (stateless home agent, no web, no send, no memory), but two of the stated controls are weaker than written: Home Assistant's MCP tools are generic intents, so a tool-name filter cannot separate device classes, and the long-lived token is a general ten-year API credential rather than an exposed-entities-only one. One install-page caveat was also misquoted.",
+  "source_checks": [
+   {
+    "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+    "ok": true,
+    "note": "Opened. Confirms the /api/mcp endpoint, OAuth or long-lived token, access limited to exposed entities, 'Expose all LLM APIs' on by default, 'Require an administrator account' on by default, sampling and notifications unsupported, introduced in 2025.2. The page does not list tool names."
+   },
+   {
+    "ref": "docs/tools/mcp.md:83",
+    "ok": true,
+    "note": "Read lines 61-96: remote Streamable HTTP server by url with toolFilter.include; credentials are to be kept out of config literals."
+   },
+   {
+    "ref": "skills/openhue/SKILL.md:44",
+    "ok": true,
+    "note": "Line 44 sends HomeKit scenes and Shortcuts to Apple's ecosystem. A grep of docs and skills found 'homekit' nowhere else and no 'mqtt' at all, and dist/extensions has no Home Assistant, HomeKit, Matter or MQTT plugin."
+   },
+   {
+    "ref": "docs/start/why-openclaw/openclaw-and-hermes-agent.md:20",
+    "ok": true,
+    "note": "Line 20 names Home Assistant subscriptions as a Hermes feature; grep shows this is the only file under docs and skills that mentions Home Assistant."
+   },
+   {
+    "ref": "https://www.home-assistant.io/installation/macos",
+    "ok": true,
+    "note": "Opened. Confirms 2 GB RAM, 2 vCPUs, bridged adapter and a separate Apple Silicon VirtualBox image. UTM is mentioned only as a fallback for experienced users, and the page does not state a general recommendation for dedicated hardware; the matching caveat is reworded."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+    "ok": true,
+    "note": "Opened. Confirms one controller at a time and that the device must be removed from Apple Home first."
+   }
+  ],
+  "corrections": {
+   "how": "Run Home Assistant OS in a VM on the Mac mini (VirtualBox is the documented route; the roadmap already plans this VM for the kids' speaker). Add the Hue, Sonos and LG webOS integrations, then the 'Model Context Protocol Server' integration with 'Expose all LLM APIs' turned off. Expose to Assist only the lights, speakers and TV, and create the token under a Home Assistant user made for OpenClaw. In OpenClaw add mcp.servers.<name> with url http://<ha-host>:8123/api/mcp, transport 'streamable-http', the long-lived token in an Authorization header supplied through a secret reference (not a config literal), and toolFilter.include written after a live probe of the tool names. Allow the server only to the stateless 'home' agent from F076; the registry before_tool_call hook blocks it for every other agent, checks each call's target against an allowlist of names and areas, and enforces quiet hours.",
+   "caveats": [
+    "Home Assistant's MCP option 'Expose all LLM APIs' is on by default and the token belongs to an administrator account by default; both need tightening before OpenClaw connects.",
+    "The MCP server does not support notifications or sampling, so Home Assistant cannot push a state change to Happy through MCP; events need a separate webhook (see HOM-06).",
+    "A HomeKit accessory can pair with only one controller, so the LG TV stays in Apple Home and joins Home Assistant through the webOS integration, not through HomeKit.",
+    "Home Assistant's macOS page documents VirtualBox (UTM only as a fallback for people used to virtual machines) and points anyone not comfortable with virtual machines to a dedicated board; the VM is one more service to patch, back up and bring back after every reboot and FileVault unlock, and until it is up every home tool fails.",
+    "Running both the direct CLIs and Home Assistant doubles the paths to the same lamp; pick one.",
+    "With only Hue, two Sonos and one TV today, the hub pays off mainly if presence (HOM-05), announcements (HOM-03) or the kids' speaker are also wanted.",
+    "Home Assistant's MCP server offers its Assist intents plus any scripts exposed to Assist, not arbitrary actions; anything beyond on/off, brightness, volume and state reads (announcements, TV notices) needs a script a parent writes and exposes.",
+    "Because those tools are generic intents, toolFilter.include narrows verbs, not device classes; the exposure list in Home Assistant and a before_tool_call check on each call's target are the real limits.",
+    "The long-lived token is a ten-year credential for Home Assistant's APIs as one user; the exposed-entity limit applies to the MCP tools, not to the token, so it must stay host-side and be rotated by hand.",
+    "State text returned by Home Assistant (now-playing titles, device names) is third-party text read by an agent that can actuate; allowlists and caps in code have to bound the result."
+   ],
+   "safety": "The home agent keeps no memory, has no web tool and no outbound message tool, so it holds no private data and cannot send anything out; the only outside text it reads is device state. Only exposed entities are reachable through MCP; locks, garage, alarm, gate and cameras are never exposed in Home Assistant, and a fail-closed hook that inspects each call's target repeats that block on the OpenClaw side (HOM-12). The token is a wider credential than the MCP tools and is kept host-side only.",
+   "unverified": [
+    "Whether Home Assistant OS runs cleanly under VirtualBox or UTM on macOS 27 with an M5 chip.",
+    "Whether OpenClaw's MCP client completes Home Assistant's OAuth flow; the long-lived token path is assumed.",
+    "The exact tool names Home Assistant's MCP server exposes (not listed on the page fetched), so the toolFilter list must be written after a live probe.",
+    "Whether the Smokescreen egress proxy applies to MCP HTTP calls to a LAN address.",
+    "Whether a non-administrator Home Assistant user can use the MCP endpoint once 'Require an administrator account' is turned off, and what that user can still reach."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/core/llm/",
+    "title": "Home Assistant API for Large Language Models",
+    "anchor": "via intents",
+    "supports": "Home Assistant's built-in LLM API works through intents over the exposed entities and allows no administrative tasks, so it is not a pass-through for arbitrary actions."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/auth_api/",
+    "title": "Authentication API - Home Assistant Developer Docs",
+    "anchor": "valid for 10 years",
+    "supports": "A long-lived access token lasts ten years, is created for one user and is sent as a bearer header to Home Assistant's APIs."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-02",
+  "verdict": "keep",
+  "reason": "A decision record that grants nothing; every claim matches the bundled SKILL.md files and the vendor pages opened in this run.",
+  "source_checks": [
+   {
+    "ref": "skills/openhue/SKILL.md:111",
+    "ok": true,
+    "note": "Lines 110-111: bridge on the local network, button press on first run."
+   },
+   {
+    "ref": "https://www.openhue.io/cli/setup",
+    "ok": true,
+    "note": "Opened. Setup discovers the bridge, waits for the button and saves bridge address and key in a YAML file under the home folder."
+   },
+   {
+    "ref": "https://developers.meethue.com/develop/get-started-2/",
+    "ok": true,
+    "note": "Opened. Local API on the bridge; a key is issued only after the link button is pressed."
+   },
+   {
+    "ref": "skills/sonoscli/SKILL.md:56",
+    "ok": true,
+    "note": "Lines 53-60: Local Network permission for the Gateway's parent process, node under launchd."
+   },
+   {
+    "ref": "https://sonoscli.sh",
+    "ok": true,
+    "note": "Opened. Local network control over UPnP/SOAP on port 1400, Homebrew tap install, not an official Sonos project."
+   },
+   {
+    "ref": "skills/camsnap/SKILL.md:32",
+    "ok": true,
+    "note": "Lines 31-32 and 42-52: config file with host, user and password; local webcams on macOS; ffmpeg required."
+   },
+   {
+    "ref": "skills/eightctl/SKILL.md:49",
+    "ok": true,
+    "note": "Line 49 plus line 32 (email and password environment variables)."
+   },
+   {
+    "ref": "skills/spotify-player/SKILL.md:44",
+    "ok": true,
+    "note": "Line 44 plus line 39 (Premium account)."
+   },
+   {
+    "ref": "skills/blucli/SKILL.md:27",
+    "ok": true,
+    "note": "Line 27."
+   },
+   {
+    "ref": "skills/songsee/SKILL.md:27",
+    "ok": true,
+    "note": "Line 27."
+   },
+   {
+    "ref": "skills/weather/SKILL.md:85",
+    "ok": true,
+    "note": "Lines 82-85."
+   },
+   {
+    "ref": "skills/goplaces/SKILL.md:36",
+    "ok": true,
+    "note": "Line 36."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-03",
+  "verdict": "revise",
+  "reason": "Route A as written is not callable through Home Assistant's MCP server, which exposes intents and exposed scripts rather than media_player.play_media, and 'text only from the adult's own message' cannot be enforced in code after two model hops, so with children in the room version 1 should speak fixed phrases only. Scheduled lines need no agent, which lowers the value.",
+  "source_checks": [
+   {
+    "ref": "https://www.home-assistant.io/integrations/sonos/",
+    "ok": true,
+    "note": "Opened. Confirms announce overlay with ducking and restore, volume in the extra field, the S1 and older-hardware warning and TCP 1443 on each speaker. The page's speech example uses a cloud voice source."
+   },
+   {
+    "ref": "docs/tools/tts/configuration.md:138",
+    "ok": true,
+    "note": "Lines 133-148: tts-local-cli provider with command 'say' writing a wav file."
+   },
+   {
+    "ref": "https://github.com/steipete/sonoscli",
+    "ok": true,
+    "note": "Opened. play-url is a short-lived local MP3 proxy built on yt-dlp and ffmpeg for internet media; no speech or announce command; local files are not documented."
+   }
+  ],
+  "corrections": {
+   "how": "Route A (needs HOM-01): a parent writes one Home Assistant script, for example announce(phrase, room), that renders speech with a local engine and calls media_player.play_media with announce set to true and a volume in the extra field; the Sonos integration overlays the clip and restores what was playing. The script is exposed to Assist, which makes it a tool on Home Assistant's MCP server; the raw play_media action is not reachable through MCP. Length cap, volume cap, quiet hours and the speaker allowlist are written into the script and repeated in the before_tool_call hook. Version 1 takes a phrase id from a fixed list; free text is a later step behind an /approve prompt to the requesting adult. Fixed daily lines such as the school-morning countdown are plain Home Assistant automations with no agent involved. Route B (no Home Assistant): the home-sonos plugin renders a file with say, serves it from the Mac and hands the speaker a URL; treat this as experimental. Speech is never made by a cloud voice.",
+   "caveats": [
+    "Home Assistant states that older Sonos hardware and S1 firmware may not fully support announcements, and speakers must be reachable on TCP port 1443.",
+    "Route B depends on a short-lived local stream that the sonoscli documentation describes for internet media, not for a file on the Mac.",
+    "With free text allowed, an injected instruction could have a short line of someone else's words spoken at capped volume in a room where the kids are; a fixed phrase list removes that risk and an approval prompt reduces it.",
+    "Shouting up the stairs or a group text is still faster for one-off calls; the value is in scheduled lines such as the school-morning countdown.",
+    "Home Assistant's MCP server offers intents and exposed scripts, not arbitrary actions, so the announcement has to be wrapped in a script a parent writes and exposes to Assist.",
+    "The Sonos page's own speech example uses Home Assistant's cloud voice; a local engine has to be installed and chosen instead.",
+    "A fixed daily line needs no agent at all: a Home Assistant automation speaks it with zero model calls. Happy adds only the ad-hoc text-to-speaker case.",
+    "Route B needs a new LAN-facing HTTP listener on the Mac so the speaker can fetch the file, on a host where the Gateway is deliberately loopback-only."
+   ],
+   "safety": "Acts in the world, hence high by the catalog's convention. The home agent has no memory, no web tool and no send tool. Code can enforce the speaker allowlist, volume cap, quiet hours, length cap and, in version 1, a fixed phrase list. Code cannot enforce that free text came from the parent: the words pass through the parent's main agent, which reads search results, and then the home agent, so free text waits for an approval step. Speech is synthesized locally, so nothing reaches a cloud voice.",
+   "value": 2,
+   "unverified": [
+    "Whether the two speakers in the house are models that support clip overlay.",
+    "Whether sonos play-url accepts a plain audio file served from the Mac on the LAN.",
+    "Which local speech engine Home Assistant would use; not checked in this run.",
+    "Whether the before_tool_call requester context identifies the adult who started a run that was handed off to the home agent."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-04",
+  "verdict": "revise",
+  "reason": "Sources hold and the rating is honest, but the safety line overstates: if the linked service needs the link flow, sonoscli keeps a service token in a file on the Mac, and auto-playing the first hit of a model-written query in a family room has no content filter that Happy controls.",
+  "source_checks": [
+   {
+    "ref": "https://raw.githubusercontent.com/steipete/sonoscli/main/README.md",
+    "ok": true,
+    "note": "Opened. Confirms scene save, apply, list and delete, search of linked services without Spotify Web API credentials, the one-time link flow, and the 'not an official Sonos project' line. It also says link tokens are stored in a sonoscli file and that some services cannot be linked automatically."
+   },
+   {
+    "ref": "https://sonoscli.sh",
+    "ok": true,
+    "note": "Opened. Shows the Homebrew tap install command."
+   },
+   {
+    "ref": "skills/sonoscli/SKILL.md:41",
+    "ok": true,
+    "note": "Lines 41 and 46: search through the Sonos music-service interface; Spotify Web API credentials optional."
+   }
+  ],
+  "corrections": {
+   "caveats": [
+    "sonoscli states it is not an official Sonos project, so a Sonos firmware change can break it.",
+    "Search results are third-party catalogue text; the plugin should return only a few titles and never pass them on as instructions.",
+    "The Sonos app and voice control already play a named song faster; the realistic use is one text to reset the house at bedtime.",
+    "Explicit-content filtering depends on the music account's own setting, not on Happy.",
+    "If the linked service needs the one-time link flow, sonoscli stores the resulting service token in its own file on the Mac, and for some services it cannot finish the flow without manual steps.",
+    "Playing the first hit of a model-written query in the family room can land on an explicit version; scenes and favorites are the safe default, and search is best kept to an adult's explicit request."
+   ],
+   "safety": "Sound at capped volume on allowlisted speakers only. OpenClaw holds no music-service password. If the link flow is needed, a service token is kept in sonoscli's own file under happy's home on the Mac, outside any agent's reach but present on the host. The home agent holds no private data and reads no web content beyond catalogue titles."
+  },
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-05",
+  "verdict": "revise",
+  "reason": "A hard dependency is missing: both phones must reach Home Assistant away from home, which is LAN-only by default and may not be port-forwarded under the roadmap. Per-person zone names are one person's data and should not be readable by the other adult's agent, 'nobody home' is wrong whenever the kids are home with someone else, and one caveat misread Apple's default.",
+  "source_checks": [
+   {
+    "ref": "docs/concepts/presence.md:64",
+    "ok": true,
+    "note": "Lines 58-66: live connection presence, idle tabs count as online."
+   },
+   {
+    "ref": "docs/plugins/geolocation.md:71",
+    "ok": true,
+    "note": "Lines 66-72: tailnet and LAN addresses are answered as not found."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/zone/",
+    "ok": true,
+    "note": "Opened. Zone state is the number of persons in it; home zone has a 100 m radius."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/person/",
+    "ok": true,
+    "note": "Opened. Person state follows device trackers: home, not_home or a zone name."
+   },
+   {
+    "ref": "https://companion.home-assistant.io/docs/core/location/",
+    "ok": true,
+    "note": "Opened. Confirms Exact, Zone Name Only and Never, that data goes to the user's own instance (directly or through Home Assistant Cloud) and nowhere else, and that significant-change updates are the least accurate. It does not state the iOS permission level or what happens when the server is unreachable."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/102509",
+    "ok": true,
+    "note": "Opened. Confirms Off, Fixed and Rotating; Fixed is the default on WPA2 or stronger networks, Rotating on weak or open ones. The caveat is reworded to match."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/102313",
+    "ok": true,
+    "note": "Opened. Confirms People Arrive and People Leave tied to the primary iPhone or iPad and that a Mac cannot trigger a location-based automation."
+   }
+  ],
+  "corrections": {
+   "how": "Home Assistant Companion app on each adult's iPhone creates a device tracker; a person entity per adult follows it; the home zone's state is the number of people inside. Set the app's location reporting to 'Zone Name Only' so coordinates stay on the phone, and give both phones a path to Home Assistant when away (Tailscale, with Home Assistant reachable on the tailnet). Expose only the home zone's count to Assist and leave the person entities unexposed, so neither adult's agent can read where the other one is. The home agent reads the count through the MCP server (HOM-01). Without Home Assistant there is no reliable house-level signal on this stack.",
+   "depends_on": [
+    "HOM-01",
+    "Home Assistant Companion app on both adults' iPhones",
+    "both phones able to reach Home Assistant away from home (Tailscale on each phone and Home Assistant on the tailnet); Home Assistant listens only on the local network by default and the roadmap rules out port forwarding"
+   ],
+   "caveats": [
+    "The iOS app's cheapest location updates are the least accurate kind and can lag, so 'just left' may be a few minutes stale.",
+    "The kids have no phones, so 'anyone' means the two adults.",
+    "Watching for phones on Wi-Fi is brittle mainly because phones sleep and drop off the network; on a WPA2 or WPA3 home network the iPhone's private address is fixed by default and rotates only if set to Rotating or on weakly secured networks.",
+    "Apple Home tracks arrival and departure for its own automations but a Mac cannot trigger a location automation, and Happy cannot read that state.",
+    "The presence tool reports people as online when a client is connected, including idle tabs, which is unrelated to being at home.",
+    "The count covers the two adults only. With the kids at home with a sitter or a grandparent it reads zero, so it must never be the only condition for switching anything off.",
+    "A departure is recorded only if the phone can reach Home Assistant from outside the house; with a LAN-only server and no VPN up, the house keeps showing that adult as home."
+   ],
+   "safety": "Presence is private data. Phones report zone names only. Only the count of people in the home zone is exposed to the home agent; per-person zones are one person's data and stay unexposed, so one adult's agent cannot read the other's whereabouts (roadmap section 1b). The count is never available to the research agent or a kids agent.",
+   "value": 2,
+   "unverified": [
+    "That Apple offers no programmatic way to read Home or Find My presence (a negative that could not be sourced).",
+    "The exact iOS location permission level the Companion app needs; the page fetched does not state it.",
+    "Whether the Companion app queues or drops a zone change when the server is unreachable; the location page does not say.",
+    "Whether a zone entity can be exposed to Assist on its own; if not, a helper sensor holding the count is needed."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/docs/configuration/remote/",
+    "title": "Remote access - Home Assistant",
+    "anchor": "only listens on your local network",
+    "supports": "Home Assistant is reachable only on the local network unless Home Assistant Cloud, a VPN such as Tailscale, a reverse proxy or port forwarding is set up, and Companion app sensors do not update from outside without that path."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-06",
+  "verdict": "reject",
+  "reason": "Find My already sends a recurring arrive or leave notice to a chosen person with nothing running at home. The proposed route turns on Gateway hooks, whose single shared token cannot be a secret reference, would be stored on each phone, and also unlocks the direct agent endpoint where the caller picks the recipient, a path the before_tool_call family pin does not cover.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/location-command.md:11",
+    "ok": true,
+    "note": "Lines 9-14: an on-request node command, off by default; no geofence or event."
+   },
+   {
+    "ref": "docs/platforms/ios.md:566",
+    "ok": true,
+    "note": "Lines 564-570: a background wake only records a last-seen beacon."
+   },
+   {
+    "ref": "docs/channels/location.md:14",
+    "ok": true,
+    "note": "Lines 14-19: LINE, Matrix, Telegram and WhatsApp only."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/webhooks.md:173",
+    "ok": true,
+    "note": "Lines 14-19, 132-142 and 172-177: hooks off by default, bearer or x-openclaw-token header, mappings with templates or transforms; line 159 says wake text is a system event."
+   },
+   {
+    "ref": "https://support.apple.com/guide/shortcuts/travel-triggers-apd8ebfc4e8e/ios",
+    "ok": true,
+    "note": "Opened. Arrive and Leave triggers with Any or Time Range."
+   },
+   {
+    "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+    "ok": true,
+    "note": "Opened. Arrive and Leave are listed among automations that can run automatically; 'Allow Running When Locked' is the setting."
+   },
+   {
+    "ref": "https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios",
+    "ok": true,
+    "note": "Opened. Confirms POST with a JSON request body. The page does not mention request headers, so the Authorization header stays unverified."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/rest_command/",
+    "ok": true,
+    "note": "Opened. Method, headers and payload are configurable and the command is callable from automations."
+   },
+   {
+    "ref": "https://support.apple.com/guide/iphone/notify-a-friend-when-your-location-changes-iph9bfec93b1/ios",
+    "ok": false,
+    "note": "Fetched at four offsets; the tool returned only the guide's navigation (about 72,000 characters) and never the article body, so nothing beyond the title could be read. Replaced with the Mac guide page for the same feature, which rendered."
+   }
+  ],
+  "corrections": {
+   "readiness": "not-recommended",
+   "value": 1,
+   "caveats": [
+    "Find My already does this: a location alert to a chosen person on arriving or leaving, once or every time, with no server at home.",
+    "Turning on Gateway HTTP hooks adds an inbound surface, and it cannot be limited to mapped paths: the direct wake and agent endpoints come with it and take precedence over mappings.",
+    "On the direct agent endpoint the caller chooses channel and recipient, so anyone holding the hook token can have Happy text a model-written line to any handle unless a delivery-side hook cancels it.",
+    "The hook token is one shared secret for every sender, does not accept a secret reference, and would sit in a Shortcut (synced through iCloud) on each phone and in Home Assistant.",
+    "Hook mappings produce a wake or an agent turn, so each notice is still a model call that sends one parent's movements to the cloud provider.",
+    "Phone geofences lag and can fire twice; the kids are not covered."
+   ],
+   "safety": "Not safe as written. Enabling Gateway hooks also enables the direct agent endpoint, where the caller chooses channel and recipient, and that delivery is not a tool call, so the before_tool_call family pin never sees it; a message_sending hook that cancels any non-family recipient would have to be built and tested first. The hook token cannot be a secret reference and would live on each phone. The notify agent has no tools and no memory, and hooks.allowedAgentIds limits which agent a token holder can reach, but not where the output is sent.",
+   "unverified": [
+    "Whether the Shortcuts 'Get Contents of URL' action can send the Authorization header the hook requires; the Apple page fetched covers methods and request body only.",
+    "Whether Find My alerts can be limited to weekdays or a time window, and the approval rules for recurring alerts; the iPhone guide page did not render and the Mac guide page does not say.",
+    "Whether message_sending hooks run for hook announce deliveries.",
+    "Whether a mapped hook can deliver a fixed line with no model call at all."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/findmy-mac/fmmeb70d2de0/mac",
+    "title": "Notify a friend when your location changes in Find My on Mac",
+    "anchor": "only once or every time",
+    "supports": "Find My can alert a chosen person when you arrive at or leave a place, either a single time or on every change, with no home server."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-hooks.md:120",
+    "title": "Configuration: hooks (hook agent payload)",
+    "anchor": "direct announce delivery",
+    "supports": "A caller of the direct hook agent endpoint supplies the channel and the recipient for delivery."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-hooks.md:83",
+    "title": "Configuration: hooks (HTTP contract)",
+    "anchor": "take precedence over mappings",
+    "supports": "Enabling hooks always enables the direct wake and agent endpoints, which win over mappings of the same name."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-hooks.md:39",
+    "title": "Configuration: hooks",
+    "anchor": "SecretRef objects are not supported",
+    "supports": "The hook token is one shared secret string and cannot be supplied through a secret reference."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:67",
+    "title": "Plugin hooks: messages",
+    "anchor": "message_sending",
+    "supports": "Outbound delivery policy is a separate plugin hook that can rewrite or cancel a message, distinct from the tool-call hook."
+   }
+  ],
+  "removed_sources": [
+   "https://support.apple.com/guide/iphone/notify-a-friend-when-your-location-changes-iph9bfec93b1/ios"
+  ]
+ },
+ {
+  "id": "HOM-07",
+  "verdict": "keep",
+  "reason": "Correctly filed as not recommended and every source says what the entry claims. One more reason, recorded under HOM-08: a phone that runs the iOS app is also an operator client of the Gateway.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/location-command.md:81",
+    "ok": true,
+    "note": "Lines 9-14, 24-25 and 77-83: off by default, whileUsing or always, separate precise toggle, background refusal code."
+   },
+   {
+    "ref": "docs/nodes/device-commands.md:87",
+    "ok": true,
+    "note": "Lines 86-88."
+   },
+   {
+    "ref": "docs/platforms/ios.md:206",
+    "ok": true,
+    "note": "Lines 204-207."
+   },
+   {
+    "ref": "docs/platforms/ios.md:15",
+    "ok": true,
+    "note": "Line 15; line 75 confirms the iOS app offers Always location."
+   }
+  ],
+  "corrections": {},
+  "added_sources": [],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-08",
+  "verdict": "revise",
+  "reason": "The guardrail is right and config-only, but it covers one direction. A 'limited' setup code still gives the phone an operator token with write, approvals and read scope, and the iOS app cannot run without operator credentials, so any paired phone can read every person's sessions; that fits roadmap section 1b only for Tony's own phone or a locked spare. The 'no further opt-in' wording also skips the required surface approval.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/command-policy.md:31",
+    "ok": true,
+    "note": "Line 31 lists the iOS default ceiling, which also includes camera.list, device info and status, and system.notify. Lines 13-25 add that the operator must approve the node's surface before any command is effective."
+   },
+   {
+    "ref": "docs/nodes/command-policy.md:55",
+    "ok": true,
+    "note": "Line 55: explicit allow needed for camera, screen recording, writes and health.summary; deny always wins."
+   },
+   {
+    "ref": "docs/cli/qr.md:56",
+    "ok": true,
+    "note": "Line 56 confirms the limited profile omits only the admin scope. Line 54 shows what remains: approvals, read, talk-secrets and write."
+   },
+   {
+    "ref": "docs/plugins/hooks/tool-policy.md:46",
+    "ok": true,
+    "note": "Lines 17-62: the hook receives ctx.agentId and can block or require approval."
+   }
+  ],
+  "corrections": {
+   "description": "A guardrail to set before any family iPhone, personal or the spare one, is paired with the Gateway. The Gateway's default ceiling for an iOS node covers location, contact search, calendar events, reminders, latest photos, motion queries and notifications; nothing flows until the operator approves the node's command surface and the phone grants the matching iOS permissions, but no further Gateway setting is needed. Only camera capture, screen recording, writes and Health need an explicit allow. Separately, the iOS app is always an operator client as well as a node.",
+   "how": "List everything a phone should not answer in gateway.nodes.commands.deny (deny always wins), and add to gateway.nodes.commands.allow only the single command a feature needs. Turn off gateway.nodes.pluginTools.enabled so a paired device cannot publish tools to agents. Pair with the narrowest setup code that still works: --limited drops only the admin scope and leaves write, approvals and read; --voice-node leaves read and talk. Review the node's declared command surface before approving it, and again after any app update that widens it. Grant the nodes tool only to the agent that needs it, and have the registry before_tool_call hook block any call whose node is not the one assigned to that agent. Pair only Tony's own phone or a spare that is locked to the app.",
+   "caveats": [
+    "The default table is a ceiling, not a promise: a command works only if the phone app also declares it, but a later app update can start declaring more.",
+    "A phone paired with the default (full) setup code also becomes an admin client of the Gateway.",
+    "An operator client with write scope can invoke enabled node commands directly, not only agents.",
+    "A limited setup code still gives the phone an operator token with write, approvals and read scope: whoever holds that phone can read every person's sessions and message any agent from the app. The docs describe operator scopes as a guardrail inside one trusted operator domain, not separation between people.",
+    "The iOS app does not finish setup without both node and operator credentials, so a node-only phone is not an option.",
+    "Push-to-talk commands are allowed by default for any node that advertises talk, outside the platform table; deny them by name if voice is not wanted.",
+    "Background wake-ups for App Store builds go through OpenClaw's hosted push relay, an outside service the Gateway must be allowed to reach; without it the phone answers only while the app is open.",
+    "The phone reaches a loopback Gateway only through Tailscale Serve, so every paired phone is also a tailnet device."
+   ],
+   "safety": "This is the control that keeps a paired phone from turning a memory-holding agent into a reader of contacts, photos and location. It is enforced by Gateway policy and a fail-closed hook, not by prompt. It does not address the other direction: the phone's own operator token, which can read sessions and logs across the Gateway. Under the roadmap's rule that the control plane is the operator's alone, only Tony's phone or a locked spare should run the app.",
+   "unverified": [
+    "No documented per-agent setting was found that limits which node the nodes tool may target, so the hook pin is assumed to be necessary.",
+    "Whether camera or Health commands still work on a phone paired with the voice-node profile.",
+    "Whether the phone's operator token can be rotated to a narrower scope after pairing without breaking the app."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:22",
+    "title": "Node command policy",
+    "anchor": "no effective commands",
+    "supports": "A freshly paired node answers nothing until the operator approves its declared command surface."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:54",
+    "title": "openclaw qr",
+    "anchor": "operator.write",
+    "supports": "The default mobile setup code hands the phone an operator token with admin, approvals, read, talk-secrets and write scopes; the limited profile removes only admin."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:58",
+    "title": "openclaw qr",
+    "anchor": "--voice-node",
+    "supports": "A voice-node setup code keeps the node token but limits the operator token to read and talk, without message sending or general write methods."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, logs and session reads across the Gateway, not one session."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:12",
+    "title": "Operator scopes",
+    "anchor": "not hostile multi-tenant isolation",
+    "supports": "Operator scopes are a guardrail inside one trusted operator domain and are not meant to separate people from each other."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:676",
+    "title": "iOS app: common errors",
+    "anchor": "Gateway setup incomplete",
+    "supports": "The iOS app does not complete setup unless the Gateway issues both node and operator credentials, so a node-only phone is not possible."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:51",
+    "title": "Node command policy",
+    "anchor": "talk.ptt.start",
+    "supports": "Push-to-talk commands are allowed by default for any node that advertises talk, outside the per-platform table."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/mcp-and-skills.md:62",
+    "title": "Node-hosted MCP servers and skills",
+    "anchor": "gateway.nodes.pluginTools.enabled",
+    "supports": "A Gateway setting makes the Gateway ignore every agent-visible tool published by paired nodes."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:527",
+    "title": "iOS app: relay-backed push",
+    "anchor": "ios-push-relay.openclaw.ai",
+    "supports": "App Store builds get background wake-ups through OpenClaw's hosted push relay, an external service with a fixed address."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:67",
+    "title": "openclaw qr",
+    "anchor": "fails closed",
+    "supports": "A phone can pair with a Gateway over Tailscale only through Tailscale Serve or another wss endpoint, so a paired phone must be on the tailnet."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-09",
+  "verdict": "revise",
+  "reason": "The command is documented and well gated, but the two normal ways of asking (a text typed in Messages, or a scheduled brief) both find the OpenClaw app in the background, where the docs promise nothing for this command; the sleep figure is cut at midnight by design; and running the app makes the phone an operator client, which suits only Tony's own phone. Readiness and value are lowered.",
+  "source_checks": [
+   {
+    "ref": "docs/platforms/ios-healthkit.md:14",
+    "ok": true,
+    "note": "Lines 12-16."
+   },
+   {
+    "ref": "docs/platforms/ios-healthkit.md:42",
+    "ok": true,
+    "note": "Lines 35-50: allow entry required, never a platform default, deny overrides."
+   },
+   {
+    "ref": "docs/platforms/ios-healthkit.md:126",
+    "ok": true,
+    "note": "Lines 124-127."
+   },
+   {
+    "ref": "docs/platforms/ios-healthkit.md:168",
+    "ok": true,
+    "note": "Lines 82 and 166-169."
+   },
+   {
+    "ref": "docs/platforms/ios-healthkit.md:130",
+    "ok": true,
+    "note": "Lines 129-130."
+   }
+  ],
+  "corrections": {
+   "readiness": "experimental",
+   "value": 1,
+   "depends_on": [
+    "OpenClaw iOS app on the adult's own iPhone",
+    "HOM-08",
+    "decision: health numbers to the cloud model under store:false",
+    "Tailscale on that iPhone, and Gateway egress to OpenClaw's hosted push relay if background wake-ups are wanted"
+   ],
+   "caveats": [
+    "When an agent asks, the numbers go to the configured AI provider and may stay in chat history; a CLI call returns them only to the operator.",
+    "Only the current day is supported; multi-day and historical requests fail.",
+    "A missing number can mean denied access, no data or an unsupported type; HealthKit hides which.",
+    "Sleep and resting heart rate usually need an Apple Watch or another tracker feeding Apple Health.",
+    "The Health and Fitness apps already show all of this; the only gain is having it inside the brief.",
+    "Never for the kids, and never read by one adult's agent from the other adult's phone.",
+    "Sleep is counted from local midnight only, so a night that starts at 22:30 is reported about ninety minutes short; 'how did I sleep' gets a low answer by design.",
+    "The person asking is typing in Messages, and a scheduled brief runs with the phone in a pocket: in both cases the OpenClaw app is in the background, where iOS may suspend its connection.",
+    "Running the app makes that phone an operator client that can read every person's sessions (HOM-08), so in practice this is for Tony's own phone only."
+   ],
+   "safety": "Health numbers are private data and stay in the owner's main agent, which does not browse. Two independent gates (Gateway allowlist and the switch on the phone) plus the HOM-08 deny list keep the grant to this one command. The phone itself becomes an operator client of the Gateway, which fits only the operator's own device. It is context, not medical advice."
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios-healthkit.md:113",
+    "title": "HealthKit summaries",
+    "anchor": "clipped to today",
+    "supports": "Sleep minutes are counted only from local midnight, so sleep before midnight is left out of the figure."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:206",
+    "title": "iOS app",
+    "anchor": "iOS may suspend",
+    "supports": "iOS can suspend the app's Gateway connections once it is in the background."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:676",
+    "title": "iOS app: common errors",
+    "anchor": "Gateway setup incomplete",
+    "supports": "The iOS app does not complete setup unless the Gateway issues both node and operator credentials, so a node-only phone is not possible."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, logs and session reads across the Gateway, not one session."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-10",
+  "verdict": "revise",
+  "reason": "The read scope proposed for the wall tablet covers session reads and logs for the whole Gateway, so a kitchen display could open either parent's conversations. The only documented way to confine a client to one session is the roles system with a verified identity, a Gateway-wide change, so effort is large, and a calendar app or Home Assistant dashboard on the same tablet does the job first.",
+  "source_checks": [
+   {
+    "ref": "docs/tools/show-widget.md:44",
+    "ok": true,
+    "note": "Line 44."
+   },
+   {
+    "ref": "docs/tools/show-widget.md:42",
+    "ok": true,
+    "note": "Line 42."
+   },
+   {
+    "ref": "docs/tools/show-widget.md:229",
+    "ok": true,
+    "note": "Lines 222-229: block types and size limits; no HTML, scripts or media."
+   },
+   {
+    "ref": "docs/web/dashboards.md:180",
+    "ok": true,
+    "note": "Line 180: the expanded link applies to that visit only."
+   },
+   {
+    "ref": "docs/web/dashboards.md:244",
+    "ok": true,
+    "note": "Lines 244-246."
+   },
+   {
+    "ref": "docs/platforms/mac/canvas.md:30",
+    "ok": true,
+    "note": "Lines 11-31: a panel in the macOS app, one at a time, render-only."
+   },
+   {
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "ok": true,
+    "note": "Line 34 confirms the scope exists, and also that it includes logs and session reads across the Gateway, which undercuts the 'read-only display' safety claim."
+   },
+   {
+    "ref": "docs/cli/devices.md:157",
+    "ok": true,
+    "note": "Lines 152-163: rotation can narrow scopes within the approved baseline."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/111795",
+    "ok": true,
+    "note": "Opened. Single-app lock, touch and buttons can be disabled, passcode to end, auto-lock setting during a session."
+   },
+   {
+    "ref": "https://www.home-assistant.io/dashboards/",
+    "ok": true,
+    "note": "Opened. Mentions a focused dashboard for the kitchen tablet."
+   }
+  ],
+  "corrections": {
+   "effort": "L",
+   "value": 2,
+   "how": "Start with the simplest thing that works on a spare tablet locked with Guided Access: the family's shared calendar app, or a Home Assistant dashboard if HOM-01 exists. The OpenClaw route is a second step: one persistent 'board' session on an agent with no tools beyond reading the home-store; a scheduled agent-turn automation bound to that session, with a scheduled tool policy that allows show_widget, replaces named native report widgets (metrics, table, text and link blocks) with pin set to true; the tablet opens the Control UI through Tailscale Serve at that session with the dashboard expanded. Do not give the tablet a token with plain read scope, because that scope reads every session and the logs. The documented way to confine a viewer to one session is the Gateway roles system (a role limited to session reads, other people's sessions hidden, explicit membership of the board session), which needs a verified identity such as Tailscale for operator clients and is a Gateway-wide change to test first.",
+   "caveats": [
+    "show_widget is offered only to clients that declare inline widgets, or to a scheduled job bound to a persistent session and limited to pinned widgets; a parent cannot text Happy over iMessage and get a widget.",
+    "A Control UI on the wall is an operator client of the whole Gateway; unless its scope is read-only, anyone in the kitchen can chat with an agent from it.",
+    "A native report is capped at 24 blocks and 8 KB, with no scripts or images.",
+    "The expanded-dashboard link applies to that visit only, and a page reload starts fresh widget views.",
+    "The macOS panel needs the OpenClaw Mac app (not installed), shows one panel at a time near the menu bar and is render-only.",
+    "The Website widget needs an HTTPS address and refuses the Gateway's own host, so a plain-HTTP Home Assistant page cannot be embedded.",
+    "Guests see whatever is on it: first names and times only, no addresses, no health or money lines.",
+    "A printed week sheet (F080, HOM-14) gives most of the benefit with no screen to keep alive.",
+    "The read scope covers status, logs and session reads for the whole Gateway, so a read-only wall tablet can open either parent's conversations unless roles hide them; Guided Access with touch disabled is then the only thing in the way.",
+    "Once roles are configured, operator clients that present only a device or bootstrap token are refused, so every existing client's sign-in has to be rechecked.",
+    "The board is refreshed by a model turn, so it costs tokens on every refresh and can misformat; the printed sheet (HOM-14) needs no model.",
+    "Gateway restarts in the weekly patch window, tablet reloads and tailnet key expiry each leave the screen stale or blank until an adult reopens the expanded view."
+   ],
+   "safety": "The board agent has no web tool and no outbound tool; it only formats data already in the family store. The display is an operator client, so its access has to be confined by a role to the one board session; a token with general read scope is not acceptable in a kitchen. Content shown is limited to what the family would put on the fridge. Kids see it but do not use Happy through it.",
+   "unverified": [
+    "Whether a role limited to session reads, with other people's sessions hidden and membership of the board session, can render that session's dashboard in Control UI 2026.9.7.",
+    "How a tablet in Guided Access presents a verified Tailscale identity to the Gateway once roles are on.",
+    "Whether tablet Safari keeps the Control UI connection alive for days without a reload."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:12",
+    "title": "Operator scopes",
+    "anchor": "not hostile multi-tenant isolation",
+    "supports": "Operator scopes are a guardrail inside one trusted operator domain and are not meant to separate people from each other."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:192",
+    "title": "Operator scopes: named roles",
+    "anchor": "Explicit session membership",
+    "supports": "With roles configured, other people's sessions can be hidden and access raised for one specific session through membership."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:174",
+    "title": "Operator scopes: named roles",
+    "anchor": "bootstrap-token",
+    "supports": "Once roles are configured, operator connections that present only a device or bootstrap token without a verified identity are refused."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-11",
+  "verdict": "revise",
+  "reason": "Sources hold and the rating is honest. Two corrections: the on-screen notice in the Home Assistant route is not an intent, so it is reachable over MCP only through a script a parent writes and exposes, and the cut-off is advisory because a child can switch the TV back on with the remote.",
+  "source_checks": [
+   {
+    "ref": "https://www.home-assistant.io/integrations/webostv/",
+    "ok": true,
+    "note": "Opened. Confirms turn off, volume and source control, a per-TV notify action with message and optional icon, 'LG Connect Apps' in network settings, turn-on only through an automation with Wake-on-LAN or HDMI-CEC, webOS 2.0 and above. Newer firmware often shows text only."
+   },
+   {
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "ok": true,
+    "note": "Opened. Confirms 'shortcuts run', input and output path flags, and that the process pauses if the shortcut asks for input."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/102557",
+    "ok": true,
+    "note": "Opened. HomePod and Apple TV act as home hubs for remote control and automation; iPad is not listed as a hub."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+    "ok": true,
+    "note": "Opened. One controller at a time."
+   }
+  ],
+  "corrections": {
+   "how": "Route A: an allowlisted Shortcut named 'TV off' in happy's account, run with the shortcuts command by the F078 plugin; happy's Apple Account must be a member of the Home. Route B (needs HOM-01): the home agent turns the TV off or changes volume through Home Assistant's media player intents; the on-screen line is not an intent, so a parent writes a Home Assistant script that calls the TV's notify action with one of a few fixed strings and exposes that script to Assist, which makes it an MCP tool. Power-on is left out. Scheduled runs are command or home-agent jobs with a skip-tonight file, as in F081.",
+   "caveats": [
+    "The TV is the only HomeKit accessory in the house, so this is the whole of 'HomeKit control' today.",
+    "Apple Home can already switch an accessory off at a time of day, but automations need a home hub (HomePod or Apple TV), which is not in the inventory.",
+    "The webOS integration cannot power the TV on by itself (it needs Wake-on-LAN) and requires the TV's 'LG Connect Apps' setting.",
+    "Because a HomeKit accessory pairs with one controller, the Home Assistant route uses LG's own network API, not HomeKit.",
+    "The remote on the sofa is still the fastest off switch; the value is the scheduled, argument-free cut-off.",
+    "The cut-off is advisory: nothing stops a child from pressing power on the remote a minute later.",
+    "On most newer TV firmware the notice shows text only, and passing an icon can stop it from appearing."
+   ],
+   "unverified": [
+    "Whether the house has an Apple home hub.",
+    "The TV's webOS version and whether on-screen notifications work on its firmware.",
+    "Whether a HomeKit action in a Shortcut run on the Mac mini works for the non-admin happy user without a home hub.",
+    "Whether the TV's own power-off timer already covers a fixed nightly cut-off; LG's support page did not render in this run."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/exposing_scripts_to_llms/",
+    "title": "Exposing scripts to LLM conversation agents - Home Assistant",
+    "anchor": "converted into tools",
+    "supports": "A Home Assistant script that is exposed to Assist becomes a callable tool with its fields as parameters, which is how a custom action such as an announcement reaches an LLM client."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-12",
+  "verdict": "revise",
+  "reason": "The never-list record is correct and well sourced. One of its three blocks is weaker than stated: Home Assistant's MCP tools are generic intents, so a tool-name filter cannot exclude locks or covers, and the Home Assistant token itself is not limited to exposed entities. The hook has to inspect each call's target, and the token's storage is part of the guardrail.",
+  "source_checks": [
+   {
+    "ref": "https://www.home-assistant.io/voice_control/voice_remote_expose_devices/",
+    "ok": true,
+    "note": "Opened. Per-entity Expose control; locks and garage doors named as the sensitive devices. Default exposure of new entities is not stated."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/mcp_server/",
+    "ok": true,
+    "note": "Opened. Exposed entities only; 'Expose all LLM APIs' on by default."
+   },
+   {
+    "ref": "https://www.home-assistant.io/integrations/homekit_controller/",
+    "ok": true,
+    "note": "Opened. Supported types include lock, cover (garage door openers) and alarm control panel."
+   },
+   {
+    "ref": "https://arxiv.org/abs/2508.12175",
+    "ok": true,
+    "note": "Opened the abstract. Confirms title, authors, calendar-invite, email and shared-document injection against a production assistant, control of home automation devices, 73% of threats rated High-Critical, and risk falling to Very Low-Medium after the vendor's mitigations."
+   },
+   {
+    "ref": "docs/plugins/hooks/tool-policy.md:46",
+    "ok": true,
+    "note": "Lines 41-68: block is terminal."
+   }
+  ],
+  "corrections": {
+   "how": "Three independent blocks that a model cannot talk its way past. In Home Assistant, locks, covers, alarm panels and cameras are left unexposed to assistants and the MCP option that exposes every LLM API is turned off; this is the main block. On the OpenClaw side, the Shortcut name allowlist (F078) leaves out anything touching those devices, and toolFilter.include trims the MCP tool list, though it cannot tell a lamp from a lock because Home Assistant's tools are generic intents. The registry before_tool_call hook therefore inspects each call's target and returns block for any entity, area or domain on the never list, failing closed. The Home Assistant token stays host-side under a secret reference and never enters a sandbox or a prompt.",
+   "caveats": [
+    "Home Assistant's HomeKit Device integration supports locks, covers and alarm panels, so the capability appears the moment someone pairs one.",
+    "The 9 Oct review found a gate-opener Shortcut in Tony's own account; the allowlist must name gates as well.",
+    "Published research showed a poisoned calendar invite steering a production assistant into controlling home automation devices; the vendor's mitigations lowered but did not remove the risk.",
+    "A human approval prompt is not a substitute here: isolated scheduled runs cannot approve, and approval fatigue is real.",
+    "Home Assistant's access token is a general API credential for its user, valid for ten years; the exposure list limits the MCP tools, not the token, so where the token is stored is part of this guardrail.",
+    "Exposure is a per-entity switch an adult can flip in a few taps; the hook's own never list must not depend on it."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/core/llm/",
+    "title": "Home Assistant API for Large Language Models",
+    "anchor": "via intents",
+    "supports": "Home Assistant's built-in LLM API works through intents over the exposed entities and allows no administrative tasks, so it is not a pass-through for arbitrary actions."
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.home-assistant.io/docs/auth_api/",
+    "title": "Authentication API - Home Assistant Developer Docs",
+    "anchor": "valid for 10 years",
+    "supports": "A long-lived access token lasts ten years, is created for one user and is sent as a bearer header to Home Assistant's APIs."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-13",
+  "verdict": "revise",
+  "reason": "Honest as experimental, but the pairing step as written leaves an unattended phone holding an operator token that can read sessions and message agents. It also needs Tailscale on the spare phone, a hook pin because the nodes tool has no per-agent node limit, and a plain statement that driveway pictures can show the kids and neighbours and go to the cloud vision model.",
+  "source_checks": [
+   {
+    "ref": "docs/nodes/camera.md:53",
+    "ok": true,
+    "note": "Lines 18-53: iOS snap and clip commands, foreground only. Snap defaults to the front camera; clips include audio by default."
+   },
+   {
+    "ref": "docs/nodes/command-policy.md:55",
+    "ok": true,
+    "note": "Line 55."
+   },
+   {
+    "ref": "docs/platforms/ios.md:69",
+    "ok": true,
+    "note": "Lines 68-69."
+   },
+   {
+    "ref": "skills/camsnap/SKILL.md:45",
+    "ok": true,
+    "note": "Lines 42-45."
+   },
+   {
+    "ref": "https://support.apple.com/en-us/111795",
+    "ok": true,
+    "note": "Opened. Single-app lock with touch and buttons disabled and a passcode to end; nothing on behaviour across restarts."
+   }
+  ],
+  "corrections": {
+   "how": "Install the OpenClaw iOS app on the spare iPhone under happy's Apple Account, put the phone on the tailnet, and pair it with the narrowest setup code that still allows camera commands (try --voice-node first, otherwise --limited). Add camera.snap to gateway.nodes.commands.allow and deny every other phone command, camera.clip included (HOM-08). Keep the app in the foreground with Guided Access, touch disabled, and the app's keep-awake setting. The adult's main agent requests a snapshot through the nodes tool and names the back camera explicitly, since the default is the front one; the registry hook pins that agent to this one node and this one command. The JPEG goes to the vision model and the answer is one line with the picture. No motion watching.",
+   "depends_on": [
+    "a spare iPhone",
+    "HOM-08",
+    "decision 3 from the 9 Oct catalog (images to the cloud vision model)",
+    "Tailscale on the spare iPhone (the Gateway is reachable only through Tailscale Serve)",
+    "registry hook pin for the nodes tool (no per-agent node limit was found in the docs)"
+   ],
+   "caveats": [
+    "Camera commands work only while the app is in the foreground; a backgrounded app returns NODE_BACKGROUND_UNAVAILABLE.",
+    "Through glass at night the picture is mostly reflection.",
+    "A phone kept awake on a charger all year is a maintenance item of its own.",
+    "Outward-facing only; an always-available camera inside rooms where the kids are is not appropriate.",
+    "A low-cost network camera with camsnap (F079) is sturdier and can watch for motion; camsnap can also read a local webcam on the Mac.",
+    "An unattended phone running the app is an operator client: with a limited code it can read sessions and message agents, so Guided Access with touch off and a passcode is a security control here, not a convenience.",
+    "A driveway or front-step picture can include the kids, neighbours and passers-by, and it goes to the cloud vision model.",
+    "After a restart, an iOS update or an ended Guided Access session the app is no longer in front, and every request fails until an adult walks over."
+   ],
+   "safety": "Read-only capture, sent only to the requesting parent. The image passes through the cloud vision model and may show children or neighbours, so it needs the same decision as other attachments, taken by both parents. The node is restricted to this one command by Gateway policy and the agent to this one node by a fail-closed hook; clips, which record audio by default, are denied. The phone's operator token is the weak point and is contained only by Guided Access and the narrowest setup profile that works.",
+   "unverified": [
+    "How long the app stays in the foreground under Guided Access across iOS updates and restarts.",
+    "Whether the spare iPhone could instead serve as a Continuity Camera webcam for camsnap under the happy account.",
+    "Whether camera.snap works on a phone paired with the voice-node profile."
+   ]
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:54",
+    "title": "openclaw qr",
+    "anchor": "operator.write",
+    "supports": "The default mobile setup code hands the phone an operator token with admin, approvals, read, talk-secrets and write scopes; the limited profile removes only admin."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:58",
+    "title": "openclaw qr",
+    "anchor": "--voice-node",
+    "supports": "A voice-node setup code keeps the node token but limits the operator token to read and talk, without message sending or general write methods."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:67",
+    "title": "openclaw qr",
+    "anchor": "fails closed",
+    "supports": "A phone can pair with a Gateway over Tailscale only through Tailscale Serve or another wss endpoint, so a paired phone must be on the tailnet."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:37",
+    "title": "Operator scopes",
+    "anchor": "node command relay",
+    "supports": "The write scope lets a client send messages, invoke tools and relay node commands."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/camera.md:46",
+    "title": "Camera capture",
+    "anchor": "includeAudio",
+    "supports": "Camera clips record audio by default, so the clip command should be denied when only stills are wanted."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/camera.md:33",
+    "title": "Camera capture",
+    "anchor": "facing",
+    "supports": "A snapshot uses the front camera unless the back camera is requested."
+   }
+  ],
+  "removed_sources": []
+ },
+ {
+  "id": "HOM-14",
+  "verdict": "revise",
+  "reason": "The no-model design is the safest item in the section, but effort is understated (the 9 Oct catalog already rated the fridge-sheet leg of F080 as medium), it cannot run until the home-store and a calendar read exist, and the script would read calendar data outside the per-person MCP pattern, which needs saying.",
+  "source_checks": [
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "ok": true,
+    "note": "Line 171; line 176 adds that these jobs run inside the Gateway process as admin-authored automation, outside agent tool policy."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:189",
+    "ok": true,
+    "note": "Line 189."
+   },
+   {
+    "ref": "docs/automation/cron-jobs/payloads.md:191",
+    "ok": true,
+    "note": "Line 191."
+   },
+   {
+    "ref": "https://openprinting.github.io/cups/doc/options.html",
+    "ok": true,
+    "note": "Opened. Confirms lp with -d, -n, media=Letter, sides=one-sided and page-ranges."
+   }
+  ],
+  "corrections": {
+   "effort": "M",
+   "depends_on": [
+    "F080 printer queue",
+    "F031 home-store",
+    "F009 calendar read",
+    "a calendar source a host script can read without an agent (for example a shared family calendar export), settled together with F009"
+   ],
+   "caveats": [
+    "Command payloads run inside the Gateway process as an admin-authored job, outside the sandbox and outside agent tool policy; the script must be reviewed like any other code in the config repo.",
+    "The house printer is a photo inkjet, so a weekly plain-paper page is fine but daily printing is wasteful.",
+    "Every phone in the house can already print a PDF itself; the gain is only that the sheet appears without anyone asking.",
+    "The sheet is only as good as the calendar and list data behind it.",
+    "Neither the home-store (F031) nor a calendar read (F009) exists yet, so this cannot run before they do.",
+    "The script reads calendar data outside the per-person MCP servers, so whatever credential or export it uses is a control-plane secret held by the operator; a shared family calendar keeps personal calendars out of it.",
+    "Paper on the fridge is read by guests and sitters: first names and times only, no addresses, no medical or money lines."
+   ],
+   "safety": "No model and no outbound message: the script reads family data and writes paper, so there is nothing to inject into. It runs as trusted code on the host with whatever calendar access it is given, which makes code review and that credential the controls. First names only, as for the kids' weekly card (F075)."
+  },
+  "added_sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:176",
+    "title": "Automation payloads: command payloads",
+    "anchor": "operator-admin Gateway automation surface",
+    "supports": "Command jobs run inside the Gateway process as admin-authored automation, outside agent tool policy and approvals."
+   }
+  ],
+  "removed_sources": []
+ }
+]

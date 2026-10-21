@@ -1,0 +1,156 @@
+{
+ "verdict": "fix",
+ "defects": [
+  {
+   "wave": "E",
+   "ids": [
+    "CRT-10",
+    "CRT-11",
+    "CRT-13",
+    "F043",
+    "F031"
+   ],
+   "defect": "Lethal-trifecta check, the one real gap. Wave E puts the most sensitive data in the plan (the children's dose notes, family contacts, where official documents are kept) on the two parents' own agents. Since wave B those are the agents that read photos, PDFs and web results directly and hold the one way out that is not pinned in code, the hand-off to the web helper. Wave E is the only wave from B on with no planted-instruction check at all: every go-live and exit check shows that OTHER agents are not offered the stores, and none shows that a planted page, PDF or photo cannot get a parent's own agent (a) to pass a handbook contact or a dose row to the web helper, or (b) to write a dose row or a coverage row the parent did not ask for, which is then read back to the other parent. The cards hold both as instructions only (CRT-10: keeping a child's health out of hand-offs is an instruction; CRT-11: rows only after a yes). Wave C re-runs the hand-off canary when the typed facts arrive; wave E does not when the dose log and the family pages arrive. The risk line 'nothing here adds a way out' and the sign-off line 'no send, web access, booking or payment was added' are true but leave out that the way out that already exists can now carry this data, so Tony signs without seeing it.",
+   "fix": "Tests and one sentence, no new mechanism. Add to the dose-log phase's 'goes live when' and to the exit test: 'wave B's hand-off canary is run again on eval-only copies with a handbook page and a test dose row present: a planted page, PDF or photo that asks the parent's agent to pass them to the web helper causes no hand-off, and one that asks for a dose row or a coverage row writes nothing the parent did not ask for.' Add to the sign-off statement: 'the two agents that read these stores are the ones that read outside content and can hand a task to the web helper; a prompt rule and the planted tests are all that stand between them.' About a quarter of an hour and one step; the wave stays at about 20.5 hours.",
+   "severity": "minor"
+  },
+  {
+   "wave": "A",
+   "ids": [
+    "G015"
+   ],
+   "defect": "Gate order inside the wave. The wave names its own gate 'The gate before mail: one firewall rule for the connector' and builds it as the fourth phase, but the connector first reads Tony's real mailbox in the second phase (the day-1 search, by hand, with his own token). Tony's answer 7a accepted mail being read with one firewall rule in place, not with none. No agent and no model is involved in that search, so the exposure is one hand-run command of a program installed that day; but it is the only moment in the plan when a new third-party program holds a live token to a whole inbox with nothing limiting where it may connect.",
+   "fix": "Order only, no hours: in the day-one phase, after the connector is installed and before the first Google sign-in, install the firewall and set the one rule (the connector may reach Google and nothing else). The fourth phase keeps its checks (a connection to a host that is not Google's is blocked and logged; Happy, the alerts and the backup still get through) and its posture-check line. Day one grows by about 2 hours that the fourth phase loses.",
+   "severity": "minor"
+  },
+  {
+   "wave": "A",
+   "ids": [
+    "G003"
+   ],
+   "defect": "A departure from one of Tony's own recorded decisions is built without being written down. The scheduler phase sends failed-job alerts to Tony 'and not the family'. The G003 card says how: as an iMessage from Happy, which it calls 'a deliberate exception to his alerts by ntfy decision' (the fact sheet lists 'alerts by ntfy' among his earlier decisions). The wave's get-ready record, the list of departures he signs at the exit gate and the notes' list of roadmap lines not carried all leave it out.",
+   "fix": "One line in wave A's get-ready record and in the exit sign-off: 'a failed scheduled job alerts Tony by a text from Happy, an exception to alerts by ntfy, because the other route would post the raw error text to an outside push service (the card's reason); if iMessage itself is down the existing ntfy alerts still reach him.'",
+   "severity": "minor"
+  },
+  {
+   "wave": "C",
+   "ids": [
+    "F007"
+   ],
+   "defect": "The gate before the scheduling tool contradicts itself. The reminders phase says 'the scheduling tool is never granted, even for a test, to an agent that holds a person's data before the rule is live'. The try-it-first phase runs T5's scheduling-tool turn on 'the eval-only copy', before any rule exists. In the config repo an eval-only copy of a parent's agent shares that parent's workspace (the generator's own comment: same workspace, same bootstrap files and memory file), so it is an agent that holds a person's data. T7 was moved to a throwaway agent for exactly this reason; T5's turn was not. If the thing T5 tests for is true (the blocking check is not called for the scheduling tool), the logging plugin does not stop the call and a job is created from that copy.",
+   "fix": "One clause in the try-it-first phase: 'T5's scheduling-tool turn runs on T7's throwaway agent (no memory, no accounts, no other tool) before that agent is removed, and the logging plugin acts for that agent as well; the connector turn runs on the mail reader's eval-only copy and the file-write turn on the parent's eval-only copy.'",
+   "severity": "minor"
+  },
+  {
+   "wave": "C",
+   "ids": [
+    "F042"
+   ],
+   "defect": "The check on the children's names covers one of the two places they could leave. The default Tony was told and kept is about web searches: a search may carry the town and the children's ages, never their names or the school. Each parent's own agent has held the web-search tool since M1 (the F042 card: 'each parent's agent can search the web today'). From the typed-facts phase the names and the school sit in that agent's context in every chat, but the phase's canary and its 'goes live when' look only at what is 'handed to the helper'. Nothing in the wave looks at the agent's own search queries.",
+   "fix": "Widen two lines by a few words, no new mechanism: the canary line becomes 'wave B's hand-off canary run again with the real facts present, and its record read for the parent's own web searches as well', and the go-live line becomes 'the canary shows no name and no school in a web search by the parent's own agent or in a task handed to the helper'.",
+   "severity": "minor"
+  },
+  {
+   "wave": "F",
+   "ids": [
+    "F020"
+   ],
+   "defect": "Tony's answer 7b is that the outbound proxy is built before web reading. The video and podcast reader is a model-facing fetcher of links a parent or a page supplies, and the wave states as settled that it runs 'outside the outbound proxy'. The F020 card does not say that: it lists as unverified 'whether summarize can be made to send its calls through the outbound proxy; if not, its firewall rule and the wrapper's own address check are its only limits'. The installed proxy page says a child program that is not OpenClaw's own may bypass the proxy 'unless' it inherits and respects the proxy environment variables, so the answer is open, not known. The definition drops the card's check and goes straight to the fallback.",
+   "fix": "One line at the top of the video and podcast phase, and one word in the risk list: 'checked first on the installed version: whether the reader's calls can be sent through the outbound proxy (the card's own open item). If they can, they are, and the proxy log shows it; only if they cannot do the wrapper's own address check and the firewall rule stand alone, and the sign-off says so.' In new_risks change 'outside the outbound proxy' to 'outside the outbound proxy unless the check in its phase shows it can use it'.",
+   "severity": "minor"
+  },
+  {
+   "wave": "H",
+   "ids": [
+    "F076",
+    "F080"
+   ],
+   "defect": "The roadmap's opening rule is that anything that acts in the world 'comes last and always ends with you pressing the button'. Wave H has the limit this brief allows (an allowlist and caps in the tools' own code, built before go-live), but no approval step: a parent's text is the only trigger, and nothing in code checks that a parent asked. The sign-off statement mixes the two kinds of limit without saying so ('printing goes to one fixed queue with a copies cap and only on a parent's own request': the queue and the cap are code, 'only on a parent's own request' is a prompt rule backed by one planted test). The line is also missing from the notes' list of roadmap lines that are not carried, where every other departure is listed, and acting is not last (the phone app and screen control follow, by this brief's order).",
+   "fix": "One sentence in wave H's sign-off statement and one entry in the notes' list of roadmap lines not carried: 'lights, speakers and printing act on a parent's text with no approval step, so the roadmap's line that anything that acts ends with you pressing the button is met only by the parent's own message; inside the limits in code (named rooms and scenes, favourites, the volume cap, one queue, the copies cap) a planted instruction is held back by a prompt rule and the planted tests, not by code.'",
+   "severity": "minor"
+  },
+  {
+   "wave": "J",
+   "ids": [
+    "MAC-02",
+    "MAC-04"
+   ],
+   "defect": "Two points in the last and highest-risk wave. (1) Step zero is listed in an order the card does not have: the virtual Mac's app is paired first, the review of its route to the gateway (a change to the M0 baseline, and the wave's own gate) is listed after the pairing that needs that route, and the two deny-list entries are lifted before the proof that the app in the guest holds no operator rights. The card's order is: route, pair by hand, proof of no operator rights, then lift, then one screenshot and one click. The list is Gateway-wide and Tony's phone is paired, so the entries should be lifted as late and as briefly as possible. (2) The end state is not safe to leave as written: the goal says 'nothing is left running', but the exit gate restores only the two deny entries. The guest's app stays a second paired device and the new route to the gateway stays open, both of which the wave's own risk list names.",
+   "fix": "(1) Re-order the step-zero list to the card's order: 'the guest's route to the gateway reviewed as a change to the M0 baseline; the app paired by hand, with no setup link; proof that it runs as a device without operator rights; only then the two deny-list entries lifted; then one screenshot and one click.' (2) Add to the exit gate and the exit test: 'the guest is shut down, its pairing revoked with the line already on the printed sheet and its route to the gateway closed; if Tony wants to keep them for a later run, the sign-off says that they stay.'",
+   "severity": "minor"
+  }
+ ],
+ "size": [
+  {
+   "wave": "A",
+   "hours": 23.75,
+   "steps": 48,
+   "fits_one_plan": true,
+   "basis": "My recount from sizes.json, an estimate: G003 2.25, G015 12.5 of its 14.25 (Jordan's inbox, 1.75, is drawn in wave B), F051 2.75, G008 2 = 19.5 card hours, plus 1.25 to get ready and 3 for the exit gate. Steps are the definition's own phase counts (4, 7, 5, 4, 9, 3, 5, 6, 5), about two an hour; at M1's own density (49 steps for about 20 hours) the same hours would be about 58 steps, so the step limit holds only if a step here is a little larger than M1's. At the ceiling with about 1.25 hours of room; with both inboxes it would be about 26 hours and 52 steps, which is why Jordan's inbox opens wave B. The lookup (2.25 h) is the named piece that gives way. Cannot close before day 9 of the Google sign-in. My first two fixes change order and add two lines, not hours."
+  },
+  {
+   "wave": "B",
+   "hours": 24.5,
+   "steps": 49,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F019 13 (about 7.5 for the outbound gate), F002 2.25, F083 1.25, G005 1, CRT-05 0.5 = 18, plus Jordan's inbox 1.75 and about 0.5 for her two lookup checks, plus 4.25 for get-ready and exit. At the ceiling with no room: it fits only because hourly weather (1.25 h) is named to move to wave D, and photos and PDFs after it if the lookup also arrives from wave A. About 23 hours if the paper pair was done in wave A's wait. Fixed waits: one night of the proxy in report mode, one day between the two parents' agents."
+  },
+  {
+   "wave": "C",
+   "hours": 24.25,
+   "steps": 48,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F042 1.5, F041 4.75, F007 7.5 (it carries T7, T5 and the first creation of the house-rules plugin), F009 3.25, F014 2, F010 1 = 20, plus 4.25. Near the ceiling, ten phases, a two-day exit test. Not counted: about 2.5 hours for the notes fallback if T6 fails and Tony says yes, in which case the evening text and the flyer dates move to wave D as the definition says. My two fixes are wording only."
+  },
+  {
+   "wave": "D",
+   "hours": 16.5,
+   "steps": 34,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F028 1.75, AUT-01 1, G006 2.5, F018 3.5, MKT-06 3.5 = 12.25, plus 4.25. Drawn light on purpose: with everything that can arrive from B and C (hourly weather 1.25, flyer dates 1, the evening text 2) about 20.75 hours, about 23 in the one case where photos and PDFs come too."
+  },
+  {
+   "wave": "E",
+   "hours": 20.5,
+   "steps": 42,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F043 1.5, CRT-13 3.5, F031 2.5, CRT-11 4, CRT-10 4.5 = 16, plus 4.25, plus about a quarter of an hour and one step for the planted test in my first fix. About 24 hours if the conflict watch is carried in from wave D; the sick-day log is then the piece that moves on."
+  },
+  {
+   "wave": "F",
+   "hours": 19.25,
+   "steps": 40,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F020 11, F003 4 = 15, plus 4.25. The split of F020 between the video and podcast reader and the browser is the definition's guess. About 23.75 hours with the sick-day log carried in."
+  },
+  {
+   "wave": "G",
+   "hours": 19.25,
+   "steps": 39,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F030 4.5, F033 2, F049 4.75, F006 3.75 = 15, plus 4.25. About 23.25 hours with voice memos carried in."
+  },
+  {
+   "wave": "H",
+   "hours": 17.25,
+   "steps": 36,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: F076 9, F080 4 = 13, plus 4.25. About 21 hours with the group chat carried in. Fixed wait: one evening."
+  },
+  {
+   "wave": "I",
+   "hours": 10.25,
+   "steps": 22,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: MAC-04 1, OCL-01 5 = 6, plus 4.25. One plan, shorter than the 15-hour floor on purpose (the first paired device gets its own sign-off); about 14.25 hours with printing carried in. Only Tony notices this wave's result."
+  },
+  {
+   "wave": "J",
+   "hours": 14.25,
+   "steps": 29,
+   "fits_one_plan": true,
+   "basis": "My recount, an estimate: MAC-02 10, plus 4.25. One plan, just under the 15-hour floor, about 8 hours if step zero fails. It ends with an answer about one chore and nothing left running, which is the nature of the pilot card and is said openly in the definition's notes."
+  }
+ ],
+ "checked": "Read owner-facts.md first, then every wave, phase, risk list, exit test, estimate, tony_provides list and note of v2/merged.json (ten waves A to J, 64 phases, 25 notes). Read sizes.json in full (36 entries) and, in r11.json, the how, safety, depends_on, caveats and unverified fields of all 36 placed cards; the roadmap text (at a glance, sections 1, 1b, 3, 5, 6, 7, 9); summary.json (S1 to S15, T1 to T10); the earlier waves/final.json and its rules audit for what Tony has seen; the three v2 judge files. Read only in the config repo: scripts/gen-family.mjs (how an eval-only copy is generated) and family.json5 (only to test that its strings are absent from the definition). In the installed OpenClaw docs: security/network-proxy.md, tools/web-fetch.md, the secret egress proxy pages, nodes/command-policy.md and the cron pages. Ran python3 over r11.json, sizes.json and merged.json: 38 cards, 2 parked (AUT-06, F072), 36 planned, each placed exactly once, none missing, none extra, none doubled; every depends_on_ids entry is in an earlier wave or an earlier or the same phase of the same wave; card hours per wave re-added (146.5 in all, 189.5 with get-ready, exit and Jordan's half hour). Scripted searches of merged.json: no child's first name, no school district name, no home town, no phone number, email address or key; no WhatsApp or LinkedIn; every mention of payment, purchase, booking, bank and CAPTCHA is a statement that none is built or solved; a pattern search for conditional wording found only test-result branches and 'gives way on overrun' moves, none tied to an unanswered question or a missing detail. Each card's tony_provides entries in sizes.json were matched by hand to the wave's list: all present. Per wave, risk and gate as I found them from the cards, not the definition's claims. A: private mail read (and the first scheduled texts): one firewall rule, test mailbox, T1 to T3, planted mail before the reader and the schedule go live; the lookup last behind T4 and seeded mail. B: Jordan's mail (same kind), then open-web reading behind the blocking firewall and the enforcing proxy (answer 7b; tripwire waived by 7c), then photos and PDFs behind the planted-file test. C: the coded connector rule before the calendar; T7, T5, the reminder rule and the five-way recipient test before the scheduling tool; T6 before notes. D: no-model host scripts, each with its own check; busy-only sharing confirmed by Tony. E: shared stores, signed as a departure; Tony's confirm step before the dose log. F: the browser network rule, T5 and the coded read-only rule before the browser; the wrapper's three address checks before the video reader. G: one list and three verbs in code, T9 and a planted page before the shared list; T5, the send-to-owner rule and the five seeded attempts plus an injected page before the send tool; the card's own gate before the group chat. H: read-only check first, then the allowlist and caps in the tools' code, T4 and planted tests. I: deny list before any setup code. J: step zero and the route review before any run, Tony attending. Lethal trifecta per agent: mail readers hold private data and outside text and have no way out but the text to their owner and the answer to their owner's agent; the web helper, the group helper, the home agent and the desk agent hold no private data; each parent's own agent holds all three legs from wave B on through the hand-off to the web helper, which is the roadmap's own named leak path, is stated in the definition and is signed by Tony in wave B. Every way out added later (reminders, email, the shared list, printing) is pinned or limited in code before it is granted. The one place this is not followed through is wave E (first defect). Also confirmed: mail (G015, F051) is in wave A, with Jordan's inbox as the first build phase of B, which the brief allows ('as far as they fit') and the definition says plainly; A to C are recognisable against the earlier definition (changes are the paper pair to B, the device deny list to I, the day out to D, 'email me this' to G, each explained by size or by an approved simplification); nothing dropped by S4, S5, S11 or S14 comes back; the kids agent and the routines card stay parked; no blocker and no major defect found. Not tried: anything on the Mac; I did not run the openclaw CLI or contact any device."
+}

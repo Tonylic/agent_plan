@@ -1,0 +1,856 @@
+[
+  {
+    "id": "F063",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "A monthly text lists what expires in the next 90 days (passports, inspection, registration, domains) with the lead time and official link; nothing is renewed or paid.",
+    "how_short": "Monthly isolated automation on the parent's agent with an empty tool list; the date table sits in the job message or AGENTS.md, generated from the family registry.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads",
+        "anchor": "--tools \"\"",
+        "supports": "An empty tool allowlist switches off every agent tool for the job, so the renewal table has to be in the prompt or bootstrap text rather than looked up at run time."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "channel sessions omit root memory",
+        "supports": "Cron sessions do not get MEMORY.md injected, so the table cannot live only in the memory vault."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.usa.gov/renew-adult-passport",
+        "title": "Renew an adult passport",
+        "anchor": "less than 6 months",
+        "supports": "Some countries and airlines refuse entry when a passport has under six months left, which is why the passport reminder needs a long lead time."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.usa.gov/child-passport",
+        "title": "Get a passport for a minor under 18",
+        "anchor": "valid for 5 years",
+        "supports": "Passports for children under 16 last five years and cannot be renewed; the child must apply again in person with a parent."
+      }
+    ],
+    "corrections": [
+      "The kids' passports are not 'renewed': the federal page says a passport for a child under 16 is valid for 5 years and cannot be renewed, so the table row for each kid should say 'apply again in person, both kids present' and count on a 5-year cycle."
+    ],
+    "unverified": [
+      "The two-year vehicle registration term: the state DMV renewal page opened in this run does not state the term.",
+      "Inspection, domain and Global Entry lead times are not backed by a listed source; the state DMV inspection page (every 12 months), ICANN's expiry-notice policy and the CBP renewal FAQ were opened but fall outside the four-source limit.",
+      "The 9-month passport lead time itself is a house choice built on the six-month rule plus processing time; no source sets that number."
+    ]
+  },
+  {
+    "id": "F064",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Send a photo or PDF of an Explanation of Benefits or medical bill and get five plain lines: billed, allowed, what you owe, whether a bill follows, duplicates.",
+    "how_short": "Turn on channels.imessage.includeAttachments; PDF text is extracted locally into an untrusted file block, then text and photos go to the cloud model under store:false, claim numbers included.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Inbound attachments are off by default and attachment-only messages are dropped until this key is set to true."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:267",
+        "title": "Media understanding",
+        "anchor": "untrusted external content",
+        "supports": "Text extracted from an inbound document is wrapped as untrusted external content before the reply model sees it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:92",
+        "title": "PDF tool",
+        "anchor": "document-extract",
+        "supports": "PDF text and page images are extracted on the Mac by the bundled document-extract plugin (PDFium), not by a cloud PDF service."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cms.gov/medical-bill-rights/help/guides/explanation-of-benefits",
+        "title": "How to read a health insurance explanation of benefits",
+        "anchor": "Allowed Charges",
+        "supports": "The federal guide confirms an Explanation of Benefits is not a bill and lists provider charges, allowed charges, insurer payment, what you owe and the claim number."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether photos reach the model as native vision input through the per-person custom provider id was not tested in this run.",
+      "The duplicate check (statement versus later provider bill) only works if a parent logs every statement; no source shows families keep that up."
+    ]
+  },
+  {
+    "id": "F065",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Happy answers 'when does the inhaler run out', nudges a refill five days ahead and can ping doses for a short course; the iPhone Health app already handles dose reminders.",
+    "how_short": "Reminder templates on the automations tool: one-shot --at jobs or --cron with --tz (not --every); reminder text self-contained because cron sessions omit MEMORY.md; tally kept in the vault.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+        "title": "How automations work",
+        "anchor": "auto-delete after successful completion",
+        "supports": "One-shot reminders delete themselves after a successful run, which fits a course of dated dose pings."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:26",
+        "title": "Automation schedules",
+        "anchor": "is not valid with",
+        "supports": "A timezone cannot be combined with a fixed-interval schedule, so fixed local dose times need cron expressions or dated one-shots."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "channel sessions omit root memory",
+        "supports": "Cron sessions do not load MEMORY.md, so each reminder must carry its own text and the refill arithmetic happens in the parent's normal chat."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105064",
+        "title": "Add and log medications with iPhone, iPad, and Apple Watch",
+        "anchor": "Skipped or Taken",
+        "supports": "Apple's Health app already schedules medication alerts and lets the user log each dose as taken or skipped, so per-dose pings duplicate the phone."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The 9 Oct verifier's point that a parent's 'done' reply never reaches a cron custom session was not re-checked; the folded design (tally in the vault) does not depend on it.",
+      "Children's prescription names would reach the cloud model; how the family wants that handled is a decision, not a sourced fact."
+    ]
+  },
+  {
+    "id": "F066",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Tell Happy about an appointment and get evening-before and morning-of reminders plus a prep card (insurance card, forms, saved questions); afterwards a voice memo files the outcome.",
+    "how_short": "Prompt program plus one-shot automations; ask_user (main session, plain-text answers) to pick child or provider; voice needs includeAttachments and a pinned local whisper-cli entry in tools.media.models. No calendar connected yet.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:15",
+        "title": "Ask user",
+        "anchor": "only in the main session",
+        "supports": "The structured question tool exists only in the main session, which is where a parent's private agent runs; the same page says plain-text replies work on any channel."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/audio.md:39",
+        "title": "Audio and voice notes",
+        "anchor": "Configured provider auth",
+        "supports": "A configured cloud provider key is tried before any local transcriber, so keeping voice memos on the Mac needs an explicit local entry."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+        "title": "How automations work",
+        "anchor": "auto-delete after successful completion",
+        "supports": "Evening-before and morning-of reminders are one-shot jobs that clean themselves up after firing."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/ggml-org/whisper.cpp",
+        "title": "ggml-org/whisper.cpp",
+        "anchor": "whisper-cli",
+        "supports": "whisper.cpp is a C/C++ port of Whisper that runs on Apple Silicon with Metal, and its command-line program is the one the audio doc names."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That Siri and Apple Calendar already cover the capture half is the 9 Oct verifier's judgment; no Apple page was opened for it.",
+      "Whether whisper-cli is installed on the Mac mini was not checked in this run."
+    ]
+  },
+  {
+    "id": "F067",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "When a school, camp or sports health form arrives, Happy drafts the answers from stored family facts as a copy-paste block; it never fills in or submits the form.",
+    "how_short": "Attachments on, a per-child 'form facts' vault section and a drafts-only rule in AGENTS.md; no exec, so the nano-pdf skill cannot run. Kids' health facts reach the cloud model.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "The form photo or PDF only reaches the agent after inbound attachments are switched on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:266",
+        "title": "Media understanding",
+        "anchor": "model-visible file block",
+        "supports": "Every inbound document attachment is turned into a file block the reply model can read, which is all a draft needs."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-workspace.md:74",
+        "title": "Agent workspace",
+        "anchor": "start of every session",
+        "supports": "AGENTS.md is loaded at the start of every session, so a drafts-only rule written there is always in context."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/nano-pdf/SKILL.md:27",
+        "title": "nano-pdf (bundled skill)",
+        "anchor": "nano-pdf",
+        "supports": "The only bundled PDF editor is a command-line tool; an agent without exec cannot run it, so the original form is never altered."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The estimate of 6 to 10 such forms a year is not sourced.",
+      "The drafts-only rule is a prompt instruction; nothing mechanical is needed today only because the agent has no tool that could fill or send a form."
+    ]
+  },
+  {
+    "id": "F068",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Open insurance claims are tracked with a next action, and a weekly check flags ones with no statement after 30 days; folded into the EOB explainer as too niche alone.",
+    "how_short": "Claims table in AGENTS.md or the job message (cron sessions omit MEMORY.md), weekly isolated job with --tools \"\"; appeal letters and call scripts are chat drafts only.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads",
+        "anchor": "--tools \"\"",
+        "supports": "A job with an empty tool list cannot look anything up, so the claims table must be in the job text or bootstrap files."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "channel sessions omit root memory",
+        "supports": "Cron sessions skip MEMORY.md, which is why a vault-only claims table would be invisible to the weekly job."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:40",
+        "title": "Standing orders",
+        "anchor": "Program: Weekly Status Report",
+        "supports": "Standing orders are written as named programs with authority, trigger, approval gate and escalation, the shape a 'Program: claims' entry follows."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.healthcare.gov/appeal-insurance-company-decision/internal-appeals/",
+        "title": "Internal appeals",
+        "anchor": "within 180 days",
+        "supports": "An internal appeal of a denied claim must be filed within 180 days of the notice, the one hard deadline a claims tracker should carry."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The 30-day 'no statement yet' threshold is a house rule of thumb; no insurer rule was opened for it.",
+      "How many claims a family has in flight (the catalog says 2 to 5; the verifier says a few a year) is not sourced either way."
+    ]
+  },
+  {
+    "id": "F069",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "If the family has a pet: monthly flea, tick and heartworm reminders, vaccine due dates, vet contact and a food reorder link; nothing is ordered.",
+    "how_short": "Monthly --cron reminders pinned with --agent to the parent's agent; pet facts in AGENTS.md or the job message; vet summaries by photo need attachments on.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:20",
+        "title": "Automation schedules",
+        "anchor": "5-field or 6-field cron expression",
+        "supports": "Recurring reminders use a cron expression with an optional timezone, enough for a first-of-the-month nudge."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:449",
+        "title": "Automations (cron)",
+        "anchor": "--agent",
+        "supports": "A job created without an agent falls back to the default agent, so each reminder must name the parent's agent explicitly."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Reading a photographed vet summary needs inbound attachments switched on."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.fda.gov/animal-veterinary/animal-health-literacy/keep-worms-out-your-pets-heart-facts-about-heartworm-disease",
+        "title": "Keep the Worms Out of Your Pet's Heart! The Facts about Heartworm Disease",
+        "anchor": "Year-round prevention",
+        "supports": "The FDA says most heartworm preventives are given monthly, year-round, with annual testing, so a monthly reminder matches real veterinary practice."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether the family has a pet at all: none is mentioned in the household description, so confirm before building.",
+      "Vaccine intervals (rabies, DHPP) were not checked against a veterinary source."
+    ]
+  },
+  {
+    "id": "F070",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "Drop in a monthly card or bank statement and get a categorised summary with new recurring charges flagged; cannot be done today because it must run on a local model.",
+    "how_short": "Separate finance agent on a local Ollama model, pdf tool denied (agents.defaults.pdfModel is not per-agent), statements text-extracted locally, intake by a watched host folder, no web, no send.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:16",
+        "title": "PDF tool",
+        "anchor": "agents.defaults.pdfModel",
+        "supports": "The PDF tool's model is chosen from a gateway-wide default and then falls through to other authenticated providers, so it cannot be pinned local for one agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:266",
+        "title": "Media understanding",
+        "anchor": "model-visible file block",
+        "supports": "An inbound statement PDF becomes locally extracted text in the prompt, so only the agent's own reply model reads it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/providers/ollama.md:17",
+        "title": "Ollama",
+        "anchor": "Local only",
+        "supports": "OpenClaw supports an Ollama host that serves local models only, the setup the finance agent would need."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.ollama.com/faq",
+        "title": "FAQ",
+        "anchor": "Ollama runs locally",
+        "supports": "Ollama states that prompts and data stay on the machine when a model runs locally."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "No local model is installed, and none was tested for reading statement tables on this Mac.",
+      "That monthly statement drops are worth it when bank and budgeting apps already categorise spending is a judgment, not a sourced fact."
+    ]
+  },
+  {
+    "id": "F072",
+    "tier": 1,
+    "readiness": "blocked",
+    "one_line": "Each child texts Happy from their own Apple account and gets a tool-less, memory-less helper with safety checks both ways; cannot ship until a local model exists.",
+    "how_short": "bindings[] by DM handle to one agent per kid; minimal profile plus deny session_status and gateway; in-house classifier plugin on before_dispatch and message_sending; memory.search off; daily reset.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/access-control.md:173",
+        "title": "iMessage access control and routing",
+        "anchor": "normalized DM handle",
+        "supports": "An iMessage binding can match one sender's handle, which is how each kid's messages would reach their own agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:36",
+        "title": "Configuration — tool policy",
+        "anchor": "session_status",
+        "supports": "The minimal tool profile still includes two tools, so a truly tool-less kids agent needs explicit denies on top."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:67",
+        "title": "Message and delivery hooks",
+        "anchor": "message_sending",
+        "supports": "Plugins can claim an inbound message before the model (before_dispatch, same page line 15) and rewrite or cancel an outgoing reply, the two places a safety classifier attaches."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.openai.com/api/docs/guides/safety-checks/under-18-api-guidance",
+        "title": "Under-18 guidance",
+        "anchor": "zero data retention",
+        "supports": "OpenAI tells API developers not to process personal data of children under 13 without zero data retention and to comply with COPPA."
+      }
+    ],
+    "corrections": [
+      "'OpenAI terms are 13+, no cloud shortcut' could not be confirmed as worded: OpenAI's consumer Terms of Use returned HTTP 403 in this run, and the API page that did open sets no flat 13+ bar. It says personal data of children under 13 must not be processed without zero data retention and that COPPA applies. Keeping kids off the cloud stays the family's rule; store:false was not shown to count as zero data retention."
+    ],
+    "unverified": [
+      "Llama Guard 3 as the classifier is the roadmap's choice and appears nowhere in the installed OpenClaw docs (its Ollama library page is cited under G019).",
+      "Whether kids admitted by pairing are refused as approvers; the roadmap itself marks this as untested.",
+      "How accurate any local classifier is on questions from 8 and 10 year olds; no evaluation exists yet."
+    ]
+  },
+  {
+    "id": "F073",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "A child asks a homework or curiosity question and gets grade-level hints and a short answer, never a finished worksheet; waits for the kids agent and a local model.",
+    "how_short": "Hint-first rules and grade band in the kid agent's AGENTS.md (channel sessions omit MEMORY.md); replies carry no URLs, or a short allowlist enforced by a message_sending hook.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-workspace.md:74",
+        "title": "Agent workspace",
+        "anchor": "start of every session",
+        "supports": "AGENTS.md is injected at the start of every session, so the hint-first rules and grade band are always present with no tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "channel sessions omit root memory",
+        "supports": "Channel sessions do not load MEMORY.md, so the rules and any approved link list must live in AGENTS.md."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:67",
+        "title": "Message and delivery hooks",
+        "anchor": "message_sending",
+        "supports": "An outgoing-message hook can cancel a reply, the mechanical way to block any link outside an approved list."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions",
+        "title": "Complying with COPPA: Frequently Asked Questions",
+        "anchor": "verifiable parental consent",
+        "supports": "US law requires verifiable parental consent before an online service collects personal information from children under 13, the reason the plan keeps kids' chat off general cloud services."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "'Refuse whole-worksheet answers' is a prompt rule; no source shows a model holds to it when a child pushes.",
+      "A parent asking the same questions from their own chat works today, but that is the parent using the cloud model, not the child."
+    ]
+  },
+  {
+    "id": "F074",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "Spelling, math-fact and reading rounds with a running score for the kids; blocked for kid-direct use, but a parent can run the same drills from their own chat today.",
+    "how_short": "Prompt program; score lives in the session until the daily reset; spoken spelling words need per-agent agents.entries.*.tts with the local say command, never cloud speech for kids.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/tts/configuration.md:141",
+        "title": "Text-to-speech configuration",
+        "anchor": "command: \"say\"",
+        "supports": "Speech can be produced by a local command-line program, shown with the macOS say command, so no cloud voice service is needed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/tts/configuration.md:446",
+        "title": "Text-to-speech configuration",
+        "anchor": "agents.entries.*.tts",
+        "supports": "Text-to-speech can be set per agent, so only the kids agent speaks its replies."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/session.md:163",
+        "title": "Session management",
+        "anchor": "session.reset.atHour",
+        "supports": "With a daily reset the session, and the score inside it, lasts until the configured hour, 4 by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/private-api.md:84",
+        "title": "Enabling the imsg private API",
+        "anchor": "falls back to basic mode",
+        "supports": "With SIP on, iMessage still sends and receives text and media, which is enough to deliver an audio reply."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether a spoken reply arrives as a playable voice message or as a file in iMessage Basic mode; the roadmap lists this as still to verify.",
+      "The quality of the macOS say voice for spelling words was not tried."
+    ]
+  },
+  {
+    "id": "F075",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "Kids ask 'what day is soccer' or 'whose turn to feed the dog' from a sanitised weekly card holding schedule, chores and first names only; waits for the kids agent.",
+    "how_short": "Weekly host job writes a '## This week' section into the kid agent's AGENTS.md, since channel sessions omit MEMORY.md and the extra-files hook only loads standard bootstrap names.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model",
+        "anchor": "channel sessions omit root memory",
+        "supports": "A card exported into MEMORY.md would never reach a child texting in, because channel sessions leave root memory out."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/hooks/bundled-hooks.md:68",
+        "title": "Bundled hooks",
+        "anchor": "Only these basenames load",
+        "supports": "The extra bootstrap files hook only loads files with the standard bootstrap names, so the card must be an AGENTS.md section or an AGENTS.md in a subfolder."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/memory-wiki.md:149",
+        "title": "Memory wiki",
+        "anchor": "privacyTier",
+        "supports": "Wiki pages carry a privacy tier and anything not public is listed in a privacy review report, which the export can use as its deploy gate."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/agent-workspace.md:106",
+        "title": "Agent workspace",
+        "anchor": "agents.defaults.bootstrapMaxChars",
+        "supports": "Bootstrap files are capped at 20,000 characters each by default, ample for a one-week card."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That a shared Apple family calendar on the kid's device already answers 'what day is soccer': the Apple page fetched returned only navigation text.",
+      "The wiki plugin and a calendar reader are not enabled today, so the card's data sources do not exist yet."
+    ]
+  },
+  {
+    "id": "G018",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "A child texts 'I'm home' or 'I fed the dog' and it is forwarded word for word to the on-duty parent; waits for kids' own accounts and the kids agent.",
+    "how_short": "Plugin before_dispatch hook claims a fixed phrase list with a regex, no model call, and relays through the pinned family delivery tool; message_received can only observe.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:15",
+        "title": "Message and delivery hooks",
+        "anchor": "before_dispatch",
+        "supports": "A plugin can claim an incoming message before the model runs and send its own final reply, which is how fixed phrases are caught without a model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:63",
+        "title": "Message and delivery hooks",
+        "anchor": "message_received",
+        "supports": "The message_received hook only observes inbound content, so it cannot do the claiming."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/onnx.md:29",
+        "title": "Local ONNX decision models",
+        "anchor": "supporting release is available",
+        "supports": "The local decision-model plugin still needs a source checkout, so a classifier is not a ready route and a phrase list is."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102617",
+        "title": "Create an Apple Account for your child",
+        "anchor": "children under 13",
+        "supports": "Apple requires a parent or guardian to create the account for a child under 13, the step that gives each kid their own handle."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "No source shows that kids of 8 and 10 would text the agent rather than a parent directly.",
+      "The hook needs no model, so a cut-down relay with a canned fallback reply could be built earlier; that variant was not designed or verified here."
+    ]
+  },
+  {
+    "id": "G019",
+    "tier": 2,
+    "readiness": "blocked",
+    "one_line": "Each evening a parent gets up to three lines per child on what they asked Happy, with flagged items quoted; waits for the kids agent and a local summariser.",
+    "how_short": "Host-side command job reads the kid agent's openclaw-agent.sqlite or sessions_history and summarises on a local model; openclaw transcripts is the meeting store, not chat history.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/help/faq/where-things-live-on-disk.md:35",
+        "title": "Where things live on disk",
+        "anchor": "openclaw-agent.sqlite",
+        "supports": "Each agent's sessions and chat transcripts are stored in a per-agent SQLite file a host job can read."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/transcripts.md:14",
+        "title": "Transcripts CLI",
+        "anchor": "durable meeting transcripts",
+        "supports": "The transcripts command is for meeting transcripts, so it is not the way to read kids' chats."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/apple-fm.md:90",
+        "title": "Apple Foundation Models",
+        "anchor": "session titles and progress",
+        "supports": "The built-in Apple on-device model is documented for short utility tasks such as titles, not as a general summariser."
+      },
+      {
+        "kind": "web",
+        "ref": "https://ollama.com/library/llama-guard3",
+        "title": "llama-guard3",
+        "anchor": "content safety classification",
+        "supports": "Llama Guard 3 is published for local use as a content-safety classifier of model inputs and responses, the source of the flags the digest quotes."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether the Apple on-device model can be called from a host job for an ad hoc summary; the doc gives it an 8,192-token window and 1,024 output tokens and describes utility use only.",
+      "Reading the per-agent database from a command job (read-only open or the history RPC) was not tried."
+    ]
+  },
+  {
+    "id": "F076",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "Text Happy to switch Hue rooms and scenes by name or ask which lights are still on, within a room allowlist and quiet hours enforced in code.",
+    "how_short": "In-house plugin wraps the openhue CLI on the host inside a sandboxed, stateless home agent reached by sessions_spawn; bridge key sits in ~/.openhue/config.yaml; Local Network permission for node.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/openhue/SKILL.md:84",
+        "title": "OpenHue CLI (bundled skill)",
+        "anchor": "openhue set room",
+        "supports": "The bundled skill documents the room, brightness and scene commands the plugin would wrap, plus the one-time bridge button pairing."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.openhue.io/cli/setup",
+        "title": "Setup",
+        "anchor": "openhue setup",
+        "supports": "The OpenHue setup command pairs by pressing the bridge button and saves the bridge address and key in a config file under the user's home folder, not the Keychain."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/thread-bound-sessions.md:85",
+        "title": "Thread-bound sub-agent sessions",
+        "anchor": "requester session is sandboxed",
+        "supports": "A sandboxed agent cannot hand off to an unsandboxed one, so the new home agent must be sandboxed like the parent agents that call it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/mac-help/control-access-to-your-local-network-on-mac-mchla4f49138/mac",
+        "title": "Control access to your local network on Mac",
+        "anchor": "Local Network",
+        "supports": "macOS gates each app's ability to find and talk to devices on the home network behind a Privacy and Security switch."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Philips Hue's own local API documentation sits behind a developer login and was not opened; only the OpenHue CLI pages were.",
+      "Whether the launchd-run gateway needs the Local Network switch for plain HTTPS to the bridge; the bundled skills document it only for Sonos discovery.",
+      "The bridge's presence on the LAN comes from the 9 Oct scan and was not re-checked (no LAN contact in this run)."
+    ]
+  },
+  {
+    "id": "F077",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "Text Happy to play a Sonos favourite, pause everything, set a room's volume or group rooms, with a hard volume cap and quiet-hours cap enforced in code.",
+    "how_short": "In-house plugin wraps the sonos CLI (Homebrew steipete/tap/sonoscli) in the home agent; favourites only; needs Local Network permission for the gateway's node process or --ip per speaker.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/sonoscli/SKILL.md:34",
+        "title": "Sonos CLI (bundled skill)",
+        "anchor": "sonos volume set",
+        "supports": "The bundled skill documents status, play, pause and per-room volume commands for the sonos CLI."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/sonoscli/SKILL.md:39",
+        "title": "Sonos CLI (bundled skill)",
+        "anchor": "sonos favorites",
+        "supports": "Favourites can be listed and opened by name, which supports a favourites-only play tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/sonoscli/SKILL.md:56",
+        "title": "Sonos CLI (bundled skill)",
+        "anchor": "Local Network",
+        "supports": "On macOS, speaker discovery fails until Local Network access is granted to the gateway's parent process, which is node under launchd."
+      },
+      {
+        "kind": "web",
+        "ref": "https://sonoscli.sh/install",
+        "title": "Install — sonoscli",
+        "anchor": "brew install steipete/tap/sonoscli",
+        "supports": "The project's own install page lists a Homebrew tap as the recommended route, with go install and prebuilt archives as alternatives."
+      }
+    ],
+    "corrections": [
+      "'sonoscli is go install only' is wrong: the project's install page recommends Homebrew (a steipete tap) and also offers prebuilt release archives; go install needs Go 1.26 or later. Only the bundled skill's metadata is limited to go install, so Go does not have to be installed on the Mac mini."
+    ],
+    "unverified": [
+      "The volume caps (35, and 10 at night) are design numbers, not sourced.",
+      "The two speakers and their room names come from the 9 Oct scan and were not re-checked."
+    ]
+  },
+  {
+    "id": "F078",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "Tony builds Shortcuts on the Mac mini (goodnight, TV off) and Happy runs only the ones on an exact-name allowlist; never locks, garage, alarm or gate.",
+    "how_short": "Plugin tool calls 'shortcuts run <name>' on the host, no free-text input; Shortcuts live in the happy account, whose Apple Account is invited to the Home; requireApproval gates first runs.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+        "title": "Run shortcuts from the command line",
+        "anchor": "shortcuts run",
+        "supports": "Apple documents running a named Shortcut from the Mac command line, with input and output passed as file paths rather than free text."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102386",
+        "title": "Share control of your home",
+        "anchor": "Apple Account",
+        "supports": "A Home owner can invite another Apple Account to control accessories, the step the agent's own account needs before a Shortcut can touch HomeKit."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:78",
+        "title": "Tool call policy hooks",
+        "anchor": "requireApproval",
+        "supports": "A plugin hook can pause a tool call and ask for approval, which /approve resolves, giving a gate on the first run of a newly allowlisted Shortcut."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/building-plugins.md:147",
+        "title": "Building plugins",
+        "anchor": "api.registerTool",
+        "supports": "A plugin registers its own agent tool in code, the same pattern as the existing in-house weather plugin."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That the command needs the happy user's logged-in desktop session and one interactive first run to clear privacy prompts; Apple's command-line page does not say.",
+      "Whether sharing the Home requires a home hub; search results suggest so but the fetched Apple page did not state it.",
+      "The LG TV being the only HomeKit accessory comes from the 9 Oct scan."
+    ]
+  },
+  {
+    "id": "F079",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "Ask 'did the package come?' and get a one-line answer with a camera frame; nothing to point it at today, since the house has no local-stream camera.",
+    "how_short": "Plugin wraps camsnap snap for an outdoor camera allowlist, returns the JPEG as a structured attachment under channels.imessage.attachmentRoots; camsnap keeps camera passwords in a plain-text config file.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "skills/camsnap/SKILL.md:37",
+        "title": "camsnap (bundled skill)",
+        "anchor": "camsnap snap",
+        "supports": "The bundled skill documents grabbing a still from a named RTSP or ONVIF camera, a motion watch command, and the need for ffmpeg."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/steipete/camsnap",
+        "title": "steipete/camsnap",
+        "anchor": "credentials in plain text",
+        "supports": "The tool's own README says its config file holds camera credentials in plain text with user-only permissions, and that Homebrew is the install route."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:21",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.attachmentRoots",
+        "supports": "An outbound attachment path must sit under an allowed root, so the snapshot folder has to be added there."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/rich-output-protocol.md:29",
+        "title": "Rich output protocol",
+        "anchor": "structured attachment fields",
+        "supports": "Plugins must return media through structured attachment fields, not text commands."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That Ring, Nest and Arlo cameras offer no local stream: only community forum posts were found for Ring, no first-party statement was opened.",
+      "'No RTSP camera in the house' comes from the 9 Oct scan and was not re-checked.",
+      "Frames would go to the cloud vision model; whether that is acceptable for pictures of the kids is a family decision."
+    ]
+  },
+  {
+    "id": "F080",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "'Print this' sends a PDF, photo or https link to the home printer from anywhere, with a copies cap; the weekly fridge sheet waits for calendar and lists.",
+    "how_short": "Plugin calls lp -d <queue> -n <copies> on the host after lpadmin adds the queue once; the plugin downloads links itself because web_fetch returns text; attachments need includeAttachments.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://openprinting.github.io/cups/doc/man-lp.html",
+        "title": "lp(1)",
+        "anchor": "number of copies",
+        "supports": "The CUPS lp command prints a file to a named printer and takes a copies count, the two options the plugin needs."
+      },
+      {
+        "kind": "web",
+        "ref": "https://openprinting.github.io/cups/doc/man-lpadmin.html",
+        "title": "lpadmin(8)",
+        "anchor": "lpadmin",
+        "supports": "The CUPS lpadmin command creates a print queue, including a driverless IPP Everywhere queue, the one-time setup step."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:11",
+        "title": "Web fetch",
+        "anchor": "plain HTTP GET",
+        "supports": "The built-in fetch tool returns readable text from a page, not the original file, so the plugin must download a PDF itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "channels.imessage.includeAttachments",
+        "supports": "Printing a file someone just texted requires inbound attachments to be switched on first."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That the Canon PRO-100 supports AirPrint or driverless IPP: no Canon page was opened. If it does, every phone in the house can already print to it directly.",
+      "The checks against private-network addresses in the download step are a design requirement, not an existing plugin feature.",
+      "'No destination configured' comes from the 9 Oct check and was not re-run."
+    ]
+  },
+  {
+    "id": "F081",
+    "tier": 3,
+    "readiness": "build",
+    "one_line": "At 22:30 a parent gets a text only if lights or speakers are still on, switching nothing; scheduled bedtime scenes come later, after a dry-run period.",
+    "how_short": "Command payload (no model) runs openhue and sonos status, printing NO_REPLY when all is off; automation approvals never reach chat and Lobster is off in sandboxes, so actuation starts dry-run.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "A command job runs a script on the gateway host with no model call, so the nightly check costs no tokens and has no prompt to inject into."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:191",
+        "title": "Automation payloads",
+        "anchor": "NO_REPLY",
+        "supports": "A command that prints only the silent token posts nothing, which gives the 'text only if something is on' behaviour."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/exec-approvals.md:559",
+        "title": "Exec approvals",
+        "anchor": "chat channels never receive",
+        "supports": "Approvals raised by scheduled runs go only to connected approval clients such as the Control UI, never to chat, and are denied if none is connected."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/lobster.md:120",
+        "title": "Lobster",
+        "anchor": "disabled entirely for sandboxed tool",
+        "supports": "The Lobster workflow tool is switched off in sandboxed tool contexts, so it cannot gate a sandboxed home agent."
+      }
+    ],
+    "corrections": [
+      "'Isolated runs cannot approve' is too strong: the exec approvals doc says approvals from scheduled runs are delivered to connected approval clients (Control UI, the apps) and the run waits, but they never go to chat channels and are denied at once when no such client is connected. For an iMessage-only household the conclusion is unchanged: use a dry-run period, not per-call approval."
+    ],
+    "unverified": [
+      "Whether plugin-tool approvals raised inside a scheduled run follow the same delivery rule as exec approvals.",
+      "That the two CLIs report 'on' states in a form a short script can parse reliably was not tried (neither is installed)."
+    ]
+  }
+]

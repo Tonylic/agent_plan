@@ -1,0 +1,888 @@
+[
+  {
+    "id": "F082",
+    "tier": 1,
+    "readiness": "now",
+    "one_line": "Happy asks one short numbered question when a request is ambiguous, and turns newsletter or flyer text into clean event and item lists.",
+    "how_short": "Allow ask_user for <p>-main only; enable bundled llm-task with tools.alsoAllow, a JSON schema, llm.allowedCompletionModels listing both custom ids, allowModelOverride false.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:15",
+        "title": "Ask user (installed docs)",
+        "anchor": "available only in the main session",
+        "supports": "ask_user is offered only to the main session, so mail-reader and scheduled runs never get it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:41",
+        "title": "Ask user (installed docs)",
+        "anchor": "a plain-text reply works",
+        "supports": "On any channel a typed number, option label or free text answers a pending question, which is all iMessage Basic mode can do."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/ask-user.md:122",
+        "title": "Ask user (installed docs)",
+        "anchor": "no_answer",
+        "supports": "If nobody answers before the timeout the tool reports no answer and the agent carries on with its own judgement, so a house rule must say 'do nothing' instead."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:68",
+        "title": "LLM task (installed docs)",
+        "anchor": "allowedCompletionModels",
+        "supports": "The model allowlist applies to every llm-task completion, so the agent's default model must be on it as well as the cheap model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/llm-task.md:174",
+        "title": "LLM task (installed docs)",
+        "anchor": "Treat output as untrusted",
+        "supports": "The tool's output is only trustworthy after schema validation; side effects that consume it need their own approval."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.openclaw.ai/tools/ask-user",
+        "title": "Ask user (public OpenClaw docs)",
+        "anchor": "900 seconds",
+        "supports": "The public page states the same main-session limit and a default wait of fifteen minutes."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether Happy's custom OpenAI provider route runs llm-task with a truly empty tool surface; the doc carves out an 'Agents API' runtime whose service may keep built-in helpers.",
+      "That a plain iMessage reply is matched to the pending question on this install; the doc requires the replier's permissions to match the question's creator and this was not tried."
+    ]
+  },
+  {
+    "id": "F083",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Ask about rain during Saturday's game or active weather alerts for home, with hour-by-hour detail and snowfall, straight from the National Weather Service.",
+    "how_short": "Extend the in-house home_weather plugin: follow forecastHourly from /points, add alert id, read snowfallAmount from the raw gridpoint endpoint; keep the api.weather.gov host pin.",
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.weather.gov/documentation/services-web-api",
+        "title": "National Weather Service: API Web Service documentation",
+        "anchor": "forecastHourly",
+        "supports": "The points lookup hands back the hourly forecast address for a location; a User-Agent is required and the rate limit is unpublished with retry after a few seconds."
+      },
+      {
+        "kind": "web",
+        "ref": "https://api.weather.gov/openapi.json",
+        "title": "weather.gov API: OpenAPI specification",
+        "anchor": "/alerts/active",
+        "supports": "Active alerts can be filtered by a latitude and longitude point; each alert carries an id, headline, severity and end time, and the raw gridpoint data lists a snowfall layer."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/building-plugins.md:147",
+        "title": "Building plugins (installed docs)",
+        "anchor": "api.registerTool",
+        "supports": "A plugin adds its own agent tool in code, which is how the existing home_weather tool is delivered and extended."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:101",
+        "title": "Tool policy (installed docs)",
+        "anchor": "tools.sandbox.tools",
+        "supports": "With sandbox mode set to all, a plugin's tools stay visible only if the plugin id is in the sandbox tool allowlist."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/weather/SKILL.md:3",
+        "title": "Bundled weather skill",
+        "anchor": "wttr.in",
+        "supports": "The bundled weather skill depends on web_fetch against a third-party site, which Happy does not have, so the in-house NWS plugin stays the right path."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "The snowfall field name and units were seen only in the OpenAPI description of the raw gridpoint endpoint, not in a live response.",
+      "NWS publishes no numeric rate limit, so the 10-minute cache is a design choice rather than an NWS rule.",
+      "That Apple Weather on each phone already pushes the same alerts and hourly rain (no Apple page was fetched for this)."
+    ]
+  },
+  {
+    "id": "F084",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Before any attachment goes to the cloud model, Happy refuses PDFs that look like bank statements or tax forms and says why.",
+    "how_short": "In-house plugin: before_agent_run returns outcome block on regex hits in the extracted file text; needs hooks.allowConversationAccess; photos cannot be checked locally yet.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:266",
+        "title": "Media understanding (installed docs)",
+        "anchor": "model-visible file block",
+        "supports": "Every inbound document is extracted and placed in front of the model on the first turn, with no tool call a tool hook could intercept."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/prompt-and-session.md:149",
+        "title": "Prompt and session hooks (installed docs)",
+        "anchor": "before_agent_run",
+        "supports": "This hook runs after the prompt is built and before the model sees it, can block the run with a replacement message, and the original text is not kept."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:93",
+        "title": "Hook reference (installed docs)",
+        "anchor": "Fail closed",
+        "supports": "If this hook throws or exceeds 15 seconds the run is blocked rather than allowed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks.md:126",
+        "title": "Plugin hooks (installed docs)",
+        "anchor": "allowConversationAccess",
+        "supports": "A non-bundled plugin's before_agent_run handler only runs when the operator grants it conversation access in config."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:143",
+        "title": "Media understanding (installed docs)",
+        "anchor": "passes the original image",
+        "supports": "With a vision-capable reply model a photo goes to the cloud model as-is, so a photographed statement cannot be text-checked locally."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/pdf.md:93",
+        "title": "PDF tool (installed docs)",
+        "anchor": "characters of extracted text",
+        "supports": "In the pdf tool, pages with little extractable text are rendered to images, which is how a scanned statement would reach a vision model unread."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments (installed docs)",
+        "anchor": "includeAttachments",
+        "supports": "Inbound iMessage attachments are dropped unless the operator switches them on, so the gate matters only once that switch is flipped."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.openai.com/api/docs/guides/your-data",
+        "title": "OpenAI API guide: Your data",
+        "anchor": "30 days",
+        "supports": "API inputs are not used for training by default but abuse-monitoring logs can keep content for up to a month, and image and file inputs get extra scanning."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "That the extracted file text is inside the prompt field the hook receives; the doc only says the hook gets the current user input. Needs a test with a seeded PDF.",
+      "Which config key holds allowedMimes for iMessage attachments; the only documented allowedMimes keys sit under the Gateway HTTP API endpoints.",
+      "The exact point at which an inbound PDF falls back to page images; the 200-characters-per-page rule is documented for the pdf tool, not for channel attachments.",
+      "Photo gating is blocked, not just weak: no local vision model exists on this install, so only a caption keyword rule is possible."
+    ]
+  },
+  {
+    "id": "F085",
+    "tier": 2,
+    "readiness": "now",
+    "one_line": "Mail-reader sessions stay out of long-term memory, a parent can have a session's memories removed, and each adult gets a short Sunday review of what Happy learned.",
+    "how_short": "memoryPolicy.excludeSessions.hookExternalContentSources [email, gmail]; operator runbook for openclaw memory forget --dry-run; weekly isolated automation with --tools memory_search,memory_get; openclaw memory promote --apply.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:650",
+        "title": "Memory configuration reference (installed docs)",
+        "anchor": "memoryPolicy.excludeSessions",
+        "supports": "The exclusion list only keeps matching sessions out of dreaming ingestion and backfill; it does not erase memories or limit workspace writes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/memory-config.md:669",
+        "title": "Memory configuration reference (installed docs)",
+        "anchor": "hookExternalContentSources",
+        "supports": "The exact source ids to exclude both IMAP and Gmail hook sessions are email and gmail."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/memory.md:210",
+        "title": "Memory CLI (installed docs)",
+        "anchor": "--dry-run",
+        "supports": "memory forget deletes at once with no confirmation unless run as a preview, so the runbook must always preview first."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/memory.md:238",
+        "title": "Memory CLI (installed docs)",
+        "anchor": "Selectors match recorded identifiers",
+        "supports": "Forgetting selects whole sessions by id, hook source or participant; it cannot pick a topic or a phrase."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/memory-provenance.md:260",
+        "title": "Memory provenance and deletion (installed docs)",
+        "anchor": "Paraphrases and other copies",
+        "supports": "Reworded copies of a fact, exports and backups are outside what the forget command cleans."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/memory.md:401",
+        "title": "Memory CLI (installed docs)",
+        "anchor": "--min-recall-count",
+        "supports": "Promotion ranks daily-note candidates and by default needs three recalls, three distinct queries and a 0.75 score before it appends to long-term memory."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:56",
+        "title": "Automation payloads (installed docs)",
+        "anchor": "--tools",
+        "supports": "A scheduled job can be limited to a named tool list, which keeps the weekly review run read-only."
+      }
+    ],
+    "corrections": [
+      "'Forget what I said about X works' (9 Oct description) is not a platform ability: memory forget selects whole sessions by id, hook source or participant, never by topic or message text, and reworded copies are outside its cleanup. Topic-level forgetting is a hand edit of the memory file.",
+      "'Promote via openclaw memory promote --apply' will usually promote nothing a parent just confirmed: by default a candidate needs a 0.75 score, three recalls and three distinct queries. Either pass lower thresholds or write the confirmed line to MEMORY.md directly."
+    ],
+    "unverified": [
+      "With dreaming switched off (roadmap decision) the session-exclusion setting has little to act on today; its effect was not tested.",
+      "The memory-wiki dashboards named on 9 Oct (privacy review, stale pages) are documented, but the plugin is not enabled on this install."
+    ]
+  },
+  {
+    "id": "F086",
+    "tier": 1,
+    "readiness": "experimental",
+    "one_line": "The Mac mini's built-in Apple model handles tiny background chores for free; the family sees no difference in iMessage.",
+    "how_short": "Bundled apple-fm plugin; openclaw onboard --non-interactive --auth-choice apple-fm --accept-risk as the happy user; utilityModel apple-fm/system; needs Swift tools and an 8,192-token model.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/apple-fm.md:23",
+        "title": "Apple Foundation Models plugin (installed docs)",
+        "anchor": "8,192 context tokens",
+        "supports": "The option appears only when the Mac reports an on-device model with a large enough window; owning an Apple silicon Mac on macOS 27 is not sufficient by itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/apple-fm.md:80",
+        "title": "Apple Foundation Models plugin (installed docs)",
+        "anchor": "--auth-choice apple-fm",
+        "supports": "The scripted way to select the Apple model is the non-interactive onboarding command with an explicit risk acknowledgement."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/apple-fm.md:96",
+        "title": "Apple Foundation Models plugin (installed docs)",
+        "anchor": "1,024 output tokens",
+        "supports": "Replies are capped short and the whole prompt shares one small window, so a full agent prompt can overflow it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-agents/models.md:65",
+        "title": "Agent model configuration (installed docs)",
+        "anchor": "utilityModel",
+        "supports": "The utility model only powers session titles, recaps and progress narration on surfaces Happy does not use, so the family-visible gain on iMessage is nil."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developer.apple.com/tutorials/data/documentation/foundationmodels.json",
+        "title": "Apple Developer Documentation: Foundation Models (page data for /documentation/foundationmodels)",
+        "anchor": "SystemLanguageModel",
+        "supports": "Apple's framework exposes an on-device language model with structured output and tool calling, on devices that support Apple Intelligence."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/121115",
+        "title": "Apple Support: Apple Intelligence requirements (article 121115)",
+        "anchor": "Mac with M1 or later",
+        "supports": "Apple Intelligence runs on M-series Macs, needs device and Siri language to match and several gigabytes of storage for the model."
+      }
+    ],
+    "corrections": [
+      "The catalog's command is incomplete: the documented scripted form is 'openclaw onboard --non-interactive --auth-choice apple-fm --accept-risk'."
+    ],
+    "unverified": [
+      "The one use the catalog keeps (a free local classifier for F084 through llm-task) is not documented: llm-task needs a runtime that supports isolated completion and no page says apple-fm does.",
+      "Whether Apple Intelligence can be switched on and its model downloaded inside the non-admin happy account, and whether this Mac reports the 8,192-token variant; both need the on-machine probe.",
+      "Apple lists the framework from macOS 26 while OpenClaw's page requires macOS 27; only OpenClaw's own requirement was confirmed."
+    ]
+  },
+  {
+    "id": "F087",
+    "tier": 3,
+    "readiness": "not-recommended",
+    "one_line": "A way to run fixed multi-step chores with an approve-to-continue pause; it amounts to host shell access, so it stays off for a family agent.",
+    "how_short": "Separately installed @openclaw/lobster plugin, tools.alsoAllow lobster; runs shell steps in the Gateway process, disabled in sandboxed contexts; before_tool_call requireApproval covers approvals instead.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/lobster.md:69",
+        "title": "Lobster (installed docs)",
+        "anchor": "@openclaw/lobster",
+        "supports": "Lobster is a separate official plugin that runs workflows inside the Gateway process and returns a resume token when a step waits for approval."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/lobster.md:120",
+        "title": "Lobster (installed docs)",
+        "anchor": "sandboxed tool contexts",
+        "supports": "The tool does not exist for sandboxed agents, and every Happy agent is sandboxed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/lobster.md:141",
+        "title": "Lobster (installed docs)",
+        "anchor": "exec --json --shell",
+        "supports": "A pipeline string the model writes is a chain of shell commands on the host, which is the exec ability the roadmap withholds from person agents."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/lobster.md:192",
+        "title": "Lobster (installed docs)",
+        "anchor": "not currently reliable",
+        "supports": "Inside the embedded runner a workflow step cannot dependably call other OpenClaw tools such as llm-task, which removes the triage-then-draft use case."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/tool-policy.md:78",
+        "title": "Tool call policy hooks (installed docs)",
+        "anchor": "requireApproval",
+        "supports": "A plugin hook can already pause any tool call for a human approval answered with /approve, without granting host shell."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/openclaw/lobster",
+        "title": "openclaw/lobster (GitHub repository)",
+        "anchor": "approval gates",
+        "supports": "Upstream describes Lobster as a workflow shell whose steps run operating-system commands, with approval steps that pause and resume."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "No config switch that forbids model-written inline pipelines was found; the proposed hook that rejects them is untested."
+    ]
+  },
+  {
+    "id": "G001",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Happy stays quiet at night, caps how many unprompted texts each parent gets a day, and labels each one so you know why it arrived.",
+    "how_short": "In-house plugin: before_tool_call on message (fail-closed) plus message_sending cancel for --announce deliveries (fail-open on error); counters in home-store; schedules generated inside allowed windows.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:67",
+        "title": "Message and delivery hooks (installed docs)",
+        "anchor": "message_sending",
+        "supports": "A plugin can rewrite or cancel any outgoing message just before delivery."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:94",
+        "title": "Hook reference (installed docs)",
+        "anchor": "Log and skip the failed handler",
+        "supports": "Outbound delivery hooks are not hard gates: if the handler throws or times out the message is still sent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:39",
+        "title": "Hook reference (installed docs)",
+        "anchor": "matcher",
+        "supports": "A before_tool_call handler can be limited to named tools such as message, and that hook does block on failure."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/deliver-prepare--wQvThDe.mjs:854",
+        "title": "Outbound delivery preparation (installed source)",
+        "anchor": "params.replyPayloadSendingHook",
+        "supports": "The shared outbound stage runs the reply-payload hook only when the caller passes a hook descriptor, while message_sending runs whenever a handler is registered."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/run-delivery.runtime-BZRdVrGG.mjs:501",
+        "title": "Scheduler announce delivery (installed source)",
+        "anchor": "sendDurableMessageBatchCore",
+        "supports": "Scheduled announce deliveries are sent through the durable batch call without a reply-payload hook descriptor."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/web/notifications.md:47",
+        "title": "Control UI notifications (installed docs)",
+        "anchor": "quiet hours",
+        "supports": "The only built-in quiet hours belong to Control UI browser and app notifications, not to chat channels."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/prompt-and-session.md:172",
+        "title": "Prompt and session hooks (installed docs)",
+        "anchor": "ctx.jobId",
+        "supports": "The scheduled job id is available to some agent hooks but not to before_tool_call, so the job tag needs another source."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105112",
+        "title": "Apple Support: Do Not Disturb on iPhone or iPad (article 105112)",
+        "anchor": "Set a Schedule",
+        "supports": "Each iPhone can already silence notifications on a schedule while allowing chosen people, so the plugin's distinct value is the daily cap and batching."
+      }
+    ],
+    "corrections": [
+      "reply_payload_sending does not cover --announce on the installed build: the scheduler's announce path sends without a reply-payload hook descriptor and the outbound stage skips that hook when none is supplied. message_sending is the hook that sees those deliveries (the G005 wording already uses it), and it fails open on handler error, so it is a best-effort gate."
+    ],
+    "unverified": [
+      "The announce-path reading comes from bundled JavaScript, not a doc page; confirm with a throwaway hook before relying on either hook.",
+      "How the hook learns which job produced a text; no doc lists a job id on message_sending, so the job may have to write its own tag into the text.",
+      "Whether a scheduled iPhone Do Not Disturb can silence only Happy's thread; Apple's page confirmed scheduling and allowed people, not per-contact silencing."
+    ]
+  },
+  {
+    "id": "G003",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Every scheduled feature becomes a named switch per person in one file, so turning Jordan's school digest off is a one-line change Tony can review.",
+    "how_short": "gen-family reads family.json5 flags and emits openclaw automations add/edit/remove with --name, --agent, --to, --tz, --announce; diffs against automations list --all --json.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:72",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "--display-name",
+        "supports": "Jobs have a stable name plus an optional human label, so the generator should key on the stable name."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:449",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "--agent",
+        "supports": "A job created without an agent falls back to the default agent with only a warning, so the generator must always name the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:158",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "--webhook",
+        "supports": "A job delivers either to chat or to a webhook, not both, so a monitoring ping needs a separate command job."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:403",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "--all",
+        "supports": "The job list hides disabled jobs unless asked for all of them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:216",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "shared SQLite state database",
+        "supports": "Jobs live in the Gateway's database, not in files, so they can only be compared and changed through the CLI or API."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/cron.md:18",
+        "title": "Automations CLI (installed docs)",
+        "anchor": "operator.admin",
+        "supports": "Creating, editing or removing a job needs the admin operator scope on a running Gateway."
+      },
+      {
+        "kind": "web",
+        "ref": "https://healthchecks.io/docs/http_api/",
+        "title": "Healthchecks.io: Pinging API",
+        "anchor": "hc-ping.com",
+        "supports": "A job reports success, start, failure or an exit status with a single HTTP request to its check address."
+      }
+    ],
+    "corrections": [
+      "Diffing against 'automations list --json' is not enough: the list shows enabled jobs only unless --all is passed, so a job disabled by a mute would look missing and be created twice. Use 'automations list --all --json'."
+    ],
+    "unverified": [
+      "Whether gen-family, run from Tony's admin account, can reach the happy user's Gateway with the admin operator scope the docs require.",
+      "How healthchecks.io alerts on a missed ping (grace time) was not on the fetched page; only the ping address forms were confirmed."
+    ]
+  },
+  {
+    "id": "G004",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Tony gets a daily cost line per agent and an alert when spending looks wrong, with OpenAI's own project limit as the hard stop.",
+    "how_short": "openclaw gateway usage-cost --agent --json for the line; Prometheus openclaw_model_cost_usd_total alert rule; OpenAI project spend limit with hard enforcement switched on.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/gateway/query.md:60",
+        "title": "Gateway query CLI (installed docs)",
+        "anchor": "gateway usage-cost",
+        "supports": "The Gateway reports cost summaries per agent or across agents as JSON, with a marker when the numbers are still refreshing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/prometheus.md:118",
+        "title": "Prometheus metrics (installed docs)",
+        "anchor": "openclaw_model_cost_usd_total",
+        "supports": "A running-total cost counter labelled by agent, channel, model and provider is exported for alerting."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/reference/api-usage-costs.md:34",
+        "title": "API usage and costs (installed docs)",
+        "anchor": "not a provider invoice",
+        "supports": "These totals are estimates from local session history, not what the provider bills."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-runtime.md:67",
+        "title": "Runtime configuration (installed docs)",
+        "anchor": "models.providers.*.models[].cost",
+        "supports": "For custom provider ids the estimate depends on the prices written into config."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.openai.com/api/docs/guides/spend-limits",
+        "title": "OpenAI API guide: Spend limits",
+        "anchor": "project_spend_limit_exceeded",
+        "supports": "A project can carry a monthly spend limit that rejects requests once reached, but only when hard enforcement is switched on, and enforcement is approximate."
+      },
+      {
+        "kind": "web",
+        "ref": "https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/",
+        "title": "Prometheus: Alerting rules",
+        "anchor": "annotations",
+        "supports": "An alert is a named expression with a hold time, which is all the soft cap needs."
+      }
+    ],
+    "corrections": [
+      "'The OpenAI project limit is the backstop' holds only if 'Enforce a hard limit' is switched on; otherwise a project spend limit just alerts, and even the hard limit can be overshot slightly."
+    ],
+    "unverified": [
+      "The cost figures were not compared with an OpenAI invoice; they follow the prices declared for the custom provider ids in config.",
+      "Whether the separately installed diagnostics-prometheus plugin is already present from M1."
+    ]
+  },
+  {
+    "id": "G005",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Either parent can text 'Happy, stop everything' and Happy pauses its scheduled jobs and outgoing actions until Tony switches it back on.",
+    "how_short": "In-house plugin: before_dispatch claims the exact phrase and writes a kill file; before_tool_call and message_sending check it; cron.enabled false; openclaw gateway stop as last level.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:15",
+        "title": "Message and delivery hooks (installed docs)",
+        "anchor": "before_dispatch",
+        "supports": "A plugin can take an incoming message before the model sees it and answer with fixed text."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:99",
+        "title": "Hook reference (installed docs)",
+        "anchor": "including claim hooks",
+        "supports": "If that claim handler fails, the Gateway logs and carries on, so the stop phrase would fall through to the model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:93",
+        "title": "Hook reference (installed docs)",
+        "anchor": "Fail closed",
+        "supports": "The tool-call check is the one part that blocks when the plugin breaks or stalls."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:216",
+        "title": "Managing automations (installed docs)",
+        "anchor": "cron.enabled: false",
+        "supports": "One config value turns all scheduled jobs off without deleting them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/configuration/hot-reload.md:121",
+        "title": "Config hot reload (installed docs)",
+        "anchor": "reloads the owning subsystem",
+        "supports": "Changes to the scheduler setting apply without restarting the Gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/gateway/service.md:18",
+        "title": "Gateway service CLI (installed docs)",
+        "anchor": "openclaw gateway stop",
+        "supports": "The last level is a documented service stop command."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.ntfy.sh/publish/",
+        "title": "ntfy docs: Publishing",
+        "anchor": "broadcast",
+        "supports": "A notification can carry up to three action buttons, one type of which sends an HTTP request when tapped."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+        "title": "Apple Shortcuts User Guide for Mac: Run shortcuts from the command line",
+        "anchor": "shortcuts run",
+        "supports": "A macOS Shortcut can be listed and run from a terminal command, so a Shortcut can wrap the stop script."
+      }
+    ],
+    "corrections": [
+      "'Freeze every outbound write' is fail-closed only for tool calls. The phrase matcher and the message_sending check both log and continue when their handler throws or times out, so a broken plugin lets the phrase reach the model and lets scheduled announce texts out. The levels that do not depend on plugin code are the scheduler switch and stopping the Gateway."
+    ],
+    "unverified": [
+      "Whether switching the scheduler off stops a job already running, and whether switching it back needs a restart (the hot-reload table says no; the automation troubleshooting page says restart to re-enable).",
+      "Whether an ntfy HTTP action is sent from the phone and can reach the Gateway over Tailscale; the fetched part of the page did not say where the request originates.",
+      "How plugin code running as the happy user would change the scheduler setting, given the config repo is read-only to it; the kill file may be the only chat-triggered level."
+    ]
+  },
+  {
+    "id": "G006",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "On request, or each Sunday, a parent sees what Happy did: reminders created, list items added, messages sent, approvals given.",
+    "how_short": "openclaw audit --kind tool_action gives names and outcomes only; an after_tool_call hook writes targets to home-store; a command automation renders the digest.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/audit.md:21",
+        "title": "Audit history (installed docs)",
+        "anchor": "never stores prompts, message bodies",
+        "supports": "The built-in ledger records who ran what and how it ended, never the arguments, so it cannot say which list item or recipient."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/audit.md:363",
+        "title": "Audit history (installed docs)",
+        "anchor": "message.inbound.processed",
+        "supports": "Message delivery rows are off by default; run and tool rows are on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/audit.md:52",
+        "title": "Audit CLI (installed docs)",
+        "anchor": "--kind tool_action",
+        "supports": "Tool activity can be pulled as JSON for a time window from the command line."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1284",
+        "title": "Plugin hook types (installed source)",
+        "anchor": "PluginHookAfterToolCallEvent",
+        "supports": "The after-tool hook receives the tool name, its parameters, result, error and duration, which is what a side-effect ledger needs."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/approvals.md:190",
+        "title": "Approvals CLI (installed docs)",
+        "anchor": "pending requests are live Gateway state",
+        "supports": "The approvals command lists and resolves pending requests only; there is no history listing."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/audit.md:471",
+        "title": "Audit history (installed docs)",
+        "anchor": "100,000 rows",
+        "supports": "The ledger keeps about a month of rows and is size-capped, so older digests must come from the custom ledger."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "Whether turning on message audit rows needs a Gateway restart: the audit CLI page says restart, the Gateway audit page says audit settings apply without one.",
+      "Retention for the custom side-effect table in home-store is undefined."
+    ]
+  },
+  {
+    "id": "G007",
+    "tier": 1,
+    "readiness": "build",
+    "one_line": "Happy's memory, settings and history are copied every night to an encrypted place off the Mac's main disk, and a quarterly test proves the copy restores.",
+    "how_short": "openclaw backup create --verify nightly via launchd or a command automation, encrypted with age; openclaw backup restore --target for the drill; separate tar for home-store and family.json5.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:20",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "openclaw backup create --verify",
+        "supports": "One command archives state, config, sessions and workspaces and checks the archive afterwards."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:14",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "channel/provider credentials",
+        "supports": "The archive contains auth profiles and credentials, so it must be encrypted and guarded like the live state."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:68",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "--target",
+        "supports": "Restore only writes into a fresh empty directory and never over the live state, which suits a drill."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:143",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "--global --repository",
+        "supports": "A SQLite snapshot needs one named source, shared state or one agent, and lands as a plain snapshot directory."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:301",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "openclaw backup enable",
+        "supports": "A built-in command schedules a recurring Git-history backup as a Gateway-owned job."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/backup.md:163",
+        "title": "Backup CLI (installed docs)",
+        "anchor": "auth profiles",
+        "supports": "SQLite snapshots can hold credentials and session state too."
+      },
+      {
+        "kind": "web",
+        "ref": "https://github.com/FiloSottile/age",
+        "title": "FiloSottile/age (GitHub repository)",
+        "anchor": "age-keygen",
+        "supports": "age encrypts a file to a public key and decrypts with a key file, and installs through Homebrew."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/104984",
+        "title": "Apple Support: Back up your Mac with Time Machine",
+        "anchor": "Encrypt Backup",
+        "supports": "macOS can already keep an encrypted whole-disk backup on an external drive, the zero-code baseline."
+      }
+    ],
+    "corrections": [
+      "'backup sqlite create --repository' alone is not a valid call and is not Git-versioned: it needs exactly one source (--global or --agent <id>) and writes plain snapshot directories. Git history is the separate 'openclaw backup git' command family.",
+      "Scheduling is not wholly outside the tool: 'openclaw backup enable --repository <dir> --every 24h' creates a nightly Git backup job. Only the archive and plain SQLite snapshot routes leave scheduling, rotation and encryption to the operator.",
+      "Secrets are not excluded by default (9 Oct 'needs' said they stay in Keychain): the full archive covers auth profiles and channel/provider credentials; only resolved secrets in the config copy are left out, and a secrets-excluding switch exists only for Git backups."
+    ],
+    "unverified": [
+      "Whether a later memory-wiki vault is picked up as a plugin-declared backup resource or needs its own tar step.",
+      "The quarterly canary (answering a question from the restored copy) has no documented one-command path; activating restored state is an offline operator step.",
+      "Where the age key lives and whether the happy user can read it during a drill."
+    ]
+  },
+  {
+    "id": "G008",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "A daily self-check texts Tony only when something is broken, such as an expired Google sign-in or a stalled channel, with the fix command.",
+    "how_short": "Command automation runs openclaw health --json, channels status --probe, models status --check and, once installed, gog auth list --check; reads each entry, not exit codes.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/cli/health.md:43",
+        "title": "Health CLI (installed docs)",
+        "anchor": "per-account probes",
+        "supports": "The JSON health snapshot lists channels, account probes, plugin load state and delivery-queue warnings."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/health.md:47",
+        "title": "Health CLI (installed docs)",
+        "anchor": "ok: true",
+        "supports": "The top-level ok flag only means the call worked; plugin and queue warnings do not flip it, so the script must read the detail fields."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/channels.md:37",
+        "title": "Channels CLI (installed docs)",
+        "anchor": "channels status --probe",
+        "supports": "This is the documented live check for channel accounts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/models.md:88",
+        "title": "Models CLI (installed docs)",
+        "anchor": "--check",
+        "supports": "The check mode returns exit codes for missing, expired or expiring model credentials without making a model call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/cli/models.md:121",
+        "title": "Models CLI (installed docs)",
+        "anchor": "exclusive ownership",
+        "supports": "The live probe mode needs the Gateway stopped, so it must never run in a daily job."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/gog/SKILL.md:49",
+        "title": "Bundled gog skill",
+        "anchor": "gog auth list --check",
+        "supports": "The Google CLI's own guidance is to inspect every reported account entry because its exit status does not prove each token is valid."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/identity/protocols/oauth2",
+        "title": "Google: Using OAuth 2.0 to Access Google APIs",
+        "anchor": "expiring in 7 days",
+        "supports": "An OAuth app left in Testing status gets refresh tokens that die after a week; tokens also die on a password change with Gmail scopes or six months of disuse."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gogcli.sh",
+        "title": "gog (gogcli) home page",
+        "anchor": "gogcli",
+        "supports": "gog is a real Google Workspace command-line tool installed from a Homebrew tap."
+      },
+      {
+        "kind": "web",
+        "ref": "https://api-dashboard.search.brave.com/documentation/guides/rate-limiting",
+        "title": "Brave Search API: Rate limiting",
+        "anchor": "X-RateLimit-Remaining",
+        "supports": "Brave reports remaining per-second and monthly quota in response headers and answers 429 when a limit is hit."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "gog is not installed on the Mac mini today, so the Google half cannot run yet.",
+      "Whether OpenClaw's Brave search plugin exposes Brave's remaining-quota header; if not, quota needs a direct probe call or the dashboard.",
+      "What the channel probe reports for a Basic-mode iMessage account (the 9 Oct text mentions a private API probe that does not apply with SIP on)."
+    ]
+  },
+  {
+    "id": "G010",
+    "tier": 2,
+    "readiness": "build",
+    "one_line": "'Ask Jordan if she can do Thursday pickup' sends her one line, relays her yes or no back, and reminds once before the ask expires.",
+    "how_short": "pending_requests table in home-store; before_dispatch plugin matches a bare yes/no from the target sender to her one open request; one-shot --at automation handles reminder and expiry.",
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/messages.md:16",
+        "title": "Message and delivery hooks (installed docs)",
+        "anchor": "handled: true",
+        "supports": "A plugin can claim an incoming message before the model runs and send a fixed reply, which makes yes/no matching deterministic."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/hook-runner-global-FJPVxfg8.d.ts:1067",
+        "title": "Plugin hook types (installed source)",
+        "anchor": "PluginHookBeforeDispatchEvent",
+        "supports": "That hook receives the message text and the sender id, enough to bind a reply to the right parent's open request."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/rich-messages.md:120",
+        "title": "iMessage private API actions (installed docs)",
+        "anchor": "numbered emoji choices",
+        "supports": "Tap-to-answer reactions belong to the private API bridge, so in Basic mode the answer has to be a typed reply."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:19",
+        "title": "How automations work (installed docs)",
+        "anchor": "--at",
+        "supports": "A one-shot job runs once at a set time and removes itself after success, which fits a single reminder or expiry."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/hooks/reference.md:99",
+        "title": "Hook reference (installed docs)",
+        "anchor": "including claim hooks",
+        "supports": "If the claim handler fails, the message falls through to the normal agent turn, so a stray yes may reach the model instead."
+      }
+    ],
+    "corrections": [],
+    "unverified": [
+      "How plugin code sends the relayed answer to the other parent; no plugin-side outbound send call was found in the docs read, and it depends on the family delivery primitive (G009).",
+      "Group-chat use assumes iMessage groups, which are switched off today.",
+      "Judgement, not sourced: the parents can already text each other, so the gain is only tracking, expiry and the calendar offer."
+    ]
+  }
+]

@@ -1,0 +1,1615 @@
+[
+ {
+  "id": "IPH-02",
+  "name": "Spare iPhone as a fixed camera",
+  "tier": 3,
+  "cluster": "Camera",
+  "description": "A spare iPhone on a stand answers 'what does the porch look like right now' with one still photo on request. Extends F079, which was parked because the house has no network camera.",
+  "example": "Tony texts: \"Is there a package on the porch?\"",
+  "how": "Spare iPhone on a stand and charger with the OpenClaw app open: Allow Camera on, keep-awake on, Guided Access holding the app in the foreground with touch ignored. Add camera.snap to gateway.nodes.commands.allow and approve the widened surface; keep camera.clip in commands.deny. The asking parent's agent (or a small stateless 'look' agent it hands off to) takes one still through an in-house plugin tool that calls api.runtime.nodes.invoke with this node id and camera.snap fixed in code and facing set to back (the default is the front camera). The built-in nodes tool's camera_snap action does the same, but that tool is owner-only, so it would work in Tony's turns only. The photo goes to the vision model and the answer comes back as text. Alternative without the iOS app: Apple's Continuity Camera turns an iPhone (XR or later, on happy's Apple Account) into a camera of the Mac while the phone stays locked, which avoids keeping an app on screen; capturing it needs the OpenClaw Mac app in node mode or the camsnap skill's local-webcam mode, and neither is installed.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "IPH-01",
+   "hardware: spare iPhone, stand, charger, a window or shelf with the right view",
+   "decision 3 of the 9 Oct catalog: photos to the cloud vision model under store:false",
+   "decision: where a camera is acceptable in the house",
+   "decision from IPH-01: a shared spare phone holding an operator token",
+   "local vision model before any indoor view",
+   "in-house plugin tool over api.runtime.nodes.invoke (the built-in nodes tool is owner-only and sandbox-denied by default)"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "iOS prohibits camera use in the background, so the app must stay on screen around the clock. After a crash, an iOS update or a reboot the phone sits at its lock screen and the camera silently stops answering.",
+   "One still per request, or a clip of at most 60 seconds. No motion detection, no stream, no history.",
+   "A screen that never sleeps on a phone that never leaves the charger wears the battery. The 80 percent charge limit exists only on iPhone 15 and later; an older spare phone has only Optimized Battery Charging.",
+   "A cheap network camera with the camsnap skill (F079), or a doorbell's own app, does this job better. The spare phone only wins on price.",
+   "Pictures of the home, and of the kids if they walk past, go to the cloud vision model.",
+   "camera.snap is switched on for the whole gateway, not for one phone, and Allow Camera defaults to on in the app. A parent's own paired phone becomes a possible camera target unless Allow Camera is switched off there and the hook pins the node.",
+   "A phone visible in a window holds a gateway credential (at least read access to every agent's sessions). If it is taken, revoke the device on the gateway straight away.",
+   "The roadmap keeps kids' content away from cloud models. With no local vision model, the only defensible view is the porch or driveway, where the kids are incidental."
+  ],
+  "safety": "The agent that looks at the picture reads untrusted content (a note held up to the lens is a prompt injection), so it must hold no memory, mail or message tool; it returns text to the caller. The parent's own agent therefore never calls the camera itself. Porch or driveway views only, never a room the kids use, bedrooms or bathrooms, until a local vision model exists. Clips stay denied so no audio is recorded. Pictures are not written to memory or the wiki. The hook pins the look agent to one node id and the camera_snap action.",
+  "unverified": [
+   "Whether the app's keep-awake setting alone keeps a phone awake and connected for weeks.",
+   "Whether a Continuity Camera iPhone shows up in the Mac node's camera list (the camera page only says such formats are left unchanged).",
+   "Whether a Continuity Camera iPhone appears in camsnap's local device list."
+  ],
+  "overlaps_existing": [
+   "F079",
+   "F002"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/camera.md:22",
+    "title": "Camera capture",
+    "anchor": "Allow Camera",
+    "supports": "The iPhone app has an Allow Camera setting; camera commands return an error when it is off.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:55",
+    "title": "Node command policy",
+    "anchor": "health.summary",
+    "supports": "camera.snap, camera.clip, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search need a persistent opt-in in gateway.nodes.commands.allow, and deny always wins.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+    "title": "Gateway source: nodes tool",
+    "anchor": "camera_snap",
+    "supports": "The agent-facing nodes tool has named actions such as camera_snap, location_get and photos_latest.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.apple.com/tutorials/data/documentation/avfoundation/avcapturesession/interruptionreason/videodevicenotavailableinbackground.json",
+    "title": "AVCaptureSession.InterruptionReason.videoDeviceNotAvailableInBackground (Apple Developer Documentation, page data)",
+    "anchor": "prohibited while in the background",
+    "supports": "iOS does not let an app use the camera while it is in the background.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/111795",
+    "title": "Use Guided Access on iPhone or iPad (Apple Support)",
+    "anchor": "Guided Access",
+    "supports": "Guided Access holds the device in a single app until someone authenticates to end the session, and has its own auto-lock setting.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/108055",
+    "title": "About Charge Limit and Optimized Battery Charging on iPhone (Apple Support)",
+    "anchor": "Charge Limit",
+    "supports": "iPhone offers a charge limit from 80 to 100 percent meant to reduce battery wear.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102546",
+    "title": "Continuity Camera: Use iPhone as a webcam for Mac (Apple Support)",
+    "anchor": "Continuity Camera",
+    "supports": "A locked, mounted iPhone on the same Apple Account can act as a camera for the Mac, wired or wireless.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration reference",
+    "anchor": "global allow/deny shaping",
+    "supports": "The node command allow and deny lists apply to the whole gateway, not to one node.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, logs and session reads for the gateway as a whole.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/nodes-utils-zASu-Rpf.mjs:61",
+    "title": "Gateway source: nodes tool helpers",
+    "anchor": "listNodes(opts)",
+    "supports": "The nodes tool resolves its target against the gateway's whole node list; there is no per-agent filter.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/camsnap/SKILL.md:45",
+    "title": "Bundled skill: camsnap",
+    "anchor": "camsnap snap --device 0",
+    "supports": "The camsnap CLI can take a snapshot from a local Mac camera, not only from network cameras.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/index.md:15",
+    "title": "Nodes",
+    "anchor": "node mode",
+    "supports": "The Mac app can run in node mode against an existing gateway and adds camera, screen and computer-control commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+    "title": "Plugin runtime Gateway and nodes",
+    "anchor": "api.runtime.nodes.invoke",
+    "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+    "title": "Gateway source: owner-only core tools",
+    "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+    "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:69",
+    "title": "iOS app: settings",
+    "anchor": "keep-awake behavior",
+    "supports": "The iOS app has device settings for camera access and keeping the device awake.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:54",
+    "title": "openclaw qr",
+    "anchor": "operator.write",
+    "supports": "The default mobile setup code hands the phone an operator token with admin, approvals, read, talk-secrets and write scopes; the limited profile removes only admin.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "HOM-13"
+  ],
+  "adds": [
+   "The same feature from the home lens: the camera opt-in is gateway-wide, the front camera is used unless told otherwise, and driveway pictures can show the kids and neighbours and go to the cloud vision model."
+  ],
+  "review_notes": [
+   "Technically as described, but the placement needs tightening: the look must be done by a stateless agent only, the camera opt-in is gateway-wide, the spare phone carries a gateway credential, and the charge-limit advice applies only to iPhone 15 or later.",
+   "Sources hold and it stays experimental. Three corrections: the charge limit exists only on iPhone 15 or later, camera.snap defaults to the front camera, and the built-in nodes tool is owner-only, so the capture should go through an in-house plugin tool."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "IPH-10",
+  "name": "iPhone Shortcuts automations as triggers for Happy",
+  "tier": 3,
+  "cluster": "Shortcuts (route c)",
+  "description": "Events on a parent's iPhone (arriving, CarPlay, plugging in, an NFC tag, a Focus) can nudge Happy without anyone typing, using Apple's own automation engine. The reverse direction, Happy making a phone run a shortcut, is possible only by sending the phone a keyword message.",
+  "example": "Trigger: Jordan's phone connects to CarPlay on a weekday afternoon, and Happy texts her today's pickup notes.",
+  "how": "Phone to Happy: a personal automation in Shortcuts on the parent's phone, set to run without asking, whose action is Get Contents of URL with a POST to a gateway hook over the tailnet. The request must carry the hook token in an Authorization or x-openclaw-token header; proving that the shortcut can send that header is the first test. On the gateway: hooks.enabled, a dedicated hooks.token, hooks.allowedAgentIds limited to one agent for that parent (the roadmap's <p>-jobs agent once it exists), and a hooks.mappings entry that turns an event id into a fixed wake or agent action. Happy to phone: a Message-trigger automation on the phone (sender is Happy, message contains a keyword) that runs a shortcut such as 'open the OpenClaw app' or 'set a Focus'; Happy sends the keyword through an in-house tool that only knows a fixed keyword list. The Mac's own shortcuts command stays under F078.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "Tailscale on the phone",
+   "gateway hooks (off by default) with a mapping per event and a dedicated tool-less events agent, or a host-side relay in front of the hook",
+   "for the reverse direction: the phone's handle on the pinned recipient list and an in-house keyword tool",
+   "a target agent for the hook: the roadmap's <p>-jobs agents are planned for a later milestone and do not exist yet",
+   "first test: a shortcut that sends the token header to the hook"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "Automations belong to one device and sync to other devices switched off, so each parent builds their own.",
+   "Apple lists the triggers that may run without asking (time of day, arrive, leave, CarPlay, email, message, Wi-Fi, Bluetooth, NFC, charger, sound recognition and others). A Notification trigger exists but is not on that list, so it cannot be an unattended notification relay.",
+   "The hook token sits inside a shortcut on the phone, readable by anyone holding the unlocked phone.",
+   "Find My and Focus schedules already cover arrive and leave alerts. Use this where Happy adds something.",
+   "The only Shortcuts action the OpenClaw app documents is Start Live Voice, so 'tell Happy' has to go through a web request or a message.",
+   "The reverse direction is experimental. I found no Apple-documented way for a Mac to run a shortcut on another device; the keyword message is a workaround, and a phone that shares happy's Apple Account may not treat Happy's own message as incoming.",
+   "hooks.token is one shared secret for the whole hook surface. Whoever holds it can also post free text to the wake and agent endpoints for any agent in allowedAgentIds, wake text arrives as a trusted system event, and custom mappings cannot switch those two endpoints off. The allowed agent must therefore be one where injected text can do no harm.",
+   "One token means both parents' phones hold the same secret; the hook cannot tell Tony's phone from Jordan's.",
+   "Reverse direction: the Message trigger fires on any message from Happy that contains the keyword, including an ordinary reply the model was talked into writing. Use a random keyword, strip it from normal replies in a message hook, and keep the shortcut harmless.",
+   "A schedule on the gateway already covers 'pickup notes on weekday afternoons' with no phone-side setup. Phone triggers are worth it only where the phone knows something the gateway does not (in the car, at a place).",
+   "Apple lists the automations that can run automatically (time of day, alarm, sleep, arrive, leave, CarPlay, email, message, transaction, Wi-Fi, Bluetooth, NFC, app, charger, battery level, sound recognition and others). A Notification trigger exists but is not on that list. Apple does not say outright that it always asks, so test it before ruling a notification relay in or out."
+  ],
+  "safety": "A wake is treated as a trusted system event, so nothing free-text from a phone may reach a private agent. The hook's allowed agent is a tool-less, memory-less events agent, never <p>-main (memory) or <p>-jobs (résumé plus browser); the mapping emits fixed strings chosen by event id; delivery is done by code to the owner. Hooks stay tailnet-only with their own token. For the reverse direction the keyword list is fixed in code, the sender filter is pinned, and the shortcut does only harmless things: no unlocking, no purchases, no Home scenes that touch locks or the garage.",
+  "unverified": [
+   "That Get Contents of URL can send the Authorization header the hook requires. Tokens in the query string are rejected, and the Apple page I fetched documents methods and request body but not headers.",
+   "Which shortcut actions (opening an app, sending a message) really run while the phone is locked.",
+   "Whether a Message trigger fires for a message sent from the same Apple Account.",
+   "The list of Shortcuts actions for Messages, location, Focus and Home: the Apple pages I fetched cover triggers and the web-request action only.",
+   "Whether Tailscale on the phone is connected at the moment a background automation fires.",
+   "Whether a Shortcuts action that sends a message to Happy can run unattended. If it can, the phone could trigger Happy over the existing iMessage channel, as its owner, with no gateway hook at all."
+  ],
+  "overlaps_existing": [
+   "F078",
+   "G017",
+   "F081",
+   "F007"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/intro-to-personal-automation-apd690170742/ios",
+    "title": "Intro to shortcuts with automations on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "specific to a device",
+    "supports": "Shortcuts automations fire on events such as time, arrival or opening an app, belong to one device, and sync to other devices switched off.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+    "title": "Add automations to Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Allow Running When Locked",
+    "supports": "Some automations can run without asking, including when the phone is locked; the listed triggers include time of day, arrive, leave, CarPlay, email, message, Wi-Fi, NFC and charger, and the list does not include the Notification trigger.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/communication-triggers-apdd711f9dff/ios",
+    "title": "Communication triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Message Contains",
+    "supports": "A Message trigger can be filtered by sender and by a phrase the message contains, and all criteria must match.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+    "title": "Event triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Notification trigger",
+    "supports": "Shortcuts has a Notification trigger that can be filtered by app and by text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios",
+    "title": "Setting triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "connect a charger",
+    "supports": "Automations can fire on Wi-Fi, Bluetooth, Focus, battery level, charger, NFC tag and app events.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios",
+    "title": "Request your first API in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Get Contents of URL",
+    "supports": "A shortcut can make an HTTP request, including POST with a JSON body, with the Get Contents of URL action.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "title": "Run shortcuts from the command line (Shortcuts User Guide for Mac)",
+    "anchor": "shortcuts run",
+    "supports": "The Mac has a shortcuts command that runs and lists the Mac's own shortcuts; the page describes nothing for running a shortcut on another device.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:655",
+    "title": "iOS app",
+    "anchor": "Start Live Voice",
+    "supports": "The app ships a Siri and Shortcuts action that opens it and starts Talk.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/webhooks.md:33",
+    "title": "Inbound webhooks",
+    "anchor": "allowedAgentIds",
+    "supports": "Gateway HTTP hooks are configured with a dedicated token and a list of agents they may reach.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-hooks.md:39",
+    "title": "Hooks configuration reference",
+    "anchor": "Shared hook secret string",
+    "supports": "The gateway has a single hook token shared by every hook endpoint and caller.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The Apple side checks out, but the hook token is one shared secret that also opens the free-text wake and agent endpoints for every allowed agent. Keeping it in a phone shortcut and pointing it at a parent's jobs agent (résumé plus browser) is the wrong placement, and the reverse-direction keyword fires on any Happy message that contains it.",
+   "The gateway hook facts and the Apple trigger facts are all confirmed. Three corrections: Apple's page omits the Notification trigger from the run-automatically list but does not say it cannot, the header the hook needs is still not documented by Apple, and the per-person jobs agent the hook should target does not exist yet."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "IPH-14",
+  "name": "An idle Android phone that Happy can actually operate",
+  "tier": 3,
+  "cluster": "Android alternative (route f)",
+  "description": "If the goal is an idle phone Happy can operate, OpenClaw documents that for Android, not iPhone: the Android app can expose the screen as a structured element list and perform taps, text entry and swipes.",
+  "example": "Tony texts: \"Check the team app for tomorrow's game time.\" (A request from Jordan would not reach mobile_ui, which is owner-only.)",
+  "how": "A cheap Android phone on a charger with the OpenClaw Android app, whose foreground service keeps the gateway connection alive. Turning on Accessibility Control in the app makes the node advertise mobile.ui.observe and mobile.ui.act (in the Android default allowlist; enabled on the phone, then approved as a pairing update). The built-in mobile_ui tool reads a semantic snapshot (text, roles, bounds) and performs one action per call; state-changing actions come back as confirmation_required until the model repeats the call with confirmed set. Give the tool to one stateless phone agent with tools.alsoAllow plus tools.sandbox.tools.alsoAllow (mobile_ui is on the sandbox default deny list), and expect it to work only in turns started by the command owner, because it is an owner-only core tool. scrcpy lets Tony watch or drive the same phone from the Mac.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "hardware: an Android phone and a Google account for it",
+   "the school or team app must exist on Android",
+   "a dedicated stateless phone agent",
+   "parent approval hook for state-changing actions (IPH-07)",
+   "the request must come from the command owner (or Jordan is added to commands.ownerAllowFrom, which also gives her every owner-only command)"
+  ],
+  "value": 2,
+  "effort": "L",
+  "caveats": [
+   "A second ecosystem to patch and babysit in an all-Apple house.",
+   "The docs pages mention mobile UI control only in the command-policy table. The tool is present in the installed code but has no guide page, so treat it as early.",
+   "The confirmed flag is the model confirming to itself; a real parent approval has to be added by hook.",
+   "It reads element text instead of pixels, so it is faster and steadier than iPhone Mirroring, but apps that draw custom views or mark content as secure will not be readable.",
+   "gateway.nodes.commands.deny is global. Denying callLog.search or notifications.list for this phone removes them for every node, and denying a shared command such as contacts.search would also switch it off for a parent's iPhone. Narrow this phone by what it is granted and which surface is approved, not only by the deny list.",
+   "A before_tool_call hook sees the action type and an element reference or coordinates, not the app or the label being tapped (the tool keeps the screen snapshot to itself). A parent approval prompt needs extra plumbing to say what is about to be pressed.",
+   "The built-in confirmation step looks for English keywords such as pay, send, delete and install. It is a hint to the model, not a control.",
+   "Like the iPhone app, the Android app pairs with an operator session as well as a node (see IPH-01).",
+   "For this family the school apps already notify both parents' iPhones; weekly use is unlikely to justify a second phone ecosystem.",
+   "A paired Android node can post notification events, voice transcripts and agent requests to a session key the phone chooses, so the phone itself is a way into any session. Keep it physically secured and leave notification forwarding off unless IPH-15 is built."
+  ],
+  "safety": "Same trifecta exposure as IPH-08. On the phone: only the target apps, no payment method, no wallet. On the gateway: keep sms.send and sms.search out of commands.allow and add them and callLog.search to commands.deny; mobile_ui only on the stateless agent; a before_tool_call hook requires a parent approval for any act other than scroll, wait or observe. The phone agent holds only mobile_ui: no nodes tool, no memory, no web, no message tool.",
+  "unverified": [
+   "Whether the Google Play build offers Accessibility Control and SMS or only the sideloaded APK does. Google restricts SMS permissions to default handler apps, and the docs say Play builds lack background location.",
+   "How Android battery optimisation treats the foreground service over weeks.",
+   "Whether any released Android build actually ships the Accessibility Control switch: the Android app page in the installed docs does not mention it; only the gateway-side tool and the policy table do.",
+   "Whether a scheduled run counts as an owner turn for mobile_ui."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:33",
+    "title": "Node command policy",
+    "anchor": "mobile.ui.observe",
+    "supports": "The Android default allowlist additionally contains notifications, call log, installed apps and the mobile UI observe and act commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration reference",
+    "anchor": "mobile UI control",
+    "supports": "Mobile UI control is granted by enabling it on the node and approving the pairing update, not by an allow entry.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+    "title": "Gateway source: mobile UI tool",
+    "anchor": "mobile_ui",
+    "supports": "The installed gateway ships a built-in mobile_ui agent tool for a paired Android app.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/android.md:357",
+    "title": "Android app",
+    "anchor": "foreground service",
+    "supports": "The Android app keeps its gateway connection alive with a foreground service and a persistent notification.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/device-commands.md:93",
+    "title": "Node device commands",
+    "anchor": "sms.send",
+    "supports": "SMS send and search are Android node commands, need the phone's SMS permission and telephony, and are dangerous by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks.md:164",
+    "title": "Plugin hooks",
+    "anchor": "before_tool_call",
+    "supports": "A before_tool_call plugin hook can block a tool call or request an approval.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.android.com/guide/topics/ui/accessibility/service",
+    "title": "Create an accessibility service (Android Developers)",
+    "anchor": "performGlobalAction",
+    "supports": "An Android accessibility service can inspect screen content and perform clicks, gestures and global actions for the user.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/googleplay/android-developer/answer/10208820",
+    "title": "Use of SMS or Call Log permission groups (Play Console Help)",
+    "anchor": "Call Log or SMS permissions",
+    "supports": "Google Play limits SMS and call-log permissions to default handler apps and approved exceptions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:56",
+    "title": "QR",
+    "anchor": "operator handoff",
+    "supports": "The limited profile is the full operator handoff minus admin, so it still carries approvals, read, Talk secrets and write.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+    "title": "Gateway source: owner-only core tools",
+    "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+    "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+    "title": "Gateway source: agent tool assembly",
+    "anchor": "ownerOnlyCoreToolDenylist",
+    "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:36",
+    "title": "Gateway source: sandbox constants",
+    "anchor": "DEFAULT_TOOL_DENY",
+    "supports": "The sandbox default deny list contains computer, mobile_ui and nodes, so a sandboxed agent needs an explicit sandbox allow for them.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/tool-catalog-D1rzNkvG.mjs:415",
+    "title": "Gateway source: tool catalog",
+    "anchor": "mobile_ui",
+    "supports": "The built-in tool catalog lists mobile_ui as observing and controlling a paired Android app, in no default tool profile.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/server-node-events-CWaUXzKm.mjs:451",
+    "title": "Gateway source: node events",
+    "anchor": "agent.request",
+    "supports": "A paired node can submit an agent request to a session key that the node itself supplies.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Honest about being experimental, but value 3 is too high for an all-Apple family whose school apps already notify both parents, and three limits are missing: the deny list is global, a hook cannot see what is being tapped, and the Android app is an operator client too.",
+   "The tool, node commands and config behaviour exist under exactly these names in the installed build. But mobile_ui is an owner-only, sandbox-denied core tool, so the Jordan example fails as written, and nothing in the installed docs shows the released Android app offers Accessibility Control."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "IPH-15",
+  "name": "Relay notifications from chosen apps (Android only)",
+  "tier": 3,
+  "cluster": "School and activities",
+  "description": "The realistic version of 'tell me when the school app pings': an Android phone forwards notifications from an allowlist of apps to the gateway, and a tool-less reader turns each into one line for the parents. The OpenClaw iPhone app has no equivalent.",
+  "example": "Trigger: the team app notifies \"Practice moved to 5:30\" and both parents get that line by iMessage.",
+  "how": "On the Android phone: Forward Notification Events on (off by default, needs Notification Listener access), Package Filter set to Allowlist with only the school and sports app ids, the per-minute cap left at 20, and Route Session Key pointing at a dedicated session. On the gateway: each forwarded notification is queued as a system event on the session key the phone sends, or on the system main session if none is set, with title and text cut to 120 characters each, and that session is woken. Point the key at a session of a reader agent with no tools and no memory. The reader's reply has no channel of its own, so an in-house plugin has to pick up its short structured output and send it to the pinned parents (the family delivery primitive, G009).",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "hardware: an Android phone logged in to the apps (shared with IPH-14)",
+   "reader-agent pattern from the mail plan (G015)",
+   "family delivery primitive (G009) and notification policy (G001)"
+  ],
+  "value": 2,
+  "effort": "M",
+  "caveats": [
+   "A notification carries a title and a short preview, and the gateway keeps at most 120 characters of each. No full post, no attachments.",
+   "Never use the default Blocklist mode: it forwards everything except the listed apps, including one-time codes and bank alerts.",
+   "On iPhone this cannot run unattended: the OpenClaw iOS node has no notification commands, and Apple's Notification trigger in Shortcuts is not among the triggers allowed to run without asking.",
+   "If the app offers email notifications, the school mailbox path (F051) is simpler and needs no extra phone.",
+   "In the installed gateway a forwarded notification is queued as a system event, the same trusted lane as a hook wake, not as safety-wrapped external content. The title and text come from whoever posted in the app.",
+   "The session it lands in is named by the phone. With no Route Session Key it falls back to the system main session, which the roadmap keeps on tony-main. One wrong setting on the phone puts strangers' text into a private agent as system text.",
+   "Both parents already get these notifications on their own iPhones. The relay earns its place only if Happy does something more with them, such as a digest or spotting a schedule change.",
+   "Needs an Android phone and a Google account the family does not own.",
+   "The OpenClaw iPhone app has no notification commands. Shortcuts on iPhone has a Notification trigger, but Apple does not list it among automations that can run automatically, so an unattended relay from an iPhone is unconfirmed.",
+   "If Route Session Key is left empty the events land in the system main session. Set it before turning forwarding on."
+  ],
+  "safety": "Notification text is untrusted content that arrives on a trusted lane, so the only acceptable target is a reader with no tools and no memory, exactly like the mail readers, with delivery done by code to pinned recipients. Route Session Key must be set, and checked again after every app update, because the default route is a private agent's main session. The package allowlist is the hard limit that keeps 2FA codes and financial alerts out. The phone holds no personal accounts beyond the school and team logins.",
+  "unverified": [
+   "How the gateway turns a forwarded notification event into an agent turn (the docs describe the phone's settings, not the gateway side).",
+   "How much text each app puts in its notifications.",
+   "How the reader's output gets from that session to the delivery code (I found no documented hook for this path).",
+   "Whether anything on the gateway can reject notification events aimed at a session other than the reader's.",
+   "How to capture a tool-less reader's reply to a system-event wake and hand it to delivery code; I found no documented pattern for it."
+  ],
+  "overlaps_existing": [
+   "F055",
+   "F056",
+   "G015",
+   "G009",
+   "G001"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/android.md:623",
+    "title": "Android app",
+    "anchor": "Forward Notification Events",
+    "supports": "Android can forward device notifications to the gateway; the switch is off by default and needs Notification Listener access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/device-commands.md:130",
+    "title": "Node device commands",
+    "anchor": "notifications.list",
+    "supports": "Reading and acting on device notifications is listed as Android only.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:31",
+    "title": "Node command policy",
+    "anchor": "motion.pedometer",
+    "supports": "The iOS default allowlist: camera.list, location.get, device info and status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify, and nothing for SMS, notifications or UI control.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+    "title": "Event triggers in Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Notification trigger",
+    "supports": "Shortcuts has a Notification trigger that can be filtered by app and by text.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+    "title": "Add automations to Shortcuts on iPhone or iPad (Shortcuts User Guide)",
+    "anchor": "Allow Running When Locked",
+    "supports": "Some automations can run without asking, including when the phone is locked; the listed triggers include time of day, arrive, leave, CarPlay, email, message, Wi-Fi, NFC and charger, and the list does not include the Notification trigger.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/server-node-events-CWaUXzKm.mjs:597",
+    "title": "Gateway source: node events",
+    "anchor": "notifications.changed",
+    "supports": "The gateway handles a forwarded notification by building a one-line summary from package, title and text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/webhooks.md:159",
+    "title": "Inbound webhooks",
+    "anchor": "Wake text is a system event",
+    "supports": "OpenClaw itself warns that system-event text is not a safety-wrapped reader turn and should carry only text you control.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/120421",
+    "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+    "anchor": "locked and near your Mac",
+    "supports": "The iPhone has to be locked and physically near the Mac, with Bluetooth and Wi-Fi on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/computer-use.md:288",
+    "title": "Computer use",
+    "anchor": "Treat screen content as untrusted",
+    "supports": "OpenClaw warns that what is on screen can carry prompt injection.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+    "title": "Gateway source: mobile UI tool",
+    "anchor": "mobile_ui",
+    "supports": "The installed gateway ships a built-in mobile_ui agent tool for a paired Android app.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:27",
+    "title": "iOS app",
+    "anchor": "iOS share sheet",
+    "supports": "The app's chat accepts images from the camera, Files, paste and the iOS share sheet.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+    "title": "Gateway source: owner-only core tools",
+    "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+    "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+    "title": "Gateway source: agent tool assembly",
+    "anchor": "ownerOnlyCoreToolDenylist",
+    "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "IPH-09"
+  ],
+  "adds": [
+   "The order to try for a school or team app with no website: the app's own email notifications into the school mailbox first, a parent's screenshot second, a dedicated phone only last."
+  ],
+  "review_notes": [
+   "The pattern is right, but in the installed gateway a forwarded notification arrives as a trusted system event in a session the phone names, and with no session key it falls to the system main session, which the roadmap keeps on tony-main. It also needs hardware the family does not own and delivery plumbing that is not documented, so 'build' and value 3 are too generous.",
+   "The phone-side settings are confirmed. The gateway side, read from the installed code, differs from the description: a forwarded notification becomes a 120-character system event on a session the phone names, not a wrapped reader turn, so the reader and delivery are unproven in-house work and readiness drops to experimental. The iPhone claim is softened to what Apple's page actually says."
+  ],
+  "reviewed_by": 2,
+  "wave": "later",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "IPH-13",
+  "name": "Accessibility routes: Switch Control and Voice Control",
+  "tier": 3,
+  "cluster": "iPhone UI control (route e)",
+  "description": "Apple's accessibility features can operate an iPhone without touching it, but they are built for a person with a switch or a voice, not for a program. Neither gives Happy a usable control channel.",
+  "example": "A parent asks: \"Can't Happy just use Voice Control on the old phone?\"",
+  "how": "Switch Control: a Mac running Switch Control can take over another Apple device on the same Wi-Fi network and Apple Account, but a person operates it by stepping through an on-screen scanner. The only way for Happy to use it would be the computer tool clicking the Mac's Switch Control panel, which is slower and weaker than iPhone Mirroring. Voice Control: the phone obeys spoken commands, so Happy would have to play synthesized speech at it from a speaker.",
+  "who": "operator",
+  "risk": "high",
+  "readiness": "blocked",
+  "depends_on": [
+   "no programmatic interface exists to build on"
+  ],
+  "value": 1,
+  "effort": "L",
+  "caveats": [
+   "Neither Apple page describes a scripting or automation interface for these features.",
+   "Voice Control does not check who is speaking: the TV, a guest or a child can issue the same commands, and so can any audio Happy plays by mistake.",
+   "Both are only useful with the phone awake and, in practice, unlocked."
+  ],
+  "safety": "A phone that obeys any voice in the room while sitting unlocked on a charger fails the rule that limits must be ones the model cannot talk past: here anyone could talk past them. Reject.",
+  "unverified": [
+   "Whether Switch Control from a Mac can operate a locked iPhone (the page does not say).",
+   "Whether Voice Control accepts commands on the Lock Screen."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/118667",
+    "title": "Use Switch Control on your device to control another Apple device (Apple Support)",
+    "anchor": "same Wi-Fi network",
+    "supports": "Switch Control on a Mac can take over another Apple device on the same Wi-Fi network and Apple Account, operated by a person with a switch; the page describes no scripting interface.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/111778",
+    "title": "Use Voice Control on your iPhone, iPad, or iPod touch (Apple Support)",
+    "anchor": "Voice Control",
+    "supports": "Voice Control lets a person tap, swipe and type on the iPhone by speaking commands to its microphone.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/troubleshooting.md:128",
+    "title": "Node troubleshooting",
+    "anchor": "computer.act",
+    "supports": "The permissions matrix marks computer.act as not applicable on iOS and Android.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 2,
+  "wave": "never",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "MKT-11",
+  "name": "Screen Time and app requests by chat",
+  "tier": 3,
+  "cluster": "kids' devices",
+  "description": "'Happy, give the 8-year-old 30 more minutes' or 'approve that app.' This cannot be done and should not be: Apple delivers these requests to a parent's own Messages with approve buttons, and only an adult marked as parent or guardian in Family Sharing can answer.",
+  "example": "Jordan texts: 'approve the iPad time request.' Happy replies that only her phone can, and where the request is.",
+  "how": "No mechanism on this stack. The iMessage channel runs in Basic mode, where private-API actions are unavailable, and the approval lives in Apple's own interface on a parent's or guardian's device. Happy's Apple Account must never be given the parent or guardian role in the family group. What Happy can do instead: a weekly 'review Screen Time' reminder (F007), keep the agreed limits as a fact in the vault (F043), and draft the family media rules.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "blocked",
+  "depends_on": [],
+  "value": 1,
+  "effort": "L",
+  "caveats": [
+   "The only technical route would be to make Happy's account a parent or guardian and drive the Messages window with screen automation. That would also let a bot approve purchases and downloads.",
+   "Approving takes one tap on the parent's phone; there is nothing to save.",
+   "Google's equivalent controls live in the Family Link app on the parent's device."
+  ],
+  "safety": "Approving a child's purchases and downloads is a purchase action and sits on the never-list. Parental-control authority stays with the two adults.",
+  "unverified": [
+   "Whether imsg surfaces Screen Time request bubbles at all; nothing in the installed docs mentions them.",
+   "Whether Happy's Apple Account is in the Family Sharing group at all; no plan document read in this run says.",
+   "That Google's equivalent controls live in the Family Link app (only the Gemini-for-children page, which names Family Link, was read)."
+  ],
+  "overlaps_existing": [
+   "F078",
+   "F081"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/child-safety/dq4vly6fq1je/web",
+    "title": "Approve your child's purchases, downloads, and Screen Time requests - Apple Support",
+    "anchor": "Approve for 15 minutes",
+    "supports": "Requests arrive in the parent's Messages with fixed approve or decline choices, and only an adult set as parent or guardian can respond.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage.md:19",
+    "title": "iMessage channel: status",
+    "anchor": "private API probe",
+    "supports": "Anything beyond plain text and media on iMessage needs the private API mode, which this install does not run.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Keep as blocked; Apple's page confirms requests are answered by a parent or guardian from their own Messages. The statement that Happy's Apple Account sits outside the family group is not in any plan document read in this run, so it becomes a rule to keep and an unverified item."
+  ],
+  "reviewed_by": 1,
+  "wave": "never",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "CRT-07",
+  "name": "A child's own device: school Chromebook, tablet, game console",
+  "tier": 3,
+  "cluster": "kids' devices",
+  "description": "The answer to 'can Happy manage the kids' devices?' for the non-Apple ones. It cannot: each is controlled from the vendor's own parent app or by the school, none of the pages read offers an interface for a home agent, and a child's device must not become a Happy node. Another lens covers Apple's Screen Time; this covers the rest.",
+  "example": "Jordan texts: 'Lock the Switch until homework is done', or 'What did he do on the school Chromebook today?'",
+  "how": "No mechanism on this stack. School Chromebook with a school account: Google says parents cannot add controls, because the school sets up and manages the account. Personal Chromebook or Android tablet: Family Link supervises Android 5 and later and ChromeOS 71 and later from the parent's app; it does not supervise iPhones or iPads. Nintendo Switch: play-time limits, game restrictions and activity reports live in Nintendo's free phone app, which two guardians can share. OpenClaw's own ChromeOS page is about running a Gateway inside the Chromebook's Linux container, not about controlling a Chromebook. What Happy can do with features already in the catalog: keep the agreed device rules as a family fact (F043), send a weekly 'look at the reports' reminder (F007), and put the device rules on the sitter card (F036).",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "blocked",
+  "depends_on": [],
+  "value": 1,
+  "effort": "L",
+  "caveats": [
+   "Any workaround means giving an agent a parent's vendor login and driving the parent app or site by screen automation: a credential that can approve purchases and change a child's account.",
+   "Pairing a kid's tablet as an OpenClaw node would expose its camera, location and screen to the Gateway. The kids are not users and the provider terms are 13+.",
+   "The vendor apps already push reports and requests to both parents' phones.",
+   "Pausing at the router is a different lever; see the home network entry."
+  ],
+  "safety": "Parental-control authority stays with the two adults in the vendors' apps. No kid device is paired, no vendor parent credential is stored, and approving a child's purchase or download is a purchase action on the never-list.",
+  "unverified": [
+   "That none of these vendors offers a consumer interface for parental controls. The pages read describe apps only and mention no API; absence was not proven.",
+   "Which devices the kids actually have.",
+   "Amazon's parent dashboard for Fire tablets was not opened in this run."
+  ],
+  "overlaps_existing": [],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/chromebook/answer/9797958",
+    "title": "Learn on a school-managed Chromebook - Chromebook Help",
+    "anchor": "school-managed Chromebook",
+    "supports": "On a school Chromebook with a school account the school manages the account and parents cannot add their own controls.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/families/answer/9116646",
+    "title": "Learn which devices can be supervised - Google For Families Help",
+    "anchor": "devices can be supervised",
+    "supports": "Family Link supervision covers Android and ChromeOS devices and most of its tools do not work on iPhones or iPads.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.nintendo.com/us/switch/parental-controls/",
+    "title": "Parental Controls App - Nintendo US",
+    "anchor": "Parental Controls",
+    "supports": "Switch limits and reports are managed from Nintendo's phone app, which two guardians can use from their own devices.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/chromeos.md:9",
+    "title": "ChromeOS platform page",
+    "anchor": "Crostini",
+    "supports": "OpenClaw's ChromeOS support means running a Gateway inside the Linux container, not operating the Chromebook.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "never",
+  "section": "iPhone, Android and other personal devices",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "F020",
+  "origin": "9 Oct",
+  "name": "Research agent extra readers: sandboxed browser and summarize CLI",
+  "tier": 3,
+  "cluster": "research-summaries",
+  "description": "The research helper can also read pages that need JavaScript, logged out, and pull text from long articles, videos and podcasts; bot walls and logins stop it.",
+  "example": "",
+  "how": "`browser` tool on research only (managed `openclaw` profile, per-profile `headless: true`, `browser.evaluateEnabled: false`, `sandbox.browser.allowHostControl` for the host target) plus a host stdio MCP wrapping `summarize --extract --json`.",
+  "who": "adult",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "M3-research",
+  "value": 3,
+  "effort": "M",
+  "caveats": [],
+  "corrections": [
+   "The catalog says to 'use the host profile'; because research must stay sandboxed, the browser tool defaults to the sandbox browser, and the host profile needs `agents.defaults.sandbox.browser.allowHostControl: true` plus an explicit host target.",
+   "The catalog's install line names the tap formula steipete/tap/summarize (as the bundled skill does); the upstream README opened in this run gives `npm install --global @steipete/summarize` or `brew install summarize`."
+  ],
+  "unverified": [
+   "`--youtube auto` and the optional Apify token appear in the bundled skill but not on the upstream README opened here; check `summarize --help` after install.",
+   "How often rec-portal and store pages block a headless, logged-out browser was not measured.",
+   "Blocking form-fill and typing by a before_tool_call hook is a design; the hook contract was read, the specific browser action names were not tested."
+  ],
+  "safety": "",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/profiles.md:10",
+    "title": "Browser profiles",
+    "anchor": "managed, isolated browser",
+    "supports": "The default browser profile is a separate managed browser with none of the family's signed-in sessions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/configuration.md:28",
+    "title": "Browser configuration",
+    "anchor": "evaluateEnabled",
+    "supports": "Arbitrary page JavaScript evaluation by the agent can be switched off in config.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/agent-tools.md:39",
+    "title": "Browser agent tools",
+    "anchor": "allowHostControl=true",
+    "supports": "A sandboxed agent may drive the host browser only when host control is explicitly enabled; otherwise it gets the sandbox browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/docker-backend.md:88",
+    "title": "Docker backend: sandboxed browser",
+    "anchor": "host-published CDP ports",
+    "supports": "The container browser cannot run with networking off, which is why it is the heavier option on this Mac.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/summarize/SKILL.md:71",
+    "title": "Bundled summarize skill",
+    "anchor": "--extract",
+    "supports": "The summarize CLI can print extracted content without calling a language model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/browser/skills/browser-automation/SKILL.md:41",
+    "title": "Bundled browser-automation skill",
+    "anchor": "captcha, 2FA",
+    "supports": "The bundled browser skill tells the agent to stop and report logins, captchas and two-factor prompts instead of working around them.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/steipete/summarize",
+    "title": "steipete/summarize README",
+    "anchor": "--extract",
+    "supports": "Upstream confirms extraction of web pages, YouTube and podcasts without an API key, installed through npm or Homebrew.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/get-started/bot-fight-mode/",
+    "title": "Cloudflare docs: Bot Fight Mode",
+    "anchor": "Bot Fight Mode",
+    "supports": "A widely deployed site-protection product challenges traffic that looks automated, so a headless browser will be turned away by some sites.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/multi-agent-sandbox-tools.md:187",
+    "title": "Multi-agent sandbox and tools: Sandbox config",
+    "anchor": "agents.entries.*.sandbox.browser.*",
+    "supports": "Sandbox browser settings, including host control, can be overridden for a single agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-login.md:19",
+    "title": "Browser login: Manual login",
+    "anchor": "trigger bot detection",
+    "supports": "Sandboxed browser sessions are documented as more likely to be flagged as bots than the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandboxing/images-and-setup.md:78",
+    "title": "Sandbox images and setup",
+    "anchor": "does not include the browser Dockerfile",
+    "supports": "The sandbox browser image cannot be built from the npm install; it needs a source checkout.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/browser-control.md:16",
+    "title": "Browser control risks",
+    "anchor": "unless you trust them",
+    "supports": "Host browser control should stay disabled for sandboxed agents by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser/setup.md:84",
+    "title": "Browser setup: Agent guidance",
+    "anchor": "login/2FA/captcha",
+    "supports": "The bundled skill instructs the agent to report logins, 2FA and captchas as manual steps.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/help/faq/sessions-and-chats.md:179",
+    "title": "FAQ: sessions and chats",
+    "anchor": "anti-bot, CAPTCHAs, and MFA",
+    "supports": "The docs state plainly that browser automation can still be blocked by bot defenses and MFA.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/subagents/tool-policy.md:23",
+    "title": "Sub-agent tool policy",
+    "anchor": "Sub-agents always lose",
+    "supports": "Sub-agents are hard-denied the message tool and other delivery surfaces regardless of allowlists.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://arxiv.org/abs/2504.01382",
+    "title": "arXiv 2504.01382: An Illusion of Progress? Assessing the Current State of Web Agents",
+    "anchor": "Online-Mind2Web",
+    "supports": "An independent evaluation on 300 live-website tasks found web agents much less competent than earlier benchmark results suggested.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developer.chrome.com/blog/local-network-access",
+    "title": "Chrome for Developers: New permission prompt for Local Network Access",
+    "anchor": "Local Network Access",
+    "supports": "From Chrome 142, requests from public sites to private or loopback addresses need a user permission, aimed at request forgery against routers and other local devices; the page says nothing about automated or headless use.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.cloudflare.com/bots/concepts/bot-detection-engines/",
+    "title": "Cloudflare docs: Bot detection engines",
+    "anchor": "headless browsers",
+    "supports": "A major bot-management vendor documents a detection engine that identifies headless browsers.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/sandbox-vs-tool-policy-vs-elevated.md:69",
+    "title": "Sandbox vs tool policy vs elevated",
+    "anchor": "Sandbox tool policy",
+    "supports": "A sandboxed agent's tools must also pass the sandbox tool allow and deny lists.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/browser-tool-description-TgkJWaCu.mjs:372",
+    "title": "Browser tool description (installed source)",
+    "anchor": "action=profiles",
+    "supports": "The tool's built-in guidance tells the model to list the available profiles and pick one by name when logins matter.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser.md:38",
+    "title": "Browser (OpenClaw-managed): What you get",
+    "anchor": "direct attachment navigations",
+    "supports": "A navigation that resolves to a file is saved under the managed downloads directory.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/chrome-B5LltyxA.mjs:212",
+    "title": "Browser navigation guard (installed source)",
+    "anchor": "NETWORK_NAVIGATION_PROTOCOLS",
+    "supports": "Tool-requested navigation accepts only http and https addresses, so local file addresses are refused.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/constants-DEZ1h3C0.mjs:36",
+    "title": "Sandbox constants (installed source)",
+    "anchor": "DEFAULT_TOOL_DENY",
+    "supports": "The built-in sandbox deny list begins with the browser tool, so a sandboxed agent does not get it unless the sandbox allow list names it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-agents/sandbox.md:215",
+    "title": "Agent sandbox configuration: browser",
+    "anchor": "allowHostControl: false",
+    "supports": "By default a sandboxed session cannot target the host browser.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/browser-control.md:178",
+    "title": "Browser control API: Playwright requirement",
+    "anchor": "require Playwright",
+    "supports": "navigate, act, AI snapshots and PDF export only work when Playwright is present in the gateway build.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "node_modules/playwright-core/package.json:3",
+    "title": "playwright-core package manifest (installed)",
+    "anchor": "1.63.0",
+    "supports": "The Playwright runtime is present inside the installed npm package.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "WEB-02"
+  ],
+  "adds": [
+   "The four switches this install needs before the research agent can use a browser (browser.enabled, the sandbox tool allow, host control or a sandbox browser image, the per-agent allow), a read-only action set, and a comparison of the three places a browser can live."
+  ],
+  "wave": "C",
+  "section": "The web",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "WEB-03",
+  "name": "Browser action firewall hook (profile pin, site allowlist, approval before typing, no submit)",
+  "tier": 3,
+  "cluster": "approvals",
+  "description": "One in-house plugin that decides in code what each agent's browser may do: which profile, which sites and which actions, all as allowlists that fail closed. Without it the browser tool is all-or-nothing. In this batch it only denies; asking a parent before typing is a later addition for the M6 jobs agent.",
+  "example": "Trigger: an injected page tells the research agent to switch to another browser profile or to type into a form; the call is refused in code before the browser sees it, and the nightly eval has a case for each.",
+  "how": "Plugin with `api.on(\"before_tool_call\", handler, { matcher: [\"browser\"] })`; the docs also offer a stricter tier, `api.registerTrustedToolPolicy`, which runs before ordinary hooks. It reads `ctx.agentId`, `ctx.requester` and `event.params`. A call can hide its target in three places and the hook must read all of them: the URL is taken from `targetUrl` first and `url` second; an act can arrive as a top-level `kind` or inside a nested `request` object; and act kind `batch` carries a nested `actions` array. Rules per agent, all failing closed: reject any `profile`, `target` or `node` other than the one assigned, and treat a missing `profile` as a block or fill in the assigned one, because an omitted profile means the default profile; reject `systemProfile`, `into`, `domains` and `dashboard`; allow `open`/`navigate` only when every URL field present is on an exact hostname list; allow only a listed subset of the tool's 24 actions; treat act kinds as an allowlist as well: block `batch`, `evaluate`, `press`, `clickCoords`, `drag`, `wait`, `resize` and `type` with `submit`, block any call whose top-level and nested kinds differ, and return `requireApproval` with `allowedDecisions: [\"allow-once\", \"deny\"]` for `fill`, `type`, `select`, `click` and the `upload` action. Block gated actions outright when `ctx.requester` is absent (scheduled and system runs). Unknown agent, missing field, unknown kind or parse error returns a block; the runner itself blocks the call if the handler throws or runs past 15 seconds. Prompts are answered in the same chat that raised them with a typed `/approve <id> <decision>`; the family's config already has `approvals.plugin` enabled in `session` mode. Lobster is not the gate here: it is disabled in sandboxed contexts.",
+  "who": "operator",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "G009 hook pattern (fail-closed before_tool_call)",
+   "approval prompts routed to the asking chat"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "The hook sees tool parameters, not page meaning: a click carries a snapshot ref, not the button's label, so code cannot tell 'Next' from 'Submit'. The safe rule is an approval on every click inside a form, which becomes tedious after three prompts.",
+   "Approval waits are capped at ten minutes and an unanswered request denies.",
+   "Scheduled runs have no approval route, so approval-gated actions never happen unattended. That is the intended behaviour.",
+   "On iMessage the approver list is the channel allowlist, not the requester: the roadmap already notes that approvals are not tied to the person whose agent asked, so prompts must go only to the asking chat.",
+   "A navigation allowlist in a hook checks the URL the agent asked for, not where redirects or page scripts go next.",
+   "Every list has to be default-deny. The installed schema has more ways to act than click, type, fill, select and press: `batch` (a list of nested actions), `clickCoords`, `drag` and `hover`; an act can also arrive inside a nested `request` object; `open` takes `targetUrl` where other actions take `url`; `node` and `dashboard` choose a browser without naming a profile. A hook that checks only `kind`, `url` and `profile`, as first written, can be walked around.",
+   "The tool's schema can change with any OpenClaw update. Default-deny keeps a new action blocked until someone allows it, but the hook's eval cases still have to be rerun in each weekly patch window.",
+   "An approval prompt that shows the site and a field count does not tell the approver what is being sent; one that shows the values puts a child's details on the approval surface, which the docs advise against. Approval is a brake on mistakes, not a defence against exfiltration.",
+   "On iMessage the documented text fallback treats a Like tapback as allow-once. A reflex tapback on the prompt is an approval.",
+   "The approval branch has one consumer in the roadmap, the M6 jobs agent. Build and test it there, not in this batch.",
+   "Do not rely on scheduled runs having no approval route: the docs say an automation's approval card is delivered to whatever approval surface is connected and the run waits. Keep unattended runs away from gated actions in the hook itself, by blocking when no requester is attached to the call.",
+   "With `open` and `navigate` allowed, a link straight to a file is saved into the managed downloads directory without the `download` action ever being called.",
+   "The parameter names come from the installed 2026.9.7 tool schema and can change on upgrade; the hook needs a contract test that runs after every OpenClaw update."
+  ],
+  "safety": "This is what turns 'the model was told not to' into a limit the model cannot argue past: profile, site and action limits live in code and fail closed, in line with both vendors' guidance to restrict sites and confirm consequential actions. It does not by itself make a logged-in browser safe (see WEB-04). It is in-house code sitting on the security boundary: one parsing mistake is a bypass, so it needs its own injection eval cases before any profile on the host holds a login.",
+  "unverified": [
+   "Whether an approval raised by a spawned sub-agent is delivered to the parent chat that started the task; needs a test.",
+   "Whether tapback approval works in iMessage Basic mode; the typed /approve command is the documented fallback.",
+   "The parameter names were read from the browser tool's schema source, not observed in a live hook event.",
+   "Whether `ctx.agentId` carries the sub-agent's id when research runs as a spawned session; every per-agent rule depends on it.",
+   "Whether the hook sees the browser call before the tool applies its own defaults (profile, target), so that 'must be present' can be enforced.",
+   "Whether a plugin approval raised inside a scheduled run reaches any chat when `approvals.plugin.mode` is `session`."
+  ],
+  "overlaps_existing": [
+   "F020",
+   "F087",
+   "G009"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/tool-policy.md:48",
+    "title": "Tool call policy hooks",
+    "anchor": "requireApproval",
+    "supports": "A before_tool_call hook can block a call, rewrite its parameters, or pause it for a human decision with a restricted decision set.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/exec-approvals-advanced.md:306",
+    "title": "Advanced exec approvals: Same-chat approvals",
+    "anchor": "that same chat",
+    "supports": "An approval raised from a chat can be resolved in that chat with the approve command by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/plugin-permission-requests.md:88",
+    "title": "Plugin permission requests",
+    "anchor": "capped at 600000",
+    "supports": "Approval timeouts default to two minutes and cannot exceed ten.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/rich-messages.md:103",
+    "title": "iMessage: Approval polls and reactions",
+    "anchor": "/approve <id> <decision>",
+    "supports": "Without the private API bridge, iMessage approval prompts fall back to text commands.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/browser-tool-description-TgkJWaCu.mjs:120",
+    "title": "Browser tool schema (installed source)",
+    "anchor": "BROWSER_TOOL_ACTIONS",
+    "supports": "The browser tool exposes a fixed list of actions including pdf, download, upload, importprofile and act.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/lobster.md:120",
+    "title": "Lobster",
+    "anchor": "disabled entirely for sandboxed tool",
+    "supports": "The Lobster workflow tool is unavailable when the tool context is sandboxed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/tools-computer-use",
+    "title": "OpenAI API docs: Computer use",
+    "anchor": "Confirm consequential actions",
+    "supports": "OpenAI's developer guidance: run the agent in an isolated browser with a list of permitted sites and actions, treat on-screen text as untrusted, keep the user in control of purchases and other hard-to-reverse steps, and treat typing sensitive data into a form as sending it.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/agent-builder-safety",
+    "title": "OpenAI API docs: Safety in building agents",
+    "anchor": "Keep tool approvals on",
+    "supports": "OpenAI recommends leaving per-tool approvals enabled and passing only structured data between steps, and says these measures reduce but do not remove injection risk.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool",
+    "title": "Claude API docs: Computer use tool",
+    "anchor": "an allowlist of domains",
+    "supports": "Anthropic's developer guidance for computer-using agents: isolate the environment, keep login data away from the model, restrict internet access to listed domains, and have a human confirm consequential or consent-type actions.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:93",
+    "title": "Plugin hooks reference: timeouts and failures",
+    "anchor": "Fail closed",
+    "supports": "A before_tool_call handler that throws or times out blocks the tool call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/plugin-service-B3QbOP4z.mjs:1069",
+    "title": "Browser tool runtime (installed source)",
+    "anchor": "targetUrl",
+    "supports": "open and navigate take their destination from the targetUrl argument and fall back to url only when it is missing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:174",
+    "title": "Cron payloads",
+    "anchor": "connected approval surfaces",
+    "supports": "An automation's approval request is delivered to connected approval surfaces and the run waits, so scheduled runs are not route-less by construction.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "The right control and the right mechanism, but the rule set as written is a blocklist on act kinds and reads too few parameters: the installed schema also has batch, coordinate clicks, a nested request object, targetUrl, node and dashboard, each a way round it. Make every list default-deny and move the approval branch to M6.",
+   "The hook API, approval limits and iMessage fallback are all confirmed, but the rule set as written can be walked around: the tool reads the URL from `targetUrl` before `url`, accepts act arguments nested under `request`, and has a `batch` kind with nested actions plus `clickCoords` and `drag`, none of which the listed rules look at. The claim that scheduled runs have no approval route is not supported by the cited line and is contradicted by the automation docs."
+  ],
+  "reviewed_by": 2,
+  "wave": "C",
+  "section": "The web",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-03",
+  "name": "Voice guardrails pack (scoped devices, Talk owner, spoken confirmation)",
+  "tier": 3,
+  "cluster": "Voice safety",
+  "description": "One reviewed set of limits that goes in before any voice surface is switched on: voice-only devices get a read-plus-talk credential, Talk has an explicit default owner, realtime voice must confirm aloud before acting, cloud speech providers are switched off in config rather than by instruction, and a house rule says shared-room microphones never reach a memory-holding or cloud-backed agent while kids are around. It narrows what a voice device can do; it does not stop a paired device from reading both adults' agents.",
+  "example": "Trigger: Tony pairs a new voice device. The happy-inspect check lists paired devices and fails if any voice device holds admin or write scope.",
+  "how": "Pair by device type with `openclaw qr`. A parent's phone that also chats gets `--limited` (no operator.admin; still operator.write, operator.approvals and operator.talk.secrets). A talk-only client such as a room device gets `--voice-node` (node token plus only operator.read and operator.talk, so no chat.send and no tts.speak). Set `talk.agentId` explicitly, because a multi-agent gateway has no unambiguous Talk owner. Use `talk.realtime.brain: agent-consult` and keep the built-in spoken-confirmation gate. Leave `tts.modelOverrides.allowProvider` off (its default) so a reply directive cannot move speech to a cloud provider. Add a read-only device and scope listing to the operator's inspect script. For hard per-person enforcement the documented route is `gateway.roles` (named operator roles that restrict agents and scopes for verified identities).",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "depends_on": [
+   "decision: may family voice devices hold operator.read",
+   "G006 audit digest",
+   "G005 kill switch covering Talk sessions"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "operator.read is documented as not being a per-person privacy boundary: a talk-only device can still read gateway status and session data across agents.",
+   "Talk clients choose the agent (the Watch literally asks which agent), so 'Jordan's device only reaches jordan-main' is not enforced without gateway roles.",
+   "There is no speaker identification anywhere in the stack. Whoever is near the microphone is the user, and the spoken yes can come from anyone in the room; the FaceTime doc says the same about its own calls.",
+   "With roles configured, plain device or bootstrap tokens are rejected for operator connections, so roles change how every app signs in and need a verified identity per person. The docs add that the write scope stays gateway-wide even under roles.",
+   "operator.read is broad and is in every pairing profile: session lists, chat history, logs and read-only browsing of every agent's workspace. There is no voice credential today that cannot read both adults' agent memory.",
+   "A read-plus-talk device probably cannot run the native speech loop, because the chat turn is write-scoped. Least privilege therefore pushes voice devices onto the realtime path, which is cloud audio.",
+   "Standalone Watch setup needs the iPhone connected with operator.admin, which conflicts with pairing phones below admin.",
+   "Scopes limit which gateway methods a device may call, not which agent it reaches. A device names the session key for its own Talk sessions, and the installed gateway also accepts a node-level voice-transcript event that starts an agent run on whatever session key the device supplies (the main session if none). Pinning a device to one agent needs `gateway.roles` or stays a client-side convention.",
+   "Tightening a phone's scope has a price: without operator.admin the app's Settings pages (including this device's Talk and Voice Wake switches) do not open, and standalone Watch voice cannot be set up from that phone.",
+   "`talk.agentId` is one value for the whole gateway, so it cannot mean each parent's own agent. Whichever agent it names receives every Talk session that arrives without an agent-prefixed key, so it should be a memory-less one.",
+   "The default and the limited handoff both include operator.talk.secrets (read Talk configuration with secrets included)."
+  ],
+  "safety": "This entry is the control layer for the voice lens: credential scopes, tool policy, provider switches in config and a host-enforced confirmation are limits the model cannot talk its way past. What it cannot deliver is the section 1b separation between the two adults on app or voice devices, or the kids rule; those need verified role enforcement and a local model, neither of which exists yet. Until then the only compliant voice device is the operator's own.",
+  "unverified": [
+   "Whether the iOS and Watch apps still connect once `gateway.roles` is configured.",
+   "Whether a voice-node device can be pinned to exactly one agent.",
+   "Whether the kill switch hooks in G005 fire for realtime Talk sessions.",
+   "Whether a voice-node credential can run the native speech loop at all.",
+   "Whether the provider fallback chain reaches the Microsoft online voice when a local engine fails (the docs and source say it counts as configured by default).",
+   "Whether anything short of `gateway.roles` pins a device to one agent; the installed node-event code takes the session key from the device.",
+   "Which agent receives a node voice transcript that carries no session key on this multi-agent config (the installed code falls back to the gateway's main session key).",
+   "The scope findings come from the installed scope table and docs; none was tested on a device."
+  ],
+  "overlaps_existing": [
+   "G005",
+   "G006"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:58",
+    "title": "openclaw qr",
+    "anchor": "room voice client",
+    "supports": "The voice-node profile issues an operator token limited to read and talk that cannot send messages or change configuration.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:42",
+    "title": "Operator scopes",
+    "anchor": "operator.talk",
+    "supports": "operator.talk allows creating, steering and closing Talk sessions without general write access.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/client-ui.md:23",
+    "title": "Talk client UI",
+    "anchor": "choose an agent",
+    "supports": "The Watch client asks the user to pick an agent when more than one exists.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/realtime-sessions.md:131",
+    "title": "Talk realtime sessions and delegation",
+    "anchor": "exact spoken confirmation",
+    "supports": "High-impact actions started by voice are blocked until the user confirms aloud, per action.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/commands.md:28",
+    "title": "Text-to-speech commands and directives",
+    "anchor": "allowProvider",
+    "supports": "A model-emitted provider switch in a TTS directive is ignored unless allowProvider is turned on.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/facetime.md:41",
+    "title": "FaceTime plugin",
+    "anchor": "does not authenticate each speaker",
+    "supports": "OpenClaw's own voice integration states it does not verify who is speaking on a call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/tts/field-reference.md:126",
+    "title": "Text-to-speech field reference",
+    "anchor": "Allow Microsoft speech usage",
+    "supports": "The keyless Microsoft speech provider is enabled by default.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:372",
+    "title": "iOS app: Standalone voice",
+    "anchor": "operator.admin",
+    "supports": "Standalone Watch voice setup requires the iPhone to be connected with the admin scope.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration",
+    "anchor": "gateway.nodes.commands.deny",
+    "supports": "A gateway-wide deny list removes declared node commands after pairing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/device-bootstrap-profile-DV7lvW3L.mjs:56",
+    "title": "Device bootstrap profiles (installed build)",
+    "anchor": "VOICE_NODE_PAIRING_SETUP_BOOTSTRAP_PROFILE",
+    "supports": "The voice-node pairing profile is the node role plus the read and talk operator scopes and nothing else.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/server-node-events-CWaUXzKm.mjs:392",
+    "title": "Gateway node event handler (installed build)",
+    "anchor": "voice.transcript",
+    "supports": "A paired node can submit a voice transcript that starts an agent run on the session key in the payload, or on the main session when none is given.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:190",
+    "title": "Talk mode",
+    "anchor": "Owns Talk sessions",
+    "supports": "talk.agentId is a single key that owns Talk sessions created without an agent-scoped session key.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Two of the pack's limits do not do what the entry says: `--limited` still hands out write and approvals, and the spoken-confirmation gate covers realtime consult runs only. No item in the pack separates the two adults on a voice device, because every pairing profile includes operator.read; the entry should say so and add the missing cloud-speech locks.",
+   "All 9 sources hold. The pairing advice has to be split by device type (a voice-node credential cannot chat or use Listen, so it is not for a parent's phone), and the installed build shows that scopes do not pin a device to an agent: the device supplies the session key."
+  ],
+  "reviewed_by": 2,
+  "wave": "D",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ },
+ {
+  "id": "VOX-01",
+  "name": "Talk mode on a parent's iPhone (native speech loop)",
+  "tier": 3,
+  "cluster": "Talk mode",
+  "description": "A parent installs the OpenClaw iPhone app and holds a spoken back-and-forth with their own agent: the phone transcribes, the gateway answers as it would a text, and the reply is spoken. The app also adds a Listen action on any reply and a Siri phrase or Action Button shortcut that starts voice. Realistic first step is Tony's phone only: the app is a full gateway client and a device node, and with what is verified today a second adult's phone cannot be held to her own agent.",
+  "example": "Parent presses the Action Button and says: what is on tomorrow, and do I need to pack anything for soccer?",
+  "how": "App Store OpenClaw app on each adult iPhone, reaching the gateway over the tailnet (the app connects over LAN or tailnet; this gateway is Tailscale Serve only). Tony generates the pairing code with `openclaw qr --limited` instead of the default admin handoff. `--voice-node` is not for a parent's phone: it drops the write scope, so typed chat (`chat.send`) and the Listen action (`tts.speak`) stop working, and whether Talk still runs is untested. Native Talk is a loop: Apple Speech recognition on the phone, Gateway chat on the chosen agent (tony-main or jordan-main), then `talk.speak` playback. `talk.speak` reads the Talk block, not the `tts` block: set `talk.provider` plus `talk.providers.<id>` to a speech provider (the local engine from VOX-04 can be named there); with no Talk provider the gateway call fails and the docs mention an iPhone system-voice fallback. Keys: `talk.agentId` (owner when the client sends no agent-prefixed session key), `talk.speechLocale`, `talk.silenceTimeoutMs`, `talk.interruptOnSpeech`. Entry points: the inline Talk control, the `Start Live Voice` App Shortcut, the Siri phrase, or the Action Button.",
+  "who": "adult",
+  "risk": "high",
+  "readiness": "experimental",
+  "depends_on": [
+   "OpenClaw iOS app on each adult iPhone",
+   "Tailscale on both phones",
+   "VOX-03 voice guardrails (pairing profile decision)",
+   "a TTS engine: VOX-04 or F004",
+   "Tailscale on the phone",
+   "decision: is a write-scoped gateway credential on a phone acceptable",
+   "a Talk speech provider (talk.provider), configured separately from the tts block",
+   "spike before any second adult is paired: gateway.roles with the iOS app",
+   "a Talk speech provider under `talk.provider` (the VOX-04 local engine), or accept the iPhone system-voice fallback"
+  ],
+  "value": 3,
+  "effort": "M",
+  "caveats": [
+   "Audio can leave the house even in the native loop: the docs say Apple Speech recognition on iOS may use network services. The transcript then goes to OpenAI as text like any typed message.",
+   "iOS may suspend background audio, so voice is best-effort unless the app is in the foreground; the Siri shortcut does not bypass unlock or foreground restrictions.",
+   "The default pairing code hands the phone an operator token that includes admin scope, and the app lets its user pick any agent. Per-person separation on this surface is by convention unless VOX-03 is done first. Even the limited code keeps operator.write, operator.approvals and operator.talk.secrets, so the phone can still chat with any agent.",
+   "`openclaw qr` only advertises a Tailscale URL when OpenClaw itself owns the Serve route (`gateway.tailscale.mode`), so the M0 Serve setup has to be checked before pairing. The config repo's flat config sets `gateway.tailscale.mode` to serve on a loopback bind, so this looks met; confirm on the live gateway. mDNS discovery is off there, so pairing is by QR or setup code, not by Bonjour.",
+   "Dictating an iMessage to Happy with the keyboard microphone or Siri already works today with no setup. Talk adds the continuous loop, barge-in and spoken replies, not a new capability.",
+   "The app is a gateway client first. Every pairing profile includes operator.read, which covers session lists, chat history, logs and read-only browsing of every agent's workspace; the app's Agents > Files screen and its offline transcript cache show exactly that. On a second adult's phone this means the other adult's agent memory is readable.",
+   "The default pairing code includes the admin scope, and in every profile the app lets its user pick any agent.",
+   "`--limited` removes only operator.admin. The phone keeps operator.write (chat with any agent, gateway-wide tool invocation, node command relay) and operator.approvals, so a second phone is also a second approver for every pending request.",
+   "`--voice-node` does not rescue the native loop: the chat turn is chat.send, which the docs class as write-scoped, and that profile holds only read and talk.",
+   "Pairing registers the phone as the gateway's first node. Once a node surface is approved, the default iOS policy allows location, contacts search, calendar events, reminders and latest photos to any write-scoped client, subject to the iOS permission on the phone.",
+   "App Store builds register with a vendor-hosted push relay: a new third-party dependency and egress destination for this gateway.",
+   "Talk playback uses the Talk speech provider, not the general tts block. The docs name elevenlabs (cloud), mlx and system for Talk, and the mlx helper ships with the Mac app, which is not installed here; expect the iPhone's own system voice.",
+   "A lost or unlocked phone is now a gateway credential rather than just an iMessage sender; Tony needs the device-revocation step written down before pairing.",
+   "A phone paired without operator.admin cannot open the app's Settings pages, which is where this device's Talk, Voice Wake, background-listening and speakerphone switches live. Plan on the inline Talk control in Chat and the Start Live Voice shortcut."
+  ],
+  "safety": "Tony's phone: acceptable, because section 1b already makes Tony the control-plane owner who can read everything; pair with the limited profile, keep the node surface unapproved, and treat the phone as an admin-adjacent credential. A second adult's phone: no safe placement is verified. The docs describe operator scopes as a guardrail inside one trusted operator domain, not a boundary between people, and the named-roles feature that could limit her to her own agent rejects the device and bootstrap tokens that QR pairing issues. Voice input is the speaker's own words, so no untrusted-content leg is added to <p>-main, and tool policy, hooks and the family-only recipient pin still apply to the agent's tool calls. A child must not use a parent's Talk session: every agent is cloud-backed and Apple Speech on iOS may send audio to Apple.",
+  "unverified": [
+   "Whether the iPhone app can run Talk when paired with a `--voice-node` code (the docs describe that profile for an embedded or room voice client and for the Watch).",
+   "Which `talk.provider` ids besides elevenlabs, mlx and system the gateway accepts for playback on iOS.",
+   "Whether a Talk session can continue the same conversation as the person's iMessage thread, or only shares agent memory.",
+   "Whether the iOS app can connect its operator session at all once `gateway.roles` is configured.",
+   "Whether Tony and Jordan have separate tailnet logins, which a verified Tailscale identity per person would need.",
+   "Whether the iPhone app accepts a `--voice-node` code; even if it does, the native loop probably fails without write scope.",
+   "Whether a local engine set up under tts (VOX-04) can serve as the Talk speech provider for talk.speak on iOS.",
+   "Whether the M0 Tailscale Serve route is owned by OpenClaw (`gateway.tailscale.mode`), which `openclaw qr` requires before it will advertise a tailnet URL.",
+   "Whether in-app Talk still works while the phone's node surface is left unapproved.",
+   "Whether Talk still runs on an iPhone paired with a `--voice-node` code. What is certain from the installed scope table is that such a phone loses typed chat and the Listen action (chat.send and tts.speak need the write scope).",
+   "Which speech providers pass the Talk-mode check inside `talk.speak`. The installed code resolves `talk.provider` against the general speech-provider registry with fallback disabled; a loopback `openai` endpoint and `tts-local-cli` were not tried.",
+   "Whether Talk starts from the inline control on a limited pairing without a first visit to the admin-only Talk settings page, and when exactly the iPhone falls back to its system voice."
+  ],
+  "overlaps_existing": [
+   "F003",
+   "F004"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/platforms/ios.md:15",
+    "title": "iOS app",
+    "anchor": "App Store",
+    "supports": "The official iPhone app is distributed through the App Store, so no developer build is needed.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk.md:12",
+    "title": "Talk mode",
+    "anchor": "may use network services",
+    "supports": "Native Talk uses the platform speech recognizer, and on Apple devices that recognizer can send audio to a network service.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/qr.md:54",
+    "title": "openclaw qr",
+    "anchor": "operator.admin",
+    "supports": "The default mobile setup code hands off an operator token that includes admin, approvals, read and write scopes.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/talk/session-ownership.md:17",
+    "title": "Talk session ownership",
+    "anchor": "talk.agentId",
+    "supports": "On a multi-agent gateway Talk needs an explicit owner: talk.agentId or an agent-prefixed session key.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/operator-scopes.md:34",
+    "title": "Operator scopes",
+    "anchor": "session reads",
+    "supports": "The read scope covers status, lists, logs and session reads across the gateway.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/protocol/rpc-talk-config-and-agents.md:80",
+    "title": "Gateway RPC: Talk, config and agents",
+    "anchor": "agents.workspace.get",
+    "supports": "Any client with the read scope can browse an agent workspace read-only; the docs call this a trusted-operator-domain surface.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/command-policy.md:31",
+    "title": "Node command policy",
+    "anchor": "location.get",
+    "supports": "The gateway default policy for an iOS node allows location, contacts search, calendar events, reminders and latest photos, among others.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-gateway.md:220",
+    "title": "Gateway configuration",
+    "anchor": "gateway.nodes.commands.deny",
+    "supports": "A gateway-wide deny list removes declared node commands after pairing.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/handlers-BfMgGTTj.mjs:5123",
+    "title": "Gateway Talk handlers (installed build)",
+    "anchor": "talk provider not configured",
+    "supports": "talk.speak returns an error when no Talk provider is configured and otherwise resolves the provider through the speech-provider registry.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.openclaw.ai/platforms/ios",
+    "title": "iOS app (public OpenClaw docs)",
+    "anchor": "Talk to Claw",
+    "supports": "The public documentation describes the same Watch companion flow and App Store availability.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102536",
+    "title": "Announce notifications with Siri on AirPods or Beats (Apple Support)",
+    "anchor": "Announce Notifications",
+    "supports": "Siri can read incoming notifications aloud on supported headphones and take a spoken reply while the iPhone is locked.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/nodes/voicewake.md:12",
+    "title": "Voice wake",
+    "anchor": "Requires macOS 26+",
+    "supports": "Wake words on a Mac need the macOS app's toggle and macOS 26 or newer.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "title": "Introducing Alexa+, the next generation of Alexa",
+    "anchor": "$19.99 per month",
+    "supports": "The commercial reference point: a conversational voice assistant sold as a monthly service, free with Prime.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [
+   "OCL-02",
+   "MKT-08"
+  ],
+  "adds": [
+   "The Start Live Voice shortcut for Siri or the Action Button; the vendor-free speech path on an iPhone is the app's on-device fallback, which is unverified for Talk.",
+   "Market context (Alexa+ and ChatGPT voice) and the same conclusion: it fits Tony's phone only, because every voice pairing carries read access to all sessions."
+  ],
+  "review_notes": [
+   "The iPhone app is a full gateway client and device node, not a voice-only surface: every pairing profile carries operator.read, and the two phone profiles also carry write and approvals, so a second adult's phone can read the other adult's agent workspace and approve anyone's requests. That breaks the section 1b rule that family members only chat; the only safe placement verified today is the operator's own phone.",
+   "All 11 sources hold. Two feasibility corrections: a parent's phone needs the `--limited` code, not `--voice-node`, because typed chat and Listen are write-scoped; and Talk playback has its own `talk.provider` block, so the `tts` block from VOX-04 alone does not give `talk.speak` a voice."
+  ],
+  "reviewed_by": 2,
+  "wave": "D",
+  "section": "Voice and calls",
+  "includes": [],
+  "history": []
+ }
+]

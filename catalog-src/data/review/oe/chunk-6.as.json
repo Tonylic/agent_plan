@@ -1,0 +1,377 @@
+[
+  {
+    "id": "CRT-05",
+    "kind": "assumption",
+    "part": "Jordan does the restart while Tony is away",
+    "where": "description, example, how (rehearsal), value",
+    "problem": "The card is scored 4 and placed in wave A on two things nobody has said: that Tony is away overnight often enough for a power cut to matter, and that Jordan is willing to type a disk password and run commands at the Mac. The trigger in the example ('a power cut while Tony is abroad') was written by an agent.",
+    "checked": "owner-facts.md lists 'Whether Jordan wants any of this' and the family's routines as never stated. Roadmap section 9, Reboots row (By: You), only says the agent is down 'until you unlock from home'. frame.decisions[10] lists the question as open and marks the recommendation as the assistant's.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "How often are you away overnight while Jordan is at home, and is she willing to (a) type one password at the Mac after a power cut, (b) also run two Terminal commands from a printed card? Default if you do not answer: keep the card at (a) only, one password and no Terminal step, and everything else waits for you."
+    },
+    "loses": "Jordan's command-line restart step (gateway status and restart), unless Tony says she wants it",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-05",
+    "kind": "assumption",
+    "part": "a second envelope holding an admin credential",
+    "where": "how",
+    "problem": "The build text speaks of a 'second envelope' with the admin credential and the repair scripts as if it exists. Whether Jordan gets anything beyond the non-admin password is still an open decision, the recommendation is the password only, and nobody has said who would keep a second envelope.",
+    "checked": "Card depends_on (first 'decision:' line). frame.decisions[10]: option (a) is recommended and option (b) adds an administrator credential. Roadmap section 9, 'Family data domains' (By: You): one control plane, and it is Tony's.",
+    "proposal": {
+      "action": "reword",
+      "text": "One envelope, holding only the happy user's password. An administrator credential for anyone but Tony is a separate decision that has not been taken; until Tony says yes there is no second envelope, and happy-inspect and happy-deploy stay Tony-only."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-05",
+    "kind": "assumption",
+    "part": "happy's password unlocks the disk at the startup screen",
+    "where": "how (last paragraph), unverified, frame.decisions[10].recommendation",
+    "problem": "The recommended envelope (the non-admin password only) works only if the happy user is offered at the disk-unlock screen after a power cut. That has never been tried, and the card leaves the test to a rehearsal with Jordan, which comes after the decision about what goes in the envelope.",
+    "checked": "Card unverified list (the secure token was read; the unlock itself was not tried). The Apple FileVault management page already on the card (a secure token and volume ownership are needed). Local man pages for fdesetup (its list verb shows the users enabled for FileVault) and diskutil (apfs listUsers), read in this run; nothing was run against the disk.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Before choosing what goes in the envelope, Tony checks alone: run `sudo fdesetup list` from the admin account and see whether happy is listed, then restart the Mac once and see whether happy appears at the unlock screen and its password brings Happy back with no other step. If it does not, the real choice is between an admin credential for Jordan and waiting for Tony, and the card and frame.decisions[10] should say so."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "medium"
+  },
+  {
+    "id": "CRT-05",
+    "kind": "assumption",
+    "part": "Jordan added as a second recipient of the dead-man alert",
+    "where": "how (step 1)",
+    "problem": "The card adds Jordan to the 'Happy is down' alert. That alert reaches Tony's phone through an alert app and by email, so this means setting something up on her phone or in her inbox, and the operator-checks card says such alerts go to Tony only. Nobody has asked for it.",
+    "checked": "happy-config baseline/m0-signoff.md (the dead-man alert is pushed to the iPhone through ntfy, plus email). G008 description ('tell Tony, and only Tony'). owner-facts.md (what Jordan wants has never been stated).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Should Jordan also get the 'Happy is down' alert (an email from the existing check is the least work)? Default: no. The card's own test, no reply within a few minutes, is enough for her."
+    },
+    "loses": "Jordan learns of an outage only when she texts Happy and gets no answer",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "MAC-04",
+    "kind": "assumption",
+    "part": "'check right after the change' for the browser.proxy and mcp.tools.call.v1 deny entries",
+    "where": "unverified (second item), how",
+    "problem": "The card denies two device commands and says to check straight afterwards that Happy's own MCP servers and the research browser still work. In wave A there is nothing to check against: the config has no MCP server and the browser is off. The first real test falls on the day Gmail is connected in wave B, and the card does not say what to do if it fails.",
+    "checked": "happy-config openclaw/openclaw.flat.json5 (no mcp.servers block, browser.enabled false, sandbox browser false, commands.mcp false). Installed docs/nodes/command-policy.md (a deny entry matches exact node command names). Card unverified item 2.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Move the check to where it can be seen: in the first-run steps of G015 (gog's MCP server) and of F020 (the browser), confirm the tool still appears with the deny list in place. Add one line to MAC-04: if either breaks, take `browser.proxy` and `mcp.tools.call.v1` off the deny list while no Mac is paired, and put them back before any pairing."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "MAC-04",
+    "kind": "assumption",
+    "part": "posture-check line for the cua-computer plugin on the Mac mini",
+    "where": "how",
+    "problem": "The card says switching on one plugin on the Mac mini would let an agent drive Happy's own desktop, and adds a standing check for it. The same doc page says that on macOS this route also needs the OpenClaw Mac app's own endpoint, and that app is not installed, so on this Mac the plugin alone opens nothing.",
+    "checked": "Installed docs/nodes/computer-use.md, 'Gateway desktop' section (line 49: on macOS the provider still needs the endpoint owned by the app) and the Windows and Linux section. frame.answers[0] (the Mac app is not installed here). Read, not run.",
+    "proposal": {
+      "action": "reword",
+      "text": "Keep the one-line rule (never enable cua-computer on the Mac mini) and say that it is a second lock: on macOS the Gateway-desktop route also needs OpenClaw.app, which is not installed. Drop the extra posture-check line unless Tony wants it."
+    },
+    "loses": "an automatic check for a switch that, by the docs, does nothing on this Mac without the app",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "MAC-02",
+    "kind": "assumption",
+    "part": "screen control working inside a macOS virtual machine",
+    "where": "how, caveats, unverified",
+    "problem": "The whole pilot is designed around a virtual Mac, but nobody has seen OpenClaw's screen control work inside one, and the card does not say what happens if it does not. Without that sentence the tempting next step is a real desktop, which the plan has already ruled out.",
+    "checked": "Card unverified list (Computer Control inside a guest with a virtual display: untested). frame.decisions[4] (never on Happy's own desktop). The card's sources describe each half (OpenClaw's computer-use page, the Lume README); none describes the two together.",
+    "proposal": {
+      "action": "test-first",
+      "text": "If the pilot is ever un-parked, step zero comes before any other build step: one throwaway guest with the app installed and paired, one screenshot and one click on an empty desktop. Add to the card: if that fails, the pilot ends; there is no fallback to a real desktop."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "OCL-01",
+    "kind": "assumption",
+    "part": "Action Button, soccer and a camp packet in the example",
+    "where": "example",
+    "problem": "The example has Tony press an Action Button and ask about packing for soccer after sending a camp packet. No record says his iPhone has that button, and no activity or camp appears in anything Tony has said or in family.json5.",
+    "checked": "owner-facts.md (no devices and no activities recorded; children's details never stated). Installed docs/platforms/ios.md, lines 653 to 668 (the shortcut can be put on the Action Button only on iPhones that have one).",
+    "proposal": {
+      "action": "reword",
+      "text": "Tony attaches a PDF in the app with + -> File and asks what it says. With Talk set up, he starts it from the Start Live Voice shortcut (Siri, or the Action Button on an iPhone that has one) and asks a question out loud."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "OCL-01",
+    "kind": "assumption",
+    "part": "'start Limited ... nothing is given up'",
+    "where": "depends_on (decision: Full or Limited), name",
+    "problem": "The card is named for tap approvals and Talk, and recommends a Limited pairing with the words 'nothing is given up'. Its own text says a Limited phone can review an approval only when the request is aimed at that device, and cannot open the Talk settings pages. The recommended setup may not deliver two of the three things in the name.",
+    "checked": "Installed docs/tools/exec-approvals-advanced.md, section starting line 414 (the mobile apps review approvals with an admin connection, or when the request targets their device). docs/channels/pairing.md (Limited drops only the admin scope). Card caveats 1 and 6.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "If you pair the app, is tapping approvals inside it the point (that needs Full access, which is a second admin console on the phone), or is chat with files enough (Limited)? Default: Limited, and the card is renamed 'chat with files; approvals stay in iMessage and the Control UI', with Talk as a later step that needs Full."
+    },
+    "loses": "the native approval inbox and Talk, under the default",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "OCL-01",
+    "kind": "assumption",
+    "part": "what the app adds over the Control UI already on the phone",
+    "where": "description, unverified, value",
+    "problem": "The case for the app rests on three things the Control UI on Tony's phone may already do: lock-screen alerts for approvals, file uploads that reach his agent, and the privacy gate seeing those uploads. All three sit on the card's open list, and two can be checked on the phone today without installing anything.",
+    "checked": "Card unverified items (Web Push on the Control UI Home Screen app; whether <p>-main can read an uploaded file; whether the F002 gate sees app uploads). happy-config baseline/m1-signoff.md (two Control UI device tokens exist; a Control UI approval worked in step E8). Installed docs/web/notifications.md, cited on the card.",
+    "proposal": {
+      "action": "test-first",
+      "text": "Two checks on the existing Control UI before the card keeps a wave: (1) is Web Push switched on, and does a pending approval raise an alert on the lock screen; (2) upload one harmless PDF and ask tony-main about it. If both work, the app adds only the share sheet, the offline queue and Talk, and the card stays only if Tony wants Talk."
+    },
+    "loses": "nothing",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F020",
+    "kind": "assumption",
+    "part": "the need for a browser that runs JavaScript",
+    "where": "value, wave, effort, unverified; no entry in frame.decisions gates it",
+    "problem": "This is a large build (a container image made from a source checkout, an in-house firewall hook, its own test cases) for pages the plain fetch in F019 cannot read. Nobody has measured how often the family meets such a page, or how often a headless browser would be let in when it does; the card lists the second as not measured.",
+    "checked": "Card unverified ('How often rec-portal and store pages block a headless, logged-out browser was not measured'). Card caveat 1 and its two Cloudflare sources (headless browsers are detected and challenged). owner-facts.md (Tony's own example of a general capability is web fetch; value and wave are agent-assigned).",
+    "proposal": {
+      "action": "test-first",
+      "text": "Ship F019 first (wave A) and have the research helper say plainly when a page came back empty. After a month, show Tony the list of those pages. Build F020 only if the list holds pages he cares about, and first try each by hand in a logged-out headless browser to see whether the site lets it in."
+    },
+    "loses": "JavaScript-only pages stay unreadable until the list justifies the build",
+    "saves": "L",
+    "severity": "medium"
+  },
+  {
+    "id": "F020",
+    "kind": "assumption",
+    "part": "summarize reader for videos and podcasts",
+    "where": "how (reader 2), description, example",
+    "problem": "Half of the card is a second reader that pulls text out of YouTube videos and podcasts through a wrapper on the host. Nobody has asked for video or podcast summaries; the only trace is an example written by an agent.",
+    "checked": "owner-facts.md (Tony's examples are web fetch and reading emails; nothing about video or audio). The card's sources (the bundled summarize skill, the upstream README) show the tool exists, not that the family wants it. Card caveat 7 (it runs on the host, outside the safety policy that covers web fetch).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want Happy to pull the main points out of a YouTube video or a podcast from a link? Default: no. Take the summarize wrapper out of F020 and keep one line about it for later."
+    },
+    "loses": "text extraction from videos and podcasts",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F020",
+    "kind": "assumption",
+    "part": "rec centre swim lessons, and Jordan as the asker",
+    "where": "example",
+    "problem": "The example has Jordan asking about spring swim lessons on a rec centre page that shows nothing without JavaScript. No activity is recorded for the family, nobody has checked that any local page behaves this way, and Jordan has not said she would use it.",
+    "checked": "owner-facts.md (activities never stated; whether Jordan wants any of this never stated). Card unverified (rec-portal pages were not measured).",
+    "proposal": {
+      "action": "reword",
+      "text": "A parent texts a link to a public page that shows nothing without JavaScript; research opens it in the logged-out browser and the parent's own agent relays what it says, with the link. (Illustrative: no such page has been tried.)"
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F076",
+    "kind": "assumption",
+    "part": "that the family wants lights and speakers switched by text",
+    "where": "value, wave, frame.decisions[6].options",
+    "problem": "The card exists because a network scan saw a Hue bridge and two Sonos speakers. Tony has not said he wants any of them controlled, and the decision put to him offers only two ways of building it, not the choice of leaving the house alone.",
+    "checked": "owner-facts.md ('Tony has not said he wants any of them controlled'). frame.decisions[6] (options (a) and (b) only). The card's sources (the bundled Hue and Sonos skills, an Alexa feature page) show the capability exists, not a request from the family.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want Happy to switch Hue lights or control the Sonos speakers by text at all? Default: no. Park the switching part and the home agent; keep at most the read-only 'still on' check if you want that one."
+    },
+    "loses": "light and speaker control by text",
+    "saves": "L",
+    "severity": "high"
+  },
+  {
+    "id": "F076",
+    "kind": "assumption",
+    "part": "the 22:30 goodnight text and who receives it",
+    "where": "description, how (step 1), example",
+    "problem": "The description states a 22:30 text as fact and says 'a parent' gets it. Tony has given no time of day, no quiet hours and no recipient; the card's own dependency list admits 22:30 is a house choice and that the notification policy may drop a text that late.",
+    "checked": "owner-facts.md (preferred times and quiet hours never stated). Card depends_on (last line) and last caveat. G001 description (a text outside the allowed hours is dropped, and those hours are not set yet).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want a text when lights or speakers are still on at night? If yes: at what time, and to you, to Jordan or to both? Default: off until you name a time, and the description reads 'at a time Tony sets'."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "F076",
+    "kind": "assumption",
+    "part": "quiet hours, room allowlist and volume caps (35, and 10 at night)",
+    "where": "how (step 2), caveats, unverified",
+    "problem": "The switching design is built around limits enforced in code: which rooms, which hours, how loud. None of them has come from the family. The card admits the volume numbers are design numbers, and it gives no hours or rooms at all.",
+    "checked": "owner-facts.md (quiet hours never stated; family.json5 records no rooms or routines). Card unverified ('The volume caps (35, and 10 at night) are design numbers, not sourced').",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Only if you said yes to switching: which rooms may Happy switch, between which hours must it leave lights and sound alone, and what is the loudest it may set a speaker? Default: the rooms you name once the bridge is read, the card's design numbers for volume, and the same quiet hours as the notification policy once you set those."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F076",
+    "kind": "assumption",
+    "part": "'Downstairs lights', 'family room lights' and 'the bus leaves in ten minutes'",
+    "where": "example",
+    "problem": "The examples assume a house with a downstairs, a Hue room called family room and children who catch a bus. The scan gave two speaker room names and nothing else: no Hue rooms, no floor plan and no school routine are on record.",
+    "checked": "owner-facts.md (no children's routines; the scan saw a bridge, two speakers, a TV and a printer). Card caveats (the speakers' room names come from the 9 Oct scan and were not re-checked).",
+    "proposal": {
+      "action": "reword",
+      "text": "A parent texts: 'Lights off in <a Hue room> and pause the music.' Later Home Assistant option: 'announce: <one of the fixed phrases>'. (Room names are placeholders until the bridge is read.)"
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F076",
+    "kind": "assumption",
+    "part": "Home Assistant facts in the later option",
+    "where": "how (later option), caveats, sources",
+    "problem": "About half of the build text describes Home Assistant: its address path, two switches that are on by default, a ten-year token, a speaker port. None of that has an entry in the card's source list. The four pages are named only in a note, so the script that re-opened every citation never checked them.",
+    "checked": "Card sources (12 entries, none from home-assistant.io and none for OpenClaw's MCP page). Card adds (four home-assistant.io addresses listed as opened). In this run I opened two of them, integrations/mcp_server and integrations/sonos: they do give the endpoint path, both default-on options, no sampling or notifications, port 1443 and the warning about older Sonos firmware. Installed docs/tools/mcp.md and docs/plugins/bundles.md confirm the transport setting, toolFilter and the doctor probe.",
+    "proposal": {
+      "action": "reword",
+      "text": "Add the four Home Assistant pages and docs/tools/mcp.md to the source list with anchors, so the script checks them. Mark as unsourced the two statements with no page behind them: that a HomeKit accessory pairs with one controller only, and what the Hue app can schedule by itself."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "F080",
+    "kind": "assumption",
+    "part": "'the home printer' is the Canon PRO-100 the scan saw",
+    "where": "description, how, caveats; no entry in frame.decisions gates it",
+    "problem": "The card treats the one printer the scan saw as the family's printer for a weekly sheet and permission slips. That model is sold as a professional photo printer for prints up to 13 by 19 inches, with eight inks. Tony has not said it is used for everyday pages, that it is left switched on, or that he wants Happy printing at all, and no open decision asks him.",
+    "checked": "owner-facts.md (the scan saw a Canon PRO-100; 'Tony has not said he wants any of them controlled'). frame.decisions (none gates F080). A web search limited to Canon's own sites in this run describes the PRO-100 as a professional photo printer, up to 13 x 19 inches, with an 8-ink system; Canon's product pages refused a direct fetch, so this comes from the search summary.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Is the Canon PRO-100 the printer you would want a weekly sheet and school forms printed on, and is it left on? Or is there another printer for documents that the scan missed? Default: park F080 until you name a printer."
+    },
+    "loses": "printing from Happy until a printer is named",
+    "saves": "M",
+    "severity": "high"
+  },
+  {
+    "id": "F080",
+    "kind": "assumption",
+    "part": "the Sunday fridge sheet with chore turns",
+    "where": "description, example, how (part 1), demand",
+    "problem": "The card's lead feature prints a sheet by itself every Sunday with the week's events and 'chore turns', for the fridge. No chore rota, no children's chores and no wish for a printed sheet appear in anything Tony has said. The card itself notes the rota 'was never specified', and the source it leans on is general parenting advice about chore charts.",
+    "checked": "owner-facts.md (no children's details, routines or activities recorded). Card unverified (last item). Card demand (the paediatricians' page 'says nothing about a posted calendar'). F014 description (a Sunday 18:00 week-ahead text already carries the week). F009 depends_on (which calendar the family shares is still an open decision).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Do you want a page printed by itself every Sunday, and does the family keep a chore rota? Default: no. Drop the automatic sheet and the chore turns; the Sunday week-ahead text (F014) carries the week, and F080 shrinks to printing a page a parent asks for."
+    },
+    "loses": "the automatic printed week sheet",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "F080",
+    "kind": "assumption",
+    "part": "'Canon's spec sheet for the PIXMA PRO-100 lists AirPrint'",
+    "where": "caveats (first), unverified (first)",
+    "problem": "The card says Canon's spec sheet lists AirPrint, and uses that twice: to say phones can already print by themselves, and to expect a driverless print queue to work. No Canon page is among the card's sources, and the card's own AirPrint source note says 'whether this printer is one was not confirmed'.",
+    "checked": "Card sources (no canon.com entry; the Apple AirPrint entry says the printer was not confirmed). Card adds ('Whether this printer supports AirPrint from the phones is unconfirmed'). A search of Canon's sites in this run does list AirPrint as a feature of this model, but Canon's pages refused a direct fetch.",
+    "proposal": {
+      "action": "test-first",
+      "text": "From an iPhone on the home Wi-Fi, open any PDF, tap Share and then Print, and see whether the printer appears. Thirty seconds, no build. If it appears, 'print this' matters only away from home; if it does not, the driverless queue is in doubt too. Reword the caveat to say which it was."
+    },
+    "loses": "nothing",
+    "saves": "S",
+    "severity": "low"
+  },
+  {
+    "id": "AUT-01",
+    "kind": "assumption",
+    "part": "'A parent' can start a project with check-ins",
+    "where": "description, who, depends_on ('decision: Jordan as a command owner'), caveats",
+    "problem": "Check-ins need the scheduling tool, which OpenClaw gives only to a command owner, and Tony is the only one. On 11 Oct Tony said there was no need to add Jordan to the command list, yet the card still speaks of 'a parent' and of what happens 'Once Jordan is an owner'.",
+    "checked": "owner-facts.md ('\"No need\" to add Jordan to the command allowlist'). Installed docs/gateway/security/hardened-baseline.md line 38 and docs/automation/cron-jobs/managing-jobs.md line 79, both cited on the card (a sender who is not an owner cannot use the scheduling tool). happy-config (commands.ownerAllowFrom holds one entry). frame.decisions[2] still lists owner status for reminders as open, with a recommendation against it.",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Your 'no need' on 11 Oct was about the command list. Does it also mean Jordan is not made a command owner for scheduling? Default: yes. The card then says 'Tony only: Jordan's agent cannot create check-ins', and the caveat about each parent editing the other's jobs goes."
+    },
+    "loses": "check-ins for projects Jordan starts",
+    "saves": "S",
+    "severity": "medium"
+  },
+  {
+    "id": "AUT-01",
+    "kind": "assumption",
+    "part": "that anyone wants check-ins over several days",
+    "where": "value, wave, demand; no entry in frame.decisions gates it",
+    "problem": "The value of 3 rests on OpenClaw documenting how follow-ups can be scheduled. That shows it can be built, not that this family wants to be nudged every few days. The card itself says 'A static checklist is still easier in a shared Notes or Reminders list'.",
+    "checked": "Card demand and sources (OpenClaw's system-prompt and standing-intents pages). Card caveat 5. owner-facts.md (Tony's examples of advanced abilities are controlling a computer and an idle iPhone; value scores are agent-assigned).",
+    "proposal": {
+      "action": "ask-tony",
+      "text": "Was there a project in the last year where you would have wanted Happy to text you every few days with what is still open? Default: no. Move AUT-01 to Later; the one-shot planner (F028) and plain reminders (F007) cover the rest."
+    },
+    "loses": "self-paced project check-ins",
+    "saves": "M",
+    "severity": "medium"
+  },
+  {
+    "id": "AUT-01",
+    "kind": "assumption",
+    "part": "'our 10-year-old's birthday party', 10 kids, under 300 dollars",
+    "where": "example",
+    "problem": "The example gives a child's age, a guest count and a budget. The fact sheet says the children's ages have never been stated and that such ages appear only in examples written by agents.",
+    "checked": "owner-facts.md ('\"Kids 8 and 10\" and the name \"Leo\" appear only in example texts written by agents'; family.json5 lists two adults and no children).",
+    "proposal": {
+      "action": "reword",
+      "text": "Plan a birthday party for Saturday the 14th: indoor, with a budget I will give you. Check in with me every few days until it is sorted."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  },
+  {
+    "id": "AUT-01",
+    "kind": "assumption",
+    "part": "'three is plenty', 'every few days', and a 'house rule' of 15 minutes for /loop",
+    "where": "caveats, description, adds",
+    "problem": "The card caps active projects at three per person, paces check-ins every few days and calls a 15-minute minimum for /loop a 'house rule'. These are an agent's numbers. No cap, pace or rule of this kind has come from Tony.",
+    "checked": "owner-facts.md (daily caps and timing preferences never stated). Roadmap section 9 (no row sets any of these).",
+    "proposal": {
+      "action": "reword",
+      "text": "Suggested starting values, for Tony to confirm when a first project is set up: at most three active projects per person, check-ins paced in days. Replace 'house rule' with 'suggested'."
+    },
+    "loses": "nothing",
+    "saves": "none",
+    "severity": "low"
+  }
+]

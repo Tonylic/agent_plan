@@ -1,0 +1,1079 @@
+[
+  {
+    "id": "SRC-01",
+    "name": "Air-quality day check from AirNow",
+    "tier": 2,
+    "cluster": "Outdoor conditions",
+    "description": "A morning line only on days when the official air-quality forecast for the home ZIP crosses a level the parents choose (smoke, ozone), so outdoor practice and recess questions have a number behind them. New versus the 9 Oct catalog: a real feed for air quality, plus the finding that the NWS alert stream Happy already polls carries an 'Air Quality Alert' event type, so the existing weather watch can cover alert days with no new key.",
+    "example": "06:30 trigger: 'Air quality today: forecast category is above your threshold (PM2.5). Soccer at 17:00 is outdoors.' Silent on normal days.",
+    "how": "Operator-created command job with no model call, same shape as F018: `openclaw automations add --cron '30 6 * * *' --tz <IANA zone> --command-argv '[\"node\",\"scripts/airnow.mjs\"]' --announce --to <parent>`, one job per parent. The script calls AirNow's 'Current Forecasts by Reporting Area' service (path /aq/forecast/current/, by ZIP) with the key passed through `--command-env`, compares today's and tomorrow's category with a threshold kept in family.json5, stores the last sent date and category in a state file, and prints one line or `NO_REPLY`. No agent holds the key or sees the response. Zero-cost first step: stop filtering the 'Air Quality Alert' event out of scripts/nws-alerts.mjs.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "free AirNow API account and key (operator signs up)",
+      "F018 command-job pattern",
+      "G001 notification policy",
+      "G003 jobs registry"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "AirNow needs an account; each call is tied to a key, and a service that hits its hourly cap returns nothing until the next hour. The per-service cap is on documentation pages behind the login and was not read.",
+      "AirNow retired six older web services on 30 Sep 2026 (including the old forecast-by-ZIP and current-observation-by-ZIP paths). Sample code and model memory from before that date point at dead endpoints.",
+      "AirNow states its data are preliminary and not fully verified.",
+      "Value depends on where the family lives; in a region with few smoke or ozone days this job stays silent all year."
+    ],
+    "safety": "No model in the loop, so there is nothing for injected text to steer. The only outbound request carries a ZIP code and the operator's key to an EPA service; the only message goes to a pinned parent handle through the job's announce target. No private data is read.",
+    "unverified": [
+      "The exact hourly request cap for the forecast service.",
+      "That the iPhone Weather app already shows the same AQI figure for this location (likely, which would make this a brief-line convenience rather than a new capability).",
+      "The numeric AQI category boundaries were not fetched in this run; the threshold is left to the parents."
+    ],
+    "overlaps_existing": [
+      "F018",
+      "F013",
+      "F083"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://docs.airnowapi.org/webservices",
+        "title": "AirNow API: Web Services",
+        "anchor": "Zip Code",
+        "supports": "AirNow lists current forecast and current observation services that can be queried by ZIP code or latitude and longitude."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.airnowapi.org/faq",
+        "title": "AirNow API: FAQ",
+        "anchor": "until the next hour",
+        "supports": "Calls are tied to an API key and a web service that reaches its hourly maximum stops returning data until the next hour."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.airnowapi.org/",
+        "title": "AirNow API: Home",
+        "anchor": "preliminary",
+        "supports": "The API is open to the public and its data are described as preliminary and subject to change."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.airnowapi.org/docs/AirNowAPIUpdates2026June.pdf",
+        "title": "AirNow API updates notice, June 2026 (PDF)",
+        "anchor": "retired on September 30th, 2026",
+        "supports": "Six existing web services were retired on 30 Sep 2026 and replaced by new ones such as Current Forecasts by Reporting Area at /aq/forecast/current/."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.airnowapi.org/docs/AirNowAPIFactSheet.pdf",
+        "title": "AirNow API fact sheet (PDF)",
+        "anchor": "An AirNow API account is required",
+        "supports": "An account is required for the web services and feeds, and output is available as CSV, JSON or XML."
+      },
+      {
+        "kind": "web",
+        "ref": "https://api.weather.gov/alerts/types",
+        "title": "NWS API: alert event types",
+        "anchor": "Air Quality Alert",
+        "supports": "The NWS alert API that Happy already polls includes an Air Quality Alert event type among its event types."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads: Command payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "A command payload runs a script on the Gateway host and delivers its output without any model call."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:189",
+        "title": "Automation payloads: command flags",
+        "anchor": "--command-env",
+        "supports": "Command jobs accept exact argv and per-job environment variables, which is where the feed key goes."
+      }
+    ]
+  },
+  {
+    "id": "SRC-02",
+    "name": "Pollen forecast line (rejected: no free official US feed)",
+    "tier": 2,
+    "cluster": "Outdoor conditions",
+    "description": "A daily pollen level next to the weather. Checked and not recommended: the only documented pollen API found that covers the United States is Google's Pollen API, which needs a Google Cloud project with billing enabled; the free Open-Meteo pollen variables cover Europe only.",
+    "example": "A parent texts 'how is the pollen today?' and Happy answers from a feed. Today the honest answer is 'check your weather app'.",
+    "how": "If built anyway: operator creates a Google Cloud project, enables billing and the Pollen API, and a command job (no model) calls the forecast endpoint for the home location with the key in `--command-env`, printing the grass, tree and weed index for today. No agent would hold the key.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "Google Cloud project with billing enabled",
+      "F018 command-job pattern"
+    ],
+    "value": 1,
+    "effort": "M",
+    "caveats": [
+      "Needs a paid-platform relationship (billing account and key) for one line of text; price per request was not on the page read.",
+      "Sends the home location to Google on every call.",
+      "Open-Meteo is keyless for non-commercial use but its pollen data are only available in Europe.",
+      "The allergist-run National Allergy Bureau station counts were looked for and no public feed or terms page could be read in this run."
+    ],
+    "safety": "A billing account is an operator purchase, not an agent action, so the never-list is not breached, but it is disproportionate. As a command job it would add no model exposure.",
+    "unverified": [
+      "Current per-request price of the Pollen API.",
+      "Whether the National Allergy Bureau offers any machine-readable feed.",
+      "Whether the family's phone weather app shows pollen for their area."
+    ],
+    "overlaps_existing": [
+      "F013"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/pollen/overview",
+        "title": "Google Maps Platform: Pollen API overview",
+        "anchor": "over 65 countries",
+        "supports": "Google offers a pollen forecast API with up to five days of forecast at about one-kilometre resolution in more than 65 countries."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/pollen/coverage",
+        "title": "Pollen API: supported countries and plants",
+        "anchor": "grass, trees, weeds",
+        "supports": "The United States is covered with grass, tree and weed pollen types."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/maps/documentation/pollen/usage-and-billing",
+        "title": "Pollen API usage and billing",
+        "anchor": "enable billing",
+        "supports": "Using the Pollen API requires billing to be enabled on the project and an API key or OAuth token on every request."
+      },
+      {
+        "kind": "web",
+        "ref": "https://open-meteo.com/en/docs/air-quality-api",
+        "title": "Open-Meteo Air Quality API",
+        "anchor": "Only available in Europe",
+        "supports": "Open-Meteo's pollen variables are limited to Europe during pollen season, so it cannot serve a US household."
+      }
+    ]
+  },
+  {
+    "id": "SRC-03",
+    "name": "Product recall watch matched to what the family owns (CPSC)",
+    "tier": 2,
+    "cluster": "Recalls and safety",
+    "description": "Happy checks the Consumer Product Safety Commission's recall list each day and texts only when a recall matches something the family owns or a kid-product keyword, instead of the parents skimming every recall email. A query for recalls since 20 Sep 2026 returned 31 in under three weeks, so the filter is the feature.",
+    "example": "Trigger: a new recall whose product name contains a brand on the family's owned-items list. Text: 'CPSC recall 26-xxx: <product title>. Hazard: burn. Remedy: refund. Link: cpsc.gov/...'",
+    "how": "Operator-created command job (no model): `--cron '15 7 * * *' --command-argv '[\"node\",\"scripts/cpsc-recalls.mjs\"]' --announce --to <parent>`. The script requests `https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=<last run>` (date filter only, nothing about the family in the URL), keeps seen RecallID values in a state file, and matches Title, Products, Manufacturers, Retailers and ProductUPCs locally against (a) owned-item keywords exported from family.json5 or the F034 registry and (b) a short kid-category list. Owned match: one text now. Category match: held for a Sunday digest of at most five. Otherwise `NO_REPLY`.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F018 command-job pattern",
+      "F034 home systems registry or a hand-kept owned-items list",
+      "G003 jobs registry",
+      "G001 notification policy"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The match is only as good as the owned-items list; substring matching on brand names will produce some false positives and miss unlisted items.",
+      "CPSC already offers its own recall emails, an RSS feed and an app. Happy adds the match against the family's own list, not earlier notice.",
+      "No key or rate limit is documented on the API page; poll once a day, not more.",
+      "Vehicles and car seats are handled by NHTSA, food and medicine by FDA and USDA; see SRC-04 and SRC-05."
+    ],
+    "safety": "No model call. Recall text is government-published and is printed through a fixed template with field truncation and only the cpsc.gov link. The request reveals nothing about the household. Delivery is the job's pinned parent target.",
+    "unverified": [
+      "Formal terms of use or rate limit for the recall web service (the page read gives none).",
+      "Whether text announced by a command job is also written into the receiving agent's session transcript; the script keeps output short and templated in case it is."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.cpsc.gov/Recalls/CPSC-Recalls-Application-Program-Interface-API-Information",
+        "title": "CPSC Recalls API information",
+        "anchor": "RestWebServices/Recall",
+        "supports": "CPSC publishes a recall retrieval web service at saferproducts.gov that returns XML by default or JSON with format=json and shows no access key."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.saferproducts.gov/RestWebServices/Recall?format=json&RecallDateStart=2026-09-20",
+        "title": "CPSC recall web service, live response",
+        "anchor": "RecallNumber",
+        "supports": "A keyless request filtered by RecallDateStart returned 31 recall records dated 24 Sep to 8 Oct 2026 with fields such as RecallID, Title, Products, Retailers, ProductUPCs, Hazards and Remedies."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cpsc.gov/Recalls",
+        "title": "CPSC Recalls",
+        "anchor": "Recall RSS",
+        "supports": "CPSC itself offers recall email subscriptions, an RSS feed and a recall app, which is the baseline this feature has to beat."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:191",
+        "title": "Automation payloads: command output",
+        "anchor": "NO_REPLY",
+        "supports": "A command job that prints only NO_REPLY posts nothing to chat, which keeps a daily poll silent when nothing matches."
+      }
+    ]
+  },
+  {
+    "id": "SRC-04",
+    "name": "Food and medicine recall watch (FDA)",
+    "tier": 2,
+    "cluster": "Recalls and safety",
+    "description": "A filtered watch on FDA recall and safety-alert notices for allergens the family cares about, brands on the grocery staples list and the children's medicines in the cabinet. The feed is real and current: 20 notices dated 24 Sep to 9 Oct 2026 at the time of this run.",
+    "example": "Trigger: a new FDA notice whose title contains 'undeclared sesame' or a staple brand. Text: 'FDA recall notice: <title, shortened>. Link: fda.gov/...'",
+    "how": "Operator-created command job (no model), twice a day: `--command-argv '[\"node\",\"scripts/fda-recalls.mjs\"]' --announce --to <parent>`. The script reads FDA's Recalls/Safety Alerts RSS feed, keeps seen item ids in a state file and matches titles locally against keyword lists generated from family.json5 (allergens, staples from F032, medicines). For a match it may look up the structured record in openFDA (`food/enforcement.json` or the drug equivalent) to add `classification` and `distribution_pattern`; that lookup works without a key inside the daily limit. Prints a templated line or `NO_REPLY`.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F018 command-job pattern",
+      "allergen and staples keyword list in family.json5",
+      "G003 jobs registry"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "openFDA enforcement data is updated weekly and FDA says it must not be used to issue alerts to the public or to make medical decisions; use the RSS notices for timeliness and openFDA only as a detail lookup for the family's own use.",
+      "Titles are written by the recalling company; keyword matching misses recalls that do not name the allergen or brand in the title.",
+      "Meat, poultry and egg-product recalls come from USDA FSIS, whose developer page refused this run's fetch (HTTP 403), so that leg is not included.",
+      "Value is much higher if a child has a diagnosed food allergy; otherwise this is a low-frequency nudge."
+    ],
+    "safety": "No model call. Company-written titles are untrusted text, so the script prints them truncated inside a fixed template with only the fda.gov link. Nothing about the family leaves the house: the feed is pulled whole and filtered locally. Not medical advice; the message points to the official notice.",
+    "unverified": [
+      "The USDA FSIS recall API (endpoint, fields, terms): the page returned 403.",
+      "Whether the FDA RSS feed has a documented polling limit."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/recalls/rss.xml",
+        "title": "FDA Recalls/Safety Alerts RSS feed",
+        "anchor": "Recalls/Safety Alerts",
+        "supports": "FDA publishes a keyless RSS feed of recall and safety notices; at fetch time it held 20 items dated 24 Sep to 9 Oct 2026 covering foods, drugs and supplements."
+      },
+      {
+        "kind": "web",
+        "ref": "https://open.fda.gov/apis/food/enforcement/",
+        "title": "openFDA: Food enforcement reports",
+        "anchor": "issue alerts to the public",
+        "supports": "The food enforcement dataset is updated weekly and FDA says it should not be used to issue public alerts or to track a recall's lifecycle."
+      },
+      {
+        "kind": "web",
+        "ref": "https://open.fda.gov/apis/drug/enforcement/",
+        "title": "openFDA: Drug enforcement reports",
+        "anchor": "updated weekly",
+        "supports": "The drug recall dataset has the same weekly cadence and the same warnings against use for alerts or medical decisions."
+      },
+      {
+        "kind": "web",
+        "ref": "https://open.fda.gov/apis/authentication/",
+        "title": "openFDA: Authentication",
+        "anchor": "240 requests per minute",
+        "supports": "Without a key the API allows 240 requests a minute and 1,000 a day per IP address, far above a household lookup."
+      },
+      {
+        "kind": "web",
+        "ref": "https://api.fda.gov/food/enforcement.json?limit=1",
+        "title": "openFDA food enforcement endpoint, live response",
+        "anchor": "distribution_pattern",
+        "supports": "The endpoint answers without a key and returns fields such as recalling_firm, product_description, reason_for_recall, classification and distribution_pattern."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads: Command payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "The poll and filter run as a deterministic script with no model call."
+      }
+    ]
+  },
+  {
+    "id": "SRC-05",
+    "name": "Vehicle recall check by make, model and year (NHTSA)",
+    "tier": 2,
+    "cluster": "Recalls and safety",
+    "description": "A monthly check of NHTSA's recall list for each family car, texting when a new recall campaign appears for that make, model and year, with a nudge to confirm by VIN. Candidate asked for 'by VIN': the public API that answered in this run is keyed by make, model and model year, not VIN.",
+    "example": "Trigger: a campaign number not seen before for the family minivan. Text: 'New NHTSA recall for your <year make model>: <component>. Check your VIN on NHTSA's recall page or with the dealer.'",
+    "how": "Operator-created command job (no model): `--cron '0 9 1 * *' --command-argv '[\"node\",\"scripts/nhtsa-recalls.mjs\"]' --announce --to <parent>`. For each vehicle row in family.json5 (make, model, model year only) the script requests `https://api.nhtsa.gov/recalls/recallsByVehicle?make=..&model=..&modelYear=..`, keeps seen `NHTSACampaignNumber` values in a state file and prints `Component`, a shortened `Summary` and the `parkIt` / `parkOutSide` flags for new ones, or `NO_REPLY`. A set flag marks the message urgent for G001.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F018 command-job pattern",
+      "vehicle rows in family.json5",
+      "G003 jobs registry"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "Make, model and year over-reports: a campaign may cover only some trims or build dates. Only a VIN lookup says whether this car is affected, and that lookup stays with the parent.",
+      "NHTSA's own website pages returned HTTP 403 to this run's plain fetch, so the VIN lookup tool, its limits and NHTSA's app could not be read; only the API host and the vPIC decoder docs were.",
+      "vPIC can decode a VIN to make, model and year, but that sends the VIN to NHTSA; typing the three values by hand avoids it.",
+      "One popular 2018 minivan returned 16 campaigns on first run; the first run must baseline silently."
+    ],
+    "safety": "No model call. The request discloses a make, model and year to a federal API, never the VIN, plate or owner. Output is a fixed template with a truncated government-written summary. Happy never books the repair (bookings are on the never-list).",
+    "unverified": [
+      "That NHTSA's website VIN lookup and its SaferCar app push VIN-specific recall alerts (seen only in search snippets; the pages returned 403).",
+      "Any documented rate limit for api.nhtsa.gov.",
+      "Car-seat recall lookup by API."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=honda&model=odyssey&modelYear=2018",
+        "title": "NHTSA recalls API, live response",
+        "anchor": "NHTSACampaignNumber",
+        "supports": "A keyless request by make, model and model year returned JSON with Count, Message and results, each result carrying NHTSACampaignNumber, Component, Summary, Consequence, Remedy, parkIt and parkOutSide."
+      },
+      {
+        "kind": "web",
+        "ref": "https://vpic.nhtsa.dot.gov/api/",
+        "title": "NHTSA vPIC vehicle API",
+        "anchor": "DecodeVinValues",
+        "supports": "NHTSA's vPIC service decodes a VIN into vehicle attributes in XML, CSV or JSON and applies an automated traffic rate control, with no key shown in the examples."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:189",
+        "title": "Automation payloads: command flags",
+        "anchor": "--command-argv",
+        "supports": "The job runs an exact argv with no shell parsing, so vehicle values never pass through a shell."
+      }
+    ]
+  },
+  {
+    "id": "SRC-06",
+    "name": "USPS Informed Delivery digest reader (not recommended)",
+    "tier": 2,
+    "cluster": "Mail and packages",
+    "description": "USPS already emails a free Daily Digest that previews incoming letters and packages. Routing that digest through Happy was checked and is not worth building now: the substance of the digest is grayscale images of envelopes, the reader path works on body text, and the content is a list of who writes to the family.",
+    "example": "A parent asks 'anything important in the mail today?' Happy would have to read envelope images to answer.",
+    "how": "If built: the USPS account's notification address would be a mailbox watched by the bundled `imap` plugin (a parent's mail-filter forward is the alternative, but the 9 Oct verifier found filter forwarding can break DMARC alignment), with the USPS sender in `allowedSenders` and `senderAuth.min: \"verified\"`; a tool-less reader agent summarises the body (capped by `maxBytes`) and the summary is relayed to that parent only. The package lines are text; the letter previews are images.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "USPS Informed Delivery account for the home address",
+      "F050 or F051 mailbox watch",
+      "decision 1 (personal mail on the cloud model)"
+    ],
+    "value": 1,
+    "effort": "M",
+    "caveats": [
+      "The phone already gets this: USPS sends the digest each morning and has a dashboard and app with the same images.",
+      "Letter previews are images of the address side only; a text summary cannot say what is inside, and the IMAP docs describe body text limits, not image handling (the 9 Oct verifier concluded the IMAP path hands over body text only).",
+      "Envelope senders (banks, clinics, courts) are private data that would go to the cloud model.",
+      "Carrier apps already push package events; the 9 Oct catalog reached the same conclusion for F058."
+    ],
+    "safety": "The reader would hold untrusted content and private mail metadata, so it must stay tool-less with delivery pinned to the mailbox owner. No consumer API was found on the pages read, so there is no cleaner path than email.",
+    "unverified": [
+      "Whether the bundled IMAP plugin passes inline images to the reader model (the docs only describe body text and its byte cap).",
+      "The sending address and authentication of the digest emails.",
+      "Whether USPS offers any consumer-facing API for Informed Delivery (the FAQ page did not render)."
+    ],
+    "overlaps_existing": [
+      "F058",
+      "F050"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.usps.com/manage/informed-delivery.htm",
+        "title": "USPS Informed Delivery",
+        "anchor": "Daily Digest",
+        "supports": "Informed Delivery is free and sends a morning digest email previewing letter-size mail as grayscale address-side images, plus package tracking by email, text, dashboard or app."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:160",
+        "title": "IMAP email trigger: watcher runtime behavior",
+        "anchor": "maxBytes",
+        "supports": "The IMAP path hands the reader an email body capped at a byte limit with a truncation marker; nothing is said about images."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger: sender authentication",
+        "anchor": "allowedSenders",
+        "supports": "Only mail whose From address is on the account allowlist reaches a model, which is the gate a forwarded digest would have to pass."
+      }
+    ]
+  },
+  {
+    "id": "SRC-07",
+    "name": "Google Classroom guardian summaries into the school digest",
+    "tier": 2,
+    "cluster": "School",
+    "description": "If the kids' classes use Google Classroom, the guardian email summary (missing work, upcoming work, class activity) becomes a 'missing work' section in Happy's school digest. This gives the school mailbox (F051) a concrete, documented feed; the finding is that email is the only feed a parent gets.",
+    "example": "16:00 digest line: 'Classroom: 2 items missing for your 5th grader (math worksheet, reading log); science project due tomorrow.'",
+    "how": "A teacher or school admin invites the guardian address; register the dedicated school mailbox address from F051 as that guardian (a parent opens the mailbox once to accept the invitation) rather than forwarding from a parent's inbox, because the 9 Oct verifier found filter forwarding can break DMARC alignment. The bundled `imap` plugin watches the mailbox with the Classroom sender in `allowedSenders` and the default `senderAuth.min: \"verified\"`; each message starts an isolated run of the memory-less `school-mail` reader. The 16:00 F056 digest job (on the `school-mail` agent, isolated, `--tools school-mail-ro__*` as designed on 9 Oct) gains a 'missing work' section built from the day's summary. Choose the Daily (Monday to Friday) frequency in the summary settings.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F051 dedicated school mailbox",
+      "F056 school digest",
+      "teacher or admin sends the guardian invitation",
+      "the school using Google Classroom with Workspace student accounts"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Summaries contain no grades, and are not sent when there is nothing to report, on weekends for the daily setting, or if the student is not on a school Google Workspace account.",
+      "The invitation expires if not accepted within 120 days, and changing the frequency needs a Google Account for the guardian address.",
+      "The Classroom API page read names guardian scopes for a user's own guardian links and for teachers and admins; it does not describe a guardian reading coursework, so there is no API path for a parent.",
+      "Elementary classes often do not use Classroom at all; confirm before building."
+    ],
+    "safety": "The `school-mail` agent sees untrusted mail and a child's assignment titles but has no memory, no web and no tools beyond the read-only school mailbox; its only output is the announce to the two parents. No parent's private inbox is involved. Assignment titles and a first name reach the cloud model under store:false, which the 9 Oct catalog already accepts for the school mailbox.",
+    "unverified": [
+      "The sender address and DKIM/DMARC alignment of guardian summary emails.",
+      "Whether a guardian account can read coursework through any Classroom API method (the page read does not describe one).",
+      "Whether a non-Google mailbox address can accept a guardian invitation without creating a Google Account (the help page only says a Google Account is needed to change settings)."
+    ],
+    "overlaps_existing": [
+      "F051",
+      "F056"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/edu/classroom/answer/6388136?hl=en",
+        "title": "Google Classroom Help: Get Classroom email summaries (for guardians)",
+        "anchor": "Missing work",
+        "supports": "Guardian summaries list missing work, upcoming work and class activity, can be daily on weekdays or weekly, exclude grades, and are started by a teacher or admin invitation that lapses after 120 days."
+      },
+      {
+        "kind": "web",
+        "ref": "https://developers.google.com/workspace/classroom/guides/manage-guardians",
+        "title": "Google Classroom API: Manage guardians",
+        "anchor": "classroom.guardianlinks.me.readonly",
+        "supports": "The guardian API scopes cover viewing one's own guardian links and letting teachers or admins manage invitations; reading coursework as a guardian is not described."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:11",
+        "title": "IMAP email trigger",
+        "anchor": "expose a public webhook",
+        "supports": "The bundled IMAP plugin starts a separate isolated agent session per allowed message and never sends mail, changes flags or opens a public endpoint."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:103",
+        "title": "IMAP email trigger: sender authentication",
+        "anchor": "default minimum is",
+        "supports": "By default only mail with locally verified aligned DMARC is admitted, so a forwarded summary has to keep its authentication."
+      }
+    ]
+  },
+  {
+    "id": "SRC-08",
+    "name": "School platform feed map: what each system really sends",
+    "tier": 2,
+    "cluster": "School",
+    "description": "A per-platform setup recipe so the school mailbox receives one predictable email per platform per day: ParentSquare in Digest mode, PowerSchool's scheduled grade, attendance and balance emails, and Canvas through its observer calendar. It also records what has no feed: urgent ParentSquare alerts bypass the digest and reach phones first, and closings arrive through those alerts, not through any public closings feed.",
+    "example": "Sunday week-ahead line: 'PowerSchool weekly summary: attendance 5/5 both kids; lunch balance low for one account. ParentSquare digest: picture day Thursday, permission slip due Wednesday.'",
+    "how": "Per platform, the parent sets notification preferences once: ParentSquare posts to Digest (one evening summary) with email on; PowerSchool Email Notifications to Weekly or Daily with 'Summary of Current Grades and Attendance' and 'Balance Alert' ticked. Where the platform allows it, the school mailbox address from F051 is registered as the contact address (direct registration, not a forward). Those senders go on the mailbox's `allowedSenders` (through G016), the `school-mail` reader handles each message, and the F056 digest prints the lines. ParentSquare's calendar sync and any Canvas calendar feed are subscribed in the family calendar (G012) rather than parsed. Urgent alerts stay on the parents' phones; F055 is a backup, not the primary path.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F051 dedicated school mailbox",
+      "F056 school digest",
+      "G016 sender allowlist by chat",
+      "knowing which platforms the district uses"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "ParentSquare says alerts and notices always come through regardless of the digest setting; the phone will beat Happy on closings and lockdown notices every time.",
+      "PowerSchool emails carry grades and attendance, which are a child's education records; they go to the cloud model under store:false unless that leg waits for a local model.",
+      "Canvas documents an API where an observer can list the observed student's calendar events, but it needs a personal access token, which would be a per-person host-side MCP and is out of scope for the mailbox path.",
+      "ClassDojo's help page refused this run's fetch; search snippets suggest app users get push instead of email, which would mean no feed at all for app users.",
+      "No national or state school-closings feed was found or verified; the district's own alert is the source."
+    ],
+    "safety": "All school mail is untrusted and is read only by the memory-less `school-mail` agent behind a sender allowlist with verified authentication; that agent has no web or file tools and can only announce to the two parents. Links are relayed only when their domain matches the allowlisted sender (existing F056 rule). No agent logs in to any school portal and no portal credentials are stored.",
+    "unverified": [
+      "ClassDojo notification behaviour (page returned 403).",
+      "Canvas's iCal calendar feed limits for observers (the guide page did not render; only the REST API page was read).",
+      "Whether PowerSchool lets a parent add an extra recipient address for the scheduled emails (seen in a search summary, not on the fetched page).",
+      "Exact sender addresses and authentication results for each platform's email."
+    ],
+    "overlaps_existing": [
+      "F051",
+      "F055",
+      "F056"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.parentsquare.com/blog/2020-7-15-help-please-frequently-asked-parent-questions/",
+        "title": "ParentSquare: frequently asked parent questions",
+        "anchor": "Digest",
+        "supports": "Parents can receive posts instantly or as one evening digest, choose email, text or app per school, and alerts and notices always come through."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.parentsquare.com/school-services/calendar-rsvp/",
+        "title": "ParentSquare: Calendar and RSVP",
+        "anchor": "Sync the district calendar",
+        "supports": "ParentSquare advertises syncing the district calendar with a personal calendar."
+      },
+      {
+        "kind": "web",
+        "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications",
+        "title": "PowerSchool SIS student and parent help: Email Notifications",
+        "anchor": "Balance Alert",
+        "supports": "PowerSchool parents can schedule emails with grade and attendance summaries, assignment detail, announcements and a balance alert, at daily, weekly, two-weekly or monthly frequency."
+      },
+      {
+        "kind": "web",
+        "ref": "https://canvas.instructure.com/doc/api/calendar_events.html",
+        "title": "Canvas LMS REST API: Calendar Events",
+        "anchor": "observer of that user",
+        "supports": "Canvas lets an observer or administrator list another user's calendar events through the authenticated API."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/imap.md:86",
+        "title": "IMAP email trigger: sender authentication",
+        "anchor": "allowedSenders",
+        "supports": "The sender allowlist is checked against the parsed From address before any message reaches a model, and an empty list disables the account."
+      }
+    ]
+  },
+  {
+    "id": "SRC-09",
+    "name": "Sports schedule feeds with change alerts",
+    "tier": 2,
+    "cluster": "Calendar feeds",
+    "description": "TeamSnap, SportsEngine and GameChanger all give parents a calendar subscription link. Subscribing it in the family calendar gets practices and games into Happy's briefs; a small host script that polls the same link adds what the calendar subscription cannot: a text when a game moves or is cancelled. This gives G012 its real data sources and a documented reason for the script (subscribed calendars can lag by up to a day).",
+    "example": "Trigger: the Saturday game's start time changes in the feed. Text: 'Soccer Saturday moved from 9:00 to 10:30, same field.'",
+    "how": "Step 1 (no code): copy the link from TeamSnap (Schedule > Settings > 'Sync Calendar / Export'), SportsEngine ('Sync Schedule' > 'Other Calendar') or GameChanger's schedule sync, add it to the family calendar, and let F009 read it. Step 2: an operator-created command job (no model) every hour in season, `--command-argv '[\"node\",\"scripts/ics-watch.mjs\",\"<feed name>\"]' --announce --to <parent>`, fetches the link from a file only the happy user can read, keeps a UID-to-start/location/status map in a state file, and prints one line per changed event inside the next seven days or `NO_REPLY`. The link never enters an agent's context.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F009 family calendar read-only (for step 1)",
+      "decision 4 (Google or iCloud calendar)",
+      "F018 command-job pattern (for step 2)",
+      "G001 notification policy"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "TeamSnap says Google can take up to 24 hours to populate or refresh a subscribed calendar; a rainout the same morning will not reach a calendar-only path in time.",
+      "The team app's own push notification is still the fastest signal for same-day changes; the script is a backstop that also reaches the parent who does not have the app.",
+      "The subscription link is a bearer secret: anyone with it can read the schedule. Keep it out of family.json5 if that file is committed.",
+      "GameChanger lets followers sync only the game schedule according to a search summary; its help article refused this run's fetch, so only the marketing page was read.",
+      "The installed OpenClaw docs contain no calendar-feed parser (a search for .ics, iCalendar and webcal found nothing), so this is a script the operator owns."
+    ],
+    "safety": "No model call; the feed is parsed by code and event titles are printed through a fixed template. Schedules contain where the kids will be and when, so the feed stays on the host and is delivered only to pinned parent handles. No RSVP or availability is ever set on the family's behalf.",
+    "unverified": [
+      "GameChanger's exact rules on who can sync practices versus games.",
+      "How quickly each service's .ics link itself reflects a change (only the downstream calendar lag is documented).",
+      "Rate limits or terms for polling the subscription links hourly."
+    ],
+    "overlaps_existing": [
+      "G012",
+      "F009",
+      "F014"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule",
+        "title": "TeamSnap Playbook: Subscribe to a team schedule",
+        "anchor": "Sync Calendar / Export",
+        "supports": "TeamSnap members copy a calendar link from the web schedule settings and add it to Google, Apple, Outlook or any iCal-compatible calendar, with Google taking up to 24 hours to populate."
+      },
+      {
+        "kind": "web",
+        "ref": "https://help.sportsengine.com/en/articles/6311504-how-to-sync-your-team-schedule-to-a-calendar-application",
+        "title": "SportsEngine Help: Sync your team schedule to a calendar application",
+        "anchor": "Sync Schedule",
+        "supports": "SportsEngine gives a copyable calendar link under Sync Schedule and Other Calendar."
+      },
+      {
+        "kind": "web",
+        "ref": "https://gc.com/app-features/team-management",
+        "title": "GameChanger: Team management features",
+        "anchor": "personal iOS or Google calendar",
+        "supports": "GameChanger advertises syncing the team schedule to a personal iOS or Google calendar and automatic team notifications."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads: Command payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "The hourly poll and diff run as a host script with captured output and no model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:101",
+        "title": "Automation delivery",
+        "anchor": "delivery.to",
+        "supports": "A scheduled job that texts a person proactively needs an explicit delivery target that is on the channel allowlist."
+      }
+    ]
+  },
+  {
+    "id": "SRC-10",
+    "name": "Trash and recycling day from the town's ReCollect schedule",
+    "tier": 2,
+    "cluster": "Calendar feeds",
+    "description": "If the town or hauler uses ReCollect, the address-specific pickup schedule replaces the hand-typed bins table in F038, and the evening brief says which bins go out. ReCollect itself already offers reminders by email, text, phone call or app, so Happy's part is folding it into one evening message, not inventing the reminder.",
+    "example": "19:30 evening brief line: 'Bins tonight: trash and recycling.'",
+    "how": "Check the town's waste page for a ReCollect widget. If present, take the calendar subscription link it offers and either subscribe it in the family calendar (read through F009) or point the SRC-09 `ics-watch.mjs` command job at it to write tomorrow's pickup types into the home-store schedule rows that F014 and F038 read. If the town has no feed, keep the F038 table and refresh it each January from the town PDF.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "the town or hauler being a ReCollect customer (unknown)",
+      "F038 home upkeep calendar",
+      "F031 home-store",
+      "SRC-09 feed script or F009 calendar read"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Signing each parent's phone up for ReCollect's own text reminder takes two minutes and needs no agent; build this only for the combined evening brief.",
+      "The widely used ReCollect JSON endpoint behind Home Assistant's integration is described by that project as not an official API; use the calendar subscription the town page offers, not that endpoint.",
+      "Many towns use other vendors or only a PDF calendar; then there is no feed."
+    ],
+    "safety": "Public schedule data, parsed by code, no model call for the fetch. The subscription link encodes the street address, so it stays in a happy-only file and out of agent context. Nothing is actuated.",
+    "unverified": [
+      "That the town's ReCollect page exposes an iCal subscription (municipal pages seen in search say so, but the one fetched returned 403).",
+      "That the feed shifts dates automatically for holidays.",
+      "ReCollect's terms on automated polling (the terms page read does not mention it)."
+    ],
+    "overlaps_existing": [
+      "F038",
+      "G012",
+      "F014"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://policy.recollect.net/terms.en-US.html",
+        "title": "ReCollect terms of service",
+        "anchor": "phone call or mobile app notification",
+        "supports": "ReCollect lets residents sign up for collection reminders by email, text message, phone call or app notification."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.home-assistant.io/integrations/recollect_waste",
+        "title": "Home Assistant: ReCollect Waste integration",
+        "anchor": "not an official API",
+        "supports": "Municipalities on ReCollect usually offer a calendar subscription whose URL carries place and service ids, and the JSON endpoint the integration uses is not an official ReCollect API."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:26",
+        "title": "Automation schedules",
+        "anchor": "--tz",
+        "supports": "Cron schedules can be pinned to an IANA timezone, which the night-before bins line needs."
+      }
+    ]
+  },
+  {
+    "id": "SRC-11",
+    "name": "Well-visit and vaccine milestone reminders from the AAP and CDC tables",
+    "tier": 2,
+    "cluster": "Reference tables",
+    "description": "A small table of what is due by age, taken from the AAP Bright Futures periodicity schedule (a well visit every year from age 3 to 21) and the CDC schedule (flu every year, a Tdap dose at 11 to 12), joined to each child's birth month. Happy nudges a parent to book the yearly check-up and flags the pre-teen visit a year ahead for the older child. This adds a sourced rule table to the renewals program (F063).",
+    "example": "Monthly trigger: 'Your 10-year-old's birthday is in 8 weeks: time to book the yearly well visit. Next year's visit is the 11 to 12 one, which is when CDC lists the Tdap dose.'",
+    "how": "Config and prompt only. gen-family renders rows (child label, birth month, rule text, source date) into the F063 monthly isolated job on `<p>-main`: `--cron '0 9 1 * *' --session isolated --tools \"\"` with the table inside `--message`, because an isolated run with an empty tool list cannot read files. The model only phrases the reminder; it fetches nothing. The rule rows are reviewed by a parent once a year against the two source pages and carry the date they were checked.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "F063 renewals and expiry program",
+      "G003 jobs registry",
+      "child birth months in family.json5"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Not medical advice: the pediatrician's own recall letters and portal are authoritative, and the reminder should say so.",
+      "The CDC pages read carry a 2 July 2025 date and the AAP schedule says it is updated annually (current copy: February 2025); the table must show its check date and be re-read yearly rather than trusted.",
+      "The CDC pages' text did not expose which ages the HPV and meningococcal rows apply to, so those are left for the pediatrician rather than hard-coded.",
+      "Most practices already send their own reminders; this is a backstop for the family calendar."
+    ],
+    "safety": "Private data (children's birth months) and outbound delivery to the owner, but no untrusted content: the job has no tools and reads no web or mail. Only age and birth month go to the cloud model, never names, the practice or health details, in line with the handoff rule in the catalog.",
+    "unverified": [
+      "The age cells for HPV and MenACWY in the current CDC table.",
+      "Whether the CDC schedule has been revised again since the July 2025 addendum."
+    ],
+    "overlaps_existing": [
+      "F063",
+      "F060"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://downloads.aap.org/AAP/PDF/periodicity_schedule.pdf",
+        "title": "Bright Futures/AAP Recommendations for Preventive Pediatric Health Care (PDF)",
+        "anchor": "updated February 2025",
+        "supports": "The periodicity schedule has a visit column for every year from 3 to 21, including 8, 10 and 11, and states it is updated annually."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.healthychildren.org/English/family-life/health-management/Pages/Well-Child-Care-A-Check-Up-for-Success.aspx",
+        "title": "HealthyChildren.org (AAP): AAP schedule of well-child care visits",
+        "anchor": "8 years old",
+        "supports": "The AAP's parent site lists a well-child visit at each year of age from 3 through 21."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.aap.org/periodicityschedule",
+        "title": "AAP: Periodicity Schedule",
+        "anchor": "Periodicity Schedule",
+        "supports": "The schedule is the AAP and Bright Futures consensus list of screenings and assessments recommended at each well-child visit."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cdc.gov/vaccines/imz-schedules/adolescent-easyread.html",
+        "title": "CDC: Recommended Vaccines for Older Children",
+        "anchor": "1 dose at age 11-12 years",
+        "supports": "CDC's parent-facing schedule for ages 7 to 18 lists flu vaccine every year and one Tdap dose at 11 to 12 years, and is dated 2 July 2025."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.cdc.gov/vaccines/hcp/imz-schedules/child-adolescent-age.html",
+        "title": "CDC: Child and Adolescent Immunization Schedule by Age",
+        "anchor": "Addendum updated July 2, 2025",
+        "supports": "The clinical schedule in force on the page is the 2025 edition with an addendum dated 2 July 2025, so the table needs a dated annual re-check."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads: --tools",
+        "anchor": "--tools \"\"",
+        "supports": "Passing an empty tool list disables all agent tools for the job, which keeps the reminder run away from web and mail."
+      }
+    ]
+  },
+  {
+    "id": "SRC-12",
+    "name": "Child passport clock",
+    "tier": 2,
+    "cluster": "Reference tables",
+    "description": "Children's passports follow different rules from adults' and the renewals program should encode them: a passport issued under 16 is valid for five years, cannot be renewed, and needs a new in-person application with a parent (preferably both) present. Happy tracks each child's expiry and warns early enough to fit an appointment before a trip.",
+    "example": "Monthly trigger: 'Your 8-year-old's passport expires in 9 months. Children's passports cannot be renewed: it is a new application in person with a parent. Want a reminder to book the acceptance-facility appointment?'",
+    "how": "Config and prompt only, as a rule row in the F063 monthly isolated job on `<p>-main` (`--session isolated --tools \"\"`, table inside `--message`): per traveller, document type, expiry month and the rule text for under-16 versus adult. On demand, a parent can ask for current processing times and `<p>-main` hands that question to the stateless research agent (F019) with no names or dates attached.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "F063 renewals and expiry program",
+      "passport expiry months in family.json5",
+      "F019 research agent (only for the processing-time lookup)"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "The State Department's passport pages returned HTTP 403 to this run's plain fetch on three URLs; the research agent's `web_fetch` is also a plain GET with a browser-like user agent and may be refused the same way, so the processing-time lookup may need the parent to open the page.",
+      "Happy never books the appointment or fills the form (bookings and form submission stay human).",
+      "Destination-country validity rules vary and are not part of this table."
+    ],
+    "safety": "Private data (expiry months) and delivery to the owner only; the reminder run has no tools and reads nothing untrusted. Passport numbers are never stored. The research hand-off carries only the generic question.",
+    "unverified": [
+      "Current routine and expedited processing times (search results showed 4 to 6 weeks and 2 to 3 weeks, but the official page could not be fetched).",
+      "The form number for a child application and the two-parent consent details (on the State Department pages that returned 403).",
+      "The common six-months-validity entry rule of many countries."
+    ],
+    "overlaps_existing": [
+      "F063"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.usa.gov/child-passport",
+        "title": "USA.gov: Get a passport for a minor under 18",
+        "anchor": "valid for 5 years",
+        "supports": "Passports for children under 16 last five years, cannot be renewed, and require an in-person application with a parent, preferably both, present."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:11",
+        "title": "Web fetch",
+        "anchor": "plain HTTP GET",
+        "supports": "web_fetch is a plain GET without JavaScript, so a site that refuses plain fetches will refuse the research agent as well."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads: --tools",
+        "anchor": "--tools \"\"",
+        "supports": "The monthly reminder can run with every tool disabled."
+      }
+    ]
+  },
+  {
+    "id": "SRC-13",
+    "name": "Tax, FSA and dependent-care deadline table (IRS)",
+    "tier": 2,
+    "cluster": "Reference tables",
+    "description": "A dated table of money deadlines that recur every year: the four estimated-tax due dates, the health FSA use-it-or-lose-it rules (grace period or carryover, never both), and the dependent-care rules that matter with children of 8 and 10 (care counts only while the child is under 13; day camp can count, overnight camp does not). Happy reminds; it never files or pays. The IRS calendar pages offered no subscription feed, so this is a static table checked once a year.",
+    "example": "1 Dec trigger: 'Health FSA: your plan year ends 31 Dec. Your plan has a carryover, so only the amount above the carryover limit is lost. Check your balance.' Late-spring trigger: 'Keep day-camp receipts for the dependent-care account; overnight camp does not count.'",
+    "how": "Config and prompt only. Rows live in the registry (G003) and render into the F061/F063 isolated jobs on `<p>-main` with `--tools \"\"` and the table in `--message`. Fixed IRS rows: estimated tax due 15 Apr, 15 Jun, 15 Sep and 15 Jan (next business day if on a weekend or holiday). Plan-specific rows are typed by the parent from the employer's plan document: plan-year end, grace period or carryover, claim run-out date, and whether a dependent-care account exists. One reminder per row at a lead time set per row.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "F061 tax document checklist",
+      "F063 renewals program",
+      "G003 jobs registry",
+      "the parents entering their own plan dates"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "The IRS figures read are for 2025 returns (health FSA limit 3,300 dollars, carryover up to 660 dollars, dependent-care exclusion 5,000 dollars); 2026 and 2027 numbers must be re-read each January, and dollar limits should not be hard-coded in the reminder text.",
+      "Grace period, carryover and run-out dates are set by the employer's plan, not by the IRS; without the parent's plan dates the reminder is generic.",
+      "The IRS online tax calendar pages read are quarterly web pages with a print link and no subscription; a tax.gov calendar address refused the connection in this run.",
+      "Not tax advice; the message should point to the plan administrator or preparer."
+    ],
+    "safety": "No account access of any kind: no bank, payroll, FSA portal or IRS login, and no payment (never-list). The run has no tools and reads nothing untrusted; it holds only dates the parent typed and texts only the owner. Balances and account numbers are never stored.",
+    "unverified": [
+      "The 2026 dependent-care exclusion limit and 2026 health FSA limits.",
+      "Whether the IRS still publishes a subscribable calendar anywhere (not found on the pages fetched)."
+    ],
+    "overlaps_existing": [
+      "F061",
+      "F063"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/faqs/estimated-tax/individuals/individuals-2",
+        "title": "IRS FAQ: Estimated tax, individuals",
+        "anchor": "Sept. 15",
+        "supports": "Individual estimated tax payments are due 15 April, 15 June, 15 September and 15 January of the following year, moving to the next business day when needed."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/publications/p969",
+        "title": "IRS Publication 969: Health Savings Accounts and Other Tax-Favored Health Plans",
+        "anchor": "use-it-or-lose-it",
+        "supports": "Health FSA balances are forfeited at plan-year end unless the plan offers either a grace period of up to two and a half months or a limited carryover, and it cannot offer both."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/publications/p503",
+        "title": "IRS Publication 503: Child and Dependent Care Expenses",
+        "anchor": "overnight camp",
+        "supports": "Care counts for a child under 13, day camp may be a qualifying expense, overnight camp is not, and employer dependent-care benefits are excludable up to a yearly dollar limit."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.irs.gov/businesses/small-businesses-self-employed/online-tax-calendar",
+        "title": "IRS: Online tax calendar",
+        "anchor": "First Quarter",
+        "supports": "The IRS calendar is presented as quarterly pages with a print option and shows no calendar subscription, so there is no feed to consume."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads: --tools",
+        "anchor": "--tools \"\"",
+        "supports": "The deadline reminder run can have every agent tool disabled, so it only phrases the rows it was given."
+      }
+    ]
+  },
+  {
+    "id": "SRC-14",
+    "name": "School lunch menu answers (no documented feed)",
+    "tier": 2,
+    "cluster": "School",
+    "description": "'What is for lunch tomorrow?' sounds like an easy monitor, but the common menu platform, Nutrislice, documents a website and app for parents and no public API, feed or calendar subscription. The realistic version is: the parent sends the month's menu once (PDF or photo) and Happy answers from that, with the lunch-money line coming from PowerSchool's balance email where the district uses it.",
+    "example": "A parent texts 'what's for lunch Thursday?' and Happy answers from the stored month, or the 19:30 brief adds 'Lunch tomorrow: pasta; pack lunch for the one who hates it.'",
+    "how": "Recommended path: the parent forwards the monthly menu PDF or a photo (F001/F002); `<p>-main` extracts date and entree rows and stores them through `home-store__schedule_upsert` (F031); F014 reads tomorrow's row. Balance line: PowerSchool 'Balance Alert' email through the F051 mailbox into F056. Experimental path, not recommended: a host script calling the menu site's unpublished JSON endpoint; `web_fetch` cannot read the menu site because it does not execute JavaScript.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "experimental",
+    "depends_on": [
+      "F001 and F002 attachments and PDF understanding",
+      "F031 home-store",
+      "F014 evening brief",
+      "knowing which menu platform the district uses"
+    ],
+    "value": 2,
+    "effort": "M",
+    "caveats": [
+      "The vendor's own app already shows the menu on the parent's phone (its allergen filtering was seen only in search results, not on the page fetched); Happy must never be the allergy authority.",
+      "Menus change during the month; a once-a-month import will sometimes be wrong.",
+      "An unpublished endpoint can change or be blocked without notice and using it may breach the vendor's terms.",
+      "Districts on other platforms (several exist) need their own check."
+    ],
+    "safety": "The PDF path uses content the parent chose to send and holds it in the family's own store; no browsing is involved. If the experimental script were built it would be a model-free host job, never a tool on a memory-holding agent.",
+    "unverified": [
+      "The unpublished Nutrislice JSON endpoint and its URL pattern (reported by community projects found in search; no vendor documentation was found, so it is not cited).",
+      "Whether the family's district uses Nutrislice at all.",
+      "Nutrislice's terms on automated access."
+    ],
+    "overlaps_existing": [
+      "F056",
+      "F002",
+      "F014"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://nutrislice.com/solutions/k12/",
+        "title": "Nutrislice: K-12 school foodservice solutions",
+        "anchor": "digital menus",
+        "supports": "Nutrislice describes online and mobile digital menus for parents and integrations with district systems, and mentions no public API, feed or calendar subscription."
+      },
+      {
+        "kind": "web",
+        "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications",
+        "title": "PowerSchool SIS student and parent help: Email Notifications",
+        "anchor": "Balance Alert",
+        "supports": "PowerSchool can email a parent a balance alert on a schedule, which is a real feed for the lunch-money line."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/web-fetch.md:12",
+        "title": "Web fetch",
+        "anchor": "execute JavaScript",
+        "supports": "web_fetch does not run JavaScript, so a script-rendered menu site returns no menu to the research agent."
+      }
+    ]
+  },
+  {
+    "id": "SRC-15",
+    "name": "Almanac inputs for the briefs: sunset, UV, federal holidays, clock changes",
+    "tier": 2,
+    "cluster": "Reference tables",
+    "description": "Four small facts that make the daily briefs and the bins logic correct, each from a keyless government source: sunrise, sunset and twilight (US Naval Observatory), the day's UV index and UV alert flag (EPA), the federal holiday list as a downloadable calendar file (OPM), and the daylight-saving rule (NIST). The next clock change is 1 Nov 2026.",
+    "example": "Morning brief: 'Sunset 18:37; UV alert today, sunscreen for field day.' Saturday 31 Oct: 'Clocks go back tonight at 2:00.' Sunday before a Monday holiday: 'Monday is a federal holiday: no mail; check whether bins shift.'",
+    "how": "One operator-created command job at 05:30 (no model), `--command-argv '[\"node\",\"scripts/almanac.mjs\"]'` with no announce target: it calls USNO `rstt/oneday` with the date, a location rounded to one decimal and the UTC offset, calls EPA `getEnvirofactsUVDAILY/ZIP/<zip>/JSON`, reads a locally stored copy of OPM's .ICS holiday file and computes the next clock change from the second-Sunday-of-March and first-Sunday-of-November rule, then writes one 'today' row into the home-store (F031). F013 and F014 read that row with their existing `home-store__*` tools. The clock-change and holiday-eve lines are separate tiny command jobs that print or `NO_REPLY`.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "F031 home-store",
+      "F013 morning brief",
+      "F014 evening brief",
+      "F018 command-job pattern"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "Phones already change their clocks and show sunset; the value is one consistent line in the brief and correct holiday logic for bins and mail, not new information.",
+      "The UV forecast for the day may read 0 when requested late at night for the next day (a test call at night returned 0); fetch after dawn or use the hourly service.",
+      "The USNO API asks institutions to register an identifier and gives no usage terms beyond that; one call a day is polite.",
+      "School holidays differ from federal holidays; the district calendar feed (G012) is the source for days off."
+    ],
+    "safety": "Public data only, no model, no private data read. The location sent to USNO is rounded and the ZIP sent to EPA is no more than api.weather.gov already receives. Nothing is delivered except through the briefs' own pinned targets.",
+    "unverified": [
+      "That sunrise and sunset could be computed locally with no network call (the NOAA solar calculator was not fetched).",
+      "Any rate limit on the EPA Envirofacts service."
+    ],
+    "overlaps_existing": [
+      "F013",
+      "F014",
+      "F038",
+      "G012"
+    ],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://aa.usno.navy.mil/data/api",
+        "title": "US Naval Observatory: Astronomical Applications API",
+        "anchor": "rstt/oneday",
+        "supports": "USNO offers a keyless JSON service returning sun and moon rise, set and twilight times for a date, coordinates and time-zone offset, plus moon phase and season services."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.epa.gov/enviro/web-services",
+        "title": "EPA Envirofacts web services: UV Index",
+        "anchor": "getEnvirofactsUVDAILY",
+        "supports": "EPA publishes daily and hourly UV index forecasts by ZIP code or city and state in JSON, XML or CSV, including a UV alert flag."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/",
+        "title": "OPM: Federal holidays",
+        "anchor": "Download iCalendar (.ICS) file",
+        "supports": "OPM lists federal holidays by year, including 2026 and 2027, and offers them as a downloadable iCalendar file."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.nist.gov/pml/time-and-frequency-division/popular-links/daylight-saving-time-dst",
+        "title": "NIST: Daylight saving time",
+        "anchor": "second Sunday of March",
+        "supports": "US daylight saving time runs from 2:00 on the second Sunday of March to 2:00 on the first Sunday of November, which in 2026 is 8 March to 1 November."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:171",
+        "title": "Automation payloads: Command payloads",
+        "anchor": "without starting a model-backed turn",
+        "supports": "The daily almanac refresh is a host script with no model turn."
+      }
+    ]
+  },
+  {
+    "id": "SRC-16",
+    "name": "Weekly fuel price line (EIA): real feed, low value",
+    "tier": 2,
+    "cluster": "Outdoor conditions",
+    "description": "A real, free federal feed exists for fuel prices: the Energy Information Administration publishes retail gasoline and diesel averages every week and offers an API. It is checked here because Tony asked; the data are regional and state averages, not station prices, so it answers 'are prices rising' and not 'where should I fill up'.",
+    "example": "Monday trigger, only when the regional average moved more than a set amount in a week: 'Regional regular gasoline average rose 12 cents this week (EIA).'",
+    "how": "Operator-created command job (no model), weekly after the EIA release: `--command-argv '[\"node\",\"scripts/eia-fuel.mjs\"]' --announce --to <parent>`, with a free EIA API key in `--command-env`. The script reads the latest weekly retail series for the family's region, compares with last week's value in a state file and prints one line when the change passes a threshold, else `NO_REPLY`. Homes heated with oil or propane could add those series in winter.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "free EIA API registration (operator)",
+      "F018 command-job pattern"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "Granularity on the weekly page is the US, regions, nine states and ten cities; nothing at station or town level. Map apps on the phone show station prices.",
+      "No documented public API for station-level prices was found; do not scrape consumer price sites.",
+      "Electricity and natural-gas bills are driven by the utility's tariff, which this feed does not carry.",
+      "Likely to be muted within a month unless the family heats with delivered fuel."
+    ],
+    "safety": "Public data, no model, no private data. The key is an operator credential held in the job environment, not in any agent. One message to a pinned parent at most once a week.",
+    "unverified": [
+      "The exact API route and series ids for weekly retail gasoline by region (the API browser was not walked).",
+      "Weekly availability of heating-oil and propane prices outside the heating season."
+    ],
+    "overlaps_existing": [],
+    "sources": [
+      {
+        "kind": "web",
+        "ref": "https://www.eia.gov/opendata/",
+        "title": "EIA Open Data",
+        "anchor": "free of charge",
+        "supports": "EIA offers a free registered API whose petroleum price data include retail gasoline and diesel at daily to annual frequency, along with heating oil and propane."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.eia.gov/petroleum/gasdiesel/",
+        "title": "EIA: Gasoline and Diesel Fuel Update",
+        "anchor": "Next Release Date",
+        "supports": "Retail gasoline and diesel averages are released weekly (6 Oct 2026, next 14 Oct 2026) for the US, regions, some states and some cities."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:191",
+        "title": "Automation payloads: command output",
+        "anchor": "NO_REPLY",
+        "supports": "The job stays silent in weeks when the change is below the threshold."
+      }
+    ]
+  }
+]

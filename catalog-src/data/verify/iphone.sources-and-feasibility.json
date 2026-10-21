@@ -1,0 +1,1670 @@
+[
+  {
+    "id": "IPH-01",
+    "verdict": "revise",
+    "reason": "Every citation checks out, but two claims are wrong for this gateway: a setup code approves the device and its first command surface in one step (not two approvals), and the limited profile still carries write, approvals and questions scopes, so it does not keep a second phone inside one person's agent. The built-in nodes tool is also owner-only and sandbox-denied by default.",
+    "source_checks": [
+      {
+        "ref": "docs/platforms/ios.md:20",
+        "ok": true,
+        "note": "Line 20 lists Screen snapshot, Camera capture, Location, Talk mode, Voice wake and opt-in Health summaries. Line 15 confirms the App Store listing."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:55",
+        "ok": true,
+        "note": "Line 55 lists camera.snap, camera.clip, camera.ptz.control, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search as needing gateway.nodes.commands.allow, and says commands.deny always wins."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:51",
+        "ok": true,
+        "note": "Line 51: the four talk.ptt commands are allowed by default for any node that advertises the talk capability."
+      },
+      {
+        "ref": "docs/nodes/pairing-and-status.md:13",
+        "ok": true,
+        "note": "Line 13 does say the command surface needs a separate approval. But line 44 of the same page, docs/gateway/pairing.md:92 and the installed code (dist/message-handler-Lb8_GOZn.mjs:2713-2721) show that an administrator-minted setup code approves the first surface automatically, so the 'two approvals follow' wording in how is wrong for setup-code pairing."
+      },
+      {
+        "ref": "docs/nodes/troubleshooting.md:111",
+        "ok": true,
+        "note": "Line 111: camera and screen commands are foreground-only on iOS and Android nodes."
+      },
+      {
+        "ref": "docs/platforms/ios.md:206",
+        "ok": true,
+        "note": "Lines 206-207: iOS may suspend these connections after the app enters the background."
+      },
+      {
+        "ref": "docs/platforms/ios.md:566",
+        "ok": true,
+        "note": "Line 566: on a silent push, background refresh or significant-location wake the app reconnects briefly and sends node.presence.alive."
+      },
+      {
+        "ref": "docs/platforms/ios.md:570",
+        "ok": true,
+        "note": "Line 570: refresh wakes are requested through BackgroundTasks, iOS decides when they run, and they stop if Background App Refresh is off."
+      },
+      {
+        "ref": "docs/platforms/ios.md:527",
+        "ok": true,
+        "note": "Line 527: App Store builds use the hosted relay at that host, hardcoded."
+      },
+      {
+        "ref": "docs/platforms/ios.md:69",
+        "ok": true,
+        "note": "Lines 68-69: the This iPhone page contains camera access, keep-awake behavior and optional Health summaries. The docs do not say what keep-awake does."
+      },
+      {
+        "ref": "docs/cli/qr.md:54",
+        "ok": true,
+        "note": "Line 54 lists admin, approvals, read, talk.secrets and write for the full mobile profile. The installed code (dist/device-bootstrap-profile-DV7lvW3L.mjs:4-10 and 24) also includes operator.questions, which the docs line omits."
+      },
+      {
+        "ref": "docs/cli/qr.md:41",
+        "ok": true,
+        "note": "Lines 41 and 56: --limited omits only operator.admin. The installed limited profile (dist/device-bootstrap-profile-DV7lvW3L.mjs:28) still has write, approvals, questions, read and talk-secrets, so 'limited' is not confinement."
+      },
+      {
+        "ref": "dist/node-command-policy-B8V85z2C.mjs:94",
+        "ok": true,
+        "note": "Read lines 20-135. PLATFORM_DEFAULTS.ios is camera.list, location, device info/status, contacts.search, calendar.events, reminders.list, photos.latest, motion and system.notify. No screen, SMS, notification or mobile UI command is in the iOS list; screen.snapshot sits in a separate desktop list."
+      },
+      {
+        "ref": "docs/plugins/hooks.md:164",
+        "ok": true,
+        "note": "Line 164, hook table: before_tool_call is the hook to block a tool or request approval."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "ok": true,
+        "note": "Fetched. Article 'Pushing background updates to your App': background notifications are low priority, delivery is not guaranteed, the system may throttle them, senders should not try more than two or three per hour, and the app gets 30 seconds. The figure is Apple's advice to senders, not a delivery rate."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/111795",
+        "ok": true,
+        "note": "Fetched. 'Use Guided Access on iPhone or iPad': restricts the device to a single app, ended by passcode, Face ID or Touch ID, with a Display Auto-Lock setting and a Touch option that ignores all screen touches."
+      }
+    ],
+    "corrections": {
+      "how": "Install the App Store app and pair with a setup code from the Control UI (Devices, Pair device) or openclaw qr. This gateway owns its Tailscale Serve route, so the code can carry the secure address. An administrator-minted setup code approves the device and the first command surface the app declares in one step, so read the approved command list afterwards with nodes describe; a separate pending approval appears only when the phone later widens its surface (camera, Health and so on). Gateway ceiling for iOS by default: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify, plus talk.ptt.* for a Talk-capable node. Opt-in only through gateway.nodes.commands.allow: camera.snap, camera.clip, screen.record, health.summary, contacts.add, calendar.add, reminders.add. For agent access, prefer small in-house plugin tools that call api.runtime.nodes.invoke with the node id and command fixed in code. The built-in nodes tool is a poor grant: it is owner-only (dropped from any turn whose sender is not the command owner, which today is Tony alone), it is on the sandbox default deny list (so it needs tools.alsoAllow plus tools.sandbox.tools.alsoAllow), and it also carries approve, reject and raw invoke actions. If it is granted anyway, the before_tool_call hook must pin action, node id and command. Idle on a charger: the full surface answers only while the app is open in the foreground (keep-awake setting on, Guided Access holding the app on screen). Once the phone locks or the app is backgrounded, iOS may suspend the connection and the gateway gets only best-effort presence beacons and relay push wakes.",
+      "risk": "high",
+      "caveats": [
+        "iOS has no notifications, SMS, call-log, installed-apps, mobile UI or computer-control commands; those exist only for Android or desktop nodes.",
+        "Camera and screen commands work only while the app is in the foreground.",
+        "Background is best-effort: Apple treats background pushes as low priority, tells senders not to exceed two or three an hour, does not guarantee delivery and allows 30 seconds of runtime; iOS decides when background refresh runs.",
+        "Pairing also gives the phone an operator session, and the iPhone app needs both node and operator credentials. The default code includes admin. The limited code only drops admin: in the installed code it still carries write, approvals, questions, read and talk-secrets scopes, and write scope lets the phone message any agent and relay commands to any paired node. The voice-node code is narrower (read and talk), but read covers session reads across the gateway.",
+        "The docs table is the gateway's ceiling, not proof of what the App Store build declares.",
+        "A paired node can itself post agent requests and voice transcripts to a session key the phone names, so a paired phone sits inside the gateway's single trust domain. OpenClaw says plainly that operator scopes are not isolation between people.",
+        "Named operator roles can limit a person to certain agents, but with roles configured the gateway rejects setup-code and device tokens for operator connections unless the connection carries a verified identity."
+      ],
+      "safety": "A paired phone adds sensors and personal data, and it is also a control surface: its operator token and its node events are not confined to one agent. Today only Tony's phone can be paired without weakening the rule that family members only chat; pairing Jordan's phone or a shared spare phone needs a decision on that rule first. Keep phone access off the research and mail-reader agents. Each <p>-main reaches only that person's phone through an in-house plugin tool with node id and commands fixed in code, not by prompt. Dangerous commands stay out of gateway.nodes.commands.allow until a specific feature needs one, and camera.clip, screen.record, contacts.add, calendar.add and reminders.add go into gateway.nodes.commands.deny.",
+      "depends_on": [
+        "hardware: the parents' own iPhones, or a spare iPhone (unknown whether one exists)",
+        "Tailscale on each phone to reach the gateway's Tailscale Serve address",
+        "decision: whether any phone other than Tony's may hold an operator token at all (limited still includes write scope)",
+        "in-house plugin tools over api.runtime.nodes.invoke with node id and command fixed in code (or a hook that pins action, node id and command if the built-in nodes tool is used)"
+      ],
+      "unverified": [
+        "The exact command list the current App Store build declares at connect time (the app is not part of the installed package).",
+        "What 'Screen snapshot' means on iOS: the iOS page lists it as a capability, but screen.snapshot is not in the iOS default allowlist in the docs table or the source. I expect it cannot show other apps.",
+        "What the app's keep-awake setting does exactly; the docs only name it.",
+        "Whether OpenClaw can natively restrict which node a given agent may invoke; I found no such setting, hence the hook.",
+        "Whether the App Store iPhone app accepts a voice-node setup code (the docs name it for an embedded or room voice client, and the direct Apple Watch setup uses the same two scopes).",
+        "Whether a scheduled run, as opposed to a message from a person, counts as an owner turn for the owner-only tools.",
+        "Whether the iPhone app can connect as an operator with a verified Tailscale identity, which named operator roles would require."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/pairing.md:92",
+        "title": "Node pairing",
+        "anchor": "Administrator-minted bootstrap enrollment",
+        "supports": "A setup code minted by an administrator approves the device and its first declared command surface; later expansion still needs approval."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/message-handler-Lb8_GOZn.mjs:2721",
+        "title": "Gateway source: node connect",
+        "anchor": "auto-approve",
+        "supports": "In the installed code a device approved by setup code or SSH check has its first node command surface approved automatically."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/device-bootstrap-profile-DV7lvW3L.mjs:28",
+        "title": "Gateway source: setup-code profiles",
+        "anchor": "PAIRING_SETUP_BOOTSTRAP_PROFILE",
+        "supports": "The limited setup-code profile still carries operator.approvals, operator.questions, operator.read, operator.talk.secrets and operator.write; only admin is dropped."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:676",
+        "title": "iOS app",
+        "anchor": "Gateway setup incomplete",
+        "supports": "The iPhone app expects both node and operator credentials from setup, so it cannot be paired as a node only."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:12",
+        "title": "Operator scopes",
+        "anchor": "not hostile multi-tenant isolation",
+        "supports": "Operator scopes are a guardrail inside one trusted operator domain, not isolation between people."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:37",
+        "title": "Operator scopes",
+        "anchor": "node command relay",
+        "supports": "operator.write covers sending messages, invoking tools and relaying node commands, and also satisfies read."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:34",
+        "title": "Operator scopes",
+        "anchor": "session reads",
+        "supports": "operator.read covers status, lists, logs and session reads across the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:174",
+        "title": "Operator scopes",
+        "anchor": "bootstrap-token",
+        "supports": "When roles are configured, operator connections that authenticate only with a device or setup-code token and no verified identity are rejected."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:451",
+        "title": "Gateway source: node events",
+        "anchor": "agent.request",
+        "supports": "A paired node can submit an agent request to a session key that the node itself supplies."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/constants-DEZ1h3C0.mjs:36",
+        "title": "Gateway source: sandbox constants",
+        "anchor": "DEFAULT_TOOL_DENY",
+        "supports": "The sandbox default deny list contains computer, mobile_ui and nodes, so a sandboxed agent needs an explicit sandbox allow for them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+        "title": "Plugin runtime Gateway and nodes",
+        "anchor": "api.runtime.nodes.invoke",
+        "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-02",
+    "verdict": "revise",
+    "reason": "Sources hold and it stays experimental. Three corrections: the charge limit exists only on iPhone 15 or later, camera.snap defaults to the front camera, and the built-in nodes tool is owner-only, so the capture should go through an in-house plugin tool.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/camera.md:22",
+        "ok": true,
+        "note": "Lines 22-24: iOS Allow Camera (camera.enabled), default on, and camera commands return CAMERA_DISABLED when off."
+      },
+      {
+        "ref": "docs/nodes/camera.md:53",
+        "ok": true,
+        "note": "Line 53: the iOS node allows camera commands only in the foreground; background calls return NODE_BACKGROUND_UNAVAILABLE."
+      },
+      {
+        "ref": "docs/nodes/camera.md:45",
+        "ok": true,
+        "note": "Line 45: camera.clip durationMs default 3000, clamped to 250-60000. Line 33 adds that camera.snap defaults to the front camera."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:55",
+        "ok": true,
+        "note": "Line 55 lists camera.snap, camera.clip, camera.ptz.control, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search as needing gateway.nodes.commands.allow, and says commands.deny always wins."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "ok": true,
+        "note": "NODES_TOOL_ACTIONS starts at line 9686 and lists camera_snap, photos_latest, location_get and others. The same list also has pending, approve, reject and a raw invoke action, and the nodes tool is owner-only (dist/dangerous-tools-D5_2xo_6.mjs:45)."
+      },
+      {
+        "ref": "docs/nodes/camera.md:135",
+        "ok": true,
+        "note": "Line 135 only says Continuity Camera formats are left unchanged by the Mac capture path. It implies the Mac app can see such a camera but does not state that the device appears in camera.list; the feature already lists that as unverified."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/avfoundation/avcapturesession/interruptionreason/videodevicenotavailableinbackground.json",
+        "ok": true,
+        "note": "Fetched. The discussion text says camera usage is prohibited while in the background."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/111795",
+        "ok": true,
+        "note": "Fetched. 'Use Guided Access on iPhone or iPad': restricts the device to a single app, ended by passcode, Face ID or Touch ID, with a Display Auto-Lock setting and a Touch option that ignores all screen touches."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/108055",
+        "ok": true,
+        "note": "Fetched. Charge limit between 80 and 100 percent in 5 percent steps, meant to improve battery lifespan. The page limits the setting to iPhone 15 models and later, which an older spare phone will not have."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/102546",
+        "ok": true,
+        "note": "Fetched. Same Apple Account with two-factor, Bluetooth and Wi-Fi on, wired or wireless, iPhone XR or later on iOS 16 or later, phone near the Mac, locked and stable when mounted."
+      }
+    ],
+    "corrections": {
+      "how": "Spare iPhone on a stand and charger with the OpenClaw app open: Allow Camera on, keep-awake on, Guided Access holding the app in the foreground with touch ignored. Add camera.snap to gateway.nodes.commands.allow and approve the widened surface; keep camera.clip in commands.deny. The asking parent's agent (or a small stateless 'look' agent it hands off to) takes one still through an in-house plugin tool that calls api.runtime.nodes.invoke with this node id and camera.snap fixed in code and facing set to back (the default is the front camera). The built-in nodes tool's camera_snap action does the same, but that tool is owner-only, so it would work in Tony's turns only. The photo goes to the vision model and the answer comes back as text. Alternative without the iOS app: Apple's Continuity Camera turns an iPhone (XR or later, on happy's Apple Account) into a camera of the Mac while the phone stays locked, which avoids keeping an app on screen; capturing it needs the OpenClaw Mac app in node mode or the camsnap skill's local-webcam mode, and neither is installed.",
+      "caveats": [
+        "iOS prohibits camera use in the background, so the app must stay on screen around the clock. After a crash, an iOS update or a reboot the phone sits at its lock screen and the camera silently stops answering.",
+        "One still per request, or a clip of at most 60 seconds. No motion detection, no stream, no history.",
+        "A screen that never sleeps on a phone that never leaves the charger wears the battery. The 80 percent charge limit exists only on iPhone 15 and later; an older spare phone has only Optimized Battery Charging.",
+        "A cheap network camera with the camsnap skill (F079), or a doorbell's own app, does this job better. The spare phone only wins on price.",
+        "Pictures of the home, and of the kids if they walk past, go to the cloud vision model."
+      ],
+      "depends_on": [
+        "IPH-01",
+        "hardware: spare iPhone, stand, charger, a window or shelf with the right view",
+        "decision 3 of the 9 Oct catalog: photos to the cloud vision model under store:false",
+        "decision: where a camera is acceptable in the house",
+        "in-house plugin tool over api.runtime.nodes.invoke (the built-in nodes tool is owner-only and sandbox-denied by default)",
+        "decision from IPH-01: a shared spare phone holding an operator token"
+      ],
+      "safety": "The agent that looks at the picture reads untrusted content (a note held up to the lens is a prompt injection), so it must not also hold memory or mail; it returns text to the caller. Entry or outdoor views only, never bedrooms or bathrooms. Clips stay denied so no audio is recorded. Pictures are not written to memory or the wiki. The app on the spare phone also holds an operator token that can read sessions (IPH-01), so run Guided Access with touch ignored and a passcode.",
+      "unverified": [
+        "Whether the app's keep-awake setting alone keeps a phone awake and connected for weeks.",
+        "Whether a Continuity Camera iPhone shows up in the Mac node's camera list (the camera page only says such formats are left unchanged).",
+        "Whether a Continuity Camera iPhone appears in camsnap's local device list."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/camera.md:33",
+        "title": "Camera capture",
+        "anchor": "facing",
+        "supports": "On iOS camera.snap takes a facing parameter of front or back and defaults to front."
+      },
+      {
+        "kind": "installed",
+        "ref": "skills/camsnap/SKILL.md:45",
+        "title": "Bundled skill: camsnap",
+        "anchor": "camsnap snap --device 0",
+        "supports": "The camsnap CLI can take a snapshot from a local Mac camera, not only from network cameras."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/index.md:15",
+        "title": "Nodes",
+        "anchor": "node mode",
+        "supports": "The Mac app can run in node mode against an existing gateway and adds camera, screen and computer-control commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+        "title": "Plugin runtime Gateway and nodes",
+        "anchor": "api.runtime.nodes.invoke",
+        "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-03",
+    "verdict": "revise",
+    "reason": "Sources hold and experimental is the right label. The how field must change: Jordan's turns cannot use the built-in nodes tool (owner-only), and iOS background behaviour for location.get is not documented, only Android's.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/location-command.md:24",
+        "ok": true,
+        "note": "Lines 24-25: location.enabledMode is off, whileUsing or always, with a separate preciseEnabled flag."
+      },
+      {
+        "ref": "docs/nodes/location-command.md:81",
+        "ok": true,
+        "note": "Line 81: this error means the app is backgrounded with only While Using granted. Lines 87-89 document background behaviour for Android only and say other platforms may differ."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:86",
+        "ok": true,
+        "note": "Lines 86-88: location is off by default, Always needs system permission and background fetch is best-effort; the response has lat/lon, accuracy and timestamp."
+      },
+      {
+        "ref": "docs/nodes/troubleshooting.md:129",
+        "ok": true,
+        "note": "Line 129: on iOS location.get depends on While Using or Always."
+      },
+      {
+        "ref": "docs/platforms/ios.md:75",
+        "ok": true,
+        "note": "Lines 74-76: enabling Always location first asks for native confirmation."
+      },
+      {
+        "ref": "docs/nodes/location-command.md:122",
+        "ok": true,
+        "note": "Line 122: agent guideline to call location only when the user enabled it and understands the scope."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "ok": true,
+        "note": "NODES_TOOL_ACTIONS starts at line 9686 and lists camera_snap, photos_latest, location_get and others. The same list also has pending, approve, reject and a raw invoke action, and the nodes tool is owner-only (dist/dangerous-tools-D5_2xo_6.mjs:45)."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/corelocation/handling-location-updates-in-the-background.json",
+        "ok": true,
+        "note": "Fetched. On iOS the system suspends most apps shortly after they move to the background and can terminate apps at any time."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "ok": true,
+        "note": "Fetched. Article 'Pushing background updates to your App': background notifications are low priority, delivery is not guaranteed, the system may throttle them, senders should not try more than two or three per hour, and the app gets 30 seconds. The figure is Apple's advice to senders, not a delivery rate."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/105104",
+        "ok": true,
+        "note": "Fetched. 'Share your location with iPhone' covers Find My sharing, one-time location in Messages or Maps, ETA sharing and Check In."
+      }
+    ],
+    "corrections": {
+      "how": "OpenClaw app on each parent's phone with location mode Always and Precise granted (location is off by default and Always asks for a native confirmation). location.get is in the iOS default allowlist and returns coordinates, accuracy and a timestamp. The asker is usually the parent who is not the command owner, and the built-in nodes tool is owner-only, so the lookup has to be an in-house plugin tool: it calls api.runtime.nodes.invoke for location.get on the other parent's node id, fixed in code, and returns only a coarse phrase (at home, at school, about N minutes away) so raw coordinates never enter a transcript. When the app is backgrounded the gateway can try a relay push wake; with only While Using granted the node refuses with LOCATION_BACKGROUND_UNAVAILABLE.",
+      "depends_on": [
+        "IPH-01 on both parents' phones",
+        "consent of both adults to cross-person lookups",
+        "in-house plugin tool over api.runtime.nodes.invoke that returns a coarse phrase, with node id and command fixed in code",
+        "a places or routing lookup (F021) for travel time",
+        "decision from IPH-01: pairing the second adult's phone gives it an operator token"
+      ],
+      "unverified": [
+        "How often a relay push actually wakes the app in time to answer location.get on a locked phone.",
+        "Whether the iPhone app answers location.get from the background even with Always granted: the docs describe background behaviour for Android only and say other platforms may differ."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/location-command.md:89",
+        "title": "Location command",
+        "anchor": "Other node platforms may differ",
+        "supports": "The docs describe background location behaviour for Android and leave other platforms open."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios.md:551",
+        "title": "iOS app",
+        "anchor": "wake nudges",
+        "supports": "The gateway uses the stored relay registration for background wakes and wake nudges to the iPhone app."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+        "title": "Plugin runtime Gateway and nodes",
+        "anchor": "api.runtime.nodes.invoke",
+        "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-04",
+    "verdict": "revise",
+    "reason": "The commands, defaults and permission prompts are confirmed. What is missing is the tool gate: the nodes tool is owner-only and sandbox-denied by default, so 'pairing plus permissions is all it takes' is not true for Jordan's agent, and per-person isolation holds only at the agent-tool layer.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:133",
+        "ok": true,
+        "note": "Line 133: calendar.events is a read-only default on iOS and Android; calendar.add is dangerous and needs commands.allow."
+      },
+      {
+        "ref": "docs/platforms/ios.md:71",
+        "ok": true,
+        "note": "Lines 70-72: the Permissions page covers contacts, calendars, reminders and photo access with native iOS prompts."
+      },
+      {
+        "ref": "docs/platforms/ios.md:206",
+        "ok": true,
+        "note": "Lines 206-207: iOS may suspend these connections after the app enters the background."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:55",
+        "ok": true,
+        "note": "Line 55 lists camera.snap, camera.clip, camera.ptz.control, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search as needing gateway.nodes.commands.allow, and says commands.deny always wins."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:9693",
+        "ok": true,
+        "note": "NODES_TOOL_ACTIONS starts at line 9686 and lists camera_snap, photos_latest, location_get and others. The same list also has pending, approve, reject and a raw invoke action, and the nodes tool is owner-only (dist/dangerous-tools-D5_2xo_6.mjs:45)."
+      }
+    ],
+    "corrections": {
+      "how": "calendar.events, reminders.list, contacts.search, photos.latest, motion.activity and motion.pedometer are in the iOS default allowlist, so on the gateway side pairing plus the in-app permission grants (one native iOS prompt per category) is enough. On the agent side the built-in nodes tool is the wrong grant: it is owner-only (jordan-main's turns would lose it), it is on the sandbox default deny list, and it includes approve and raw invoke actions. Give each <p>-main a small in-house plugin tool instead that calls api.runtime.nodes.invoke with that person's node id and only these read commands fixed in code.",
+      "depends_on": [
+        "IPH-01 on the parent's own phone",
+        "per-category iOS permissions granted in the app",
+        "in-house plugin tool over api.runtime.nodes.invoke with node id and read commands fixed in code"
+      ],
+      "safety": "This adds private data to an agent that already holds private data and does not browse, so no new trifecta leg opens. Calendar invitations and contact notes can contain text written by strangers: treat them as data, the same rule as F009. Isolation per person holds at the agent-tool layer only (node id fixed in the plugin). It does not hold against a paired operator phone: a phone whose token has write scope can relay commands to any paired node, so the other adult's phone must not hold such a token or the separation is by trust (IPH-01)."
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/constants-DEZ1h3C0.mjs:36",
+        "title": "Gateway source: sandbox constants",
+        "anchor": "DEFAULT_TOOL_DENY",
+        "supports": "The sandbox default deny list contains computer, mobile_ui and nodes, so a sandboxed agent needs an explicit sandbox allow for them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+        "title": "Plugin runtime Gateway and nodes",
+        "anchor": "api.runtime.nodes.invoke",
+        "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:37",
+        "title": "Operator scopes",
+        "anchor": "node command relay",
+        "supports": "operator.write covers sending messages, invoking tools and relaying node commands, and also satisfies read."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-05",
+    "verdict": "revise",
+    "reason": "All five sources hold and the feature works as described on the iOS side. Only the agent-side grant needs fixing: the nodes tool is owner-only, so Jordan's agent needs a plugin tool rather than the built-in one.",
+    "source_checks": [
+      {
+        "ref": "docs/platforms/ios-healthkit.md:14",
+        "ok": true,
+        "note": "Lines 13-16: computed on device; only steps, sleep duration, average resting heart rate and workout count/duration are returned."
+      },
+      {
+        "ref": "docs/platforms/ios-healthkit.md:48",
+        "ok": true,
+        "note": "Lines 48-50: health.summary is privacy-heavy, never in the iOS default, and a deny entry overrides allow."
+      },
+      {
+        "ref": "docs/platforms/ios-healthkit.md:82",
+        "ok": true,
+        "note": "Line 82: only today is supported; lines 93-101 show the nodes tool invoke form."
+      },
+      {
+        "ref": "docs/platforms/ios-healthkit.md:126",
+        "ok": true,
+        "note": "Lines 125-127: when an agent requests it, the aggregate reaches the configured AI provider and may remain in chat history."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:55",
+        "ok": true,
+        "note": "Line 55 lists camera.snap, camera.clip, camera.ptz.control, screen.record, contacts.add, calendar.add, reminders.add, health.summary, sms.send and sms.search as needing gateway.nodes.commands.allow, and says commands.deny always wins."
+      }
+    ],
+    "corrections": {
+      "how": "Add health.summary to gateway.nodes.commands.allow, switch on Apple Health Summaries in the app (Settings, Permissions, Apple Health; Apple's permission sheet, category by category), approve the widened node surface, then invoke health.summary with period today. The docs show the nodes tool's invoke action for this, but nodes is owner-only and its invoke action can call any command on any node, so wrap the call in an in-house plugin tool (api.runtime.nodes.invoke with that parent's node id and health.summary fixed in code). Only that parent's own <p>-main gets the tool.",
+      "depends_on": [
+        "IPH-01 on the parent's own phone",
+        "decision: health aggregates to the cloud model",
+        "in-house plugin tool over api.runtime.nodes.invoke with node id and command fixed in code"
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/ios-healthkit.md:99",
+        "title": "HealthKit summaries",
+        "anchor": "invokeCommand",
+        "supports": "The documented agent path is the nodes tool's generic invoke action with command health.summary."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/sdk-runtime/gateway-and-nodes.md:153",
+        "title": "Plugin runtime Gateway and nodes",
+        "anchor": "api.runtime.nodes.invoke",
+        "supports": "Gateway-loaded plugin code can invoke a command on a named paired node, still subject to pairing and the command allowlist."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-06",
+    "verdict": "reject",
+    "reason": "Each citation is accurate, but the design built on them fails on this release: no way to set a wake-word route was found, the voice-node token still reads every session, native Talk needs write scope the token lacks, and nothing confines the phone to the kitchen agent. Keep it under considered and not recommended until speech is local and per-device confinement exists.",
+    "source_checks": [
+      {
+        "ref": "docs/cli/qr.md:58",
+        "ok": true,
+        "note": "Line 58 is quoted fairly: read and talk scopes only, cannot send messages or change configuration. It does not say the App Store iPhone app accepts this code, and operator.read still covers session reads (docs/gateway/operator-scopes.md:34)."
+      },
+      {
+        "ref": "docs/nodes/talk.md:12",
+        "ok": true,
+        "note": "Line 12: native macOS/iOS/Android Talk is native speech recognition, Gateway chat and talk.speak; Apple speech recognition may use network services."
+      },
+      {
+        "ref": "docs/platforms/ios.md:651",
+        "ok": true,
+        "note": "Line 651: iOS may suspend background audio; voice features are best-effort when the app is not active."
+      },
+      {
+        "ref": "docs/platforms/ios.md:74",
+        "ok": true,
+        "note": "Lines 73-76: the Talk page holds Voice Wake, Talk, Talk control, background listening and speakerphone; enabling Voice Wake, camera, Health or Always location asks for native confirmation."
+      },
+      {
+        "ref": "docs/platforms/ios.md:648",
+        "ok": true,
+        "note": "Line 648: Voice wake sends recognised commands to the active session; Talk mode gives spoken replies."
+      },
+      {
+        "ref": "docs/nodes/voicewake.md:9",
+        "ok": true,
+        "note": "Line 9: wake words are one global list owned by the gateway, with no per-node lists."
+      },
+      {
+        "ref": "docs/nodes/voicewake.md:49",
+        "ok": true,
+        "note": "The route target shape with agentId is documented at lines 46-50, so the supports sentence is true. But the page lists only voicewake.routing.get (line 35) and the installed method table has no setter (dist/core-method-policy-BePoiMRV.mjs:1136); I found no supported way to create a route, so the how field cannot rely on it."
+      },
+      {
+        "ref": "docs/nodes/talk.md:190",
+        "ok": true,
+        "note": "Line 190: talk.agentId owns Talk sessions created without an explicit agent-scoped session key. It is one gateway-wide setting."
+      },
+      {
+        "ref": "docs/nodes/talk.md:156",
+        "ok": true,
+        "note": "Line 156, status table: iOS client-owned Talk is implemented, GPT-Live device live verification pending."
+      },
+      {
+        "ref": "docs/nodes/talk.md:181",
+        "ok": true,
+        "note": "Lines 180-181: iOS client-owned WebRTC and GA gateway relay are Platform-key-only. Nuance: the Codex GPT-Live route over the gateway relay is described as OAuth-first, so the key requirement applies to the client-owned and GA paths."
+      },
+      {
+        "ref": "docs/platforms/ios.md:655",
+        "ok": true,
+        "note": "Lines 655-665: the Start Live Voice App Shortcut opens the app and starts Talk; it does not bypass unlock or foreground limits."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:51",
+        "ok": true,
+        "note": "Line 51: the four talk.ptt commands are allowed by default for any node that advertises the talk capability."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/111795",
+        "ok": true,
+        "note": "Fetched. 'Use Guided Access on iPhone or iPad': restricts the device to a single app, ended by passcode, Face ID or Touch ID, with a Display Auto-Lock setting and a Touch option that ignores all screen touches."
+      }
+    ],
+    "corrections": {
+      "readiness": "not-recommended",
+      "risk": "high",
+      "how": "As designed this does not stand on 2026.9.7. Pair the spare phone with a voice-node setup code: node credentials plus only operator.read and operator.talk. Under that token only Talk sessions are certain to be reachable (talk.client.*, talk.session.*, talk.speak need operator.talk). The native speech loop sends the transcript through Gateway chat, and chat.send is write-scoped, so expect to need realtime Talk, which on iOS means audio going to OpenAI with a Platform key or through the gateway relay. Set talk.agentId to a new shared 'kitchen' agent with no memory, no accounts and a short tool list (home_weather, add-to-list through the household store); that key owns Talk sessions created without an agent-prefixed session key. Voice Wake is a per-device switch that sends recognised commands to the session selected in the app. Keep the app on screen with keep-awake and Guided Access, with touch ignored so the session and agent pickers cannot be used. The app's Start Live Voice shortcut can start Talk by Siri.",
+      "caveats": [
+        "iOS may suspend background audio, so the app has to stay open on screen. A HomePod or Siri handles timers and music more reliably.",
+        "The microphone cannot tell who is speaking, and the kids and guests will use it. Cloud speech and a cloud model for kids are on the never list, so this stays an adult convenience until a local model and local voice exist; the roadmap's kitchen speaker for the kids goes through Home Assistant for that reason.",
+        "Apple's speech recognition may use Apple's servers; realtime voice sends audio to OpenAI.",
+        "OpenClaw lists iOS realtime Talk on GPT-Live as not yet verified on a real device.",
+        "Wake words are one list for the whole gateway.",
+        "Wake-word routes to an agent exist in the data model, but this release exposes only voicewake.routing.get. I found no gateway method, CLI command or config key that writes a route, so per-phrase routing to a kitchen agent cannot be planned on.",
+        "talk.agentId is one gateway-wide setting, so it also becomes the default Talk owner for the parents' own phones.",
+        "With a voice-node token the realistic path is realtime voice, which sends everything the microphone hears, children included, to OpenAI. That collides with the rule against cloud speech for kids' content in a room the kids use."
+      ],
+      "safety": "Because anyone in the room can speak to it, the kitchen agent must be safe for anyone: no private data, no memory, no web, no outbound messages. The voice-node credential cannot send chat messages or change settings, but it is not confined to the kitchen agent: operator.read covers session reads across the gateway, a Talk session can name any agent with an agent-prefixed session key, and the node can post voice transcripts to a session key it chooses. The only limits today are physical (Guided Access with touch ignored and a passcode) or adopting named operator roles. Do not put this in a shared room until one of those is proven and speech stays local; the roadmap's Home Assistant kitchen speaker remains the plan for the kids.",
+      "depends_on": [
+        "IPH-01",
+        "hardware: spare iPhone and stand",
+        "decision: Talk provider; under a voice-node token expect realtime Talk (OpenAI Platform key, audio to OpenAI) rather than the Apple speech loop",
+        "new shared kitchen agent",
+        "household list store (F032)",
+        "local model and local TTS before any use by the kids",
+        "decision from IPH-01: a shared phone holding an operator token"
+      ],
+      "unverified": [
+        "How well iOS Voice Wake hears across a kitchen, and how long it keeps listening without someone reopening the app.",
+        "Whether a Talk session started on the phone can be forced to the kitchen agent whatever is selected in the app (talk.agentId is described only as the owner of sessions without an explicit agent key).",
+        "Whether the App Store iPhone app accepts a voice-node setup code at all.",
+        "Whether native (non-realtime) Talk and Voice Wake work without operator.write."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:34",
+        "title": "Operator scopes",
+        "anchor": "session reads",
+        "supports": "operator.read covers status, lists, logs and session reads across the gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:436",
+        "title": "Operator scopes",
+        "anchor": "talk.speak",
+        "supports": "The Talk client, session, speak and mode methods need the talk scope or the broader write scope."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:467",
+        "title": "Operator scopes",
+        "anchor": "chat.send",
+        "supports": "chat.send is a write-scoped method, which a read-and-talk token does not hold."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/talk/session-ownership.md:14",
+        "title": "Talk session ownership",
+        "anchor": "agent-prefixed",
+        "supports": "A Talk session whose key is prefixed with an agent id selects that agent; talk.agentId applies only otherwise."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/core-method-policy-BePoiMRV.mjs:1136",
+        "title": "Gateway source: method policy",
+        "anchor": "voicewake.routing.get",
+        "supports": "The installed gateway method table has a getter for wake-word routing and no setter."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:392",
+        "title": "Gateway source: node events",
+        "anchor": "voice.transcript",
+        "supports": "A node's voice transcript is run as an agent turn on the session key the node sends, or the main session if none."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/111795",
+        "title": "Use Guided Access on iPhone or iPad (Apple Support)",
+        "anchor": "Ignore all screen touches",
+        "supports": "Guided Access has a Touch option that makes the screen ignore all touches during a session."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-07",
+    "verdict": "revise",
+    "reason": "The app features are confirmed, and the installed code shows the limited profile does include the approvals and questions scopes. But it also includes write scope, which reaches every agent and every paired node, so for now this is a Tony's-phone feature; a non-admin phone also sees exec approvals only when a request targets it.",
+    "source_checks": [
+      {
+        "ref": "docs/platforms/ios.md:50",
+        "ok": true,
+        "note": "Line 50: Approvals opens the native approval inbox and shows the pending count."
+      },
+      {
+        "ref": "docs/platforms/ios.md:60",
+        "ok": true,
+        "note": "Lines 59-60: gateway administration approvals open the Dashboard page; native exec and plugin approvals keep their actions in the app."
+      },
+      {
+        "ref": "docs/platforms/ios.md:445",
+        "ok": true,
+        "note": "Lines 444-446: reviewing needs operator.admin, or a paired operator.approvals connection explicitly targeted by the gateway."
+      },
+      {
+        "ref": "docs/platforms/ios.md:450",
+        "ok": true,
+        "note": "Lines 448-451: the paired Apple Watch gets the prompt through the iPhone relay with allow-once and deny; direct Watch mode carries no approvals."
+      },
+      {
+        "ref": "docs/platforms/ios.md:469",
+        "ok": true,
+        "note": "Lines 468-469: question cards appear for operator connections with operator.questions or operator.admin."
+      },
+      {
+        "ref": "docs/cli/qr.md:41",
+        "ok": true,
+        "note": "Line 41 and line 56: --limited keeps the node token and omits only operator.admin from the operator handoff."
+      },
+      {
+        "ref": "docs/cli/qr.md:54",
+        "ok": true,
+        "note": "Line 54 lists the full profile's scopes. The installed code (dist/device-bootstrap-profile-DV7lvW3L.mjs:4-10 and 28) settles the feature's open question: the limited profile keeps approvals and questions, and also write."
+      },
+      {
+        "ref": "docs/cli/nodes.md:100",
+        "ok": true,
+        "note": "Line 100: notify sends a local notification on a node that declares system.notify, including iOS and direct watchOS nodes."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "docs/platforms/ios.md:527",
+        "ok": true,
+        "note": "Line 527: App Store builds use the hosted relay at that host, hardcoded."
+      },
+      {
+        "ref": "docs/plugins/hooks.md:164",
+        "ok": true,
+        "note": "Line 164, hook table: before_tool_call is the hook to block a tool or request approval."
+      }
+    ],
+    "corrections": {
+      "description": "The OpenClaw app on Tony's iPhone (and Apple Watch) becomes the place where Happy asks 'may I?': native approval cards, multiple-choice questions and push alerts instead of approval by text message. For Jordan's phone it is a decision rather than a setup step, because any operator token reaches every agent.",
+      "who": "operator",
+      "how": "Tony's phone pairs with full access and sees every pending exec and plugin approval in the native inbox and agent questions as cards; a paired Apple Watch mirrors approval prompts with allow once or deny. A phone paired with a limited code keeps the approvals and questions scopes in the installed code, but without admin it can review exec approvals only when the request explicitly targets that device, and it still holds write scope. system.notify is in the iOS default allowlist, and App Store builds are woken through OpenClaw's hosted push relay. The approvals themselves originate in the in-house before_tool_call hooks.",
+      "depends_on": [
+        "IPH-01 on Tony's phone",
+        "decision: whether Jordan's phone may hold an operator token at all (the limited profile still includes write scope)",
+        "approval-gated features (F010, F082, F087)"
+      ],
+      "caveats": [
+        "iMessage already delivers alerts with no setup. The app earns its place only for approvals and structured questions.",
+        "The app is a second chat surface with an agent picker, and a limited operator session is not confined to one agent: it keeps write scope, so Jordan's phone could open a thread with tony-main and relay commands to Tony's paired phone. Named operator roles can limit a person to certain agents, but with roles configured the gateway rejects setup-code and device tokens for operator connections unless the connection carries a verified identity.",
+        "Push goes through OpenClaw's relay and Apple, so it is neither instant nor guaranteed.",
+        "The first answer wins across phone, watch and web."
+      ],
+      "safety": "Approvals are a limit the model cannot talk its way past, which is what the tier-3 actions in this list need. Until an operator session can be confined to one person's agent, only Tony's phone gets the app and Jordan keeps approving by iMessage. Tony's phone then holds admin access to the gateway: protect it like the gateway itself (passcode, Face ID, Find My, remove the device from the paired list if it is lost).",
+      "unverified": [
+        "How an approval raised by a before_tool_call hook is aimed at one specific non-admin phone (the docs say only that the device must be explicitly targeted by the request).",
+        "Whether the iPhone app can connect as an operator with a verified Tailscale identity instead of its device token, which named operator roles would require.",
+        "What text a relay-backed push carries."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/device-bootstrap-profile-DV7lvW3L.mjs:28",
+        "title": "Gateway source: setup-code profiles",
+        "anchor": "PAIRING_SETUP_BOOTSTRAP_PROFILE",
+        "supports": "The limited setup-code profile still carries operator.approvals, operator.questions, operator.read, operator.talk.secrets and operator.write; only admin is dropped."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/exec-approvals-advanced.md:418",
+        "title": "Exec approvals (advanced)",
+        "anchor": "explicitly targeted",
+        "supports": "The official mobile apps can review exec approvals with admin, or with the approvals scope only when the request explicitly targeted that device."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:37",
+        "title": "Operator scopes",
+        "anchor": "node command relay",
+        "supports": "operator.write covers sending messages, invoking tools and relaying node commands, and also satisfies read."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:12",
+        "title": "Operator scopes",
+        "anchor": "not hostile multi-tenant isolation",
+        "supports": "Operator scopes are a guardrail inside one trusted operator domain, not isolation between people."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:106",
+        "title": "Operator scopes",
+        "anchor": "agents available for session creation",
+        "supports": "Named operator roles can limit which agents a person may start sessions and runs on."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/operator-scopes.md:174",
+        "title": "Operator scopes",
+        "anchor": "bootstrap-token",
+        "supports": "When roles are configured, operator connections that authenticate only with a device or setup-code token and no verified identity are rejected."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/multi-user.md:15",
+        "title": "Multi-user mode",
+        "anchor": "not security boundaries",
+        "supports": "Anyone who can operate an agent can make it do anything it can do; session ownership and visibility are not security boundaries."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:279",
+        "title": "Computer use",
+        "anchor": "operator.write",
+        "supports": "An authenticated operator with write scope can invoke an enabled, paired node command through node.invoke with no per-action admin check."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-08",
+    "verdict": "revise",
+    "reason": "All sixteen citations hold and experimental is right. Corrections: the computer tool is owner-only, so the Jordan example fails as written; the Mac app runs in node mode and its default provider also needs Event Posting; Apple adds an iOS 18 and passcode requirement.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched (page dated 14 September 2026). iPhone and Mac must be signed in to the same Apple Account with two-factor authentication."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. The iPhone must be locked and near the Mac (it may be charging and in StandBy), with Bluetooth and Wi-Fi on; iOS 18 or later with a passcode, macOS 15 or later on Apple silicon or T2."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. iPhone Mirroring works with only one Mac and one iPhone at a time."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. Camera and mic are not available through mirroring, including for Face ID or phone calls."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. Mirroring automatically pauses after periods of inactivity and stops when the iPhone is unlocked or the app is quit. The page gives no duration."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. Authentication is by Mac login password, Touch ID or Apple Watch, with an 'Ask every time' or 'Authenticate automatically' choice."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:19",
+        "ok": true,
+        "note": "Line 19: on macOS the provider is Peekaboo (default) or a CUA driver daemon embedded in OpenClaw.app."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:49",
+        "ok": true,
+        "note": "Line 49: the macOS CUA provider still requires its app-owned endpoint, so even the gateway's own desktop needs OpenClaw.app on macOS."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:285",
+        "ok": true,
+        "note": "Line 285: capture and input need a verified unlocked desktop; keep-awake covers an active execution for at most one hour and a lock retires it."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:31",
+        "ok": true,
+        "note": "Line 31 lists a vision-capable agent model as a requirement. The family's gpt-6-sol is declared with image input in the config repo, so it qualifies on paper."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:32",
+        "ok": true,
+        "note": "Line 32 and lines 265-271: add computer to tools.alsoAllow, and sandboxed agents also need tools.sandbox.tools.alsoAllow."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:277",
+        "ok": true,
+        "note": "Line 277: once the macOS grants exist a paired gateway can drive pointer and keyboard; there is no per-action confirmation."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:288",
+        "ok": true,
+        "note": "Line 288: screen content is untrusted and can carry prompt injection."
+      },
+      {
+        "ref": "docs/platforms/ios.md:641",
+        "ok": true,
+        "note": "Line 641: the iOS app is a mobile node surface, not a computer-use backend."
+      },
+      {
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "ok": true,
+        "note": "Line 128, permissions matrix: computer.act is n/a for iOS and Android, macOS needs Accessibility and Screen Recording."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/105121",
+        "ok": true,
+        "note": "Fetched. The page is about a child's device managed through Family Sharing: installing apps can be set to blocked and Ask to Buy routes purchases to a parent. It says nothing about locking down a phone on an adult account, which the feature already lists as unverified."
+      }
+    ],
+    "corrections": {
+      "example": "Tony texts: \"Open the swim team app and tell me what was posted today.\" (A request from Jordan would not reach the computer tool, which is owner-only.)",
+      "who": "operator",
+      "how": "This is not an OpenClaw feature; it is two features stacked. Apple side: the spare iPhone (iOS 18 or later, passcode set) must be signed in to the same Apple Account as the Mac user, which is happy's account, so Tony's and Jordan's own phones cannot be used; two-factor on; phone locked and near the Mac; Bluetooth and Wi-Fi on; mirroring set to authenticate automatically. OpenClaw side: the OpenClaw Mac app installed for the happy user and run in node mode against the existing gateway (today only the npm gateway exists; the app is a separate download and needs macOS 15 or later) with Accessibility, Screen Recording and, for the default Peekaboo provider, Event Posting; happy's desktop logged in and unlocked; a vision-capable model (gpt-6-sol is configured with image input); and the computer tool allowed for one dedicated agent (tools.alsoAllow plus tools.sandbox.tools.alsoAllow). computer is an owner-only core tool, so only turns started by the command owner, Tony, get it. The agent takes a screenshot, clicks inside the mirroring window and reads the result.",
+      "depends_on": [
+        "hardware: spare iPhone on iOS 18 or later with a passcode, dedicated to happy's Apple Account",
+        "OpenClaw Mac app installed for the happy user, with its macOS permissions",
+        "happy's desktop session logged in and unlocked (a manual login after every restart, since FileVault is on)",
+        "a dedicated stateless phone agent",
+        "parent approval hook for any action that submits something (IPH-07)",
+        "the request must come from the command owner (or Jordan is added to commands.ownerAllowFrom, which also gives her every owner-only command)"
+      ],
+      "caveats": [
+        "One Mac and one iPhone at a time, and the session ends as soon as someone unlocks the phone.",
+        "Mirroring pauses after inactivity and asks for Mac authentication unless set to authenticate automatically. A Mac mini has no built-in Touch ID, so an unattended agent can stall at that prompt.",
+        "No camera or microphone through mirroring, including Face ID, so any app step that wants a face scan or a camera scan is a dead end.",
+        "Control is by pixels: a screenshot per step, slow, and broken by every app redesign. The computer tool has no per-action confirmation.",
+        "Neither Apple nor OpenClaw documents this combination, and OpenClaw's iOS page says the iPhone app is not a computer-use backend.",
+        "It also turns the Mac's display into a working surface, which changes the current headless posture.",
+        "OpenClaw keeps a computer session awake for at most one hour and retires it when the Mac locks, so a long unattended run is not available."
+      ],
+      "unverified": [
+        "That Peekaboo or the CUA driver can reliably click and type inside the iPhone Mirroring window.",
+        "How long the inactivity pause is, and whether 'authenticate automatically' survives a Mac restart.",
+        "Whether Screen Time restrictions can lock down a spare phone on an adult Apple Account the way they can a child's device (the Apple page I fetched covers child devices).",
+        "Whether macOS screen capture returns the contents of the iPhone Mirroring window to a third-party app.",
+        "Whether a scheduled run counts as an owner turn for the computer tool."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/constants-DEZ1h3C0.mjs:36",
+        "title": "Gateway source: sandbox constants",
+        "anchor": "DEFAULT_TOOL_DENY",
+        "supports": "The sandbox default deny list contains computer, mobile_ui and nodes, so a sandboxed agent needs an explicit sandbox allow for them."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/index.md:15",
+        "title": "Nodes",
+        "anchor": "node mode",
+        "supports": "The Mac app can connect to an existing gateway as one node and adds screen and computer-control commands."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/macos.md:32",
+        "title": "macOS app",
+        "anchor": "macOS 15.0",
+        "supports": "OpenClaw.app requires macOS 15 or later and is distributed separately from the npm gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/computer-use.md:28",
+        "title": "Computer use",
+        "anchor": "Event Posting",
+        "supports": "The macOS fulfiller needs Accessibility and Screen Recording, and the native Peekaboo path also needs Event Posting access."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/120421",
+        "title": "iPhone Mirroring: Use your iPhone from your Mac (Apple Support)",
+        "anchor": "iOS 18 or later",
+        "supports": "The iPhone must run iOS 18 or later with a passcode, and the Mac macOS 15 or later on Apple silicon or a T2 chip."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-09",
+    "verdict": "revise",
+    "reason": "Sources hold. Steps 1 and 2 are existing catalog features; step 3 inherits the owner-only limit on computer and mobile_ui, so a request texted by Jordan cannot drive either tool and the daily automation is unverified.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. The iPhone must be locked and near the Mac (it may be charging and in StandBy), with Bluetooth and Wi-Fi on; iOS 18 or later with a passcode, macOS 15 or later on Apple silicon or T2."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:288",
+        "ok": true,
+        "note": "Line 288: screen content is untrusted and can carry prompt injection."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+        "ok": true,
+        "note": "createMobileUiTool (line 8747) registers the tool name mobile_ui at line 8757 and describes it as control of a paired Android app. The same name is in the owner-only core tool list (dist/dangerous-tools-D5_2xo_6.mjs:45) and the sandbox default deny list (dist/constants-DEZ1h3C0.mjs:36)."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8787",
+        "ok": true,
+        "note": "Line 8787 returns code confirmation_required when a state-changing action arrives without confirmed=true. The second call is made by the model itself, so this is not a human approval."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:38",
+        "ok": true,
+        "note": "Line 38: the table is the gateway policy ceiling; Android advertises mobile UI commands only while Accessibility Control is enabled. This and config-gateway.md:220 are the only doc mentions of mobile UI control; the Android app page does not mention it."
+      },
+      {
+        "ref": "docs/platforms/ios.md:27",
+        "ok": true,
+        "note": "Line 27: the app's chat accepts images from the photo picker, camera, Files, paste and the iOS share sheet. This is the OpenClaw app's own chat, so it needs the phone paired (IPH-01)."
+      }
+    ],
+    "corrections": {
+      "example": "Tony texts: \"Anything new in the team app?\" A 16:00 school-day automation is the goal, but whether a scheduled run may use the owner-only phone tools is unverified.",
+      "how": "Try in this order. 1) Turn on the app's own email notifications and let the planned school mailbox and reader handle them (F051, F056). 2) A parent screenshots or shares the post to Happy and snap-to-action reads it (F001, F011); this needs photo intake, which is off today (channels.imessage.includeAttachments is false), or the paired iPhone app's share sheet. 3) Only if neither works: a dedicated stateless phone agent drives the app, through iPhone Mirroring and the computer tool (IPH-08) or on an idle Android phone through the mobile_ui tool (IPH-14), reads the feed and hands a text summary to the asking parent's agent. computer and mobile_ui are owner-only tools, so today only a request from Tony reaches them.",
+      "depends_on": [
+        "IPH-08 or IPH-14",
+        "the app's login on the dedicated phone",
+        "decision: the parents accept automated reading of this particular app",
+        "the request must come from the command owner (computer and mobile_ui are owner-only tools)",
+        "photo intake for step 2 (off today)"
+      ],
+      "unverified": [
+        "Which of this family's actual school and sports apps lack email or web access (not checked).",
+        "Each app's terms on automated access.",
+        "Whether a scheduled run is treated as an owner turn for computer and mobile_ui."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-10",
+    "verdict": "revise",
+    "reason": "The gateway hook facts and the Apple trigger facts are all confirmed. Three corrections: Apple's page omits the Notification trigger from the run-automatically list but does not say it cannot, the header the hook needs is still not documented by Apple, and the per-person jobs agent the hook should target does not exist yet.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/intro-to-personal-automation-apd690170742/ios",
+        "ok": true,
+        "note": "Fetched. Automation shortcuts are specific to a device and sync to other devices with the automation disabled."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+        "ok": true,
+        "note": "Fetched (iOS 27 guide). The page lists the automations that 'can be run automatically': Time of Day, Alarm, Sleep, Arrive, Leave, CarPlay, Email, Message, Transaction, Wi-Fi, Bluetooth, Apple Watch Workout, NFC, App, Airplane Mode, Do Not Disturb, Low Power Mode, Battery Level, Charger, Sound Recognition. Notification is not in the list, but the page does not say it always asks."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/communication-triggers-apdd711f9dff/ios",
+        "ok": true,
+        "note": "Fetched. Message trigger has Sender and Message Contains options and all criteria must be met. Nothing about messages sent from the same account."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+        "ok": true,
+        "note": "Fetched. Event triggers include Notification, with an App option and a filter on message, subtitle or title."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/setting-triggers-apde31e9638b/ios",
+        "ok": true,
+        "note": "Fetched. Setting triggers: Wi-Fi, Bluetooth, Focus, Low Power Mode, Battery Level, Charger, NFC, App, Airplane Mode."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios",
+        "ok": true,
+        "note": "Fetched. Documents GET, POST, PUT, PATCH, DELETE and a request body of JSON, Form or File. The page never mentions headers, so the Authorization header the hook needs is not confirmed by Apple here; I searched for an official page that does and found none."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+        "ok": true,
+        "note": "Fetched. Shows shortcuts run, list, view and sign on the Mac; nothing about running a shortcut on another device."
+      },
+      {
+        "ref": "docs/platforms/ios.md:655",
+        "ok": true,
+        "note": "Lines 655-665: the Start Live Voice App Shortcut opens the app and starts Talk; it does not bypass unlock or foreground limits."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/webhooks.md:33",
+        "ok": true,
+        "note": "Lines 28-35 show hooks.enabled, hooks.token, hooks.path, hooks.allowedAgentIds and allowRequestSessionKey; hooks are disabled by default (line 17)."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/webhooks.md:139",
+        "ok": true,
+        "note": "Line 139 says query-string token authentication is rejected; lines 134-137 require an Authorization Bearer or x-openclaw-token header, POST only."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/webhooks.md:159",
+        "ok": true,
+        "note": "Line 159 says wake text is a system event, not a safety-wrapped reader turn, and to send only a short notification you control."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/webhooks.md:173",
+        "ok": true,
+        "note": "Line 173: custom hook paths resolve through hooks.mappings; templates or trusted local transforms produce wake or agent actions."
+      },
+      {
+        "ref": "docs/automation/cron-jobs/webhooks.md:209",
+        "ok": true,
+        "note": "Lines 208-215 warn to keep hook endpoints behind loopback, a tailnet or a trusted reverse proxy, with a dedicated token and restricted allowedAgentIds."
+      }
+    ],
+    "corrections": {
+      "how": "Phone to Happy: a personal automation in Shortcuts on the parent's phone, set to run without asking, whose action is Get Contents of URL with a POST to a gateway hook over the tailnet. The request must carry the hook token in an Authorization or x-openclaw-token header; proving that the shortcut can send that header is the first test. On the gateway: hooks.enabled, a dedicated hooks.token, hooks.allowedAgentIds limited to one agent for that parent (the roadmap's <p>-jobs agent once it exists), and a hooks.mappings entry that turns an event id into a fixed wake or agent action. Happy to phone: a Message-trigger automation on the phone (sender is Happy, message contains a keyword) that runs a shortcut such as 'open the OpenClaw app' or 'set a Focus'; Happy sends the keyword through an in-house tool that only knows a fixed keyword list. The Mac's own shortcuts command stays under F078.",
+      "caveats": [
+        "Automations belong to one device and sync to other devices switched off, so each parent builds their own.",
+        "Apple lists the automations that can run automatically (time of day, alarm, sleep, arrive, leave, CarPlay, email, message, transaction, Wi-Fi, Bluetooth, NFC, app, charger, battery level, sound recognition and others). A Notification trigger exists but is not on that list. Apple does not say outright that it always asks, so test it before ruling a notification relay in or out.",
+        "The hook token sits inside a shortcut on the phone, readable by anyone holding the unlocked phone.",
+        "Find My and Focus schedules already cover arrive and leave alerts. Use this where Happy adds something.",
+        "The only Shortcuts action the OpenClaw app documents is Start Live Voice, so 'tell Happy' has to go through a web request or a message.",
+        "The reverse direction is experimental. I found no Apple-documented way for a Mac to run a shortcut on another device; the keyword message is a workaround, and a phone that shares happy's Apple Account may not treat Happy's own message as incoming."
+      ],
+      "depends_on": [
+        "Tailscale on the phone",
+        "gateway hooks (off by default) with a mapping per event",
+        "for the reverse direction: the phone's handle on the pinned recipient list and an in-house keyword tool",
+        "a target agent for the hook: the roadmap's <p>-jobs agents are planned for a later milestone and do not exist yet",
+        "first test: a shortcut that sends the token header to the hook"
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:137",
+        "title": "Inbound webhooks",
+        "anchor": "x-openclaw-token",
+        "supports": "The hook token may be sent in an Authorization Bearer header or an x-openclaw-token header; both are headers."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-11",
+    "verdict": "keep",
+    "reason": "All eight sources hold and the limits are stated honestly (no SMS commands on the iOS node, inbound handling unverified, a paid line needed). Added the current NIST revision beside the superseded one.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/en-us/102545",
+        "ok": true,
+        "note": "Fetched. Devices on the same Apple Account can be allowed to send and receive messages from the iPhone; the iPhone must be on and connected to Wi-Fi or cellular."
+      },
+      {
+        "ref": "docs/channels/imessage/media.md:58",
+        "ok": true,
+        "note": "Lines 54-58 list service-qualified targets; the sms: form requires SMS. The page covers outbound targets only; I found no iMessage-channel text about inbound carrier SMS."
+      },
+      {
+        "ref": "docs/channels/sms.md:387",
+        "ok": true,
+        "note": "Lines 383-392 show an imsg send with --service sms from a Mac that can send carrier SMS through Messages, used to test the Twilio channel."
+      },
+      {
+        "ref": "docs/channels/sms.md:32",
+        "ok": true,
+        "note": "Line 32 lists a public HTTPS URL that reaches the gateway as a requirement; line 28 shows the plugin is a separate install (@openclaw/sms), which is not on this host."
+      },
+      {
+        "ref": "docs/channels/sms.md:39",
+        "ok": true,
+        "note": "Line 39 states application-sent SMS from a US local 10DLC number to US recipients needs A2P 10DLC registration."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:93",
+        "ok": true,
+        "note": "Line 93: sms.send and sms.search are Android node commands that need the SMS permission, telephony and a commands.allow entry."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+        "ok": true,
+        "note": "Fetched. Section 5.1.3.3 says use of the PSTN for out-of-band verification is RESTRICTED. The page carries a notice that this revision was superseded by SP 800-63-4 on 1 August 2025; the current revision says the same in section 3.1.3.3 and is added as a source."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://pages.nist.gov/800-63-4/sp800-63b.html",
+        "title": "NIST SP 800-63B (current revision, part of SP 800-63-4)",
+        "anchor": "Public Switched Telephone Network",
+        "supports": "The current revision still restricts out-of-band authentication over the phone network (SMS or voice), in section 3.1.3.3."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-12",
+    "verdict": "keep",
+    "reason": "All five sources hold; it stays a documented not-recommended route. Note that the 7-day wording on Apple's page applies to App IDs and devices, and install profiles expire 7 days from issuance, which supports the weekly re-signing caveat.",
+    "source_checks": [
+      {
+        "ref": "https://appium.github.io/appium-xcuitest-driver/latest/getting-started/device-setup/",
+        "ok": true,
+        "note": "Fetched. Real devices need Trust This Computer, Developer Mode on, and Settings > Developer > Enable UI Automation on."
+      },
+      {
+        "ref": "https://appium.github.io/appium-xcuitest-driver/latest/getting-started/provisioning-profile/",
+        "ok": true,
+        "note": "Fetched. WebDriverAgent must be signed, linked to a development team and carry a valid provisioning profile; free and paid accounts are both supported."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/xcode/enabling-developer-mode-on-a-device.json",
+        "ok": true,
+        "note": "Fetched. The alert warns that Developer Mode reduces the security of the device; a restart and the passcode are required."
+      },
+      {
+        "ref": "https://developer.apple.com/support/compare-memberships/",
+        "ok": true,
+        "note": "Fetched. Without a membership, App IDs and registered devices expire after 7 days and install provisioning profiles expire 7 days from issuance. No price on the page."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/xcuiautomation.json",
+        "ok": true,
+        "note": "Fetched. XCUIAutomation abstract: replicate interaction sequences and make sure your app's user interface behaves as intended."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-13",
+    "verdict": "keep",
+    "reason": "Sources hold and blocked is the right label: neither Apple page describes any programmatic interface. Apple's Switch Control page does not name which device types a Mac can control, which only weakens the route further.",
+    "source_checks": [
+      {
+        "ref": "https://support.apple.com/en-us/118667",
+        "ok": true,
+        "note": "Fetched. Both devices on the same Wi-Fi network and the same Apple Account; the page has a 'Use your Mac to control another device' section but does not name the device types, and mentions no scripting interface."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/111778",
+        "ok": true,
+        "note": "Fetched. Voice Control lets you navigate, tap, swipe and type by voice. Nothing about recognising a particular speaker or about the Lock Screen."
+      },
+      {
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "ok": true,
+        "note": "Line 128, permissions matrix: computer.act is n/a for iOS and Android, macOS needs Accessibility and Screen Recording."
+      }
+    ],
+    "corrections": {},
+    "added_sources": [],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-14",
+    "verdict": "revise",
+    "reason": "The tool, node commands and config behaviour exist under exactly these names in the installed build. But mobile_ui is an owner-only, sandbox-denied core tool, so the Jordan example fails as written, and nothing in the installed docs shows the released Android app offers Accessibility Control.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/command-policy.md:33",
+        "ok": true,
+        "note": "Line 33 is the Android default row and contains notifications.list, notifications.actions, callLog.search, device.apps, mobile.ui.observe and mobile.ui.act."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:38",
+        "ok": true,
+        "note": "Line 38: the table is the gateway policy ceiling; Android advertises mobile UI commands only while Accessibility Control is enabled. This and config-gateway.md:220 are the only doc mentions of mobile UI control; the Android app page does not mention it."
+      },
+      {
+        "ref": "docs/gateway/config-gateway.md:220",
+        "ok": true,
+        "note": "Line 220 says desktop sharing, Computer Control and mobile UI control rely on node-local enablement plus pairing rather than a commands.allow entry."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8757",
+        "ok": true,
+        "note": "createMobileUiTool (line 8747) registers the tool name mobile_ui at line 8757 and describes it as control of a paired Android app. The same name is in the owner-only core tool list (dist/dangerous-tools-D5_2xo_6.mjs:45) and the sandbox default deny list (dist/constants-DEZ1h3C0.mjs:36)."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8585",
+        "ok": true,
+        "note": "Line 8585 is the hint string; isEligibleMobileUiNode just above requires a connected node whose platform starts with android, the mobile UI capability and both mobile.ui commands."
+      },
+      {
+        "ref": "dist/openclaw-tools-DCQphGzC.mjs:8787",
+        "ok": true,
+        "note": "Line 8787 returns code confirmation_required when a state-changing action arrives without confirmed=true. The second call is made by the model itself, so this is not a human approval."
+      },
+      {
+        "ref": "docs/platforms/android.md:357",
+        "ok": true,
+        "note": "Line 357: the Android app keeps its gateway connection alive through a foreground service with a persistent notification."
+      },
+      {
+        "ref": "docs/platforms/android.md:167",
+        "ok": true,
+        "note": "Lines 165-170: scrcpy mirrors and controls Android from a Mac over ADB as an operator-side workflow separate from the node connection."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:93",
+        "ok": true,
+        "note": "Line 93: sms.send and sms.search are Android node commands that need the SMS permission, telephony and a commands.allow entry."
+      },
+      {
+        "ref": "docs/plugins/hooks.md:164",
+        "ok": true,
+        "note": "Line 164, hook table: before_tool_call is the hook to block a tool or request approval."
+      },
+      {
+        "ref": "https://developer.android.com/guide/topics/ui/accessibility/service",
+        "ok": true,
+        "note": "Fetched. Accessibility services inspect screen content, perform clicks and gestures for the user and call performGlobalAction for system actions."
+      },
+      {
+        "ref": "https://support.google.com/googleplay/android-developer/answer/10208820",
+        "ok": true,
+        "note": "Fetched. Apps must be the default SMS, Phone or Assistant handler, or an approved exception, to use Call Log or SMS permissions."
+      }
+    ],
+    "corrections": {
+      "example": "Tony texts: \"Check the team app for tomorrow's game time.\" (A request from Jordan would not reach mobile_ui, which is owner-only.)",
+      "who": "operator",
+      "how": "A cheap Android phone on a charger with the OpenClaw Android app, whose foreground service keeps the gateway connection alive. Turning on Accessibility Control in the app makes the node advertise mobile.ui.observe and mobile.ui.act (in the Android default allowlist; enabled on the phone, then approved as a pairing update). The built-in mobile_ui tool reads a semantic snapshot (text, roles, bounds) and performs one action per call; state-changing actions come back as confirmation_required until the model repeats the call with confirmed set. Give the tool to one stateless phone agent with tools.alsoAllow plus tools.sandbox.tools.alsoAllow (mobile_ui is on the sandbox default deny list), and expect it to work only in turns started by the command owner, because it is an owner-only core tool. scrcpy lets Tony watch or drive the same phone from the Mac.",
+      "depends_on": [
+        "hardware: an Android phone and a Google account for it",
+        "the school or team app must exist on Android",
+        "a dedicated stateless phone agent",
+        "parent approval hook for state-changing actions (IPH-07)",
+        "the request must come from the command owner (or Jordan is added to commands.ownerAllowFrom, which also gives her every owner-only command)"
+      ],
+      "caveats": [
+        "A second ecosystem to patch and babysit in an all-Apple house.",
+        "The docs pages mention mobile UI control only in the command-policy table. The tool is present in the installed code but has no guide page, so treat it as early.",
+        "The confirmed flag is the model confirming to itself; a real parent approval has to be added by hook.",
+        "It reads element text instead of pixels, so it is faster and steadier than iPhone Mirroring, but apps that draw custom views or mark content as secure will not be readable.",
+        "A paired Android node can post notification events, voice transcripts and agent requests to a session key the phone chooses, so the phone itself is a way into any session. Keep it physically secured and leave notification forwarding off unless IPH-15 is built."
+      ],
+      "unverified": [
+        "Whether the Google Play build offers Accessibility Control and SMS or only the sideloaded APK does. Google restricts SMS permissions to default handler apps, and the docs say Play builds lack background location.",
+        "How Android battery optimisation treats the foreground service over weeks.",
+        "Whether any released Android build actually ships the Accessibility Control switch: the Android app page in the installed docs does not mention it; only the gateway-side tool and the policy table do.",
+        "Whether a scheduled run counts as an owner turn for mobile_ui."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/dangerous-tools-D5_2xo_6.mjs:45",
+        "title": "Gateway source: owner-only core tools",
+        "anchor": "GATEWAY_OWNER_ONLY_CORE_TOOLS",
+        "supports": "The built-in nodes, computer and mobile_ui tools are in the list of core tools that require the sender to be the owner."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/agent-tools-D5UK6LHM.mjs:311",
+        "title": "Gateway source: agent tool assembly",
+        "anchor": "ownerOnlyCoreToolDenylist",
+        "supports": "When the turn's sender is not an owner, the owner-only core tools are put on a deny list for that turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/constants-DEZ1h3C0.mjs:36",
+        "title": "Gateway source: sandbox constants",
+        "anchor": "DEFAULT_TOOL_DENY",
+        "supports": "The sandbox default deny list contains computer, mobile_ui and nodes, so a sandboxed agent needs an explicit sandbox allow for them."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/tool-catalog-D1rzNkvG.mjs:415",
+        "title": "Gateway source: tool catalog",
+        "anchor": "mobile_ui",
+        "supports": "The built-in tool catalog lists mobile_ui as observing and controlling a paired Android app, in no default tool profile."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:451",
+        "title": "Gateway source: node events",
+        "anchor": "agent.request",
+        "supports": "A paired node can submit an agent request to a session key that the node itself supplies."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-15",
+    "verdict": "revise",
+    "reason": "The phone-side settings are confirmed. The gateway side, read from the installed code, differs from the description: a forwarded notification becomes a 120-character system event on a session the phone names, not a wrapped reader turn, so the reader and delivery are unproven in-house work and readiness drops to experimental. The iPhone claim is softened to what Apple's page actually says.",
+    "source_checks": [
+      {
+        "ref": "docs/platforms/android.md:623",
+        "ok": true,
+        "note": "Line 623: master toggle, off by default, needs Notification Listener access. Line 619 adds that events are sent as node.event items and configured on the device, not in gateway config."
+      },
+      {
+        "ref": "docs/platforms/android.md:624",
+        "ok": true,
+        "note": "Line 624: Allowlist forwards only listed package ids; Blocklist is the default and forwards everything else."
+      },
+      {
+        "ref": "docs/platforms/android.md:626",
+        "ok": true,
+        "note": "Line 626: per-device rate limit, default 20 a minute."
+      },
+      {
+        "ref": "docs/platforms/android.md:627",
+        "ok": true,
+        "note": "Line 627: optional key that pins forwarded events into a specific session. In the installed code the gateway takes that key from the phone and otherwise uses the system main session (dist/server-node-events-CWaUXzKm.mjs:605-607)."
+      },
+      {
+        "ref": "docs/platforms/android.md:633",
+        "ok": true,
+        "note": "Line 633: WhatsApp, WhatsApp Business, Telegram, Telegram X, Discord and Signal notifications are always excluded."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:130",
+        "ok": true,
+        "note": "Line 130: notifications.list and notifications.actions are Android only."
+      },
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/event-triggers-apd932ff833f/ios",
+        "ok": true,
+        "note": "Fetched. Event triggers include Notification, with an App option and a filter on message, subtitle or title."
+      },
+      {
+        "ref": "https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios",
+        "ok": true,
+        "note": "Fetched. The run-automatically list does not include Notification, which supports the cited sentence. The page does not state that a Notification automation always asks, so 'cannot run unattended' in the caveat is stronger than the source and is softened."
+      }
+    ],
+    "corrections": {
+      "readiness": "experimental",
+      "how": "On the Android phone: Forward Notification Events on (off by default, needs Notification Listener access), Package Filter set to Allowlist with only the school and sports app ids, the per-minute cap left at 20, and Route Session Key pointing at a dedicated session. On the gateway: each forwarded notification is queued as a system event on the session key the phone sends, or on the system main session if none is set, with title and text cut to 120 characters each, and that session is woken. Point the key at a session of a reader agent with no tools and no memory. The reader's reply has no channel of its own, so an in-house plugin has to pick up its short structured output and send it to the pinned parents (the family delivery primitive, G009).",
+      "caveats": [
+        "A notification carries a title and a short preview, and the gateway keeps at most 120 characters of each. No full post, no attachments.",
+        "Never use the default Blocklist mode: it forwards everything except the listed apps, including one-time codes and bank alerts.",
+        "The OpenClaw iPhone app has no notification commands. Shortcuts on iPhone has a Notification trigger, but Apple does not list it among automations that can run automatically, so an unattended relay from an iPhone is unconfirmed.",
+        "If the app offers email notifications, the school mailbox path (F051) is simpler and needs no extra phone.",
+        "If Route Session Key is left empty the events land in the system main session. Set it before turning forwarding on."
+      ],
+      "safety": "Notification text is untrusted content, and the gateway delivers it as a system event rather than as wrapped untrusted input, so the receiving agent must have no tools and no memory and its output must be treated as untrusted too; delivery is done by code to pinned recipients. The session key is chosen on the phone, so anyone who can change that setting can aim notification text at another session: keep the phone physically secured. The package allowlist is the hard limit that keeps 2FA codes and financial alerts out. The phone holds no personal accounts beyond the school and team logins.",
+      "unverified": [
+        "How to capture a tool-less reader's reply to a system-event wake and hand it to delivery code; I found no documented pattern for it.",
+        "How much text each app puts in its notifications."
+      ]
+    },
+    "added_sources": [
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:597",
+        "title": "Gateway source: node events",
+        "anchor": "notifications.changed",
+        "supports": "The gateway handles a forwarded notification by building a one-line summary from package, title and text for the session key the node supplied, defaulting to the system main session."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:625",
+        "title": "Gateway source: node events",
+        "anchor": "enqueueSystemEvent",
+        "supports": "That summary is queued as a system event on the target session, which is then woken."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/server-node-events-CWaUXzKm.mjs:117",
+        "title": "Gateway source: node events",
+        "anchor": "MAX_NOTIFICATION_EVENT_TEXT_CHARS",
+        "supports": "Notification title and text are each cut to 120 characters."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:619",
+        "title": "Android app",
+        "anchor": "node.event",
+        "supports": "Forwarded notifications reach the gateway as node events and are configured on the device, not in gateway config."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/webhooks.md:159",
+        "title": "Inbound webhooks",
+        "anchor": "system event",
+        "supports": "OpenClaw's own guidance treats system-event text as trusted input and says untrusted content belongs in a restricted reader turn instead."
+      }
+    ],
+    "removed_sources": []
+  },
+  {
+    "id": "IPH-16",
+    "verdict": "revise",
+    "reason": "All eleven sources hold and the three exclusions stand. One correction: notification forwarding is set on the Android phone and cannot be blocked from gateway config, so the how field now says which parts the gateway can enforce. Added the current NIST revision.",
+    "source_checks": [
+      {
+        "ref": "docs/nodes/command-policy.md:31",
+        "ok": true,
+        "note": "Line 31 is the iOS default row: camera.list, location.get, device.info, device.status, contacts.search, calendar.events, reminders.list, photos.latest, motion.activity, motion.pedometer, system.notify. No SMS, notification, screen or UI-control command."
+      },
+      {
+        "ref": "docs/nodes/device-commands.md:130",
+        "ok": true,
+        "note": "Line 130: notifications.list and notifications.actions are Android only."
+      },
+      {
+        "ref": "docs/nodes/troubleshooting.md:128",
+        "ok": true,
+        "note": "Line 128, permissions matrix: computer.act is n/a for iOS and Android, macOS needs Accessibility and Screen Recording."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/avfoundation/avcapturesession/interruptionreason/videodevicenotavailableinbackground.json",
+        "ok": true,
+        "note": "Fetched. The discussion text says camera usage is prohibited while in the background."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/corelocation/handling-location-updates-in-the-background.json",
+        "ok": true,
+        "note": "Fetched. On iOS the system suspends most apps shortly after they move to the background and can terminate apps at any time."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/usernotifications/pushing-background-updates-to-your-app.json",
+        "ok": true,
+        "note": "Fetched. Article 'Pushing background updates to your App': background notifications are low priority, delivery is not guaranteed, the system may throttle them, senders should not try more than two or three per hour, and the app gets 30 seconds. The figure is Apple's advice to senders, not a delivery rate."
+      },
+      {
+        "ref": "https://developer.apple.com/tutorials/data/documentation/messageui/mfmessagecomposeviewcontroller.json",
+        "ok": true,
+        "note": "Fetched. The controller lets the user compose and send SMS or MMS; the app only constructs the initial message and presents it for a person's approval."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. Camera and mic are not available through mirroring, including for Face ID or phone calls."
+      },
+      {
+        "ref": "https://support.apple.com/en-us/120421",
+        "ok": true,
+        "note": "Fetched. The iPhone must be locked and near the Mac (it may be charging and in StandBy), with Bluetooth and Wi-Fi on; iOS 18 or later with a passcode, macOS 15 or later on Apple silicon or T2."
+      },
+      {
+        "ref": "docs/nodes/computer-use.md:277",
+        "ok": true,
+        "note": "Line 277: once the macOS grants exist a paired gateway can drive pointer and keyboard; there is no per-action confirmation."
+      },
+      {
+        "ref": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+        "ok": true,
+        "note": "Fetched. Section 5.1.3.3 says use of the PSTN for out-of-band verification is RESTRICTED. The page carries a notice that this revision was superseded by SP 800-63-4 on 1 August 2025; the current revision says the same in section 3.1.3.3 and is added as a source."
+      }
+    ],
+    "corrections": {
+      "how": "Nothing to build. Record these on the never list and enforce what can be enforced: keep sms.search and sms.send out of gateway.nodes.commands.allow and in gateway.nodes.commands.deny, and add notifications.list and notifications.actions to deny unless IPH-15 is built. Notification forwarding is a switch on the Android phone, not gateway config, so the rule there is allowlist mode only or off. Never install banking, brokerage, payment, wallet or email apps on a phone an agent can drive; never remove the passcode or disable auto-lock except inside Guided Access on a single harmless app; never register Happy's number or Apple Account as a recovery or second-factor channel for a parent's account."
+    },
+    "added_sources": [
+      {
+        "kind": "web",
+        "ref": "https://pages.nist.gov/800-63-4/sp800-63b.html",
+        "title": "NIST SP 800-63B (current revision, part of SP 800-63-4)",
+        "anchor": "Public Switched Telephone Network",
+        "supports": "The current revision still restricts out-of-band authentication over the phone network (SMS or voice), in section 3.1.3.3."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/platforms/android.md:619",
+        "title": "Android app",
+        "anchor": "node.event",
+        "supports": "Notification forwarding is configured on the Android device, not in gateway config."
+      }
+    ],
+    "removed_sources": []
+  }
+]

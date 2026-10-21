@@ -1,0 +1,335 @@
+#!/bin/zsh -f
+# happy-inspect: read-only views of happy's runtime for the admin account.
+# Installed root:wheel 755 at /usr/local/libexec/happy-inspect; tonyli runs it through /etc/sudoers.d/happy:
+#   sudo -u happy /usr/local/libexec/happy-inspect <command> [arg]
+# Treat the output as untrusted data: logs, sessions and audits can contain text that came from
+# models or message senders.
+set -uo pipefail
+[[ "$(/usr/bin/id -un)" == happy ]] || { print -u2 "happy-inspect: must run as happy"; exit 1; }
+export HOME=/Users/happy
+export PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin
+cd "$HOME"
+S=$HOME/.openclaw
+stage=/usr/local/var/happy-stage/current        # owned by tonyli; happy can only read it
+jq=/usr/bin/jq
+
+# separation: every agent must point only at its owner's folders, provider and handles (roadmap §1b).
+separation() {
+  local entries bindings links allow owner mcp fa fail=0
+  entries=$(openclaw config get agents.entries --json) || { print "cannot read agents.entries"; return 1; }
+  bindings=$(openclaw config get bindings --json) || return 1
+  links=$(openclaw config get session.identityLinks --json 2>/dev/null) || links='{}'   # unset: error JSON, exit 1
+  allow=$(openclaw config get channels.imessage.allowFrom --json 2>/dev/null) || allow='[]'
+  owner=$(openclaw config get commands.ownerAllowFrom --json 2>/dev/null) || owner='[]'
+  mcp=$(openclaw config get mcp.servers --json 2>/dev/null) || mcp='{}'      # unset before wave A
+  print -r -- "$entries" | $jq -r --arg S "$S" --argjson mcp "$mcp" '
+    ($mcp | keys) as $servers | . as $all |
+    ["gmail_search", "gmail_get_message", "gmail_get_thread"] as $read |
+    to_entries[] | .key as $id | .value as $a |
+    if ($id | test("^[a-z][a-z0-9]*-main(-eval)?$")) then
+      ($id | capture("^(?<p>[a-z][a-z0-9]*)-main(?<e>-eval)?$")) as $m |
+      ("main" + ($m.e // "")) as $pur |
+      (if $m.e then "openai-eval" else "openai-" + $m.p end) as $prov |
+      [ (if $a.workspace == "\($S)/people/\($m.p)/main/workspace" then empty else "workspace \($a.workspace)" end),
+        (if $a.agentDir == "\($S)/people/\($m.p)/\($pur)/agent" then empty else "agentDir \($a.agentDir)" end),
+        (if $a.sandbox.workspaceRoot == "\($S)/sandboxes/\($m.p)/\($pur)" then empty else "sandbox root \($a.sandbox.workspaceRoot)" end),
+        (if ($a.model.primary | startswith($prov + "/")) then empty else "model \($a.model.primary)" end),
+        (if ($a.model.fallbacks // ["x"]) == [] then empty else "fallbacks not empty" end),
+        (if ([$a.modelPolicy.allow[]? | startswith($prov + "/")] | length > 0 and all) then empty else "modelPolicy.allow \($a.modelPolicy.allow)" end),
+        (if (($a.utilityModel // "") | startswith($prov + "/")) then empty else "utilityModel \($a.utilityModel)" end),
+        # The one hand-off allowed: an owner agent to the same owner mail reader (the lookup). With
+        # it, and only with it, the agent holds the three read tools of that reader (on 2026.9.7 a helper
+        # keeps only the tools its asker is allowed) and leaves that one account server undenied.
+        # Its rules tell it never to call them itself; this check cannot see that.
+        (($a.subagents.allowAgents // ["x"]) as $h |
+         if $h == [] or ($m.e == null and $h == ["\($m.p)-mail"]) then empty else "handoffs \($h)" end),
+        ((($a.subagents.allowAgents // []) != []) as $on | "\($m.p)-gmail" as $own |
+         (if $on then ($read | map($own + "__" + .)) else [] end) as $held |
+         ( (if $on == (([$a.tools.alsoAllow[]?] | index("sessions_spawn")) != null) then empty else "sessions_spawn and the hand-off list disagree" end),
+           (if $on and ($all | has("\($m.p)-mail") | not) then "hand-off target \($m.p)-mail is not deployed" else empty end),
+           (if $on and ($a.subagents.requireAgentId != true) then "a hand-off that names no agent is not refused (requireAgentId)" else empty end),
+           (if ([$a.tools.alsoAllow[]? | select(test("__"))]) == $held then empty
+            else "connector tools \([$a.tools.alsoAllow[]? | select(test("__"))]), expected \($held)" end),
+           (if ([$a.tools.sandbox.tools.allow[]? | select(test("__"))]) == $held then empty
+            else "sandbox connector tools \([$a.tools.sandbox.tools.allow[]? | select(test("__"))]), expected \($held)" end),
+           ($servers[] | . as $s | ([$a.tools.deny[]?] | index($s + "__*")) as $denied |
+            if $on and $s == $own then (if $denied then "its own account server is denied although the hand-off is on" else empty end)
+            elif $denied then empty else "account server \($s) not denied" end) )),
+        (if ([$a.tools.deny[]?] | index("group:messaging")) then empty else "message tool not denied" end)
+      ] | if length == 0 then "ok   \($id): folders of \($m.p), provider \($prov)\(if ($a.subagents.allowAgents // []) != [] then ", may ask \($a.subagents.allowAgents[0]) (holds its 3 read tools to pass on)" else "" end)" else "FAIL \($id): " + join("; ") end
+    elif ($id | test("^[a-z][a-z0-9]*-mail(-eval)?$")) then
+      # A mail reader (wave A): one account server, its three read tools, and nothing else.
+      ($id | capture("^(?<p>[a-z][a-z0-9]*)-mail(?<e>-eval)?$")) as $m |
+      ("mail" + ($m.e // "")) as $pur |
+      (if $m.e then "test-gmail" else "\($m.p)-gmail" end) as $own |
+      (if $m.e then "openai-eval" else "openai-\($m.p)-mail" end) as $prov |
+      ($read | map($own + "__" + .)) as $want |
+      [ (if $a.workspace == "\($S)/people/\($m.p)/mail/workspace" then empty else "workspace \($a.workspace)" end),
+        (if $a.agentDir == "\($S)/people/\($m.p)/\($pur)/agent" then empty else "agentDir \($a.agentDir)" end),
+        (if $a.sandbox.workspaceRoot == "\($S)/sandboxes/\($m.p)/\($pur)" then empty else "sandbox root \($a.sandbox.workspaceRoot)" end),
+        (if ($a.model.primary | startswith($prov + "/")) then empty else "model \($a.model.primary)" end),
+        (if ($a.model.fallbacks // ["x"]) == [] then empty else "fallbacks not empty" end),
+        (if $a.modelPolicy.allow == [$a.model.primary] then empty else "modelPolicy.allow \($a.modelPolicy.allow)" end),
+        (if ($a.utilityModel // "x") == "" then empty else "helper model \($a.utilityModel)" end),
+        (if ($servers | index($own)) then empty else "its account server \($own) is not configured" end),
+        (if ($a.tools.alsoAllow // []) == $want then empty else "tools \($a.tools.alsoAllow)" end),
+        (if ($a.tools.sandbox.tools.allow // []) == $want then empty else "sandbox tools \($a.tools.sandbox.tools.allow)" end),
+        (["group:runtime", "group:fs", "group:web", "group:automation", "group:messaging", "group:memory", "group:sessions"][] | . as $g |
+          if ([$a.tools.deny[]?] | index($g)) then empty else "\($g) not denied" end),
+        ($servers[] | select(. != $own) | . as $s | if ([$a.tools.deny[]?] | index($s + "__*")) then empty else "account server \($s) not denied" end),
+        (if ($a.subagents.allowAgents // ["x"]) == [] then empty else "handoffs \($a.subagents.allowAgents)" end),
+        (if ($a.skills // ["x"]) == [] then empty else "skills not empty" end),
+        (if $a.memory.search.enabled == false and $a.memory.search.rememberAcrossConversations == false then empty else "memory on" end)
+      ] | if length == 0 then "ok   \($id): mail reader of \($m.p), server \($own), provider \($prov), 3 read tools" else "FAIL \($id): " + join("; ") end
+    elif $id == "inbox" then
+      [ (if $a.workspace == "\($S)/shared/inbox/workspace" then empty else "workspace" end),
+        (if $a.agentDir == "\($S)/shared/inbox/agent" then empty else "agentDir" end),
+        (if $a.sandbox.workspaceRoot == "\($S)/sandboxes/shared/inbox" and $a.sandbox.scope == "session" then empty else "sandbox" end),
+        (if $a.tools.deny == ["*"] then empty else "tools not all denied" end),
+        (if $a.memory.search.enabled == false and $a.memory.search.rememberAcrossConversations == false then empty else "memory on" end),
+        (if ($a.model.primary | startswith("openai-shared/")) and ($a.model.fallbacks == []) then empty else "model" end)
+      ] | if length == 0 then "ok   inbox: shared, no tools, no memory" else "FAIL inbox: " + join("; ") end
+    else "FAIL \($id): not a known agent shape" end' || fail=1
+  # account servers (wave A): started only through happy-gog, one sign-in each, read tools only,
+  # and each one is the server of exactly one deployed reader (test-gmail: of eval copies only)
+  $jq -rn --argjson mcp "$mcp" --argjson e "$entries" '
+    $mcp | to_entries[] | .key as $s | .value as $v |
+    [ (if ($s | test("^[a-z][a-z0-9]*-gmail$")) then empty else "name" end),
+      (if $v.command == "/Users/happy/bin/happy-gog" then empty else "command \($v.command)" end),
+      (if $v.args[0] == $s then empty else "sign-in \($v.args[0])" end),
+      (if ($v.args | index("--readonly")) and ($v.args | index("mcp")) then empty else "not read-only" end),
+      (($v.args | index("--allow-tool")) as $i |
+       if $i and $v.args[$i + 1] == "gmail_search,gmail_get_message,gmail_get_thread" then empty else "tool list" end),
+      (if ($v.args | map(select(test("^--allow-(write|gmail-send|gmail-delete)$"))) | length) == 0 then empty else "write flag" end),
+      (if ($v | has("env") or has("url")) then "unexpected env or url" else empty end),
+      (if $s == "test-gmail" then (if ([$e | keys[] | select(test("-mail-eval$"))] | length) > 0 then empty else "no eval copy uses it" end)
+       elif ($e | has($s | sub("-gmail$"; "-mail"))) then empty else "no reader for it" end)
+    ] | if length == 0 then "ok   server \($s): happy-gog, read-only, 3 tools" else "FAIL server \($s): " + join("; ") end'
+  # a failed scheduled job alerts the command owner, nobody else
+  fa=$(openclaw config get cron.failureAlert --json 2>/dev/null) || fa='null'
+  $jq -rn --argjson fa "$fa" --argjson o "$owner" '
+    if $fa == null then "ok   no failed-job alert target (no scheduled jobs before wave A)"
+    elif $fa.enabled == true and $fa.mode == "announce" and $fa.channel == "imessage" and ("imessage:" + $fa.to) == $o[0]
+    then "ok   failed-job alerts go to the command owner" else "FAIL cron.failureAlert does not point at the command owner" end'
+  # no two agents share an agentDir or a sandbox root
+  print -r -- "$entries" | $jq -r '[.[] | .agentDir] | group_by(.) | map(select(length > 1)) | .[] | "FAIL shared agentDir \(.[0])"'
+  print -r -- "$entries" | $jq -r '[.[] | .sandbox.workspaceRoot] | group_by(.) | map(select(length > 1)) | .[] | "FAIL shared sandbox root \(.[0])"'
+  # bindings: a handle may only route to the main agent of the person whose identity links list it;
+  # the only binding without a peer is the inbox catch-all; eval clones are never bound
+  $jq -rn --argjson b "$bindings" --argjson l "$links" '
+    $b[] | .agentId as $id |
+    if .match.peer then
+      (.match.peer.id) as $h |
+      ([$l | to_entries[] | select(.value | index("imessage:" + $h)) | .key]) as $who |
+      if ($id | endswith("-eval")) then "FAIL eval clone \($id) is bound"
+      elif ($who | length) == 1 and $id == ($who[0] + "-main") then "ok   binding \($h) -> \($id)"
+      else "FAIL binding \($h) -> \($id) (identity links say \($who))" end
+    elif $id == "inbox" and .match.accountId == "*" then "ok   catch-all -> inbox"
+    else "FAIL binding without a peer -> \($id)" end'
+  $jq -rn --argjson a "$allow" --argjson l "$links" --argjson o "$owner" '
+    ([$l[][]] | map(sub("^imessage:"; ""))) as $known |
+    ($a[] as $h | select(($known | index($h)) | not) | "FAIL allowFrom \($h) has no identity link"),
+    (if ([$a[] as $h | select($known | index($h))] | length) == ($a | length) then "ok   allowFrom: \($a | length) handle(s), all linked: \($a | join(", "))" else empty end),
+    (if ($o | length) == 1 and ($known | index($o[0] | sub("^imessage:"; ""))) then "ok   command owner \($o[0])" else "FAIL command owner \($o)" end)'
+  # no gateway-wide or ambient credentials left to fall back to
+  openclaw config get models.providers.openai --json >/dev/null 2>&1 \
+    && print "FAIL models.providers.openai is set" || print "ok   no gateway-wide openai provider key"
+  [[ -e $S/.env ]] && print "FAIL $S/.env exists" || print "ok   no ~/.openclaw/.env"
+  for a in ${(f)"$(print -r -- "$entries" | $jq -r 'keys[]')"}; do
+    openclaw models status --agent "$a" --json 2>/dev/null | $jq -r --arg a "$a" '
+      ([.auth.providers[]?.profiles.count] | add // 0) as $n |
+      if $n == 0 then "ok   \($a): no stored auth profiles; allowed \(.allowed | join(", "))"
+      else "FAIL \($a): \($n) stored auth profile(s)" end'
+  done
+  # shared agents keep no memory files
+  [[ -e $S/shared/inbox/workspace/MEMORY.md || -d $S/shared/inbox/workspace/memory ]] \
+    && print "FAIL inbox workspace has memory files" || print "ok   inbox workspace has no memory files"
+  [[ "$(openclaw config get plugins.entries.memory-core.config.dreaming.enabled 2>/dev/null)" == false ]] \
+    && print "ok   dreaming off" || print "FAIL dreaming is not off"
+}
+
+case "${1:-help}" in
+  ready)      out=$(/usr/bin/curl -sS -m 5 -w '\nHTTP %{http_code}' http://127.0.0.1:18789/readyz 2>&1)
+              print -r -- "$out"; [[ $out == *"HTTP 200" ]] ;;   # the body names failing channels on a 503
+  status)     openclaw gateway status --deep ;;
+  posture)    for k in agents.defaults.sandbox.mode tools.profile tools.sessions.visibility \
+                       tools.agentToAgent.enabled tools.elevated.enabled tools.swarm tools.codeMode gateway.bind \
+                       gateway.tailscale.mode gateway.auth.allowTailscale gateway.terminal.enabled \
+                       gateway.cliAgents.enabled gateway.nodes.pairing.autoApproveLocal \
+                       discovery.mdns.mode browser.enabled models.catalogRefresh.enabled update.auto.enabled \
+                       agents.ownership agents.defaults.systemAgent.agentId agents.defaults.heartbeat.every \
+                       session.dmScope tools.message.crossContext.allowWithinProvider \
+                       tools.message.crossContext.allowAcrossProviders plugins.entries.memory-core.config.dreaming.enabled \
+                       browser.allowSystemProfileImport \
+                       channels.imessage.enabled channels.imessage.dmPolicy channels.imessage.groupPolicy \
+                       channels.imessage.includeAttachments channels.imessage.configWrites \
+                       commands.config commands.mcp commands.plugins commands.debug commands.bash commands.restart \
+                       approvals.exec.enabled approvals.exec.mode tools.web.search.provider \
+                       gateway.http.endpoints.chatCompletions.enabled logging.level \
+                       cron.skipMissedJobs cron.triggers.enabled cron.failureAlert.enabled cron.failureAlert.after \
+                       skills.workshop.autonomous.mode \
+                       agents.defaults.subagents.maxSpawnDepth agents.defaults.subagents.runTimeoutSeconds; do
+                print -n -- "$k = "; openclaw config get "$k" 2>&1
+              done ;;
+  separation) out=$(separation 2>&1); print -r -- "$out"; [[ $out != *FAIL* ]] ;;
+  agents)     openclaw agents list --bindings ;;
+  models)     for a in ${(f)"$(openclaw config get agents.entries --json | $jq -r 'keys[]')"}; do
+                openclaw models status --agent "$a" --json | $jq -c --arg a "$a" \
+                  '{agent:$a, model:.resolvedDefault, fallbacks, utility:.utilityModel.ref, allowed}'
+              done ;;
+  channel)    openclaw channels status --probe --channel imessage ;;
+  sessions)   openclaw sessions --all-agents --json | $jq -r '.sessions[] | [.agentId, .key] | @tsv' ;;
+  blocked)    /usr/bin/grep -h 'Blocked iMessage sender' Library/Logs/openclaw/openclaw*.log | /usr/bin/tail -n 20 ;;
+  model-calls) /usr/bin/grep -h 'model-fetch\] response' Library/Logs/openclaw/openclaw.log | /usr/bin/tail -n "${2:-20}" ;;
+  audit-json) openclaw security audit --deep --json ;;
+  jobs)       "$HOME/bin/happy-jobs" list ;;                      # every scheduled job, disabled ones included
+  mcp)        openclaw mcp status --verbose ;;                    # configured account servers; connects to nothing
+  firewall)   # The connector's two limits: LuLu blocks its direct connections; the egress proxy lets it reach
+              # three hosts. This view shows the static state; fwprobe tests both limits.
+              print "console user: $(/usr/bin/stat -f %Su /dev/console)"
+              print -n "LuLu extension: "; /usr/bin/systemextensionsctl list 2>&1 | /usr/bin/grep -i 'objective-see.lulu' || print "not listed"
+              print -n "LuLu app in happy's session: "; /usr/bin/pgrep -u happy -x LuLu >/dev/null && print running || print "not running"
+              print -n "egress proxy: "; /usr/bin/nc -z -G 2 127.0.0.1 8877 >/dev/null 2>&1 && print "listening on 127.0.0.1:8877" || print "NOT listening"
+              c=.config/happy/egress
+              print -n "proxy config: "; if /usr/bin/grep -q '^Listen 127.0.0.1$' $c/tinyproxy.conf && /usr/bin/grep -q '^ConnectPort 443$' $c/tinyproxy.conf \
+                   && /usr/bin/grep -q '^FilterDefaultDeny Yes$' $c/tinyproxy.conf && /usr/bin/grep -q "^Filter \"$HOME/$c/allow-hosts\"$" $c/tinyproxy.conf
+                then print "loopback only, port 443 only, default deny"; else print "NOT as expected"; fi
+              print "allowed hosts: $(/usr/bin/tr '\n' ' ' < $c/allow-hosts)"
+              print -n "gog: "; /bin/ls -l /opt/homebrew/bin/gog 2>&1 ;;
+  egress)     # What the proxy did: tunnels opened and hosts refused, by host, then its last decisions. Host names only.
+              l=Library/Logs/happy/egress-proxy.log
+              [[ -r $l ]] || { print "no proxy log yet"; exit 1; }
+              print "tunnels opened, by host:"; /usr/bin/grep -o 'Established connection to host "[^"]*"' $l | /usr/bin/sort | /usr/bin/uniq -c
+              print "refused, by host:"; /usr/bin/grep -o 'Proxying refused on filtered domain "[^"]*"' $l | /usr/bin/sort | /usr/bin/uniq -c
+              print "last decisions:"; /usr/bin/grep -E 'Established connection to host|Proxying refused|Refused CONNECT|Maximum number of connections' $l | /usr/bin/tail -n "${2:-12}" ;;
+  fwprobe)    # Both limits, tested with a host that is not Google's (GitHub, through `gog update status`):
+              #   direct: gog without the proxy must be stopped by LuLu;
+              #   proxy:  gog through the proxy must be refused, and the proxy must let an allowed host through.
+              # curl to GitHub is the control (any HTTP answer counts): without it nothing is proven.
+              cu=$(/usr/bin/stat -f %Su /dev/console)
+              lim() { /usr/bin/perl -e 'alarm shift; exec @ARGV' "$@"; }
+              /usr/bin/curl -sS -m 10 -o /dev/null https://github.com/ && ctl="curl ok" || ctl="curl FAILED (no verdict: the network is down)"
+              t=$(/usr/bin/mktemp -d) || exit 1     # a bare gog: no proxy variable, an empty home of its own, no keyring
+              if lim 25 /usr/bin/env -i HOME="$HOME" PATH=/usr/bin:/bin GOG_HOME="$t" GOG_KEYRING_BACKEND=file GOG_KEYRING_PASSWORD= \
+                   /opt/homebrew/bin/gog update status >/dev/null 2>&1
+              then d="NOT BLOCKED (gog reached GitHub directly)"; else d="blocked"; fi
+              [[ -d $t ]] && /bin/rm -r -- "$t"
+              if lim 25 "$HOME/bin/happy-gog" test-gmail update status >/dev/null 2>&1
+              then p="NOT REFUSED (gog reached GitHub through the proxy)"; else p="refused"; fi
+              a=$(/usr/bin/curl -sS -m 10 -o /dev/null -w '%{http_code}' -x http://127.0.0.1:8877 https://gmail.googleapis.com/ 2>/dev/null)
+              [[ $a == [1-5][0-9][0-9] ]] && a="allowed host ok" || a="ALLOWED HOST NOT REACHED"
+              cu2=$(/usr/bin/stat -f %Su /dev/console)      # the tries take up to a minute: say so if the screen changed hands meanwhile
+              [[ $cu2 == $cu ]] || cu="$cu->$cu2 (changed during the probe: ignore this line)"
+              print "$(/bin/date +%H:%M:%S) console user $cu | control: $ctl | direct: $d | via proxy: $p, $a" ;;
+  calls)      # Tool-call names, with counts, in an agent's live sessions. Exports are deleted afterwards:
+              # they hold chat text. Run it before and after a test and compare. An export can list one
+              # call twice (as recorded at run time and as rebuilt from the transcript), and a session
+              # reset (04:00, or /new) starts the counts again: compare names first, numbers second.
+              a=${2:-tony-main}; [[ $a =~ '^[a-z][a-z0-9-]*$' ]] || { print -u2 "usage: calls <agent>"; exit 2; }
+              for d in Library/Logs/happy/calls.*(N/); do /bin/rm -r -- "$d"; done   # what an interrupted earlier call left
+              d=$(/usr/bin/mktemp -d Library/Logs/happy/calls.XXXXXX) || exit 1
+              trap '[[ -d $d ]] && /bin/rm -r -- "$d"; exit 130' INT TERM HUP
+              {
+              n=0
+              for k in ${(f)"$(openclaw sessions --agent "$a" --limit all --json | $jq -r '.sessions[].key')"}; do
+                n=$((n + 1))
+                openclaw sessions export-trajectory --agent "$a" --session-key "$k" --workspace "$d" --output "s$n" >/dev/null 2>&1 \
+                  || print "export failed for session $n"
+              done
+              evs=($d/.openclaw/trajectory-exports/*/events.jsonl(N))
+              if (( ${#evs} )); then
+                /bin/cat $evs | $jq -r 'select(.type == "tool.call") | .data.name' | /usr/bin/sort | /usr/bin/uniq -c
+                print "($a: ${#evs} of $n live session(s) exported)"
+              else print "$a: no live sessions to export"; fi
+              } always { [[ -d $d ]] && /bin/rm -r -- "$d" } ;;
+  signin)     /usr/bin/tail -n "${2:-6}" Library/Logs/happy/signin-check.log 2>/dev/null || print "no sign-in check log yet"
+              /usr/bin/curl -fsS -m 5 http://127.0.0.1:8428/api/v1/query \
+                --data-urlencode 'query=last_over_time(happy_google_signin_ok[26h])' \
+                | $jq -r '.data.result[] | "metric \(.metric.signin): \(.value[1])"' ;;
+  sandbox)    openclaw sandbox explain --agent "${2:-tony-main}" --json ;;
+  secrets)    openclaw secrets audit --check && openclaw secrets audit --check --allow-exec ;;
+  doctor)     openclaw doctor --lint --allow-exec ;;
+  evidence)   ev=${2:-m1}; [[ $ev =~ '^(m[0-9]|wave-[a-j])$' ]] || { print -u2 "usage: evidence m0|m1|wave-a"; exit 2; }
+              /bin/cat "Library/Logs/happy/audit-$ev.json" "Library/Logs/happy/secrets-$ev.txt" ;;
+  config)     /bin/cat .openclaw/openclaw.json .openclaw/family.generated.json5 2>/dev/null ;;  # SecretRefs only, no secrets
+  drift)      bad=0
+              for f in openclaw.json family.generated.json5; do
+                [[ -e $stage/openclaw/$f || -e .openclaw/$f ]] || continue
+                [[ "$(/usr/bin/shasum -a 256 < .openclaw/$f 2>/dev/null)" == "$(/usr/bin/shasum -a 256 < $stage/openclaw/$f 2>/dev/null)" ]] \
+                  || { print "DRIFT: live $f differs from the staged revision"; bad=1; }
+              done
+              for f in $stage/openclaw/{people,shared}/**/*.md(N.); do
+                rel=${f#$stage/openclaw/}
+                /usr/bin/cmp -s "$f" ".openclaw/$rel" || { print "DRIFT: $rel differs from the staged revision"; bad=1; }
+              done
+              for f in $stage/plugins/**/*(N.) $stage/jobs/*(N.) $stage/egress/*(N.); do
+                rel=${f#$stage/}
+                /usr/bin/cmp -s "$f" ".config/happy/$rel" || { print "DRIFT: $rel differs from the staged revision"; bad=1; }
+              done
+              for f in $stage/bin/happy-jobs $stage/bin/happy-gog $stage/bin/happy-signin-check; do   # wave A scripts
+                [[ -e $f ]] || continue
+                /usr/bin/cmp -s "$f" "bin/${f:t}" || { print "DRIFT: bin/${f:t} differs from the staged revision"; bad=1; }
+              done
+              (( bad )) && exit 1
+              print "config matches the staged revision $(<$stage/REVISION)" ;;
+  logs)       /usr/bin/tail -n 200 Library/Logs/openclaw/openclaw.log ;;
+  logs-age)   /usr/bin/head -n 1 Library/Logs/openclaw/openclaw.log; /bin/ls -lT Library/Logs/openclaw ;;
+  logsize)    /usr/bin/du -h Library/Logs/openclaw/*(N) Library/Logs/happy/*(.N) /var/log/happy-healthcheck.log ;;
+  colima)     colima status ;;
+  colima-log) /usr/bin/tail -n 60 Library/Logs/happy/colima.log ;;
+  o1)         print -n "victoriametrics: "; /usr/bin/curl -fsS -m 3 http://127.0.0.1:8428/health; print
+              /usr/bin/curl -fsS -m 5 http://127.0.0.1:8428/api/v1/targets \
+                | $jq -r '.data.activeTargets[] | "target \(.labels.job): \(.health) \(.lastError)"'
+              print -n "sandbox check: "; /usr/bin/curl -fsS -m 5 http://127.0.0.1:8428/api/v1/query \
+                --data-urlencode 'query=last_over_time(happy_sandbox_ready[3m])' | $jq -r '.data.result[0].value[1] // "no data"'
+              print -n "grafana: "; /usr/bin/curl -fsS -m 3 http://127.0.0.1:3000/api/health | $jq -c .
+              pw=$(<.config/happy/grafana-admin-password)
+              print -n "datasource: "; printf 'user = "admin:%s"\n' "$pw" | /usr/bin/curl -sS -m 10 -K - \
+                http://127.0.0.1:3000/api/datasources/uid/vm/health | $jq -c '{status, message}'
+              printf 'user = "admin:%s"\n' "$pw" | /usr/bin/curl -fsS -m 5 -K - \
+                http://127.0.0.1:3000/api/v1/provisioning/alert-rules | $jq -r '.[] | "rule: \(.title)"'
+              unset pw ;;
+  eval-latest) d=$(/bin/ls -1d Library/Logs/happy/eval/*/ 2>/dev/null | /usr/bin/tail -n 1)
+              [[ -n $d ]] || { print "no eval runs yet"; exit 1; }
+              print "run: $d"; /bin/cat "$d/summary.txt"
+              for j in $d/*.json(N); do
+                $jq -r --arg f "${j:t}" '"\($f): \(.results.stats.successes // 0) passed, \(.results.stats.failures // 0) failed, \(.results.stats.errors // 0) errors"' "$j"
+              done ;;
+  eval-log)   /usr/bin/tail -n "${2:-20}" Library/Logs/happy/eval.log ;;   # the eval job's own output
+  eval-history) for d in Library/Logs/happy/eval/*(N/); do
+                print -r -- "${d:t}  $(/usr/bin/grep -h 'eval end' "$d/summary.txt" 2>/dev/null || print 'no result')"
+              done ;;
+  eval-file)  f=${2:-}
+              if [[ $f == latest/* ]]; then   # latest/<file>: the newest run, whatever its date
+                d=$(/bin/ls -1d Library/Logs/happy/eval/*(N/) | /usr/bin/tail -n 1); f=${d:t}/${f#latest/}
+              fi
+              [[ $f =~ '^[0-9-]+/[a-z0-9.-]+$' ]] || { print -u2 "usage: eval-file <date>/<file> | latest/<file>"; exit 2; }
+              /bin/cat "Library/Logs/happy/eval/$f" ;;
+  versions)   print -n "openclaw "; openclaw --version
+              print -n "node "; node --version
+              colima version | /usr/bin/head -1
+              print -n "ollama "; /usr/bin/curl -fsS -m 3 http://127.0.0.1:11434/api/version; print
+              openclaw plugins list 2>/dev/null | /usr/bin/grep -E 'imessage|brave|diagnostics-prometheus|home-weather'
+              print -n "imsg "; imsg --version 2>&1 | /usr/bin/head -1
+              print -n "gog "; gog --version 2>&1 | /usr/bin/head -1
+              print -n "tinyproxy "; /opt/homebrew/opt/tinyproxy/bin/tinyproxy -v 2>&1 | /usr/bin/head -1
+              print -n "promptfoo "; promptfoo --version 2>&1 | /usr/bin/tail -1
+              victoria-metrics --version 2>&1 | /usr/bin/head -1
+              grafana --version 2>&1 | /usr/bin/head -1 ;;
+  no-claude)  # no Claude Code or Codex/ChatGPT login: OpenClaw would reuse it and bypass the capped keys
+              # absolute path: security resolves relative names inside ~/Library/Keychains
+              kc=$(/usr/bin/security dump-keychain "$HOME/Library/Keychains/login.keychain-db" 2>/dev/null)
+              [[ -n $kc ]] || { print "cannot read happy's login keychain from this session"; exit 1; }
+              if command -v claude >/dev/null || command -v codex >/dev/null \
+                 || [[ -e .local/bin/claude || -e .local/share/claude || -e .claude || -e .claude.json || -e .config/anthropic || -e .codex ]] \
+                 || [[ ${(L)kc} == *claude* || ${(L)kc} == *codex* || ${(L)kc} == *chatgpt* ]]; then
+                print "FOUND a Claude Code or Codex binary or login for happy"; exit 1
+              fi
+              print "no Claude Code or Codex binary or login for happy" ;;
+  *)          print "usage: happy-inspect ready|status|posture|separation|agents|models|channel|sessions|blocked|model-calls [n]|"
+              print "       audit-json|jobs|mcp|firewall|fwprobe|egress [n]|calls <agent>|signin [n]|sandbox [agent]|secrets|doctor|"
+              print "       evidence [m0|m1|wave-a]|config|drift|"
+              print "       logs|logs-age|logsize|colima|colima-log|"
+              print "       o1|eval-latest|eval-history|eval-log [n]|eval-file <date>/<file>|latest/<file>|versions|no-claude"
+              exit 2 ;;
+esac

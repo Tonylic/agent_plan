@@ -1,0 +1,457 @@
+[
+  {
+    "id": "F001",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "Switching attachment intake on is one config line whose only job is to let Happy read what parents send, so it is the first step of photo and PDF reading (F002) and not a feature of its own. F003, CRT-15, MKT-02, SRC-14, MAC-07 and VOX-05 list F001 as a dependency and should point at F002.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/media.md:17",
+        "title": "iMessage media and attachments",
+        "anchor": "includeAttachments",
+        "supports": "One channel switch forwards photos, voice memos and other attachments to the agent; it is the same switch photo and PDF reading needs before anything else."
+      }
+    ],
+    "fold_into": "F002",
+    "fold_note": "F002's edit in this review already carries the includeAttachments switch, the size caps, F001's two unverified points and the OpenAI retention caveat. Still to move across: F001's four sources (media.md:17, private-api.md:84, media-understanding.md:63 and the OpenAI data-controls page).",
+    "merge_hints": [
+      "F003"
+    ]
+  },
+  {
+    "id": "F002",
+    "verdict": "edit",
+    "reason": "Kept, and widened to absorb F001 (the attachment switch it cannot work without) and the one usable line of CRT-15 (ask for a photo when a video arrives), so 'send Happy a photo or a PDF' is one item built in one go.",
+    "who_trigger_result": "Either parent / texts Happy a photo, a screenshot or a PDF, with or without a question / gets a plain answer about what it says instead of silence.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/nodes/media-understanding.md:10",
+      "title": "Media understanding",
+      "anchor": "summarize inbound media",
+      "supports": "OpenClaw documents reading inbound images, audio and video as a built-in step and says the original media is still handed to the model."
+    },
+    "edits": {
+      "name": "Photos and PDFs sent to Happy are read and answered (attachment intake switched on)",
+      "description": "Send a photo of a flyer, label or receipt, or a PDF packet, and Happy reads it and answers questions about it. Today a message that is only an attachment is dropped without a reply, so the first step is switching attachment intake on.",
+      "how": "Set channels.imessage.includeAttachments: true; Basic mode already carries media, the default attachment root covers the happy user, and the inbound caps are 10 MB for an image and 20 MB for audio. Images then pass natively to gpt-6-sol; attached PDFs arrive as extracted text blocks; the optional pdf tool (group:media) adds page selection via local PDFium, 10 MB and 20 pages by default.",
+      "caveats": [
+        "The same switch also lets voice memos and video in. Audio auto-detection tries a configured provider key before any local binary, so a voice memo could go to a cloud transcription service: set tools.media.audio.enabled: false until local transcription (F003) is in place. Whether the family's custom provider ids count as such a key is undocumented.",
+        "Happy cannot watch video on this provider set: the bundled video-understanding providers are Google, Qwen and Moonshot and none is configured. Add a line to AGENTS.md so Happy says so and asks for a photo or a few screenshots; a clip's sound track could later reuse the local transcription path from F003.",
+        "store:false covers less than it reads: OpenAI still keeps abuse-monitoring logs, which can include prompt and response content, for up to 30 days unless the organisation has Zero Data Retention, so family photos sent to the model fall under that."
+      ],
+      "unverified": [
+        "Reading accuracy on blurry phone photos and scanned image-only PDFs was not measured; pages with under 200 characters of text are rendered to images for the vision model (pdf.md:93).",
+        "Whether PDF links, as opposed to attachments, should be readable is left open; the pdf tool rejects remote URLs when it runs sandboxed (pdf.md:68).",
+        "That the gateway process under the happy account already has Full Disk Access to the Messages attachments folder comes from the 9 Oct notes and was not re-checked.",
+        "Whether OpenClaw treats the per-person custom provider ids exactly like the stock OpenAI provider for image input was not tested live (the config repo does declare image input for both models)."
+      ]
+    },
+    "merge_hints": [
+      "F023"
+    ]
+  },
+  {
+    "id": "F003",
+    "verdict": "edit",
+    "reason": "Kept; two small corrections. The promise that only the transcript reaches the cloud model has not been checked on a live turn, and the dependency on the attachment switch (now part of F002) was not recorded.",
+    "who_trigger_result": "Either parent / sends a voice memo instead of typing / sees the transcript echoed back and gets a normal text answer, with the audio transcribed on the Mac mini.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/nodes/audio.md:2",
+      "title": "Audio and voice notes",
+      "anchor": "inbound audio/voice notes",
+      "supports": "OpenClaw documents downloading and transcribing inbound voice notes and feeding the transcript into the reply as a supported flow, with local command-line transcribers among the options."
+    },
+    "edits": {
+      "depends_on": [
+        "F002 (attachment intake switched on; formerly F001)",
+        "whisper.cpp, ffmpeg and a GGML model file installed on the Mac mini"
+      ],
+      "unverified": [
+        "The container format of iMessage voice memos, and whether ffmpeg decodes it cleanly, were not tested.",
+        "Transcription speed on the M5 Pro and accuracy for Chinese or mixed-language speech were not measured.",
+        "Whether the per-person custom provider ids count as OpenAI audio auth in auto-detection is undocumented; the explicit CLI entry sidesteps the question.",
+        "That only the transcript reaches the cloud model: the media docs say the original attachment is still passed to the model, and the model's listed inputs are text and image, so the audio file should be left out, but this was not checked on a live turn."
+      ]
+    },
+    "merge_hints": [
+      "VOX-04"
+    ]
+  },
+  {
+    "id": "F004",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "Spoken replies with the built-in say voice are the no-install first step of the job VOX-04 describes, and VOX-04 already lists say as one of its engines, so the two are one item. VOX-04 and VOX-01 list F004 as a dependency; VOX-01 should point at VOX-04.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/tts/configuration.md:141",
+        "title": "Text-to-speech configuration",
+        "anchor": "command: \"say\"",
+        "supports": "The macOS say voice is one Local CLI preset of the same text-to-speech block that VOX-04's local neural voice configures."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/108415",
+        "title": "Use CarPlay with your iPhone - Apple Support",
+        "anchor": "announce your incoming messages",
+        "supports": "Siri already reads incoming messages aloud in the car, so the car case in this entry needs no audio file from Happy."
+      }
+    ],
+    "fold_into": "VOX-04",
+    "fold_note": "VOX-04's edit in this review already adds the say first step, the voice-memo round trip (tts.auto inbound), F004's three unverified points and the note that the phone already reads texts aloud in the car. Still to move across: F004's sources (field-reference.md:27, configuration.md:141, output.md:46 and the Apple CarPlay page).",
+    "merge_hints": []
+  },
+  {
+    "id": "VOX-04",
+    "verdict": "edit",
+    "reason": "Kept, and widened to absorb F004, which was the same feature with the built-in voice. Two overclaims are softened: replies stay local only after the default-on Microsoft online voice is disabled, and Talk mode has its own speech setting, so this is not automatically the voice of every other voice feature.",
+    "who_trigger_result": "Either parent, later the kids / asks Happy to read something aloud, sends /tts latest, or sends a voice memo / gets the reply as an audio file made on the Mac mini, with no cloud speech service involved.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/tools/tts/configuration.md:295",
+      "title": "Text-to-speech configuration",
+      "anchor": "Local Speech Swift and speech-core",
+      "supports": "OpenClaw documents local speech engines on a Mac as a supported way to turn replies into audio."
+    },
+    "edits": {
+      "name": "Spoken replies in a local voice (macOS say first, a neural voice later, cloud speech switched off)",
+      "description": "On request, or after a voice memo, Happy's reply also arrives as an audio file to tap and play, synthesized entirely on the Mac mini: first with the built-in macOS `say` voice, which needs no install, later with a natural neural voice. Read-aloud answers, briefs and later any kids' content then never touch a cloud TTS provider, but only once the default-on Microsoft online voice is disabled in config. The same local engine can later serve Talk mode, which has its own speech setting.",
+      "how": "Gateway `tts` block. Step 1, no install: provider `tts-local-cli` running the macOS `say` command (WAV file, offline), with `tts.auto: \"inbound\"` per agent so a voice memo gets a voice answer, and `/tts latest` or `/tts audio` on demand. Step 2, a natural voice, one of three documented routes. Option A: Speech Swift's local server on loopback (`brew install speech`, `speech-server --port 8080`) with the `openai` speech provider pointed at the loopback base URL, `model` tts-1 (which selects Kokoro) and `responseFormat` wav. Option B: `tts-local-cli` running the `speech` command. Option C: a Piper voice through sherpa-onnx; the bundled sherpa-onnx-tts skill runs a local binary from a shell, which needs an exec tool no agent here has, so in practice point `tts-local-cli` at that binary. In every step set `tts.providers.microsoft.enabled: false`, so the default-on Microsoft online provider cannot serve as a fallback when the local engine fails. Per-agent control through `agents.entries.<id>.tts` (off for research and inbox). iMessage gets a plain audio attachment, not a voice bubble. ffmpeg on the host for conversions.",
+      "depends_on": [
+        "F003 for the voice-memo round trip (tts.auto inbound)",
+        "Homebrew installs done from the admin account (speech, ffmpeg), for the neural voice only",
+        "decision: which local engine"
+      ],
+      "caveats": [
+        "iMessage is not a voice-note channel: the reply is an audio file attachment, not a voice bubble. The voice-bubble option (`asVoice` on upload-file) belongs to the Private API action set, which needs SIP off.",
+        "Local engines emit WAV, so a few minutes of speech is several megabytes.",
+        "Long replies are summarized by the chat model before synthesis (a cloud call) or truncated.",
+        "Two tempting shortcuts are cloud services and must stay off for kids' content: the no-key Microsoft provider (Edge online TTS) and the bundled `sag` skill (ElevenLabs).",
+        "The built-in `tts` tool only speaks when asked, which is the right default: nobody wants every text reply doubled as audio.",
+        "Local-only is not the default. The keyless Microsoft provider is enabled by default, and the docs say other configured providers act as fallbacks, so a stopped local server could end in a cloud call unless Microsoft is disabled.",
+        "`/tts provider <id>` is open to any authorized sender and writes one preference file on the gateway host, so a single text can move speech to another provider for everyone. Having no cloud provider configured is the control; a prompt rule is not.",
+        "Option A adds a third-party Homebrew package and a long-running loopback server under the happy user, plus a model download: an install, a launch agent, a firewall rule and a one-time egress exception.",
+        "The loopback route needs Speech Swift v0.0.23 or later. It is a 0.0.x project, so pin the version and expect rough edges; the server also needs its own launchd job to stay up.",
+        "None of `speech`, `speech-server` or `ffmpeg` is installed on this Mac today.",
+        "iMessage outbound media is capped by `channels.imessage.mediaMaxMb` (default 16 MB), which bounds the length of a WAV reply.",
+        "In the car the phone already does the speaking: Siri announces Happy's text replies (VOX-06), so no audio file is needed there."
+      ],
+      "unverified": [
+        "Kokoro or Piper voice quality and speed on this Mac.",
+        "Whether pointing `tts.providers.openai` at loopback has any side effect on the earlier decision not to add a catalog openai model provider (it is a different config block).",
+        "Whether scheduled announce deliveries (briefs) pass through Auto-TTS or only interactive replies do.",
+        "Which hosts the Speech Swift package contacts to download its models.",
+        "Whether a failed local synthesis actually falls through to the Microsoft online provider when only one provider block is written. The docs say other configured providers are fallbacks and that Microsoft is enabled by default; this was not tested.",
+        "That the documented say preset writes a valid WAV on macOS 27 without extra data-format flags was not run.",
+        "How Messages on iPhone presents a WAV attachment (inline player or plain file) was not tested.",
+        "The 1,500-character summarise-or-truncate threshold is documented (tts/commands.md:104) but its effect on long replies here was not tried."
+      ]
+    },
+    "merge_hints": [
+      "F003"
+    ]
+  },
+  {
+    "id": "VOX-06",
+    "verdict": "edit",
+    "reason": "Kept: Apple documents Siri announcing messages in the car and says a long message is not read out unless asked, which is exactly what the two-sentence driving style answers. Two caveats said the same thing, and one open question is already answered by that Apple page.",
+    "who_trigger_result": "A parent who is driving / asks Siri to text Happy, starting with the word driving / hears a reply of at most two short sentences that Siri reads out, with the details held until parked.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://support.apple.com/en-us/108415",
+      "title": "Use CarPlay with your iPhone - Apple Support",
+      "anchor": "announce your incoming messages",
+      "supports": "Apple documents Siri announcing and reading incoming messages in the car, and that a long message is only announced, not read, unless the driver asks."
+    },
+    "edits": {
+      "caveats": [
+        "I found no CarPlay surface in the installed OpenClaw docs or changelog (a search for the word returned nothing), so there is no Happy app on the car screen to plan for.",
+        "The OpenClaw Start Live Voice shortcut is not a car feature: it needs the phone unlocked and the app in the foreground.",
+        "Anything that needs a tap, such as an approval prompt, has to wait until parked.",
+        "This is mostly the phone doing its job; the only work is making Happy's replies fit to be read aloud.",
+        "Announced replies are heard by everyone in the car, so the driving style should also hold back private detail (money, health, the other adult's plans) until parked.",
+        "The example needs calendar knowledge Happy does not have yet; today the rule only improves weather and search answers.",
+        "Apple's CarPlay page says that when a message is long, Siri announces only the sender's name and that a message arrived, and reads it in full only when asked. A long reply from Happy is therefore not heard unless the driver asks, which is the real reason for the two-sentence cap."
+      ],
+      "unverified": [
+        "Whether a voice memo (F003) can be recorded hands-free in CarPlay.",
+        "Apple's detailed CarPlay Messages pages returned only navigation when fetched, so only the general CarPlay support page is cited.",
+        "How long a message has to be before Siri stops reading it out, and how several messages in a row are announced.",
+        "A `before_dispatch` keyword hook that keeps a short-lived car flag on the session. The installed docs describe that hook as a claim on the inbound message, not a way to shape the reply, so the AGENTS.md rule is the mechanism to rely on."
+      ]
+    },
+    "merge_hints": [
+      "VOX-08"
+    ]
+  },
+  {
+    "id": "G009",
+    "verdict": "keep",
+    "reason": "Implements the house rule that outbound messages go only to the family (the roadmap's recipient-pin hook that fails closed). Nine other items depend on it.",
+    "who_trigger_result": "Either parent, or a scheduled family job / asks Happy to tell the other parent or the parents' group something / the short text arrives there, and any attempt to message someone outside the family file is blocked in code.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/gateway/security/tool-permissions.md:35",
+      "title": "Tool and agent permissions",
+      "anchor": "send across conversations",
+      "supports": "OpenClaw documents that an agent holding the message tool can send to other conversations by default, which is the ability this item switches on and then pins to the family with a fail-closed hook."
+    },
+    "merge_hints": [
+      "G010",
+      "F006"
+    ]
+  },
+  {
+    "id": "G011",
+    "verdict": "edit",
+    "reason": "Kept, with one caveat added: on supported iPhones Messages can already translate a thread automatically, so Happy's distinct part is the shortened Chinese version of a school note. The language preference itself is one line in the per-person file that F042 generates.",
+    "who_trigger_result": "Either parent / writes to Happy in Chinese or English, or asks for a school note 'in Chinese for grandma' / gets the reply in that language, or a short Chinese text to forward.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://support.apple.com/en-us/123720",
+      "title": "Use Live Translation on iPhone - Apple Support",
+      "anchor": "Live Translation",
+      "supports": "Apple ships automatic translation of Messages conversations to consumers, which shows that translating family texts between languages is a real and wanted function."
+    },
+    "edits": {
+      "caveats": [
+        "On supported iPhones Messages can already translate a conversation automatically and on device (Apple's Live Translation), so plain back-and-forth with a grandparent may need nothing from Happy; whether that covers Chinese on this family's phones is not confirmed. Happy's distinct part is the shortened Chinese version of a school note."
+      ]
+    },
+    "merge_hints": [
+      "F042"
+    ]
+  },
+  {
+    "id": "OCL-06",
+    "verdict": "edit",
+    "reason": "Kept for the five commands that work today without a model call. /loop is taken out: it does nothing until the scheduling tool is granted, is owner-only, and is the whole subject of AUT-03. /btw stays only as an untested extra, because its page does not list iMessage.",
+    "who_trigger_result": "Either parent / types a command such as /stop, /new or /status as the whole message / the answer in progress stops, a clean conversation starts, or a health and cost summary comes back, with no model call.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/tools/slash-commands.md:212",
+      "title": "Slash commands",
+      "anchor": "Abort the current run",
+      "supports": "OpenClaw's command table documents the typed commands a chat user gets, including stopping the current run and starting a fresh session."
+    },
+    "edits": {
+      "name": "Built-in chat commands for parents (/stop, /new, /status, /usage, /tools)",
+      "description": "A handful of typed commands that already work in the iMessage thread: stop an answer that is going wrong, start a clean conversation, see what Happy can do right now, and check health and cost, all handled before any model call. One more, /btw, asks a side question that is not remembered; it is a model call and its page does not list iMessage, so treat it as untested. The repeating-check command /loop is described in AUT-03.",
+      "example": "Jordan texts '/stop' when a long answer is heading the wrong way, then '/new'. Tony texts '/status' to see whether Happy is healthy.",
+      "how": "Text commands are core and work on iMessage: command-only messages from allowlisted senders are handled before the queue and the model. /stop aborts the active run in that chat; /new archives the session and starts fresh; /tools lists the agent's effective tools; /status shows runtime, uptime and plugin health; /usage tokens|full|cost toggles a per-reply footer or prints a cost summary. /btw answers from the current session with a separate one-shot model query and writes nothing to history. Put the five everyday ones in templates/person/AGENTS.md and a one-screen cheat sheet. The config-writing commands stay off as today, and Tony should decide whether /restart, which is on by default for owners, stays available from chat.",
+      "depends_on": [
+        "G005 kill switch for the stop-everything case"
+      ],
+      "caveats": [
+        "/stop ends one run in one chat; it does not pause scheduled jobs, so it complements the G005 kill phrase rather than replacing it.",
+        "The /btw page names WhatsApp, Telegram and Discord for channel use and does not mention iMessage.",
+        "/usage figures are local estimates, like G004.",
+        "In a plain iMessage bubble the /status and /tools output may be long.",
+        "/btw is a separate one-shot model call on the session's model; it is not free and not model-less."
+      ],
+      "safety": "No new capability for the five everyday commands: they are read from the sender's own message, authorised by the sender allowlist and the owner list, and handled before the model runs. /btw is a model turn on <p>-main under its normal tool policy, and <p>-main cannot browse."
+    },
+    "merge_hints": [
+      "AUT-03",
+      "G005"
+    ]
+  },
+  {
+    "id": "CRT-15",
+    "verdict": "remove",
+    "category": "vague",
+    "reason": "This entry records why Happy cannot watch videos with its current provider and lists options it does not itself recommend; its own review note says the honest deliverable is one line asking the sender for a photo. That line belongs in F002. Nothing depends on this entry.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/nodes/media-understanding.md:178",
+        "title": "Media understanding",
+        "anchor": "Video: Google",
+        "supports": "OpenClaw's bundled video-understanding providers are Google, Qwen and Moonshot, none of which this family uses, so there is no supported way to watch a clip on this setup."
+      }
+    ],
+    "fold_into": "F002",
+    "fold_note": "F002's edit in this review already adds the caveat: videos cannot be watched on this provider set, so Happy says so and asks for a photo or a few screenshots; a clip's sound track could later reuse F003's local transcription. Nothing else needs to move.",
+    "merge_hints": [
+      "F003"
+    ]
+  },
+  {
+    "id": "OCL-04",
+    "verdict": "remove",
+    "category": "advised-against",
+    "reason": "Tapbacks, typing bubbles, polls and tap-to-approve need System Integrity Protection switched off on the Mac that holds every family secret. OpenClaw's own page calls that a real security tradeoff, the roadmap keeps SIP on, and the entry itself says the gain is not worth it. Nothing depends on this entry.",
+    "evidence": [
+      {
+        "kind": "installed",
+        "ref": "docs/channels/imessage/private-api.md:27",
+        "title": "Enabling the imsg private API",
+        "anchor": "real security tradeoff",
+        "supports": "OpenClaw warns that turning SIP off is a system-wide security tradeoff and says an install that cannot accept it is limited to basic text and media."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/102149",
+        "title": "About System Integrity Protection on your Mac (Apple Support)",
+        "anchor": "System Integrity Protection",
+        "supports": "Apple describes SIP as the protection that keeps malicious software, even with root access, from modifying protected files and folders."
+      }
+    ],
+    "merge_hints": []
+  },
+  {
+    "id": "F007",
+    "verdict": "keep",
+    "who_trigger_result": "Either parent / texts 'remind me at 4:30 to pick up the kids' or 'every Sunday 7 pm: bins out' / gets a text at that time, and can list or cancel what is scheduled.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/automation/index.md:35",
+      "title": "Automation",
+      "anchor": "Remind me in 20 minutes",
+      "supports": "OpenClaw's automation guide names a timed reminder as a standard use of its built-in scheduler, with one-shot and recurring schedules."
+    },
+    "merge_hints": []
+  },
+  {
+    "id": "F009",
+    "verdict": "edit",
+    "reason": "Kept; it now also carries the setup note from G012 (public feeds show up once the family Google Calendar is subscribed to them), because that entry needed nothing built beyond this one.",
+    "who_trigger_result": "Either parent, and the daily briefs / asks 'what's on Saturday?' or 'is anyone free Friday at 1?' / gets the answer from the family Google Calendar, which Happy can read but not change.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/concepts/delegate-architecture.md:48",
+      "title": "Delegate architecture",
+      "anchor": "read events, surface conflicts",
+      "supports": "OpenClaw describes read-only calendar access (read events, surface conflicts, summarize the day) as the lowest-risk tier of what an assistant agent does for the people it serves."
+    },
+    "edits": {
+      "caveats": [
+        "Public feeds (the school district calendar, library and recreation events, team schedules) show up in Happy's calendar answers only after the family Google Calendar is subscribed to each feed link, which Google allows from a computer browser only; a search of the installed OpenClaw docs and skills found no .ics handling of its own. Google gives no refresh interval and TeamSnap says changes can take up to 24 hours to appear, so change alerts are a separate job (SRC-09)."
+      ],
+      "unverified": [
+        "gog is not installed on this Mac, so its flags were read from gogcli.sh and not from the binary; the bundled skill names the brew formula gogcli while the site shows a tap-qualified name.",
+        "Whether gog's calendar_events MCP tool can be pinned to a single calendar id was not confirmed.",
+        "Google or iCloud is still Tony's open decision; the iCloud route needs the OpenClaw macOS app paired as a node, which is not installed.",
+        "That events from a URL-subscribed calendar are returned through the Google Calendar API, and so through gog, was not confirmed.",
+        "Whether this family's district, club and library actually publish feed links was not checked."
+      ]
+    },
+    "merge_hints": [
+      "SRC-09"
+    ]
+  },
+  {
+    "id": "G012",
+    "verdict": "remove",
+    "category": "duplicate",
+    "reason": "After the earlier reviews this entry is a setup step, not a feature: someone subscribes the family Google Calendar to public feed links by hand and Happy reads them through F009, while the fallback poller it mentions is SRC-09. CRT-11 lists G012 as a source for the district calendar and should point at F009.",
+    "evidence": [
+      {
+        "kind": "web",
+        "ref": "https://support.google.com/calendar/answer/37100",
+        "title": "Subscribe to someone else's calendar (Google Calendar Help)",
+        "anchor": "From URL",
+        "supports": "Adding a public calendar link is a manual Google Calendar step done in a computer browser; nothing in Happy has to be built for it."
+      },
+      {
+        "kind": "web",
+        "ref": "https://helpme.teamsnap.com/article/1245-subscribe-to-a-team-schedule",
+        "title": "Subscribe to a Team Schedule - TeamSnap Playbook",
+        "anchor": "up to 24 hours",
+        "supports": "Team schedules arrive as the same kind of calendar link and can lag by a day, which is the gap the SRC-09 change-alert job already covers."
+      }
+    ],
+    "fold_into": "F009",
+    "fold_note": "F009's edit in this review already adds the feed-subscription caveat and the two unverified points. Still to move across: G012's Google Help and TeamSnap sources. If a change alert is wanted for the district calendar too, widen SRC-09's wording from sports feeds to any public feed.",
+    "merge_hints": [
+      "SRC-09"
+    ]
+  },
+  {
+    "id": "F019",
+    "verdict": "edit",
+    "reason": "Kept; 'any public web page' overclaims, because the plain fetch runs no JavaScript and cannot log in (those pages wait for F020 or stay unread).",
+    "who_trigger_result": "Either parent / asks a question that needs a web page, or pastes a link / gets the answer relayed by their own agent, while the page itself was read by a helper that holds no family data.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/tools/web-fetch.md:11",
+      "title": "Web fetch",
+      "anchor": "extracts readable content",
+      "supports": "OpenClaw's built-in page fetcher gets a URL and returns its readable text, which is what lets the helper answer from a public page."
+    },
+    "edits": {
+      "description": "Happy can read public web pages that load without JavaScript or a login: a memory-less research helper fetches the page and the parent's own agent relays the answer."
+    },
+    "merge_hints": [
+      "WEB-01",
+      "F022"
+    ]
+  },
+  {
+    "id": "WEB-01",
+    "verdict": "edit",
+    "reason": "Kept as the guardrail behind the roadmap's M3 exit gate (an injected page cannot reach the LAN); the vendor docs describe the private-network block it relies on. Fixed: the steps told Tony to curate a host blocklist while the caveats say not to bother, one caveat appeared twice, and one step pointed at an entry (WEB-02) that is now part of F020.",
+    "who_trigger_result": "Tony as operator / an injected page tells the research agent to open a home-network address or to send a header along / the request is refused before it is sent, and two eval cases prove it.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "docs/gateway/security/browser-control.md:52",
+      "title": "Browser control risks",
+      "anchor": "Private/internal destinations stay blocked",
+      "supports": "OpenClaw documents a strict-by-default policy that keeps an agent's browser away from private and internal addresses, and says full prevention needs owner-side egress isolation."
+    },
+    "edits": {
+      "name": "Web egress guardrails for fetch and browser (no LAN, no headers, no fallback provider)",
+      "description": "Makes sure nothing Happy fetches or browses can reach the home network (Hue bridge, printer, router page) or carry a secret along, and records which protections are hard limits and which are best effort. The research agent and every later web feature sit on top of it.",
+      "how": "Gateway config, applies to the research agent. Keep `tools.web.fetch.ssrfPolicy.dangerouslyAllowPrivateNetwork` and `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` truly unset (strict is the default); do not write `false` (see caveats). Leave `tools.web.fetch.headers` empty, because the model picks the URL and any header goes wherever it points. Leave `tools.web.fetch.provider` unset and do not install a fetch-provider plugin, so a failed fetch is never retried through a third party. Set `browser.evaluateEnabled: false`. The current config already has `browser.enabled: false` and `browser.allowSystemProfileImport: false` from M0 (cookie import from a real browser profile is otherwise on by default, and the agent tool has an action for it): keep the first until the research browser ships (F020) and the second for good. Add `gateway.nodes.browser.mode: \"off\"` and, when the browser is switched on, `browser.defaultProfile: \"openclaw\"`. Hostname deny lists (`blockedHostnames`) exist for both fetch and browser but are not worth curating (see caveats). Second layer if the roadmap's egress proxy is built: `proxy.proxyUrl` for the gateway's own HTTP clients. Add two eval cases to the M3 exit test: a LAN address, and a public URL that redirects to one.",
+      "caveats": [
+        "web_fetch blocks private hosts and re-checks redirects. The browser's check is weaker: the docs say its request interception is not a network firewall and can miss redirect hops, a popup's first request and Service Worker traffic.",
+        "The managed browser does not inherit the gateway's proxy environment, and strict SSRF mode blocks an explicit browser proxy flag unless private-network access is switched on. Putting the browser behind the roadmap's filtering proxy is therefore an open design conflict to settle before M3.",
+        "OpenClaw does not ship or run a proxy; `proxy.proxyUrl` only routes its own HTTP and WebSocket clients through one you operate.",
+        "For web_fetch there is no public-web allowlist: its `allowedHostnames` only re-opens named private hosts and `blockedHostnames` only denies. The browser is different. In the installed source, an explicitly written `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork: false` is not the same as leaving the key unset: hostname navigation is then refused unless the host matches `browser.ssrfPolicy.allowedHostnames`, while public IP-literal addresses still pass. That is a gateway-wide navigation allowlist in OpenClaw's own code: a useful second layer if the only browser on the gateway is a single-site one, unusable next to an open research browser, and a trap if someone writes `false` to be explicit (the research browser would stop loading hostnames). A per-agent site allowlist still has to be a hook (WEB-03).",
+        "The SSRF policy covers the `web_fetch` tool and the browser tool only. Host-side helpers that take a URL (the summarize wrapper in WEB-11, the print plugin's own download in F080, a feed watcher) run outside it and need their own scheme, host and resolved-address checks, or an injected URL reaches LAN devices through them.",
+        "Once research has web_fetch, the egress proxy cannot double as an exfiltration allowlist. Proxy routing is process-level, so one policy serves model calls, MCP traffic and research's fetches; a domain allowlist tight enough for the first two blocks the third. With research live, the proxy can deny private ranges and named hosts and nothing more. This is an inference from the routing description and it changes what the roadmap's Smokescreen allowlist can promise.",
+        "A hostname block list is not an exfiltration control: any host that is not on it works. Do not spend upkeep time curating paste and tracker lists. What counts is the private-network block, no headers, no fallback provider, and no private data in the agent that browses."
+      ]
+    },
+    "merge_hints": [
+      "F019",
+      "F020",
+      "WEB-03"
+    ]
+  },
+  {
+    "id": "F022",
+    "verdict": "keep",
+    "reason": "Implements the roadmap's M3 rule that prices come only from live tool results with a timestamp, and matches OpenAI's own requirement that answers built from web results show visible, clickable citations.",
+    "who_trigger_result": "Either parent / asks anything answered from the web (a fact, a price, a schedule) / gets the answer with its link and the time it was fetched, a flag on stale or conflicting sources, or an honest 'could not verify'.",
+    "demand_source": {
+      "kind": "web",
+      "ref": "https://developers.openai.com/api/docs/guides/tools-web-search",
+      "title": "Web search (OpenAI API docs)",
+      "anchor": "clearly visible and clickable",
+      "supports": "OpenAI requires that information taken from web results be shown to end users with clearly visible, clickable inline citations."
+    },
+    "merge_hints": [
+      "F019",
+      "F025"
+    ]
+  },
+  {
+    "id": "F021",
+    "verdict": "keep",
+    "who_trigger_result": "Either parent / asks whether a place is open now, whether it is any good, or what its phone number is / gets hours, rating, phone and a Maps link from Google Places.",
+    "demand_source": {
+      "kind": "installed",
+      "ref": "skills/goplaces/SKILL.md:41",
+      "title": "Bundled goplaces skill",
+      "anchor": "--open-now --min-rating 4",
+      "supports": "OpenClaw ships a skill for asking Google Places which nearby places are open now and well rated, with details and reviews on request."
+    },
+    "merge_hints": [
+      "F027"
+    ]
+  }
+]

@@ -1,0 +1,1178 @@
+[
+ {
+  "id": "F072",
+  "origin": "9 Oct",
+  "name": "Kids agent (waits for a local model): text with homework hints, chat hours, parent alerts and a nightly digest, then the kitchen speaker",
+  "tier": 1,
+  "cluster": "kids",
+  "description": "Later, each child texts Happy from their own Apple account and gets a helper with no tools and no memory, on a local model, that gives grade-level hints and short explanations and is told not to hand over a finished worksheet; the parents get chat hours per child, an immediate text when a message is flagged for safety or distress, and an evening digest of what each child asked. As a second step the same kids agent answers by voice through the roadmap's kitchen speaker (Home Assistant Voice Preview Edition), with wake word, speech-to-text and text-to-speech running locally so that only text reaches Happy.",
+  "example": "Trigger: at 21:40 the 8-year-old texts the kids agent and gets a fixed 'time for bed, ask me tomorrow' line. At the kitchen speaker: 'Okay Nabu, why is the sky blue?'",
+  "how": "Base (F072): `bindings[]` by DM handle to one agent per kid, the minimal profile with `session_status` and `gateway` denied, memory search off, a daily reset and an in-house kid-safety plugin with a local classifier on `before_dispatch` and `message_sending`. Hints (F073): hint-first rules and a grade band in AGENTS.md; no URLs. Hours and alerts (MKT-13): the same plugin gives a fixed reply outside each kid's hours and texts both parents the category and time on a safety label. Digest (G019): a host-side command job summarises the day's sessions on a local model. Speaker (VOX-11): the device, Home Assistant OS in a VM on the Mac, Whisper and Piper through the Wyoming integration, and a kids-only shim in front of the gateway, whose OpenAI-compatible chat endpoint is full operator access.",
+  "who": "kid",
+  "risk": "high",
+  "readiness": "blocked",
+  "dependency_old": "M2-local",
+  "value": 4,
+  "effort": "L",
+  "caveats": [
+   "Blocked until a local model and local classifiers exist and the kid-safety evals pass, because kids' content never goes to a cloud model or cloud speech.",
+   "A local classifier's accuracy on how 8 and 10-year-olds actually write is unproven: false alarms will annoy, misses matter more, and a home system has no human reviewer between the flag and the parent notice.",
+   "Common Sense Media rated Google's supervised assistant for under-13s high risk and recommends that children aged 6 to 12 use chatbots only under adult supervision; an alert and an evening digest are a look afterwards, not supervision, so whether a child may chat alone is a decision to take before building.",
+   "'Refuse whole-worksheet answers' is a prompt rule, and no source shows a model holds to it when a child pushes.",
+   "The alert is a heads-up to parents and not a crisis service, and the parents should be told so.",
+   "The speaker has no interim adult version: nothing identifies who is speaking, so without a local model a child's question would reach OpenAI as text, and speech stays in the house only while Home Assistant's own cloud speech option is left off.",
+   "The hop from Home Assistant to Happy is unsolved: Home Assistant's official OpenAI integration only talks to OpenAI's own endpoint, and with token auth OpenClaw's chat endpoint gives the caller the full operator scope set and lets the request choose the agent, so the bridge would be a community integration or a self-written kids-only shim.",
+   "The speaker adds an always-on VM to patch and back up, Home Assistant itself calls the device a preview, and open-ended questions need Whisper, which Home Assistant recommends only on powerful hardware.",
+   "How the safety plugin texts the parents from inside a hook is not settled: no plugin-side send path was found in the hook docs read, so an 'immediate' alert is the aim, not a tested behaviour."
+  ],
+  "corrections": [
+   "'OpenAI terms are 13+, no cloud shortcut' could not be confirmed as worded: OpenAI's consumer Terms of Use returned HTTP 403 in this run, and the API page that did open sets no flat 13+ bar. It says personal data of children under 13 must not be processed without zero data retention and that COPPA applies. Keeping kids off the cloud stays the family's rule; store:false was not shown to count as zero data retention."
+  ],
+  "unverified": [
+   "Llama Guard 3 as the classifier is the roadmap's choice and appears nowhere in the installed OpenClaw docs (its Ollama library page is cited under G019).",
+   "Whether kids admitted by pairing are refused as approvers; the roadmap itself marks this as untested.",
+   "How accurate any local classifier is on questions from 8 and 10 year olds; no evaluation exists yet.",
+   "'Refuse whole-worksheet answers' is a prompt rule; no source shows a model holds to it when a child pushes.",
+   "A parent asking the same questions from their own chat works today, but that is the parent using the cloud model, not the child.",
+   "Whether the Apple on-device model can be called from a host job for an ad hoc summary; the doc gives it an 8,192-token window and 1,024 output tokens and describes utility use only.",
+   "Reading the per-agent database from a command job (read-only open or the history RPC) was not tried.",
+   "Which session transcript a delivered digest line is copied into: the installed source appends direct scheduled deliveries to a session transcript (dist/delivery-dispatch-awareness-CcGkYFaV.mjs:518), and if that session belongs to a parent's cloud-backed agent, the quoted kid text would reach a cloud model.",
+   "Whether ChatGPT's controls changed after the September 2025 launch report; OpenAI's own page returned 403 in this run.",
+   "How the plugin sends a proactive message to the parents from inside a hook; G009 covers the agent `message` tool and host jobs, and no plugin-side send path was found in the hook docs read.",
+   "Which Home Assistant conversation integration can target a custom OpenAI-compatible endpoint in 2026 (the roadmap cites a community one; I did not verify it).",
+   "Whisper latency inside a VM on this Mac.",
+   "Whether OpenClaw can issue an HTTP credential scoped to one agent.",
+   "Whether a trusted-proxy identity in front of the HTTP endpoint could narrow a caller to one agent. With the token auth this gateway uses, the docs say scope headers are ignored and the request's model field selects any agent."
+  ],
+  "safety": "The design keeps the children's content off the cloud: the agent, its classifiers and the digest summariser are local, and with the classifier down the agent answers 'ask a grown-up'. Alerts carry a category, not the child's words. Two points are open. The nightly digest tells the parents what a child asked and is delivered into a parent's chat with Happy; OpenClaw copies a scheduled delivery into a session transcript, and if that session belongs to a parent's cloud-backed agent the child's words would reach the cloud model, so the delivery route has to be checked before the digest quotes anything. And the speaker's bridge: the chat endpoint is equivalent to an operator secret, so the speaker must reach only the tool-less kids agent.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/access-control.md:173",
+    "title": "iMessage access control and routing",
+    "anchor": "normalized DM handle",
+    "supports": "An iMessage binding can match one sender's handle, which is how each kid's messages would reach their own agent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:36",
+    "title": "Configuration — tool policy",
+    "anchor": "session_status",
+    "supports": "The minimal tool profile still includes two tools, so a truly tool-less kids agent needs explicit denies on top.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:67",
+    "title": "Message and delivery hooks",
+    "anchor": "message_sending",
+    "supports": "Plugins can claim an inbound message before the model (before_dispatch, same page line 15) and rewrite or cancel an outgoing reply, the two places a safety classifier attaches.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.openai.com/api/docs/guides/safety-checks/under-18-api-guidance",
+    "title": "Under-18 guidance",
+    "anchor": "zero data retention",
+    "supports": "OpenAI tells API developers not to process personal data of children under 13 without zero data retention and to comply with COPPA.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16109150?hl=en",
+    "title": "Guide your child's Gemini Apps experience (Gemini Apps Help)",
+    "anchor": "Family Link",
+    "supports": "Google ships a supervised chat assistant for children under 13 that parents switch on and manage, for schoolwork help and stories.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/agent-workspace.md:74",
+    "title": "Agent workspace",
+    "anchor": "start of every session",
+    "supports": "AGENTS.md is injected at the start of every session, so the hint-first rules and grade band are always present with no tools.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/user-model.md:376",
+    "title": "User model",
+    "anchor": "channel sessions omit root memory",
+    "supports": "Channel sessions do not load MEMORY.md, so the rules and any approved link list must live in AGENTS.md.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions",
+    "title": "Complying with COPPA: Frequently Asked Questions",
+    "anchor": "verifiable parental consent",
+    "supports": "US law requires verifiable parental consent before an online service collects personal information from children under 13, the reason the plan keeps kids' chat off general cloud services.",
+    "check": "bot-blocked"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.khanmigo.ai/parents",
+    "title": "AI-powered tutor Khanmigo by Khan Academy: Your 24/7 homework helper",
+    "anchor": "never gives the answer",
+    "supports": "Khan Academy sells parents a homework helper for children from elementary school up that guides the child towards the answer instead of handing it over.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/help/faq/where-things-live-on-disk.md:35",
+    "title": "Where things live on disk",
+    "anchor": "openclaw-agent.sqlite",
+    "supports": "Each agent's sessions and chat transcripts are stored in a per-agent SQLite file a host job can read.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/transcripts.md:14",
+    "title": "Transcripts CLI",
+    "anchor": "durable meeting transcripts",
+    "supports": "The transcripts command is for meeting transcripts, so it is not the way to read kids' chats.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/apple-fm.md:90",
+    "title": "Apple Foundation Models",
+    "anchor": "session titles and progress",
+    "supports": "The built-in Apple on-device model is documented for short utility tasks such as titles, not as a general summariser.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://ollama.com/library/llama-guard3",
+    "title": "llama-guard3",
+    "anchor": "content safety classification",
+    "supports": "Llama Guard 3 is published for local use as a content-safety classifier of model inputs and responses, the source of the flags the digest quotes.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://techcrunch.com/2025/09/29/openai-rolls-out-safety-routing-system-parental-controls-on-chatgpt/",
+    "title": "OpenAI rolls out safety routing system, parental controls on ChatGPT",
+    "anchor": "quiet hours",
+    "supports": "ChatGPT's parental controls include quiet hours and feature switches, and parents are contacted when a teen shows signs of acute distress.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:164",
+    "title": "Hook reference: message hooks",
+    "anchor": "before_dispatch",
+    "supports": "A plugin can claim an inbound message before the model is called.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice-pe/",
+    "title": "Home Assistant Voice Preview Edition",
+    "anchor": "Home Assistant Voice Preview Edition",
+    "supports": "Official product page: price, on-device wake word, physical mic mute, local or cloud speech processing, and the statement that it is a preview.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/installation/macos",
+    "title": "Home Assistant: install on macOS",
+    "anchor": "2 GB",
+    "supports": "On a Mac, Home Assistant OS runs as a virtual machine with a documented minimum of 2 GB RAM and 2 vCPUs, including an Apple Silicon image.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/voice_control/voice_remote_local_assistant/",
+    "title": "Home Assistant: installing a local Assist pipeline",
+    "anchor": "Speech-to-Phrase",
+    "supports": "A fully local pipeline uses Whisper or Speech-to-Phrase plus Piper through the Wyoming integration, and Whisper is recommended only for powerful hardware.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.home-assistant.io/integrations/openai_conversation/",
+    "title": "Home Assistant: OpenAI integration",
+    "anchor": "official OpenAI API endpoint",
+    "supports": "The official OpenAI conversation integration does not support OpenAI-compatible third-party endpoints.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/openai-http-api.md:8",
+    "title": "OpenAI chat completions",
+    "anchor": "disabled by default",
+    "supports": "The gateway's OpenAI-compatible HTTP surface exists but is off unless enabled.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "F073",
+   "G019",
+   "MKT-13",
+   "VOX-11"
+  ],
+  "adds": [],
+  "wave": "later",
+  "section": "People and access",
+  "includes": [
+   {
+    "id": "F073",
+    "name": "Homework hints and curiosity Q&A (explain, don't answer)"
+   },
+   {
+    "id": "G019",
+    "name": "Parents' nightly kids-chat digest"
+   },
+   {
+    "id": "MKT-13",
+    "name": "Parent alerts and quiet hours for the future kid agent"
+   },
+   {
+    "id": "VOX-11",
+    "name": "Home Assistant Voice Preview Edition kitchen speaker"
+   }
+  ],
+  "history": [
+   "r1: edited risk, caveats. Kept as blocked, not advised against: it waits for a local model and local safety checks, which is the family's own rule. Risk is raised from low to medium because the risk here is what a child reads, and no classifier has been tested on this family's questions yet.",
+   "r1: kept; credible mention: Guide your child's Gemini Apps experience (Gemini Apps Help)",
+   "r1: merged with F073, G019, MKT-13 (same batch). The kids agent base, its one purpose (homework hints), and the parent oversight that has to exist on the day it first answers a child (chat hours, safety alerts, nightly digest) are all blocked on the same local model and children's accounts, so they become one later card.",
+   "r2: edited description. Kept as blocked until a local model exists. One word is corrected: the description promised 'never a finished worksheet', but the item's own caveat says that is an instruction to the model, not something enforced.",
+   "r2: kept; credible mention: Guide your child's Gemini Apps experience (Gemini Apps Help)",
+   "r3: edited caveats, depends_on. Kept as blocked until a local model exists. One thing earlier rounds did not have: Common Sense Media, a children's media-safety body, rates Google's under-13 assistant high risk and says chatbot use at ages 6 to 12 should happen only with close parent supervision and in moderation. An alert and an evening digest are a look afterwards, so the card now says this and lists 'may a child chat alone?' as a decision to take before building.",
+   "r3: kept; credible mention: Guide your child's Gemini Apps experience (Gemini Apps Help)",
+   "r3: merged with VOX-11 (same purpose). The kitchen speaker is a second way for a child to reach the same tool-less, memory-less kids agent, belongs to the roadmap's one kids milestone ('text, then voice'), is blocked on the same local model and has no use without the kids agent, so the two become one later card that states the text route and the speaker route separately and carries the speaker's high risk.",
+   "r4: edited safety, caveats, depends_on. Kept as blocked until a local model exists, and not re-argued. The safety note said no cloud call touches the children's content, but the nightly digest, once delivered into a parent's chat, may be copied into a session that runs on the cloud model; the note now says so, and a caveat records that the way the alert text gets sent is not settled.",
+   "r4: kept; credible mention: Guide your child's Gemini Apps experience - Gemini Apps Help"
+  ],
+  "demand": {
+   "ref": "https://support.google.com/gemini/answer/16109150?hl=en",
+   "title": "Guide your child's Gemini Apps experience - Gemini Apps Help",
+   "supports": "Google ships a chat assistant for children under 13 that parents switch on and manage through Family Link, says it can give clues and explanations so a child works out schoolwork for themselves, and tells parents to explore it with the child and supervise; opened in this run."
+  },
+  "depends_on": [
+   "a local model and local safety classifiers (the roadmap's M2, currently skipped)",
+   "the kid-safety evals passing",
+   "each kid having an own Apple child account and handle (text route)",
+   "G009 family delivery primitive",
+   "decision: whether a child may chat with Happy alone or only with a parent alongside (Common Sense Media recommends adult supervision for ages 6 to 12)",
+   "for the speaker: the device ($69 on Home Assistant's page; the roadmap says $59) and a Home Assistant OS VM on the Mac (the same VM the later Home Assistant option for house devices, F076, would use)",
+   "for the speaker: a scoped endpoint or kids-only shim between Home Assistant and the gateway"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "G003",
+  "origin": "9 Oct",
+  "name": "Scheduled-jobs registry in family.json5: per-person switches, a charter per job, failure guardrails",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Every scheduled feature becomes a named switch per person in one reviewed file. From that entry the generator creates the job with a time limit and a tool cap and writes a short charter the parents can read: what Happy may do without asking, what needs a yes first, when to stop and ask, what it must never do. Failure alerts are routed to Tony instead of the family; a job that keeps failing stops itself, and whether that last notice reaches Tony or the job owner's thread is still to be checked; recurring runs missed during a power cut are skipped, while one-off reminders still catch up.",
+  "example": "Turning Jordan's school digest off is a one-line change Tony reviews. The 19:30 brief fails twice in a row: Tony gets one text, and one more when it recovers. After a power cut the 07:00 brief does not turn up at 11:40.",
+  "how": "gen-family reads the family.json5 flags and emits `openclaw automations add/edit/remove`, keyed on the stable `--name`, with `--agent`, `--to`, `--tz`, `--announce`, `--timeout-seconds` and an explicit `--tools` cap on every job; it diffs against `automations list --all --json`, because the default list hides disabled jobs. The same entries render one `## Program: <name>` section per job (Authority, Trigger, Approval gate, Escalation, What NOT to do, plus an execute-verify-report rule) into templates/person/AGENTS.md, and each job message points at its program instead of repeating it; isolated jobs must not use `--light-context`, which drops the bootstrap files. Gateway config: a global `cron.failureAlert` object routed to the operator's handle; `cron.skipMissedJobs: true`; `cron.triggers.enabled: false`. These three switches are plain config and can go in before the generator exists; triggers must be off before timed reminders (F007) or any other item gives an agent the `automations` tool. happy-inspect reads `automations list --all` to catch auto-disabled jobs. The healthchecks dead-man switch stays the only signal for a Mac that is off.",
+  "who": "operator",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "M",
+  "caveats": [
+   "A charter is prompt text, not enforcement; the hard limits stay in tool policy and hooks.",
+   "AGENTS.md shares a bootstrap budget (20,000 characters per file by default); keep each program to about ten lines. Scheduled runs do not get MEMORY.md, so anything a program needs must be in AGENTS.md, the job message or a tool result.",
+   "A chat instruction does not change a charter; it waits for a reviewed deploy.",
+   "By default a failure alert goes to the failing job's own announce target, so Jordan would get 'job failed' texts for her jobs unless they are rerouted to Tony.",
+   "Alerts start after 2 failures in a row with a 1-hour cooldown. A recurring job is switched off after 10 failures in a row and then disappears from the default job list.",
+   "Without a per-job timeout an isolated agent job is bounded only by a 60-minute watchdog.",
+   "After a reboot with FileVault locked nothing fires and nothing alerts. One-shot reminders still catch up after an outage even with skipMissedJobs set.",
+   "Jobs an agent creates in chat, once <p>-main holds the automations tool, are outside the registry, so the diff must tolerate or report them.",
+   "With triggers on, trigger scripts and script payloads run with the owning agent's full tool policy, exec included. Switching triggers off also switches off the trigger-script design of F029 until that is deliberately turned back on."
+  ],
+  "corrections": [
+   "Diffing against 'automations list --json' is not enough: the list shows enabled jobs only unless --all is passed, so a job disabled by a mute would look missing and be created twice. Use 'automations list --all --json'."
+  ],
+  "unverified": [
+   "Whether gen-family, run from Tony's admin account, can reach the happy user's Gateway with the admin operator scope the docs require.",
+   "Whether scheduler-sent failure alerts pass through the G009 recipient-pin hook or bypass it.",
+   "Where the auto-disable notice lands: the docs say the owning agent receives it even when failure alerts are off, so it may reach the family member's thread instead of Tony's."
+  ],
+  "safety": "Purely restrictive. Charters narrow behaviour and grant nothing; never-list items are written under What NOT to do and are also unreachable by tool policy. Alert text shown in chat is a normalized cause, and routing alerts to the operator keeps one person's job details out of another person's thread.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:72",
+    "title": "Automations CLI (installed docs)",
+    "anchor": "--display-name",
+    "supports": "Jobs have a stable name plus an optional human label, so the generator should key on the stable name.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://healthchecks.io/docs/http_api/",
+    "title": "Healthchecks.io: Pinging API",
+    "anchor": "hc-ping.com",
+    "supports": "A job reports success, start, failure or an exit status with a single HTTP request to its check address.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/standing-orders.md:10",
+    "title": "Standing orders",
+    "anchor": "permanent operating authority",
+    "supports": "OpenClaw's own guide describes giving each recurring program a written scope, trigger, approval gate and escalation rule, fired by scheduled automations.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From AUT-04 (Standing orders: a written charter per recurring job): Carry over: one `## Program: <name>` section per job in AGENTS.md (authority, trigger, approval gate, escalation, what not to do), each job message pointing at its program, no `--light-context` on those jobs, the roughly ten-line budget per program, and the caveat that a charter is prompt text and the hard limits stay in tool policy and hooks.",
+   "From AUT-08 (Unattended-job guardrails (failure alerts, auto-disable, missed runs)): Carry over: the global `cron.failureAlert` routed to Tony, `--timeout-seconds` and a `--tools` cap on every job, `cron.skipMissedJobs: true`, `cron.triggers.enabled: false` before any agent is given the automations tool, happy-inspect watching for auto-disabled jobs, and the caveats on alert thresholds, the 60-minute watchdog and one-shot catch-up. The three gateway switches can be set today, ahead of the generator, and triggers must be off before F007 hands any agent the automations tool."
+  ],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, example, how, caveats, safety, unverified. AUT-04 (a written charter per job) and AUT-08 (failure guardrails) are folded in: all three come out of the same generator from the same family.json5 entries in wave A, so they are one piece of work. The registry itself implements the roadmap rule that agents, bindings and delivery targets are generated from one family.json5 and never edited by hand. A stray open question about healthchecks.io was dropped; it belongs to the watchdog, not here.",
+   "r1: kept; credible mention: Standing orders",
+   "r2: kept; credible mention: Standing orders (OpenClaw docs)",
+   "r3: edited description. Kept: it implements the roadmap rule that agents, jobs and delivery targets are generated from one family.json5 and never edited by hand. Two promises in the description were firmer than the record's own notes: the notice that a job has switched itself off may land in the job owner's thread and not Tony's (still to be checked), and only recurring runs are skipped after a power cut, while one-off reminders still catch up.",
+   "r3: kept; credible mention: Standing orders (OpenClaw docs)",
+   "r4: kept; credible mention: Standing orders (OpenClaw docs)"
+  ],
+  "demand": {
+   "ref": "docs/automation/standing-orders.md:10",
+   "title": "Standing orders (OpenClaw docs)",
+   "supports": "OpenClaw's own guide describes giving each recurring program a written scope, trigger, approval gate and escalation rule in AGENTS.md, run on a schedule by automations."
+  }
+ },
+ {
+  "id": "G005",
+  "origin": "9 Oct",
+  "name": "Stop by text: 'Happy, stop everything', and lock one person out",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Either parent can text one exact phrase and Happy stops: no agent runs and no tool calls until Tony switches it back on at the Mac. Texts from scheduled jobs that use no model (the weather and page watchers) are cancelled only on a best-effort basis until Tony also switches the scheduler off. A second phrase stops Happy answering one person's handle, for a lost or stolen phone.",
+  "example": "Jordan texts 'Happy, stop everything' when briefs start arriving twice. Tony texts 'Happy, lock out Jordan' after her phone is left in a taxi.",
+  "how": "In-house plugin. before_dispatch claims the exact phrase from an adult's handle and writes a kill file (everything) or a suspended file (one person's handles). The stop is enforced where hooks fail closed: before_agent_run blocks agent runs before the model reads the prompt, and before_tool_call blocks tools; message_sending cancels scheduled announce texts as a best-effort extra. Levels that need no plugin code, done by Tony: `cron.enabled: false`, then `openclaw gateway stop`. Lifting a stop or a lock-out is CLI-only. For a stolen phone the operator step still has to follow: remove the handle from family.json5 and redeploy, which is the only thing that ends that handle's approver rights; `openclaw devices revoke` if the phone ran the OpenClaw app; Find My Lost Mode on the phone side.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "The phrase matcher is a claim hook and message_sending is a delivery hook: both log and continue when their handler throws or times out, so the stop must not live only there.",
+   "Command jobs make no agent run, so their announce texts can only be caught by message_sending (as read from the bundled code, not yet tested); the dependable stop for those is the scheduler switch.",
+   "/stop (OCL-06) ends one answer in one chat; this stops everything.",
+   "For a stolen phone, 'stop everything' already works as the blunt version; the lock-out phrase only keeps Happy answering the other parent in the meantime.",
+   "A locked phone already stops most misuse. The lock-out covers a phone taken while unlocked or a passcode seen over a shoulder.",
+   "Either adult can lock the other out, and Tony undoes it at the Mac. If whoever holds the phone sends the phrase first, the real owner needs the CLI.",
+   "A lock-out stops replies and texts to that person, not their scheduled jobs; pause those too with the mute and vacation controls in G001.",
+   "Keep both phrases out of Happy's own help text and replies.",
+   "The fixed emergency reply (CRT-13) is planned as a second phrase list in this same plugin. It must keep answering while Happy is stopped or a person is locked out, so whatever cancels outgoing texts during a stop or a lock-out has to let that one fixed line through."
+  ],
+  "corrections": [
+   "'Freeze every outbound write' is fail-closed only for tool calls. The phrase matcher and the message_sending check both log and continue when their handler throws or times out, so a broken plugin lets the phrase reach the model and lets scheduled announce texts out. The levels that do not depend on plugin code are the scheduler switch and stopping the Gateway."
+  ],
+  "unverified": [
+   "That before_agent_run fires for scheduled agent-turn jobs on this build; test with a throwaway job.",
+   "Whether switching the scheduler off stops a job already running, and whether switching it back needs a restart (the hot-reload table says no; the automation troubleshooting page says restart).",
+   "How plugin code running as the happy user would change the scheduler setting, given the config repo is read-only to it; the kill file may be the only chat-triggered level.",
+   "What the sender sees when before_agent_run blocks a run and no replacement message is set.",
+   "Whether a tapback from a suspended handle can still resolve a pending approval, and whether owner-only slash commands from that handle are parsed before the plugin's hooks run.",
+   "The Shortcut and ntfy-button triggers from the 9 Oct entry: where an ntfy action request originates, and whether it can reach the Gateway over Tailscale, was not confirmed, so the text phrase is the only confirmed trigger."
+  ],
+  "safety": "Both phrases can only narrow what Happy does; nothing in the chat path can add a sender or switch anything back on. A chat lock-out leaves the handle on channels.imessage.allowFrom, which is also the approver list, so that person's agent runs and tool calls must be blocked by the fail-closed hooks until Tony removes the handle and redeploys.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:15",
+    "title": "Message and delivery hooks (installed docs)",
+    "anchor": "before_dispatch",
+    "supports": "A plugin can take an incoming message before the model sees it and answer with fixed text.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:99",
+    "title": "Hook reference (installed docs)",
+    "anchor": "including claim hooks",
+    "supports": "If that claim handler fails, the Gateway logs and carries on, so the stop phrase would fall through to the model.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:216",
+    "title": "Managing automations (installed docs)",
+    "anchor": "cron.enabled: false",
+    "supports": "One config value turns all scheduled jobs off without deleting them.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/configuration/hot-reload.md:121",
+    "title": "Config hot reload (installed docs)",
+    "anchor": "reloads the owning subsystem",
+    "supports": "Changes to the scheduler setting apply without restarting the Gateway.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/gateway/service.md:18",
+    "title": "Gateway service CLI (installed docs)",
+    "anchor": "openclaw gateway stop",
+    "supports": "The last level is a documented service stop command.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://docs.ntfy.sh/publish/",
+    "title": "ntfy docs: Publishing",
+    "anchor": "broadcast",
+    "supports": "A notification can carry up to three action buttons, one type of which sends an HTTP request when tapped.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/guide/shortcuts-mac/run-shortcuts-from-the-command-line-apd455c82f02/mac",
+    "title": "Apple Shortcuts User Guide for Mac: Run shortcuts from the command line",
+    "anchor": "shortcuts run",
+    "supports": "A macOS Shortcut can be listed and run from a terminal command, so a Shortcut can wrap the stop script.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/operator-incident-response.md:15",
+    "title": "Operator incident response: contain",
+    "anchor": "Stop it",
+    "supports": "OpenClaw's incident guide makes stopping the gateway and freezing who may message it the first containment steps, which this puts one text away for both parents.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [],
+  "adds": [
+   "From CRT-02 (Lost or stolen phone: lock one person out): Carry over: an exact lock-out phrase from the other adult suspends one person's handles (no replies, no agent runs or tool calls, no scheduled texts to them) until Tony lifts it at the Mac; the suspension must be enforced in before_agent_run and before_tool_call, which fail closed, because the phrase matcher and message_sending fail open. Also carry the stolen-phone steps: removing the handle from family.json5 and redeploying is the only thing that ends that handle's approver rights, `openclaw devices revoke` if the phone ran the app, and Find My Lost Mode on the phone side."
+  ],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": [
+   "r1: edited name, description, example, how, depends_on, caveats, safety, unverified. CRT-02 (lock one person out after a lost or stolen phone) is folded in as a second phrase on the same plugin. The build note now puts the stop in the hooks that fail closed; the earlier wording relied on hooks that let things through when they break. The Shortcut and ntfy-button triggers are moved to open questions because neither was confirmed.",
+   "r1: kept; credible mention: Operator incident response: contain",
+   "r2: edited description, caveats. Kept. The description promised 'no scheduled texts', but texts from jobs that use no model can only be cancelled on a best-effort basis until Tony switches the scheduler off, so the promise is narrowed. One caveat pointed at G002, which was merged into G001.",
+   "r2: kept; credible mention: Operator incident response: contain (OpenClaw docs)",
+   "r3: kept; credible mention: Operator incident response: contain (OpenClaw docs)",
+   "r4: edited caveats. Kept: OpenClaw's own incident guide makes 'stop it' the first step, and its hook rules were read again and match the build note. One line was missing: the fixed reply to emergency texts (CRT-13) is planned inside this same plugin, and it must keep answering while Happy is stopped or a person is locked out.",
+   "r4: kept; credible mention: Operator incident response: contain (OpenClaw docs)"
+  ],
+  "demand": {
+   "ref": "docs/gateway/security/operator-incident-response.md:15",
+   "title": "Operator incident response: contain (OpenClaw docs)",
+   "supports": "OpenClaw's incident guide makes stopping the Gateway and freezing who may message it the first containment steps, which this card puts one text away for either parent."
+  },
+  "depends_on": [
+   "family.json5 registry and gen-family (handles, and the operator path that removes one)"
+  ]
+ },
+ {
+  "id": "CRT-04",
+  "name": "When the model is down: an honest notice, jobs that need no model, and an optional same-vendor fallback",
+  "tier": 1,
+  "cluster": "recovery and trust",
+  "description": "When the cloud model has an incident, a parent who texts Happy today gets OpenClaw's own error line, which may be little more than the provider's status (its exact wording on iMessage has not been seen), and a scheduled brief is simply missed: the scheduler's own failure notice starts only after two failures in a row, and the jobs registry (G003) routes it to Tony, not the family. With this, when model errors go on for a set number of minutes, each parent gets one plain 'the model is down' line and later a 'back' line, and the alerts that need no model keep working: the weather watch, the stop phrase, and any fixed reminder Tony has set up as a no-model job (bin day). As an option Tony has to decide on, the vendor's lower-cost model answers that turn and the chat shows a one-line notice saying so; OpenClaw's security guidance warns against running an agent that has tools on a smaller model, so this part stays off unless he accepts that.",
+  "example": "Trigger: gpt-6-sol returns server errors at 07:00 while the morning brief is due, and the error alert stays on past the set number of minutes. Each parent gets one fixed line saying the model is down and that weather alerts and fixed reminders still arrive, and one 'back' line once it recovers; the 07:00 brief itself is missed.",
+  "how": "Today each person agent is generated with `model.fallbacks: []`, and the docs say an agent's primary is strict unless its model object lists fallbacks, so after the built-in retries a failure surfaces as a terminal error that keeps the provider's HTTP status. Three steps. (1) Fallback (optional; it needs Tony's decision, because OpenClaw's prompt-injection guidance says not to run tool-enabled agents on smaller model tiers): add gpt-6-luna on the same per-person provider id as the single fallback for <p>-main, one line in gen-family, since both models are already in that agent's modelPolicy.allow under the same key and store setting. The docs say a fallback is used for that turn only and a one-line notice is shown in direct chats. Mail and kid agents keep `fallbacks: []` as the roadmap requires. This covers model-scoped incidents and rate limits, not a vendor-wide outage. (2) Model-free jobs: the weather watch (F018) is specified as a `--command-argv` job and the stop phrase (G005) is a `before_dispatch` claim, so both work through an outage. Timed reminders (F007) and the briefs are `--message` jobs, which the docs define as model-backed agent turns, so they fail with the model; a fixed-text reminder that must not be missed, such as bin day, has to be created as a command job that prints its line. A scheduled agent turn can also carry its own `--fallbacks` list. (3) Outage notice: extend the health watch (G008) so that when the existing error-ratio alert has fired for N minutes, a host script sends each parent one fixed line and later one 'back' line by a model-free send: `openclaw message send` to the pinned family handles, or a command job with announce delivery. The catalog's usual host path, `openclaw agent --deliver`, runs an agent turn and so cannot announce a model outage. `openclaw models status --check` is not the detector: its own docs say a clean exit does not prove a request will succeed.",
+  "who": "both",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "decision: whether the vendor's lower-cost model may answer for a parent's main agent when the usual one fails, against OpenClaw's guidance not to run tool-enabled agents on smaller models (the notice and the no-model jobs do not wait on this)",
+   "G008 health watch and the O1 error-ratio alert",
+   "G009 family delivery (for the notice)"
+  ],
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "OpenClaw's prompt-injection guidance says not to use smaller or cheaper model tiers for agents that have tools or read outside content, and each parent's main agent does both (reminders, lists, family delivery, photos and PDFs). The fallback here is the vendor's lower-cost model, so allowing it is a decision and not a default; without it an outage means the plain notice and no answers until the usual model is back.",
+   "OpenAI's status history listed 39 incidents in September 2026 and 23 in the first ten days of October across all its products. Most do not touch the API models Happy uses, but some did, for example 'elevated error rates across API models' on 17 Sep.",
+   "An answer from the smaller model can be worse than the usual one; the fallback notice tells the parent which model answered.",
+   "No fallback to a second vendor: it would need another vendor's key and a new privacy decision, and the local route is the skipped M2, so a vendor-wide outage still means no answers until it ends.",
+   "An API key that hits its monthly cap looks like an outage until the month ends; the fixed line should say 'limit reached' when that is the cause.",
+   "If the Mac, the home internet or iMessage is what failed, nothing here helps. The dead-man alert is then the only signal and it goes to Tony.",
+   "A scheduled brief that fails is simply missed unless the job's retry settings say otherwise. OpenClaw's scheduler already sends a failure notice after two failures in a row and one recovery notice afterwards, but the jobs registry (G003) routes those to Tony, so the line built here is the only word the family gets.",
+   "A parent who texts during an outage is not met with silence today: the failover page says that when every model fails the failure is shown, and that the reply can be a more specific line, such as one saying all models are temporarily rate-limited, with the time the cooldown ends when that is known. What this card adds is the unprompted line to both parents and the 'back' line."
+  ],
+  "safety": "No new data path. The fallback uses the same provider id, key and store:false setting, and the notice is a fixed string to pinned family recipients. Mail and kid agents stay strict, so their content can never move to another model by accident.",
+  "unverified": [
+   "The exact text a parent sees on iMessage when every candidate fails; the docs describe it, it was not triggered in this run.",
+   "Whether gpt-6-luna stays healthy during typical gpt-6-sol incidents.",
+   "Whether command jobs deliver normally while model calls are failing; nothing suggests otherwise but it was not tested.",
+   "Whether 'openclaw message send' passes through the same recipient-pinning hook as the agent's message tool; if it does not, the host script must hard-code the family handles from the registry."
+  ],
+  "overlaps_existing": [
+   "G008",
+   "G004",
+   "F018",
+   "G005"
+  ],
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/model-failover.md:126",
+    "title": "Model failover: selection source policy",
+    "anchor": "fallbacks: []",
+    "supports": "An agent's own primary model is strict unless that agent's model object lists fallbacks; an empty list makes strictness explicit.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:70",
+    "title": "openclaw automations: command jobs",
+    "anchor": "--command-argv",
+    "supports": "A scheduled job can run a fixed command and deliver its output with no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/models.md:90",
+    "title": "openclaw models status --check: exit codes",
+    "anchor": "does not prove",
+    "supports": "A clean status check covers auth and routing only and is explicitly not proof that a model request will succeed.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://status.openai.com/history",
+    "title": "OpenAI Status: incident history",
+    "anchor": "OpenAI Status",
+    "supports": "The vendor's own history page lists dozens of incidents a month in autumn 2026, including API-wide error-rate incidents.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:21",
+    "title": "Automation payloads",
+    "anchor": "A model-backed agent turn",
+    "supports": "A scheduled '--message' job is an agent turn that needs the model, while a command job on the next row makes no model call.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/message.md:11",
+    "title": "openclaw message",
+    "anchor": "Single outbound command",
+    "supports": "There is a direct outbound send command, covering iMessage, that takes a target and the message text; the page describes no agent turn.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/agent.md:4",
+    "title": "openclaw agent",
+    "anchor": "run one agent turn",
+    "supports": "The agent command runs a model turn and optionally delivers its reply, so it is not usable to report that the model is down.",
+    "check": "ok"
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [
+   "Sources and the config facts check out (fallbacks: [] is generated per person; both models are in modelPolicy.allow). Two slips: timed reminders and the morning brief are model-backed agent turns, so 'bin reminders work through an outage' is true only if they are rebuilt as command jobs; and the outage notice must use a model-free send, because 'openclaw agent --deliver' is itself an agent turn."
+  ],
+  "reviewed_by": 1,
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": [
+   "r1: kept; credible mention: Model failover: user-visible fallback notices",
+   "r2: edited description, how, caveats, readiness. Kept, but it read as a list of options, so it is rewritten as three build steps with the rejected option moved to a caveat. Readiness moves from now to build: only the fallback line is a config change, while the 'model is down' notice needs a small host script on top of the health watch (G008) and family delivery (G009).",
+   "r2: kept; credible mention: Model failover: user-visible fallback notices (OpenClaw docs)",
+   "r3: edited name, description, how, caveats, depends_on, risk. Kept, with the fallback turned from a given into a decision. OpenClaw's own security guidance, which earlier rounds did not weigh, says not to run an agent that has tools or reads outside content on a smaller, cheaper model, and the fallback proposed here is the vendor's lower-cost model on each parent's main agent. The outage notice and the no-model jobs do not depend on it, so they now lead, and the risk moves from low to medium.",
+   "r3: kept; credible mention: Model failover: user-visible fallback notices (OpenClaw docs)",
+   "r4: edited description, example, who, value, caveats. Kept, with its starting point corrected: the card said Happy meets an outage 'with a raw error or not at all', but OpenClaw's failover page says a failed turn ends with a failure line, and its scheduler already sends a failure and a recovery notice, which the jobs registry (G003) routes to Tony; earlier rounds weighed neither. What is new here is the unprompted line to both parents, and with the fallback off by default since round 3 the value moves from 4 to 3.",
+   "r4: kept; credible mention: Model failover: user-visible fallback notices (OpenClaw docs)"
+  ],
+  "demand": {
+   "ref": "docs/concepts/model-failover.md:456",
+   "title": "Model failover: user-visible fallback notices (OpenClaw docs)",
+   "supports": "OpenClaw tells the person in a direct chat when another model has answered in place of the usual one and when the usual one is back, the same down-and-back pair of notices this card sends for an outage."
+  }
+ },
+ {
+  "id": "G001",
+  "origin": "9 Oct",
+  "name": "Notification policy: daily cap, quiet hours, priority classes and job tags, plus snooze, mute and vacation mode by chat",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Caps how many unprompted texts each parent gets in a day, stops non-urgent ones outside allowed hours and labels each one so you know which job sent it. A text stopped by the cap or the hours is dropped, not sent later, so scheduled jobs are timed inside the allowed hours in the first place. Either parent can text 'mute until 3' or 'we are away next week', and briefs, bin reminders and routines pause for that window while urgent alerts still arrive. The pause is dependable only for a job that holds the household-store tool and checks the pause itself (the week-ahead and morning briefs as specified, and the evening brief once it is given that read), and best effort for timed reminders and any other job without the tool, which can only be stopped at delivery.",
+  "example": "Jordan texts: 'We are away next week.' Briefs and bin reminders stop for the week; an urgent alert still arrives.",
+  "how": "Policy (G001): an in-house plugin with `before_tool_call` on `message` (fails closed) and a `message_sending` cancel for `--announce` deliveries (fails open on error); counters live in the household store, and schedules are generated inside the allowed windows in the first place. Pause (G002): a paused-until row in the same store. A job that holds the store tool reads the row first and answers `NO_REPLY`. A job that cannot read it, such as a timed reminder, which runs with an empty tool list (F007), is paused by the plugin's delivery hook instead: the hook reads the same row and cancels the text. For a long absence a host helper can also run `openclaw automations disable|enable <job-id>`, and `cron.enabled: false` pauses everything. The policy's priority classes decide which alerts still pass during a mute. OpenClaw also lets a command owner (a sender listed in `commands.ownerAllowFrom`) ask the agent to change an existing automation by chat; that is not the route used here (see caveats).",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Each iPhone can already silence the night on a schedule, so what Happy adds is the daily cap, the urgent or not-urgent split, the label and the pause by chat.",
+   "The delivery hook can only rewrite or cancel a text, so one stopped by the daily cap or by quiet hours is dropped, not delivered later; holding texts and releasing them in a batch would need a queue of the plugin's own, which is not designed. Scheduled jobs are therefore timed inside the allowed hours, and the hook is the backstop.",
+   "It is not a hard gate for scheduled texts: the message_sending hook that sees `--announce` deliveries lets the message through if the plugin throws or times out, and only the agent's own message tool is gated fail-closed.",
+   "The reading of the announce path comes from bundled JavaScript and not a doc page, so confirm it with a throwaway hook before relying on either hook.",
+   "No doc lists a job id on message_sending, so each job may have to write its own tag into the text.",
+   "No built-in quiet hours or priority classes were found in OpenClaw, so keeping urgent alerts on during a mute depends on this plugin.",
+   "The household store does not exist yet, so the counters and the paused-until row are a design and not an installed feature.",
+   "The fixed emergency reply (CRT-13) answers an inbound text and must never be held back by quiet hours, caps or a mute.",
+   "Timed reminders run with an empty tool list (F007), so a reminder job cannot check the pause itself; its text is stopped only by the delivery hook, which is the best-effort side. A mute is therefore dependable only for jobs that hold the household-store tool and read the row themselves, and best effort for reminders. Because a stopped text is dropped and not sent late, a one-off reminder that falls inside a mute would be lost, so one-off reminders a parent set belong in a class that passes; a recurring one such as the bins reminder can pause, because the next one comes round anyway.",
+   "Switching a job off by chat is open only to a command owner, which is Tony's handle alone today (adding Jordan is the open decision recorded on F007). OpenClaw's page gives that sender's agent the power to update, run or remove any job on the Gateway, not only to pause one, and a job changed that way no longer matches the registry (G003). The paused-until row is the route both parents use, and it changes no job.",
+   "The evening brief (F014) is specified with the weather and calendar tools only, so as written it cannot read the paused-until row. Give that job the household-store read as well, or its pause rests on the best-effort delivery hook, like a timed reminder's."
+  ],
+  "corrections": [
+   "reply_payload_sending does not cover --announce on the installed build: the scheduler's announce path sends without a reply-payload hook descriptor and the outbound stage skips that hook when none is supplied. message_sending is the hook that sees those deliveries (the G005 wording already uses it), and it fails open on handler error, so it is a best-effort gate.",
+   "The 9 Oct note said switching jobs off needs operator.admin and so cannot be done from <p>-main; the installed docs also let a sender listed in `commands.ownerAllowFrom` ask the agent to disable an existing automation by chat."
+  ],
+  "unverified": [
+   "The announce-path reading comes from bundled JavaScript, not a doc page; confirm with a throwaway hook before relying on either hook.",
+   "How the hook learns which job produced a text; no doc lists a job id on message_sending, so the job may have to write its own tag into the text.",
+   "Whether a scheduled iPhone Do Not Disturb can silence only Happy's thread; Apple's page confirmed scheduling and allowed people, not per-contact silencing.",
+   "The home-store plugin does not exist yet; the paused-until row is a design, not an installed feature."
+  ],
+  "safety": "Both halves only hold back or pause Happy's own unprompted texts; neither adds a recipient, a tool or a data source. Urgent classes keep passing during a mute, and switching everything off stays an operator action.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/messages.md:67",
+    "title": "Message and delivery hooks (installed docs)",
+    "anchor": "message_sending",
+    "supports": "A plugin can rewrite or cancel any outgoing message just before delivery.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/reference.md:94",
+    "title": "Hook reference (installed docs)",
+    "anchor": "Log and skip the failed handler",
+    "supports": "Outbound delivery hooks are not hard gates: if the handler throws or times out the message is still sent.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/deliver-prepare--wQvThDe.mjs:854",
+    "title": "Outbound delivery preparation (installed source)",
+    "anchor": "params.replyPayloadSendingHook",
+    "supports": "The shared outbound stage runs the reply-payload hook only when the caller passes a hook descriptor, while message_sending runs whenever a handler is registered.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/run-delivery.runtime-BZRdVrGG.mjs:501",
+    "title": "Scheduler announce delivery (installed source)",
+    "anchor": "sendDurableMessageBatchCore",
+    "supports": "Scheduled announce deliveries are sent through the durable batch call without a reply-payload hook descriptor.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/web/notifications.md:47",
+    "title": "Control UI notifications (installed docs)",
+    "anchor": "quiet hours",
+    "supports": "The only built-in quiet hours belong to Control UI browser and app notifications, not to chat channels.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/hooks/prompt-and-session.md:172",
+    "title": "Prompt and session hooks (installed docs)",
+    "anchor": "ctx.jobId",
+    "supports": "The scheduled job id is available to some agent hooks but not to before_tool_call, so the job tag needs another source.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/105112",
+    "title": "Apple Support: Do Not Disturb on iPhone or iPad (article 105112)",
+    "anchor": "Set a Schedule",
+    "supports": "Each iPhone can already silence notifications on a schedule while allowing chosen people, so the plugin's distinct value is the daily cap and batching.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/reference/templates/AGENTS.md:119",
+    "title": "OpenClaw AGENTS.md template: be proactive",
+    "anchor": "overrides quiet hours",
+    "supports": "OpenClaw's own agent template tells a proactive agent to stay quiet at night and lets only urgent items through.",
+    "check": "unchecked",
+    "added_round": 1
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:284",
+    "title": "CLI reference: silent token suppression",
+    "anchor": "NO_REPLY",
+    "supports": "A job that answers only the silent token sends nothing, which is how a paused window is honoured per job.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:115",
+    "title": "Managing automations",
+    "anchor": "openclaw automations disable <jobId>",
+    "supports": "A job can be switched off without deleting it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-automation.md:32",
+    "title": "Configuration: automations (cron)",
+    "anchor": "pause all automation execution",
+    "supports": "One config switch pauses every stored job without deleting any, a whole-house vacation fallback.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [
+   "G002"
+  ],
+  "adds": [],
+  "wave": "B",
+  "section": "Operator platform and guardrails",
+  "includes": [
+   {
+    "id": "G002",
+    "name": "Snooze, mute and vacation mode by chat"
+   }
+  ],
+  "history": [
+   "r1: edited description, caveats. Kept, but the description now says what Happy adds beyond the phone: the record's own source notes each iPhone can already silence notifications on a schedule, so the gain is the daily cap, the urgent or not-urgent split and the label. It also says plainly that the gate for scheduled texts is best effort. It shares a plugin and a wave with the mute and vacation item (G002).",
+   "r1: kept; credible mention: OpenClaw AGENTS.md template: be proactive",
+   "r1: merged with G002 (same batch). Snooze, mute and vacation mode keep their paused-until state in the same store as the notification plugin and rely on its priority classes, so the standing limits and the pause-by-chat become one wave B card.",
+   "r2: edited unverified, description, caveats. Kept. Two leftover notes from the merged mute entry are dropped: one names this card by its own number as if it were a different piece of work, and one is about switching the brief to trip weather, which is not part of this card. The description also said a text outside allowed hours is 'held'; the delivery hook can only cancel or rewrite a text, so a stopped text is dropped, and the card now says so.",
+   "r2: kept; credible mention: OpenClaw AGENTS.md template: be proactive",
+   "r3: edited how, caveats, description. Kept: OpenClaw's own agent template tells a proactive assistant to stay quiet at night and to let only urgent items through, and the hook rules and the job-management page were opened again and match the build note. The card now says plainly that a pause is dependable for the briefs and best effort for timed reminders, and that switching a job off by chat is a command-owner power, not the route the parents use.",
+   "r3: kept; credible mention: OpenClaw AGENTS.md template: be proactive",
+   "r4: edited description, caveats. Kept: OpenClaw's own agent template tells a proactive assistant to stay quiet at night and to let only urgent items through. One promise ran ahead of another card: the pause was called dependable 'for the briefs', but the evening brief (F014) is specified without the household-store tool it would need to check the pause, so the card now says which jobs can check it.",
+   "r4: kept; credible mention: OpenClaw AGENTS.md template: be proactive"
+  ],
+  "demand": {
+   "ref": "docs/reference/templates/AGENTS.md:119",
+   "title": "OpenClaw AGENTS.md template: be proactive",
+   "supports": "OpenClaw's own agent template tells a proactive agent to stay quiet at night and when nothing is new, and lets only an urgent item through."
+  },
+  "depends_on": [
+   "F031 household store (counters and the paused-until row)",
+   "G003 jobs registry (schedules generated inside the allowed windows)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "F083",
+  "origin": "9 Oct",
+  "name": "Weather tool upgrade: hourly rain and snow, and alert details, from the National Weather Service",
+  "tier": 1,
+  "cluster": "operator-platform",
+  "description": "Ask about rain during Saturday's game or active weather alerts for home, with hour-by-hour detail and snowfall, straight from the National Weather Service.",
+  "example": "Jordan texts: 'Will it rain during Saturday's 10 o'clock game?' Happy answers with the hourly chance of rain from 9 to noon and any active alert for home.",
+  "how": "Extend the in-house home_weather plugin: follow forecastHourly from /points, add alert id, read snowfallAmount from the raw gridpoint endpoint; keep the api.weather.gov host pin.",
+  "who": "both",
+  "risk": "low",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 3,
+  "effort": "S",
+  "caveats": [
+   "Apple's Weather app can already send a notification when rain or snow is about to start or stop, and for government-issued severe-weather alerts at a saved location; Apple notes this is not offered in every country or region. This tool earns its place as the weather feed for the briefs (F014) and the trip planner (F028), which need an hourly rain window, and for questions asked inside a Happy conversation. The weather watch (F018) polls the alerts feed with its own script and does not depend on this tool.",
+   "The National Weather Service hourly forecast reaches seven days ahead, so a question about a game further out gets no hour-by-hour answer until the date comes into range."
+  ],
+  "corrections": [],
+  "unverified": [
+   "The snowfall field name and units were seen only in the OpenAPI description of the raw gridpoint endpoint, not in a live response.",
+   "NWS publishes no numeric rate limit, so the 10-minute cache is a design choice rather than an NWS rule.",
+   "Whether those Weather notifications are offered and switched on for the home location on each parent's iPhone: the Apple page read was the Mac Weather guide, and the iPhone guide did not render."
+  ],
+  "safety": "Read-only public data from one pinned government host. A lookup sends the home's coordinates and the header that identifies the app, as the National Weather Service asks, and nothing else about the family. The forecast and alert text that comes back is outside content, though from a single government source; the tool only reads, and it cannot write anything or message anyone.",
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.weather.gov/documentation/services-web-api",
+    "title": "National Weather Service: API Web Service documentation",
+    "anchor": "forecastHourly",
+    "supports": "The points lookup hands back the hourly forecast address for a location; a User-Agent is required and the rate limit is unpublished with retry after a few seconds.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://api.weather.gov/openapi.json",
+    "title": "weather.gov API: OpenAPI specification",
+    "anchor": "/alerts/active",
+    "supports": "Active alerts can be filtered by a latitude and longitude point; each alert carries an id, headline, severity and end time, and the raw gridpoint data lists a snowfall layer.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/plugins/building-plugins.md:147",
+    "title": "Building plugins (installed docs)",
+    "anchor": "api.registerTool",
+    "supports": "A plugin adds its own agent tool in code, which is how the existing home_weather tool is delivered and extended.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/config-tools/tool-policy.md:101",
+    "title": "Tool policy (installed docs)",
+    "anchor": "tools.sandbox.tools",
+    "supports": "With sandbox mode set to all, a plugin's tools stay visible only if the plugin id is in the sandbox tool allowlist.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/weather/SKILL.md:3",
+    "title": "Bundled weather skill",
+    "anchor": "wttr.in",
+    "supports": "The bundled weather skill depends on web_fetch against a third-party site, which Happy does not have, so the in-house NWS plugin stays the right path.",
+    "check": "ok"
+   }
+  ],
+  "absorbs": [],
+  "adds": [],
+  "wave": "A",
+  "section": "Operator platform and guardrails",
+  "includes": [],
+  "history": [
+   "r1: edited caveats, unverified. Kept. Apple's Weather app can already notify a parent when rain or snow is about to start and about government severe-weather alerts, so this tool's weight is as the weather feed for the briefs and the weather watch, and for questions asked inside a Happy conversation. It would be built together with the weather watch (F018).",
+   "r1: kept; credible mention: National Weather Service: API Web Service documentation",
+   "r2: edited name, example, caveats, depends_on. Kept as the tool change that gives the briefs and the trip planner an hour-by-hour rain window. The caveat still named the brief entries round 1 folded away (F013, F015) and said this tool feeds the weather watch, but that watch (F018) polls the alerts feed with its own script; the caveat is corrected, and the name, example and dependency are written in plain words.",
+   "r2: kept; credible mention: National Weather Service: API Web Service documentation",
+   "r3: edited caveats. Kept as the small tool change that gives chat answers, the briefs and the trip planner an hour-by-hour rain window. One limit was missing: the National Weather Service says its hourly forecast reaches seven days ahead, so a question about a later date gets no hourly answer.",
+   "r3: kept; credible mention: National Weather Service: API Web Service documentation",
+   "r4: edited safety. Kept as the small tool change that gives chat answers, the briefs and the trip planner an hour-by-hour rain window. The card had no safety note at all; it now says what leaves the house: the home's coordinates, sent to the National Weather Service and nowhere else.",
+   "r4: kept; credible mention: National Weather Service: API Web Service documentation"
+  ],
+  "demand": {
+   "ref": "https://www.weather.gov/documentation/services-web-api",
+   "title": "National Weather Service: API Web Service documentation",
+   "supports": "The National Weather Service offers hourly forecasts for the next seven days and active alerts as open data, free to use for any purpose, through a service meant for others to build on."
+  },
+  "depends_on": [
+   "home_weather plugin (exists; this extends it)"
+  ]
+ },
+ {
+  "id": "F051",
+  "origin": "9 Oct",
+  "name": "School mailbox with an isolated reader and a weekday 16:00 digest",
+  "tier": 2,
+  "cluster": "inbox-monitors",
+  "description": "A separate mailbox registered with school, PTA, coaches and the lunch system is read by an isolated, memory-less reader, so no parent's private inbox is touched. Weekday afternoons both parents get a five-line text of the day's school and activity mail with dates spelled out, a dated to-do list, and one line per child from the school platforms' own summary emails where the school uses them. A parent who wants a day-before reminder for a line asks their own agent for it. Attachments are not opened: a newsletter sent as a PDF or a picture shows up only as a file name.",
+  "example": "Trigger: weekdays at 16:00. Text: 'School mail today: picture day is Thursday 15 October, order form due Wednesday 14 October; PTA meeting moved to Tuesday 20 October at 7 pm; lunch balance is low.' Jordan then texts Happy: 'remind me Tuesday evening about the picture day form.'",
+  "how": "Mailbox (F051): the bundled `imap` plugin on a new mailbox (iCloud needs `watch.mode: \"interval\"`), a sender allowlist that includes both parents for forwards, and a tool-less reader. With the plugin's `deliver` switch off, which is the default, its per-message reader announces nothing, and the account settings name no recipient, so reaching the parents needs a hook-pinned `message` tool or a scheduled sweep. Digest (F056): `automations create '0 16 * * 1-5' --agent school-mail --session isolated --announce --to <chat>` with `--tools school-mail-ro__*`; the read MCP is `gog mcp` (Gmail) or a himalaya wrapper (iCloud). Setup done once by a parent, per platform: ParentSquare posts set to Digest with email on, PowerSchool's scheduled emails and Balance Alert sent to the mailbox, Google Classroom guardian summaries, the lunch service's low-balance alert, library notices; each sender goes on the allowlist.",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "dependency_old": "now",
+  "value": 5,
+  "effort": "L",
+  "caveats": [
+   "Pick the mailbox provider with the password in mind: the plugin signs in with a mailbox password only, which on Gmail means a Google app password that Google does not recommend, while OpenClaw's guide names Fastmail and iCloud.",
+   "Each school system has to accept an extra guardian address, a manual chore per system, and auto-forwarding from a parent's Gmail may fail the plugin's aligned-DMARC check, so registering the address directly is the safe route.",
+   "The reader gets body text and attachment file names only, so PDF or image newsletters and flyer attachments are not read.",
+   "Urgent alerts are not this digest's job, since the school's own alerts reach the parents' phones first; the reader keeps one backup rule (a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep, not held until 16:00), and sorting urgent from routine on real district mail is untested.",
+   "PowerSchool emails carry grades and attendance and Classroom summaries carry assignment titles: these are a child's education records and they reach the cloud model under store:false, which is why the card is rated medium risk.",
+   "Classroom summaries (missing and upcoming work, no grades) arrive only if the school uses Classroom and the teacher switches them on, and the guardian invitation expires after 120 days.",
+   "One job appears to take one delivery target, so two parents need two jobs or the parents' group chat, and the iCloud read path likely needs an in-house himalaya wrapper.",
+   "For a school or team app that sends no email, try the app's own email notifications into this mailbox first and a parent's screenshot to Happy second; Canvas and ClassDojo have no verified email path.",
+   "The reminder step is not wired end to end. The reader that writes the digest holds no reminder or store tool, on purpose, because it reads untrusted mail, and it is untested whether the parent's own agent, which receives any reply, can see the digest text. Until that is tested, a parent names the line when asking their own agent for a reminder. Giving the reader a write to the household store would let text from a school email reach the parents' private agents, so that route needs its own review first.",
+   "The sender list lives in family.json5 and changes only with a reviewed deploy, so a parent who needs a new coach or teacher added asks Tony. The mail plugin logs a rejected message without its subject or body, so a mail that did not show up can be traced in the gateway log.",
+   "A calendar link that a school platform offers is subscribed in the family calendar (F009), not read by this reader.",
+   "The sender check with verified authentication runs only on the mail plugin's per-message path. The 16:00 digest job reads the mailbox itself through the read-only mail tool, so mail from a sender who is not on the list (spam, a faked address) would reach the reader unless the job filters by sender or the digest is built only from what the plugin let in. The reader holds nothing but the mailbox read and can only text the two parents, which limits the harm to a misleading digest line. Which of the two routes builds the digest is not settled."
+  ],
+  "corrections": [
+   "'IMAP passes body text only' is slightly off: the plugin's prompt also lists attachment file names (dist/extensions/imap/index.js:55735). Contents of attached PDFs or images are still not passed, so flyer attachments remain unread.",
+   "'school-mail-ro MCP is gog (Gmail)' needs no wrapper code on the Gmail path: upstream gogcli ships a read-only stdio MCP server (`gog mcp`).",
+   "The built-in scheduling tool is listed as `automations`, with `cron` kept as an alias (docs/gateway/config-tools/tool-policy.md:73)."
+  ],
+  "unverified": [
+   "Whether the district, PTA, coaches and lunch system each accept an extra or shared guardian address; this is a manual chore per system.",
+   "Auto-forwarding school mail from a parent's Gmail by filter may fail the plugin's aligned-DMARC check (Google's forwarding guidance says forwarded mail often fails SPF); DKIM survival was not tested, so registering the address directly is the safe route.",
+   "An iCloud+ custom-domain address with this plugin was not tested; Apple documents the IMAP host and app-specific passwords, not this combination.",
+   "Whether himalaya has an MCP mode; its README does not mention one, so the iCloud path likely needs an in-house wrapper. The README also says native keyring support was removed in v2, so its password comes from a command.",
+   "That one job takes exactly one delivery target (hence two jobs or one group chat for two parents); I saw single-target examples only.",
+   "Groups are off today, so a family group chat target needs the iMessage group allowlist switched on first.",
+   "Which platforms this family's district uses, and each platform's exact sender address and authentication result.",
+   "Whether the school uses Google Classroom at all, and whether a student can have the school mailbox as an extra guardian next to both parents.",
+   "ClassDojo's notification behaviour and Canvas's calendar feed for observers; neither page could be opened.",
+   "Whether a parent's reply to the digest reaches an agent that can see the digest text: the digest is announced by the school-mail agent from an isolated run, and replies go to the parent's own agent.",
+   "What the mail plugin's `deliver` switch does when it is on: the account settings have the switch (off by default) but no recipient field, so where a reader's summary would go is not documented on the page read."
+  ],
+  "safety": "All school mail is untrusted and is read only by the memory-less school-mail agent, which has no web or file tools and can only announce to the two parents. The sender allowlist with verified authentication is the mail plugin's check on its own per-message path; the 16:00 digest job reads the mailbox through a separate read-only tool that this check does not cover, so that job needs its own sender filter (see caveats). Links are relayed only when their domain matches the allowlisted sender. No agent logs in to a school portal and no portal credentials are stored.",
+  "sources": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/imap.md:166",
+    "title": "IMAP email trigger",
+    "anchor": "XAPPLEPUSHSERVICE",
+    "supports": "Some iCloud servers do not advertise standard IDLE, so forcing interval polling (15 second minimum) is the supported path for an iCloud mailbox.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "dist/extensions/imap/index.js:55735",
+    "title": "IMAP plugin source: renderImapPrompt",
+    "anchor": "Attachments:",
+    "supports": "The prompt handed to the reader contains From, Subject, a snippet, attachment file names and the capped text body; attachment contents are never included.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://support.apple.com/en-us/102525",
+    "title": "Apple Support: iCloud Mail server settings for other email client apps",
+    "anchor": "imap.mail.me.com",
+    "supports": "iCloud Mail is reachable over IMAP with SSL on port 993 and requires an app-specific password for third-party clients.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/managing-jobs.md:29",
+    "title": "Managing automation jobs",
+    "anchor": "openclaw automations create",
+    "supports": "A recurring isolated job is created from a cron expression and prompt with a time zone, announce delivery, a channel and one explicit target.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:57",
+    "title": "Automation payloads",
+    "anchor": "--tools",
+    "supports": "Each job can be restricted to a named tool list, so the digest run sees only the mailbox read tool.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/channels/imessage/media.md:42",
+    "title": "iMessage: media and delivery targets",
+    "anchor": "chat_id:123",
+    "supports": "iMessage delivery accepts a stable chat id target, the recommended way to address one group thread holding both parents.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://github.com/pimalaya/himalaya",
+    "title": "Himalaya: CLI to manage emails",
+    "anchor": "himalaya envelope list",
+    "supports": "Himalaya is an IMAP command-line client installable with Homebrew that lists envelopes and reads messages, the read path for a non-Gmail school mailbox.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "skills/gog/SKILL.md:71",
+    "title": "Bundled gog skill",
+    "anchor": "gog sheets append",
+    "supports": "The gog CLI appends rows to a spreadsheet range from a JSON array.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://raw.githubusercontent.com/openclaw/gogcli/main/docs/commands/gog-sheets-append.md",
+    "title": "gogcli command reference: gog sheets append",
+    "anchor": "--values-json",
+    "supports": "The append command takes a spreadsheet id, a range, values as a JSON 2D array and an insert mode.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/append",
+    "title": "Google Sheets API: spreadsheets.values.append",
+    "anchor": "auth/spreadsheets",
+    "supports": "The append method is authorized by account-wide Sheets or Drive scopes (or drive.file); no scope on that page is limited to one named sheet, so the sheet-id pin has to be enforced locally.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.myschoolbucks.com/ver2/help/gethelp",
+    "title": "MySchoolBucks: Help / FAQ",
+    "anchor": "a total of 3 email messages",
+    "supports": "A school meal payment service documents an opt-in low-balance email per student, set by the parent, with a fixed small number of emails per episode.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/gateway/security/prompt-injection.md:34",
+    "title": "Prompt injection: What helps in practice",
+    "anchor": "reader agent",
+    "supports": "The docs recommend a tool-disabled reader agent to summarise untrusted content before anything with tools sees it.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:13",
+    "title": "Web fetch",
+    "anchor": "login-protected pages",
+    "supports": "Plain fetch cannot read pages behind a login, so an account balance page is out of its reach.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.spl.org/using-the-library/manage-your-account/notifications",
+    "title": "The Seattle Public Library: Get Library Notifications (example public library)",
+    "anchor": "Account Email Notifications",
+    "supports": "Example of a public library that emails due-date, overdue and hold-ready notices to the address on each card, and notes that a third-party reminder service is being discontinued.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://apps.apple.com/app/id6746368694",
+    "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+    "anchor": "reads the school emails",
+    "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "absorbs": [
+   "F056",
+   "F057",
+   "WEB-07",
+   "WEB-08"
+  ],
+  "adds": [
+   "The lunch-balance line comes from the lunch service's own low-balance email: a parent switches the alert on and lists the school mailbox as the alert address, because forwarded mail can fail the reader's sender check.",
+   "Library overdue and hold-ready notice emails as one more sender class for the digest; pre-due reminders depend on the library, and the full checked-out list stays in the library's own app.",
+   "From F055 (Urgent school alert relay (snow day, delay, early dismissal, bus, safety)): F056's edit in this review already carries the backup rule (a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep, not held until 16:00, with the school's own alert named as the primary path) and the note that the mail trigger cannot text a person by itself, so the pass-through needs a recipient-pinned message tool or a 15-minute sweep. Still to move across: F055's sources, and the untested point that sorting urgent from routine on real district mail may miss a closure.",
+   "From SRC-08 (School platform feed map: what each system really sends): F056's edit in this review already carries the ParentSquare and PowerSchool recipes, the urgent-alerts limit, the education-records caveat, the safety text and SRC-08's medium risk. Still to move across: SRC-08's sources, and the line IPH-15 folds in (for an app with no website, try the app's own email notifications into the school mailbox first and a parent's screenshot second). Calendar links from ParentSquare or Canvas are subscribed in the family calendar (F009), not parsed.",
+   "From MKT-01 (Google Classroom guardian summaries in the school digest): F056's edit in this review already lists Classroom guardian summaries as a sender (invite the school mailbox as guardian; daily or weekly; missing and upcoming work; no grades; only if the teacher switches summaries on). Still to move across: MKT-01's Google sources, the 120-day invitation expiry, and the build note that the digest job turns the summary into {kid, missing, upcoming} with llm-task and relays titles and dates only, never links.",
+   "From G016 (Sender allowlist changes by chat, approved by the mailbox owner): Add one line to the school mailbox: its sender list lives in family.json5 and changes with a reviewed deploy, so a parent who needs a new coach or teacher added asks Tony. The mail plugin logs rejected senders without subject or body, so a mail that did not show up can be traced in the gateway log."
+  ],
+  "wave": "B",
+  "section": "School and kids",
+  "includes": [
+   {
+    "id": "F056",
+    "name": "School and activities mail digest (weekdays 16:00): five-line summary, dated checklist, lunch-balance and school-platform lines"
+   }
+  ],
+  "history": [
+   "r1: edited how, caveats. Kept. Its build note pointed to F050 for a delivery caveat; F050 is being removed, so the caveat is written out here. One caveat is added about which mail provider to pick, because the reason F050 is removed (a Google app password) would follow this item if the new mailbox were a Gmail address.",
+   "r1: kept; credible mention: IMAP email trigger",
+   "r1: merged with F056 (same batch). The dedicated school mailbox with its isolated reader and the weekday 16:00 digest that is the reader's only output are one build on one agent in wave B, so they become one card; allowlist changes by chat (G016) stay separate.",
+   "r2: edited description, example, caveats, unverified, depends_on. Kept: a shipping family assistant sells the same school-mail digest. One promise ran ahead of the design: the digest offered day-before reminders, but the reader that writes it holds no reminder or store tool by design, and it is untested whether the parent's own agent, which gets the 'yes', can see the digest text. The description, example, dependencies, a caveat and an unverified line now say so.",
+   "r2: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r3: edited effort, caveats. Kept: a shipping family assistant sells the same school-mail digest. Effort rises from medium to large, because this card now holds two medium-sized entries (the mailbox with its reader, and the digest) plus the per-platform setup and the closure pass-through, and it was left at medium when they were merged. Two lines round 2 said to carry over were also missing and are added: new senders are added by Tony through a reviewed deploy, and a platform's calendar link goes to the family calendar.",
+   "r3: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "r4: edited description, safety, caveats, unverified, how. Kept: a shipping family assistant sells the same school-mail digest, and OpenClaw's mail guide describes this isolated reader. Two lines promised more than the design gives: the description did not say that attachments are not opened (a PDF newsletter shows up only as a file name), and the safety note credited the sender check to the whole card when it guards only the mail plugin's per-message path, not the 16:00 job that reads the mailbox through its own tool.",
+   "r4: kept; credible mention: Fambot: AI Family Assistant (App Store listing by Fambot Inc)"
+  ],
+  "demand": {
+   "ref": "https://apps.apple.com/app/id6746368694",
+   "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide."
+  },
+  "depends_on": [
+   "a new mailbox and its app-specific password (choice of provider)",
+   "F031 household store for the dated checklist (only if a reviewed write path from the reader is accepted; see caveats)",
+   "F007 reminders (the parent asks their own agent for a day-before reminder)",
+   "knowing which platforms the district uses",
+   "G009 family-only delivery or a 15-minute sweep job (for the urgent pass-through)"
+  ],
+  "review_notes": []
+ },
+ {
+  "id": "CRT-11",
+  "name": "Childcare coverage planner: no-school days and summer weeks",
+  "tier": 2,
+  "cluster": "school year and jordan",
+  "description": "A grid of every weekday the kids have no school (teacher days, breaks, early releases, the ten or so summer weeks) against who covers it: camp, grandparents, a trip, a parent off work. Happy keeps the grid, lists the open cells months ahead, reminds the parents of the registration dates they give it (with a page watch for a camp whose site can be read), and at tax time lists what was paid to which day camp from the receipts a parent sent. School and camp form paperwork is a separate entry (CRT-12).",
+  "example": "Trigger: first Sunday of February. Happy texts both parents: 'Jordan coverage: 4 of 10 weeks open for the 10-year-old, 6 for the 8-year-old. Two camps you saved open registration this week.'",
+  "how": "Inputs: the district calendar (a public feed the family Google Calendar is subscribed to, read through F009, or a photo or PDF through the dates-after-a-yes flow, F010) gives the no-school weekdays; parents add coverage by text. Store: household store rows (F031) keyed by date range and child nickname, with a status (open, pencilled, booked, paid) and a provider name. Jobs: a monthly isolated job on <p>-main from January to May, and weekly in the four weeks before each break ('--cron'), listing open cells; page watchers for 'registration opens' on camps the parents name (the changed-page watch in F018, created by Tony); options research by the stateless research agent given ages, weeks and a distance only (F019). Parents register and pay themselves. After paying, a parent sends the receipt and Happy records amount and provider. In February it lists day-camp totals per provider and which providers still lack a taxpayer number, because IRS Publication 503 treats day camp, and not overnight camp, as a possible work-related care expense for a child under 13, and asks for the provider's name, address and taxpayer number (Form W-10 is the request form).",
+  "who": "adult",
+  "risk": "medium",
+  "readiness": "build",
+  "depends_on": [
+   "F031 household store",
+   "F009 family calendar subscribed to the district feed, or F010 for a district calendar PDF",
+   "F018 page watchers and F019 research agent",
+   "F007 reminders",
+   "F002 photo and PDF reading, for receipts (its privacy gate screens text PDFs only)"
+  ],
+  "value": 4,
+  "effort": "M",
+  "caveats": [
+   "Most states set the school year near 180 days (28 states in the NCES table), which leaves roughly 80 weekdays a year without school, holidays included. The planner earns its keep only if both parents work on those days.",
+   "Camp sites are often script-heavy or bot-walled. Expect 'could not verify' and rely on the parent pasting dates.",
+   "Registration is a booking and a payment. Happy stops at the reminder and the link.",
+   "The tax list is for the preparer, not tax advice. Whether a camp qualifies depends on facts Happy does not have.",
+   "A shared spreadsheet does the grid. The gain here is the reminders, the registration watch and the receipts list for tax time."
+  ],
+  "safety": "The grid lives with <p>-main, which holds private data and does not browse. The research agent gets ages, date ranges and distance only, never names, school or address. The page watchers are host scripts with no model (F018) and hold no private data. No registration, booking or payment is performed. A receipt sent as a photo is read by the cloud model like any other photo; the privacy gate in F002 screens text PDFs only.",
+  "unverified": [
+   "Whether the family's district publishes a calendar feed or only a PDF.",
+   "That the 2025 edition of Publication 503 carries over unchanged to the 2026 tax year."
+  ],
+  "overlaps_existing": [
+   "G012",
+   "F011",
+   "F029",
+   "F026",
+   "F015",
+   "F061",
+   "F031"
+  ],
+  "sources": [
+   {
+    "kind": "web",
+    "ref": "https://www.irs.gov/publications/p503",
+    "title": "IRS Publication 503 (2025), Child and Dependent Care Expenses",
+    "anchor": "overnight camp",
+    "supports": "Day camp can count as a work-related care expense for a child under 13 while overnight camp does not, and the care provider must be identified by name, address and taxpayer number.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://nces.ed.gov/programs/statereform/tab1_1-2020.asp",
+    "title": "NCES State Education Practices, Table 1.1: minimum instructional days and hours by state, 2020",
+    "anchor": "Minimum number of instructional days",
+    "supports": "Most states require about 180 instructional days a year, which is what leaves the remaining weekdays to cover.",
+    "check": "ok"
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:89",
+    "title": "openclaw automations: schedule types",
+    "anchor": "--cron <expression>",
+    "supports": "Recurring jobs take a cron expression with a time zone, which carries the monthly and pre-break reminders.",
+    "check": "ok"
+   },
+   {
+    "kind": "web",
+    "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+    "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+    "anchor": "Jordan Care Scramble",
+    "supports": "A university early-childhood institute describes parents building spreadsheets of camps, hitting waitlists on registration day and still having weeks of summer with no cover, which is the planning job this entry takes on.",
+    "check": "unchecked",
+    "added_round": 1
+   }
+  ],
+  "origin": "new",
+  "absorbs": [],
+  "adds": [],
+  "review_notes": [],
+  "reviewed_by": 1,
+  "wave": "C",
+  "section": "School and kids",
+  "includes": [],
+  "history": [
+   "r1: edited description, how, depends_on. Kept. Two small fixes: form paperwork is left to CRT-12 so the two entries do not overlap, and the district calendar now comes through the family calendar (F009) because another review this round folds the separate feeds entry (G012) into it.",
+   "r1: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r2: edited depends_on, caveats, safety. Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. Two lines overclaimed: receipts were said to pass the document privacy gate, but that gate reads text PDFs only, so a photographed receipt goes to the cloud model like any photo; and one caveat still counted forms as part of this card after round 1 moved them to the paperwork kit (CRT-12).",
+   "r2: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r3: edited description, how, depends_on, safety. Kept: parents really do plan summer cover on spreadsheets and still end up with open weeks. Four entries this card leaned on were folded into others last round, so its build note, dependencies and safety text now point to the cards that exist (the safety note also said the page watchers run on the research agent; they are scripts with no model). 'Tracks registration dates' promised more than the card's own caveat allows, since camp sites often cannot be read: Happy reminds about the dates the parents give it, with a page watch where a site can be read.",
+   "r3: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "r4: kept; credible mention: Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)"
+  ],
+  "demand": {
+   "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+   "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "supports": "A university early-childhood institute describes parents starting camp spreadsheets right after the new year, racing registration openings and still having weeks of summer with no cover."
+  }
+ }
+]

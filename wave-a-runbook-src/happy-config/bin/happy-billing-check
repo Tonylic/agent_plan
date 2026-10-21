@@ -1,0 +1,39 @@
+#!/bin/zsh -f
+# happy-billing-check: run every minute by happy-sandbox-check. Added 20 Oct 2026 (wave A) at Tony's request,
+# after the organisation's OpenAI credit ran out and every model call failed with no alert.
+# Reads what the gateway logged since the last run and counts the model calls OpenAI refused for billing
+# (error type insufficient_quota: no prepaid credit left, or a project at its monthly limit), per provider
+# and error code. Pushes the counts to VictoriaMetrics as happy_openai_billing_errors for Grafana's rule
+# "OpenAI refusing calls (billing)". Every run also pushes a zero under provider="none", to show it ran.
+set -u
+log=$HOME/Library/Logs/openclaw/openclaw.log
+state=$HOME/Library/Caches/happy/billing-check.offset
+out='happy_openai_billing_errors{provider="none",code="none"} 0'
+if [[ -r $log ]]; then
+  /bin/mkdir -p ${state:h}
+  size=$(/usr/bin/stat -f %z $log)
+  off=$size                                       # first run: start at the end, not at old errors
+  [[ -r $state ]] && off=$(<$state)
+  [[ $off == <-> ]] || off=$size
+  (( off > size )) && off=0                       # the log was rotated: read the new file from its start
+  print -r -- $size > $state
+  if (( size > off )); then
+    # The transport's error line, e.g. "[responses] error provider=openai-eval ... code=credit_balance_exhausted
+    # type=insufficient_quota ..." (seen 20 Oct). Label values keep only safe characters.
+    found=$(/usr/bin/tail -c +$((off + 1)) $log | /usr/bin/head -c $((size - off)) | /usr/bin/perl -ne '
+        next unless /\] error provider=(\S+) .*?\bcode=(\S+) type=(\S+)/;
+        my ($p, $c, $t) = ($1, $2, $3);
+        next unless $t eq "insufficient_quota" or $c =~ /credit|billing|quota|spend_limit/;
+        s/[^A-Za-z0-9_.-]//g for $p, $c;
+        print "$p $c\n";' \
+      | /usr/bin/sort | /usr/bin/uniq -c \
+      | /usr/bin/awk '{printf "happy_openai_billing_errors{provider=\"%s\",code=\"%s\"} %d\n", $2, $3, $1}')
+    if [[ -n $found ]]; then
+      out+=$'\n'$found
+      print -r -- "happy-billing-check: $(/bin/date -u +%FT%TZ) ${found//$'\n'/; }"
+    fi
+  fi
+fi
+print -r -- $out | /usr/bin/curl -fsS -m 5 --data-binary @- http://127.0.0.1:8428/api/v1/import/prometheus >/dev/null \
+  || print "happy-billing-check: $(/bin/date -u +%FT%TZ) could not push to VictoriaMetrics"
+exit 0

@@ -1,0 +1,380 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: o1-starting-rules
+    folder: OpenClaw
+    interval: 1m
+    rules:
+      - uid: openclaw-gateway-down
+        title: OpenClaw gateway down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'max(up{job="openclaw"}) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: 'Gateway metrics scrape failing (process down, or token rejected).'
+        labels: {}
+      - uid: openclaw-imessage-delivery-errors
+        title: iMessage replies failing
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'sum(increase_pure(openclaw_message_delivery_total{channel="imessage",outcome="error"}[30m])) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 'An iMessage reply failed to send in the last 30 minutes. A channel that is down also makes /readyz fail, which the healthchecks.io probe reports.'
+        labels: {}
+      - uid: openclaw-run-error-ratio
+        title: Agent run error ratio above 10%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: '(sum(increase_pure(openclaw_run_completed_total{outcome="error"}[30m])) / sum(increase_pure(openclaw_run_completed_total[30m]))) and (sum(increase_pure(openclaw_run_completed_total[30m])) >= 5)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [0.1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: 'More than 10% of agent runs ended in error over 30 minutes.'
+        labels: {}
+      - uid: openclaw-daily-cost
+        title: Daily model cost over budget
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              # fraction of each agent's daily budget: 2 USD for a main agent, 1 for a mail reader (wave A),
+              # 3 for an eval clone or copy, 0.50 for inbox
+              expr: '(sum by (agent) (increase_pure(openclaw_model_cost_usd_total{agent=~".+-main"}[24h])) / 2) or (sum by (agent) (increase_pure(openclaw_model_cost_usd_total{agent=~".+-mail"}[24h])) / 1) or (sum by (agent) (increase_pure(openclaw_model_cost_usd_total{agent=~".+-eval"}[24h])) / 3) or (sum by (agent) (increase_pure(openclaw_model_cost_usd_total{agent="inbox"}[24h])) / 0.5)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 'An agent passed its daily budget (estimated): 2 USD for a main agent, 1 for a mail reader, 3 for an eval clone, 0.50 for inbox.'
+        labels: {}
+      - uid: host-swap-in-use
+        title: Swap in use
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'max(macmon_memory_swap_used_bytes)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        annotations:
+          summary: 'macOS is using swap.'
+        labels: {}
+      - uid: host-disk-low
+        title: Disk free below 15%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'min(node_filesystem_avail_bytes{mountpoint="/System/Volumes/Data"} / node_filesystem_size_bytes{mountpoint="/System/Volumes/Data"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: lt, params: [0.15]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: 'Data volume has less than 15% free.'
+        labels: {}
+      - uid: obs-exporter-down
+        title: Metrics exporter down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'min(up{job=~"macmon|node"}) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: 'macmon or node_exporter is not being scraped.'
+        labels: {}
+      - uid: host-sandbox-down
+        title: Sandbox runtime down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              # happy-sandbox-check pushes 1 or 0 every minute; no push for 3 minutes reads as 0.
+              expr: 'last_over_time(happy_sandbox_ready[3m]) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: 'Colima or its Docker engine is not answering, or the sandbox image is missing: agents cannot run tools. /readyz does not see this.'
+        labels: {}
+      - uid: happy-google-signin
+        title: Google sign-in not working
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              # happy-signin-check pushes 1 or 0 per stored sign-in at 06:30 every day and at load;
+              # no push for 26 hours reads as 0.
+              expr: 'min(last_over_time(happy_google_signin_ok[26h])) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: lt, params: [1]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 'A stored Google sign-in stopped working, or the daily check stopped reporting. Mail texts and lookups for that mailbox will fail until its owner approves the sign-in again. Which one: run happy-signin-check in the Terminal of the happy account.'
+        labels: {}
+      - uid: openai-billing-refusals
+        title: OpenAI refusing calls (billing)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              # happy-billing-check (run by happy-sandbox-check every minute) pushes how many model calls OpenAI
+              # refused for billing since its last run, per provider and error code; provider "none" is its heartbeat.
+              expr: 'sum by (provider, code) (sum_over_time(happy_openai_billing_errors{provider!="none"}[1h]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: 'OpenAI refused model calls for billing ({{ .Labels.code }} on {{ .Labels.provider }}). credit_balance_exhausted: the prepaid credit is used up and every agent stops; add credit on the OpenAI Billing page. Any other code: that project reached its monthly limit.'
+        labels: {}
+      - uid: obs-watchdog
+        title: Alert pipeline watchdog
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: vm
+            model:
+              refId: A
+              expr: 'vector(1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              datasource: {type: __expr__, uid: __expr__}
+              conditions:
+                - evaluator: {type: gt, params: [0]}
+                  operator: {type: and}
+                  query: {params: [C]}
+                  reducer: {type: last, params: []}
+                  type: query
+        # Fires for as long as VictoriaMetrics answers and Grafana evaluates and notifies; policies.yaml
+        # sends it only to the healthchecks.io "alerts" check. If either service stops (a query error
+        # counts as OK here), the pings stop and healthchecks.io pushes to your phone.
+        noDataState: OK
+        execErrState: OK
+        for: 0s
+        annotations:
+          summary: 'Always firing on purpose; healthchecks.io watches for it.'
+        labels: {watchdog: 'true'}

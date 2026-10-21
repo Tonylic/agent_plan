@@ -1,0 +1,24 @@
+#!/bin/zsh -f
+# happy-victoriametrics: start VictoriaMetrics for local.happy.victoriametrics (O1).
+# The diagnostics-prometheus route needs the gateway's shared token (full operator authority), so the
+# token is copied from happy's login Keychain into a 0600 file that scrape.yml reads via
+# authorization.credentials_file. The token never appears in argv, the environment or the repo.
+set -euo pipefail
+umask 077
+export HOME=/Users/happy
+run=$HOME/.config/happy/run
+data=$HOME/.local/share/victoriametrics
+/bin/mkdir -p -m 700 "$run" "$data"
+tok=$(/usr/bin/security find-generic-password -s happy-agent -a openclaw-gateway-token -w)
+print -rn -- "$tok" > "$run/openclaw-scrape-token.tmp"
+/bin/mv -f "$run/openclaw-scrape-token.tmp" "$run/openclaw-scrape-token"
+unset tok
+exec /opt/homebrew/bin/victoria-metrics \
+  -httpListenAddr=127.0.0.1:8428 \
+  -storageDataPath="$data" \
+  -retentionPeriod=1y \
+  -promscrape.config="$HOME/.config/happy/observability/victoriametrics/scrape.yml" \
+  -selfScrapeInterval=60s \
+  -memory.allowedBytes=256MiB \
+  -search.maxConcurrentRequests=4 \
+  -denyQueryTracing

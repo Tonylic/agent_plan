@@ -1,0 +1,1507 @@
+[
+  {
+    "id": "AUT-01",
+    "name": "Multi-day family project with check-ins",
+    "tier": 2,
+    "cluster": "long-running projects",
+    "description": "A parent hands Happy a project with an end date (birthday party, weekend trip, garage clean-out). Happy keeps one project note with decisions and open items, checks in on a schedule it paces itself, runs research legs in the background, and stops when the date passes. New against the 9 Oct catalog: durable project state plus paced check-ins; F028 only covers a one-shot plan.",
+    "example": "Plan our 10-year-old's birthday party for Saturday the 14th: 10 kids, indoor, under 300 dollars. Check in with me every few days until it is sorted.",
+    "how": "Held by the asking parent's <p>-main. State: one project note (memory/projects/<slug>.md through the F041 write path, or home-store rows from F031) with goal, end date, decisions, open items and a review date. Check-ins: one isolated automation per project, created through the `automations` tool on <p>-main with `--pacing-min` and `--pacing-max`, so each run can call `automations(action: \"next_check\")` and be clamped to those bounds; an explicit job tool cap limited to the note or home-store read tools; announce to the owner; NO_REPLY when nothing is due; the run removes its own job after the end date. Research legs: `sessions_spawn` to the stateless `research` agent with `runTimeoutSeconds` and `completionTarget: \"parent\"`, so <p>-main reviews the result privately before it texts anything. Decisions are plain proposals in chat (or `ask_user` while the parent is in the conversation). `/goal` is not the durable state here (see AUT-02).",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F041 memory write path or F031 home-store",
+      "F007 automations tool on <p>-main",
+      "F019 research agent",
+      "G009 delivery pin",
+      "G001 notification policy",
+      "decision: Jordan as a command owner"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Scheduled runs do not get MEMORY.md injected, so a check-in must read the project note with a tool or carry the state in the job message.",
+      "A job created from chat is capped to the tools the creating turn had and cannot be widened later, so a check-in can never do more than the parent's own main agent.",
+      "The conversation resets every morning at 04:00 and that also wipes any /goal; the project note is the only continuity between days.",
+      "Every check-in is a cloud model turn. Pace in days, not minutes, and cap active projects per person (three is plenty).",
+      "Published measurements put the reliable autonomous working span of frontier models at well under a working day, so the design is many short runs with a parent between them, not one long unattended run.",
+      "No bookings, purchases or invitations sent: the output is options, links and drafts. A static checklist is still easier in a shared Notes or Reminders list; Happy adds the nudging and the research."
+    ],
+    "safety": "<p>-main holds the note and never browses; `research` does every web leg, has no memory, and as a sub-agent can never get the message, cron or gateway tools. Handoff text carries dates, ages and budget only, never names, school or address. Scheduled sends go only to the owner through the G009 recipient pin. Nothing on the never list is reachable: there is no payment, booking or outbound-to-strangers tool anywhere in the chain.",
+    "unverified": [
+      "Whether a custom-session job (`--session session:<id>`) is exempt from the daily reset policy, which would let check-ins keep conversational context.",
+      "Whether memory read tools can be named in a job tool cap for a sandboxed agent on 2026.9.7; test at build time.",
+      "That research handoffs return results with agent-to-agent off and session visibility self (already an open item in the roadmap)."
+    ],
+    "overlaps_existing": [
+      "F028",
+      "G014",
+      "F007",
+      "F041",
+      "F031",
+      "F082"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:67",
+        "title": "Automation schedules: dynamic cadence (pacing)",
+        "anchor": "pacing.min",
+        "supports": "Recurring jobs can carry minimum and maximum pacing bounds set with the pacing flags."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:71",
+        "title": "Automation schedules: dynamic cadence (pacing)",
+        "anchor": "next_check",
+        "supports": "A paced agent-turn run can propose its own next check time and the scheduler clamps it to the bounds."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:61",
+        "title": "Automation payloads: agent-turn options",
+        "anchor": "capped to the tools available",
+        "supports": "Jobs an agent creates are limited to the creating turn's tools and the agent cannot widen the stored list."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:30",
+        "title": "How automations work: isolated run hardening",
+        "anchor": "may remove only their own job",
+        "supports": "An isolated run can see and remove only its own job, which is how a finished project ends itself."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/user-model.md:376",
+        "title": "User model: keep it compact",
+        "anchor": "omit root memory",
+        "supports": "Cron, sub-agent, group and channel sessions do not get MEMORY.md injected."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:22",
+        "title": "Standing intents: choose the right intention tier",
+        "anchor": "Put aspirations",
+        "supports": "Long-running aims belong in a maintained Markdown note with a review date, not in clock jobs or triggers."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/announce.md:55",
+        "title": "Sub-agent announce: private parent completion",
+        "anchor": "completionTarget",
+        "supports": "A child result can be returned privately to the parent turn with no automatic channel delivery."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/tool-policy.md:23",
+        "title": "Sub-agent tool policy",
+        "anchor": "Sub-agents always lose",
+        "supports": "Sub-agents are hard-denied the gateway, cron, message and session-send tools regardless of allowlists."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2503.14499",
+        "title": "Measuring AI Ability to Complete Long Software Tasks (arXiv 2503.14499)",
+        "anchor": "time horizon",
+        "supports": "Frontier models at the time of the paper finished only about half of tasks that take a human roughly an hour, which argues for short runs with human check-ins."
+      }
+    ]
+  },
+  {
+    "id": "AUT-02",
+    "name": "Session goal (/goal) for same-day focus",
+    "tier": 1,
+    "cluster": "long-running projects",
+    "description": "One pinned objective per conversation that Happy is reminded of on every turn until it is done, paused or cleared. Fine for a long same-day working session; on this stack it is not a multi-day tracker, because the goal does not survive the nightly session reset.",
+    "example": "/goal finish the camp registration today: forms, immunization record, payment reminder",
+    "how": "`/goal start|edit|pause|resume|complete|clear` typed in the parent's own DM with <p>-main; state lives on that session entry. For the model to read the goal or mark it complete or blocked, add `get_goal`, `create_goal` and `update_goal` to that agent's `tools.alsoAllow` and to `tools.sandbox.tools.allow` (they ship in the `coding` profile and `group:agents`, not in `minimal`). No plugin, no account.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "none; pairs with AUT-01 for anything longer than a day"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "The installed build clears the goal whenever a new session starts, and Happy starts a new session at the first message after 04:00 every day. The docs mention only /new and /reset; the compiled source clears it on every rollover.",
+      "One goal per session; a second one is refused until the first is cleared.",
+      "A goal does not schedule, deliver or approve anything, so it produces no check-ins by itself.",
+      "The token budget is a per-goal guardrail, not a spend cap.",
+      "Built for coding sessions (the documented examples are pull-request closeouts); the status pill exists only in the Control UI and TUI, not in iMessage."
+    ],
+    "safety": "Adds no tool reach and no outbound path. The objective is typed by the parent and injected as user-role context; the model cannot pause, clear or replace it, only report complete or blocked.",
+    "unverified": [
+      "Whether `/goal` text commands are accepted from an allowlisted non-owner iMessage sender on 2026.9.7.",
+      "Whether a `session.resetByType` override for direct chats would keep goals alive without bringing back the cost problem the daily reset was added to fix."
+    ],
+    "overlaps_existing": [
+      "G014"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/goal.md:14",
+        "title": "Goal",
+        "anchor": "one durable objective",
+        "supports": "A goal is a single objective attached to the current session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/goal.md:93",
+        "title": "Goal: command reference",
+        "anchor": "Only one goal can exist",
+        "supports": "A session holds at most one goal at a time."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/goal.md:116",
+        "title": "Goal: statuses",
+        "anchor": "clear the current session goal",
+        "supports": "Starting a fresh session with /new or /reset removes the goal."
+      },
+      {
+        "kind": "installed",
+        "ref": "dist/get-reply-fCAtF3T_.mjs:5697",
+        "title": "OpenClaw 2026.9.7 compiled source: reply session initialization",
+        "anchor": "sessionEntry.goal = void 0",
+        "supports": "The goal field is wiped in the same new-session branch that daily and idle rollovers take, not only on explicit resets."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/session.md:162",
+        "title": "Session management: session lifecycle",
+        "anchor": "Daily reset",
+        "supports": "Daily mode starts a new session at a configured local hour."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/goal.md:308",
+        "title": "Goal: channel behavior",
+        "anchor": "not a delivery directive",
+        "supports": "Goal state does not route replies, approve tools or schedule work."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/goal.md:151",
+        "title": "Goal: model tools",
+        "anchor": "The model cannot silently pause",
+        "supports": "Pausing, resuming, clearing and replacing stay with the person, not the model."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/config-tools/tool-policy.md:37",
+        "title": "Tool policy: profiles",
+        "anchor": "get_goal",
+        "supports": "The goal tools belong to the coding profile, so a minimal-profile agent needs them added explicitly."
+      },
+      {
+        "kind": "web",
+        "ref": "https://docs.openclaw.ai/tools/goal",
+        "title": "Goal - OpenClaw docs (public mirror)",
+        "anchor": "clear the current session goal",
+        "supports": "The public page describes only /new and /reset clearing a goal and says nothing about automatic resets."
+      }
+    ]
+  },
+  {
+    "id": "AUT-03",
+    "name": "Self-paced watch loop (/loop and paced automations)",
+    "tier": 1,
+    "cluster": "scheduled autonomy",
+    "description": "\"Keep checking this until it happens, then tell me\": a recurring agent turn bound to the conversation, at a fixed interval or self-paced so it checks more often while things move and backs off when quiet.",
+    "example": "/loop 30m has the district posted a decision about tomorrow's snow day? Stop once it is posted.",
+    "how": "`/loop [interval] <prompt>` typed to <p>-main makes the agent create a recurring agent-turn job in that conversation through the `automations` tool; with no interval it self-paces between 1 minute and 1 hour using `next_check`. `/loop status` and `/loop stop` manage it. Longer-lived watchers are created by happy-deploy with `openclaw automations add --pacing-min ... --pacing-max ...` and an explicit `--tools` cap. Needs `automations` allowed on <p>-main (it is denied today with the rest of `group:automation`).",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "now",
+    "depends_on": [
+      "F007 automations tool on <p>-main",
+      "decision: Jordan as a command owner",
+      "F029 for anything that needs page content"
+    ],
+    "value": 3,
+    "effort": "S",
+    "caveats": [
+      "Owner-only: Jordan cannot use /loop unless she is listed as a command owner, which is a gateway-wide elevation.",
+      "Every tick is a cloud model turn and the self-paced floor is one minute. Require an explicit interval of 15 minutes or more and a stop condition, in AGENTS.md.",
+      "<p>-main has web_search only, so a loop sees search snippets, not page content. Real page watching belongs to the research agent (F029).",
+      "A loop does not end by itself. The scheduler disables a recurring job only after 10 failures in a row, so the prompt must say when to stop.",
+      "Nothing fires while the Mac is off or locked after a reboot.",
+      "For known sources the phone is already better: district push alerts, carrier tracking, calendar alerts."
+    ],
+    "safety": "The job's tool cap cannot exceed the creating turn's tools and its result returns to the conversation that created it, so there is no new send path. Search snippets are untrusted and now repeat unattended inside an agent that holds memory; that is the same exposure <p>-main already has with web_search, repeated. Keep loops short-lived, count them against the G001 daily cap, and never give a looped agent web_fetch.",
+    "unverified": [
+      "Whether a conversation-bound loop keeps running, or is orphaned, across the 04:00 session rollover.",
+      "The exact tool cap a /loop job records under the minimal profile on this config."
+    ],
+    "overlaps_existing": [
+      "F029",
+      "F007",
+      "F018"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:77",
+        "title": "Automation schedules: /loop chat shortcut",
+        "anchor": "/loop [interval] <prompt>",
+        "supports": "The loop command creates a conversation-bound recurring job and self-paces between one minute and one hour when no interval is given."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/slash-commands.md:424",
+        "title": "Slash commands: /loop",
+        "anchor": "owner-only because it uses",
+        "supports": "The loop command is restricted to owners because it drives the scheduler control tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:67",
+        "title": "Automation schedules: dynamic cadence (pacing)",
+        "anchor": "pacing.min",
+        "supports": "Pacing bounds can be set on any recurring job from the CLI."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:61",
+        "title": "Automation payloads: agent-turn options",
+        "anchor": "capped to the tools available",
+        "supports": "An agent-created job inherits no more than the creating turn's tools."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:136",
+        "title": "Automation delivery: failure notifications",
+        "anchor": "10 consecutive execution failures",
+        "supports": "A recurring job is switched off automatically only after ten execution failures in a row."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:16",
+        "title": "How automations work",
+        "anchor": "Gateway must be running",
+        "supports": "Schedules run inside the gateway process and do not fire while it is down."
+      }
+    ]
+  },
+  {
+    "id": "AUT-04",
+    "name": "Standing orders: a written charter per recurring job",
+    "tier": 1,
+    "cluster": "standing authority",
+    "description": "Each recurring family job gets a short charter in the agent's AGENTS.md: what Happy may do without asking, when it runs, what needs a yes first, when to stop and ask, and what it must never do. Parents can read it and changes go through the config repo. New against the catalog: G003 registers the jobs, but nothing states their authority in one reviewable place.",
+    "example": "Job message at 19:30: \"Run the evening brief per standing orders.\" Parent text: \"From now on don't text me about bins when I'm travelling\" becomes a line under that program's What NOT to do at the next deploy.",
+    "how": "`## Program: <name>` sections (Authority, Trigger, Approval gate, Escalation, What NOT to do, plus an execute-verify-report rule) in templates/person/AGENTS.md, rendered per person by gen-family from the same family.json5 entries that drive the G003 job registry. Each automation message points at its program instead of repeating it. Isolated jobs must not use `--light-context`, which skips the bootstrap files. Held by each <p>-main, and by each reader agent for its own program.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "G003 jobs registry",
+      "F007"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "A charter is prompt text, not enforcement. It survives compaction because AGENTS.md is re-injected, but an injected page can still argue with it; the hard limits stay in tool policy and hooks.",
+      "AGENTS.md shares a bootstrap budget (20,000 characters per file by default). Keep each program to about ten lines.",
+      "Sub-agents get AGENTS.md only, and scheduled runs do not get MEMORY.md, so anything a program needs must be in AGENTS.md, the job message, or a tool result.",
+      "The documented examples are business programs (posting content, restarting services, sending reports to stakeholders). Family programs are read-and-notify only; do not copy those authorities.",
+      "A chat instruction does not change the charter: config writes from chat are off and the agents have no file tools, so it waits for a deploy."
+    ],
+    "safety": "Charters narrow behaviour and grant nothing. Never-list items are written under What NOT to do and are also unreachable by tool policy. No change to which agent holds private data, reads untrusted content, or can send.",
+    "unverified": [],
+    "overlaps_existing": [
+      "G003",
+      "F011",
+      "F013",
+      "F014",
+      "F015",
+      "F042"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:10",
+        "title": "Standing orders",
+        "anchor": "permanent operating authority",
+        "supports": "Standing orders define programs the agent may run on its own within stated bounds."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:20",
+        "title": "Standing orders: how they work",
+        "anchor": "auto-injected every session",
+        "supports": "The recommended home is AGENTS.md because it is injected into every session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:28",
+        "title": "Standing orders: how they work",
+        "anchor": "Approval gates",
+        "supports": "Each program names its scope, triggers, approval gates and escalation rules."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:219",
+        "title": "Standing orders: best practices",
+        "anchor": "Start with narrow authority",
+        "supports": "The guidance is to begin with narrow authority and widen it as trust builds."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/standing-orders.md:232",
+        "title": "Standing orders: best practices",
+        "anchor": "become suggestions",
+        "supports": "Without a schedule to enforce them, standing orders are only suggestions."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/operations.md:168",
+        "title": "Sub-agent limitations",
+        "anchor": "Sub-agent context only injects",
+        "supports": "Sub-agents receive AGENTS.md and none of the other bootstrap files."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:54",
+        "title": "Automation payloads: --light-context",
+        "anchor": "Skip workspace bootstrap file injection",
+        "supports": "The light-context flag drops the bootstrap files, which would drop the charter."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/hooks/bundled-hooks.md:72",
+        "title": "Bundled hooks: bootstrap-extra-files",
+        "anchor": "20,000 characters per file",
+        "supports": "Bootstrap injection defaults to a per-file and a total character budget."
+      }
+    ]
+  },
+  {
+    "id": "AUT-05",
+    "name": "Mention-triggered nudges (standing intents)",
+    "tier": 1,
+    "cluster": "standing authority",
+    "description": "A reminder tied to a topic instead of a time: the next time the parent brings the topic up in chat, Happy adds the stored note to its answer. New against the catalog: F007 kept this as a footnote; these are the documented limits that decide whether it is worth exposing.",
+    "example": "Next time I mention the dentist, remind me to ask about the retainer.",
+    "how": "The `intent` tool from memory-core on <p>-main (create, list, cancel). Intents are rows in that agent's own SQLite database and are matched by keyword before the reply to a later message, with no model call. Defaults: 24-hour cooldown, 3 fires, 90-day expiry, scoped to the current channel and sender. Config: allow `intent` in the agent's `tools.alsoAllow` and sandbox tool allowlist; AGENTS.md line: intents for topics, automations for clock times.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "decision: Jordan as a command owner (the tool is owner-only)"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "It fires only when the same person's own later message contains every word of a trigger entry. An arriving email, a calendar event or a location does not fire it, which is narrower than \"when X happens\" sounds.",
+      "Owner-only: senders who are not command owners do not get the tool at all.",
+      "Plain keyword matching: \"dentist\" does not match \"orthodontist\".",
+      "Cancelling is always explicit; Happy never infers it from conversation.",
+      "Expect little use. Most family nudges are clock-based and belong in reminders."
+    ],
+    "safety": "Stored per agent, so per person. The injected block is the parent's own earlier instruction and matching is deterministic, so untrusted content cannot create or fire an intent. No tool reach or send path is added.",
+    "unverified": [
+      "Whether the `intent` tool is constructed for a sandboxed agent with `memory.search.provider: \"none\"` on 2026.9.7.",
+      "That iPhone Reminders offers \"when messaging a person\" and location triggers that cover similar ground (not fetched in this run)."
+    ],
+    "overlaps_existing": [
+      "F007",
+      "F008"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:10",
+        "title": "Standing intents",
+        "anchor": "event-conditioned instruction",
+        "supports": "A standing intent is an instruction tied to a future event and checked before interactive replies."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:27",
+        "title": "Standing intents: create an event-based intent",
+        "anchor": "commands.ownerAllowFrom",
+        "supports": "Only channel owners receive the intent tool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:42",
+        "title": "Standing intents: create an event-based intent",
+        "anchor": "current channel and sender",
+        "supports": "The default scope is the conversation and person that created the intent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:48",
+        "title": "Standing intents: defaults",
+        "anchor": "cooldown: 24 hours",
+        "supports": "An intent that fired waits a day before it can fire again."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:49",
+        "title": "Standing intents: defaults",
+        "anchor": "maximum fires: 3",
+        "supports": "An intent stops after three fires by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:50",
+        "title": "Standing intents: defaults",
+        "anchor": "expiry: 90 days",
+        "supports": "An intent expires after ninety days by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:56",
+        "title": "Standing intents: how matching works",
+        "anchor": "FTS keyword prefilter",
+        "supports": "Matching is a deterministic keyword check in which every term of a trigger entry must appear in the turn."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/standing-intents.md:58",
+        "title": "Standing intents: how matching works",
+        "anchor": "No model call occurs",
+        "supports": "The matching path costs no model call."
+      },
+      {
+        "kind": "web",
+        "ref": "https://arxiv.org/abs/2606.23459",
+        "title": "TriggerBench: Investigating Prospective Memory for Large Language Models (arXiv 2606.23459)",
+        "anchor": "TriggerBench",
+        "supports": "Models are much worse at remembering to act on a future cue than at recalling facts, and get worse as context grows, which is why a structural trigger beats relying on the chat history."
+      }
+    ]
+  },
+  {
+    "id": "AUT-06",
+    "name": "Teach Happy a routine (operator-reviewed skills)",
+    "tier": 2,
+    "cluster": "skills and learning",
+    "description": "A parent describes once how the family does something; it becomes a named skill Happy follows every time (party plan, ski-trip packing, school-form explainer). A skill goes live only after Tony has read it.",
+    "example": "Happy, learn our ski-trip packing routine: ask how many nights and who is coming, then list by person, and always include the kids' helmets.",
+    "how": "Happy answers with the drafted procedure as plain text (no tool needed). Tony turns it into `skills/<name>/SKILL.md` (a `name` and a one-line `description`, optionally `user-invocable`) in happy-config under that person's template, reviews it, and happy-deploy copies it into that agent's workspace `skills/` folder, the highest-precedence skill root. Alternative for agent-scoped Workshop skills: `openclaw skills workshop propose-create --agent <p>-main --proposal ./PROPOSAL.md`, then inspect and apply, from the deploy path. Per-agent visibility through `agents.entries.<id>.skills`; inbox keeps `skills: []`. Held by the asking parent's <p>-main; shared stateless agents get only skills meant for everyone.",
+    "who": "adult",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "a skills step in happy-deploy and gen-family",
+      "AUT-07 (self-learning switched off)",
+      "decision: who may request a new skill"
+    ],
+    "value": 4,
+    "effort": "M",
+    "caveats": [
+      "Asking Happy to save a skill from iMessage does not work on this stack: sandboxed runs do not construct the `skill_workshop` tool even when it is allowlisted, so `/learn` cannot stage a draft. The M1 doctor baseline in the config repo already shows this warning for every agent.",
+      "A skill is know-how. It cannot add tools or accounts, so \"learn to order the groceries\" still ends at a list.",
+      "A skill is instruction text loaded into future sessions. One written from a pasted web page or an email is a stored injection, so author only from the parent's own words.",
+      "No marketplace skills: an audit reported by The Hacker News found 341 malicious entries among 2,857 ClawHub skills in early 2026.",
+      "A running session keeps the skill list it started with; a new skill appears after /new or the next morning's reset.",
+      "Turnaround is \"when Tony next deploys\", not instant."
+    ],
+    "safety": "Operator review is the gate: no model-written file ever reaches a skills root. A skill cannot widen tool policy, so the trifecta split between <p>-main, research and the mail readers is unchanged. Per-person skills live in that person's workspace, so nothing crosses data domains.",
+    "unverified": [
+      "Whether a user-invocable skill command typed by an allowlisted non-owner iMessage sender is accepted on 2026.9.7.",
+      "That skill sync into the sandbox works with `workspaceAccess: \"none\"` (the docs say sandboxed runs read materialized copies)."
+    ],
+    "overlaps_existing": [
+      "F023",
+      "F033",
+      "F036"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/creating-skills.md:20",
+        "title": "Creating skills",
+        "anchor": "Skills live in your workspace",
+        "supports": "Hand-written skills are directories under the agent workspace's skills folder."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/creating-skills.md:58",
+        "title": "Creating skills: naming rules",
+        "anchor": "under 160 characters",
+        "supports": "The description is a single short line shown to the agent and in command discovery."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/creating-skills.md:124",
+        "title": "Creating skills: optional frontmatter keys",
+        "anchor": "user-invocable",
+        "supports": "A skill is exposed as a user slash command unless that key is turned off."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/creating-skills.md:194",
+        "title": "Creating skills: propose via Skill Workshop",
+        "anchor": "operator review before a skill",
+        "supports": "Workshop proposals are the documented path when a skill should be reviewed before going live."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skill-workshop/troubleshooting.md:61",
+        "title": "Skill Workshop troubleshooting: tool-policy diagnostic",
+        "anchor": "library-authoring authority",
+        "supports": "Sandboxed runs do not get the skill authoring tool even when an allowlist names it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skill-workshop/authoring.md:88",
+        "title": "Skill Workshop: CLI authoring",
+        "anchor": "propose-create",
+        "supports": "The operator CLI can create, inspect and apply proposals for a named agent."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skill-workshop/how-it-works.md:21",
+        "title": "How Skill Workshop works",
+        "anchor": "Apply is the only live write",
+        "supports": "A proposal changes nothing live until it is applied."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skills.md:41",
+        "title": "Skills: loading order",
+        "anchor": "Workspace skills",
+        "supports": "Workspace skills take precedence over every other skill source."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skills-config.md:343",
+        "title": "Skills config: agent allowlists",
+        "anchor": "agents.entries.*.skills",
+        "supports": "A per-agent list controls which skills an agent can see, and an empty list exposes none."
+      },
+      {
+        "kind": "web",
+        "ref": "https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html",
+        "title": "Researchers Find 341 Malicious ClawHub Skills Stealing Data from OpenClaw Users (The Hacker News, 2 Feb 2026)",
+        "anchor": "341",
+        "supports": "A security audit of the public skill marketplace found hundreds of malicious skills, most installing a macOS credential stealer."
+      }
+    ]
+  },
+  {
+    "id": "AUT-07",
+    "name": "Automatic self-learning: switch it off explicitly",
+    "tier": 3,
+    "cluster": "skills and learning",
+    "description": "OpenClaw can review finished conversations on its own and write or edit skills in the background. For a family agent this stays off; skills arrive only through AUT-06. The default is on, and Happy's config does not set it yet.",
+    "example": "A parent asks: \"Can Happy just learn from our chats?\" Trigger if left on: about 30 seconds after a long turn, a background review of that conversation starts.",
+    "how": "Add `skills.workshop.autonomous.mode: \"off\"` to happy-config (the default is `auto`) and `skills.workshop.approvalPolicy: \"pending\"` for any later proposal flow. After the deploy, check `openclaw cron list --all` for the weekly Skill Workshop review row, and expect doctor's `core/doctor/skill-workshop-tool-policy` warnings to disappear. Gateway-wide setting; no agent holds anything new.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "none"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "In auto mode the background reviewer edits skill files with ordinary file tools: no proposal, no scanner pass and no rollback snapshot.",
+      "A review re-sends the conversation, tool inputs and results included, to the model provider: extra cost and another copy of private chat in a provider call.",
+      "Auto mode also enables a weekly collection-review job on the agent's own model.",
+      "On Happy today the reviews most likely fail closed, because every agent is sandboxed and the authoring tool is not constructed. So the default currently buys doctor warnings, not learning; the explicit setting makes that intentional and upgrade-proof.",
+      "Propose mode is the only variant worth revisiting, and it still needs a non-sandboxed session to stage a draft."
+    ],
+    "safety": "Skills are instructions loaded into later sessions. Letting a model write them from conversations that include web search results is a path from untrusted content to persistent behaviour with no human in between, which is the kind of control the roadmap rules out. Off is a limit the model cannot argue past.",
+    "unverified": [
+      "Whether the weekly review job is currently enabled, disabled, or failing on Happy (the CLI was not run).",
+      "Whether any experience review has ever started on this configuration."
+    ],
+    "overlaps_existing": [
+      "F085"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/self-learning.md:15",
+        "title": "Self-learning",
+        "anchor": "The default mode is",
+        "supports": "Autonomous learning is on by default in its most permissive mode."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/self-learning.md:58",
+        "title": "Self-learning: experience review",
+        "anchor": "10 model iterations",
+        "supports": "A review is considered only after a turn that used at least ten model iterations."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/self-learning.md:178",
+        "title": "Self-learning: why auto is safe to default",
+        "anchor": "automatic rollback snapshots",
+        "supports": "Direct background maintenance creates no proposals, runs no scanner afterwards and keeps no rollback snapshots."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/self-learning.md:240",
+        "title": "Self-learning: cost and privacy",
+        "anchor": "send conversation",
+        "supports": "Reviews can send conversation content, including tool inputs and results, to the configured provider."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/self-learning.md:193",
+        "title": "Self-learning: why auto is safe to default",
+        "anchor": "Residual risk remains",
+        "supports": "The docs concede the agent can make an incorrect edit and point to propose mode for human review."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:28",
+        "title": "Automation payloads",
+        "anchor": "runs every 7 days",
+        "supports": "A system-owned weekly skill review job is enabled whenever the mode is auto."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/skill-workshop/configuration.md:70",
+        "title": "Skill Workshop: approval and autonomy",
+        "anchor": "autonomous.mode",
+        "supports": "The setting accepts off, propose and auto, with auto as the default."
+      },
+      {
+        "kind": "web",
+        "ref": "https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/",
+        "title": "The lethal trifecta for AI agents: private data, untrusted content, and external communication",
+        "anchor": "lethal trifecta",
+        "supports": "Combining private data, untrusted content and a way to communicate out is the pattern that makes agent data theft possible, which is the rule Happy's agent split is built on."
+      }
+    ]
+  },
+  {
+    "id": "AUT-08",
+    "name": "Unattended-job guardrails (failure alerts, auto-disable, missed runs)",
+    "tier": 1,
+    "cluster": "scheduled autonomy",
+    "description": "Rules that stop scheduled family jobs from failing silently or misfiring after an outage: failures alert Tony rather than the family, a job that keeps failing stops itself, stale runs are skipped after a power cut, and every job has a time limit and a tool cap. New against the catalog: the built-in scheduler behaviour and defaults that G003 and G008 should be built on.",
+    "example": "The 19:30 brief fails twice in a row: Tony gets one text, and one more when it recovers. After a power cut, the 07:00 brief does not turn up at 11:40.",
+    "how": "In happy-config: a global `cron.failureAlert` object routed to the operator's handle, so alerts do not fall back to each job's own announce target; `--timeout-seconds` and an explicit `--tools` cap on every job the G003 registry emits; `cron.skipMissedJobs: true` for recurring jobs; `cron.triggers.enabled: false` until F029 actually needs trigger scripts. happy-inspect reads `openclaw automations list --all` to catch auto-disabled jobs. The healthchecks dead-man switch stays as the only signal for a Mac that is off. Gateway-level; no agent gains anything.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "now",
+    "depends_on": [
+      "G003 jobs registry"
+    ],
+    "value": 4,
+    "effort": "S",
+    "caveats": [
+      "By default a failure alert goes to the failing job's own announce target, so Jordan would receive \"job failed\" texts for her jobs unless they are rerouted.",
+      "Alerts start after 2 failures in a row with a 1-hour cooldown; repeats with the same cause count as one incident and one recovery notice closes it.",
+      "A recurring job is switched off after 10 failures in a row and then disappears from the default job list.",
+      "Without a per-job timeout an isolated agent job is bounded only by a 60-minute watchdog.",
+      "Jobs run inside the gateway. After a reboot with FileVault locked nothing fires and nothing alerts, and by default the scheduler catches up on missed recurring runs later.",
+      "One-shot reminders still catch up after an outage even with skipMissedJobs set; a late reminder is sometimes worse than none.",
+      "Once <p>-main has the automations tool, the agent offers to turn a repeated request into a schedule and creates it enabled with an immediate test run. That is pleasant, but those jobs are not in the G003 registry, so the registry diff must tolerate or report them.",
+      "Trigger scripts and script payloads run with the owning agent's full tool policy, exec included; fine for an agent without exec, wrong as a gateway-wide default nobody uses yet."
+    ],
+    "safety": "Purely restrictive. Alert text shown in chat is a normalized cause (raw errors stay in run history), and routing alerts to the operator keeps one person's job details out of another person's thread.",
+    "unverified": [
+      "The exact shape of the global `cron.failureAlert` object beyond the documented destination fields; validate in staging.",
+      "Whether scheduler-sent failure alerts pass through the G009 recipient-pin hook or bypass it."
+    ],
+    "overlaps_existing": [
+      "G003",
+      "G008",
+      "G001",
+      "G005"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:105",
+        "title": "Automation delivery: failure notifications",
+        "anchor": "2 consecutive failures",
+        "supports": "A job with a failure route is covered after two failures in a row, with an hour between alerts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:107",
+        "title": "Automation delivery: failure notifications",
+        "anchor": "one recovery notice",
+        "supports": "Repeated same-cause failures are one incident, closed by a single recovery message."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:115",
+        "title": "Automation delivery: failure notification routes",
+        "anchor": "primary announce target",
+        "supports": "With no other route configured, a failure alert goes to the job's own announce target."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/delivery.md:136",
+        "title": "Automation delivery: safety backstop",
+        "anchor": "10 consecutive execution failures",
+        "supports": "The scheduler disables a recurring job after ten execution failures in a row."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/managing-jobs.md:214",
+        "title": "Manage automations: configuration",
+        "anchor": "cron.skipMissedJobs",
+        "supports": "A config switch makes recurring jobs skip slots missed while the gateway was offline; the default is to catch up."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:20",
+        "title": "How automations work",
+        "anchor": "60-minute watchdog",
+        "supports": "An isolated agent job with no timeout set is bounded by the scheduler's own one-hour watchdog."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/how-it-works.md:82",
+        "title": "How automations work: promoting a repeated job",
+        "anchor": "created **enabled**",
+        "supports": "A schedule the agent proposes in chat is created enabled once the person confirms."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/schedules.md:123",
+        "title": "Automation schedules: event triggers",
+        "anchor": "full tool policy",
+        "supports": "Trigger scripts and script payloads run unattended with the owning agent's whole tool policy unless triggers are disabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/cron-jobs/payloads.md:57",
+        "title": "Automation payloads: --tools",
+        "anchor": "Restrict which tools the job",
+        "supports": "Each job can carry its own tool allowlist, including an empty one."
+      }
+    ]
+  },
+  {
+    "id": "AUT-09",
+    "name": "Happy scorecard (personal-agent benchmark themes)",
+    "tier": 1,
+    "cluster": "measurement",
+    "description": "A small fixed test set that scores Happy on the ten behaviours OpenClaw's own personal-agent pack checks (reminder round trip, preference recall, no secret echo, stopping after a denied approval, no fake \"done\", honest partial-failure reports), run against the eval clones after each change. The shipped pack itself cannot run on this install.",
+    "example": "Tony runs `happy-eval scorecard` after a deploy and reads a ten-line pass or fail table before texting the family that something new is on.",
+    "how": "The shipped pack is out of reach: it needs an OpenClaw source checkout and `OPENCLAW_ENABLE_PRIVATE_QA_CLI=1`, drives the synthetic qa-channel with a mock model, and the Homebrew npm install has no qa directory. Build instead: write the ten scenario themes as promptfoo cases in happy-config/evals against the `<p>-main-eval` clones through promptfoo's `openclaw` provider (the roadmap E0 harness), with fixtures standing in for reminders and approvals, and store the pass rate next to the smoke results. Operator tooling only.",
+    "who": "operator",
+    "risk": "low",
+    "readiness": "build",
+    "depends_on": [
+      "roadmap E0 eval harness (exists)",
+      "F007 and F041, so the reminder and memory cases have something to test"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "The upstream pack with a mock model measures the plumbing; a promptfoo port measures the real model and costs tokens on every run.",
+      "Ten cases is a regression tripwire, not a benchmark. Anthropic's guidance is to start from 20 to 50 tasks drawn from real failures and to read the transcripts, not only the scores.",
+      "Eval clones must keep messaging tools denied, or a reminder test texts the family.",
+      "The docs say not to point the upstream pack at live chat services or real accounts."
+    ],
+    "safety": "Runs only against eval clones with fake users and fake secrets; no live channel, no real memory, no accounts.",
+    "unverified": [
+      "That the scenario YAML files are readable in the upstream repository at the 2026.9.7 tag (not fetched).",
+      "How promptfoo's tool-trajectory assertions behave against 2026.9.7 (an open item in the roadmap)."
+    ],
+    "overlaps_existing": [
+      "G006"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:18",
+        "title": "Personal agent benchmark pack: scenarios",
+        "anchor": "Ten scenarios",
+        "supports": "The pack is ten small scenario files for personal-assistant behaviours."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:37",
+        "title": "Personal agent benchmark pack: running",
+        "anchor": "source checkout",
+        "supports": "Running it needs the OpenClaw repository checked out, because the runner is a workspace script and not the published CLI."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:39",
+        "title": "Personal agent benchmark pack: running",
+        "anchor": "OPENCLAW_ENABLE_PRIVATE_QA_CLI=1",
+        "supports": "The QA command group is private and exposed only by an environment switch."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:53",
+        "title": "Personal agent benchmark pack: running",
+        "anchor": "live chat services",
+        "supports": "The pack must not be aimed at live chat services or real personal accounts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:30",
+        "title": "Personal agent benchmark pack: scenarios",
+        "anchor": "personal-no-fake-progress",
+        "supports": "One scenario checks that completion is claimed only with evidence."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/personal-agent-benchmark-pack.md:27",
+        "title": "Personal agent benchmark pack: scenarios",
+        "anchor": "personal-approval-denial-stop",
+        "supports": "One scenario checks that the agent stops after an approval is denied."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.promptfoo.dev/docs/providers/openclaw/",
+        "title": "OpenClaw | Promptfoo",
+        "anchor": "openclaw:agent",
+        "supports": "promptfoo ships a provider that drives an OpenClaw gateway over its chat, responses, agent and tool-invoke interfaces."
+      },
+      {
+        "kind": "web",
+        "ref": "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents",
+        "title": "Demystifying evals for AI agents (Anthropic)",
+        "anchor": "20-50 simple tasks",
+        "supports": "A few dozen tasks taken from real failures are enough to start an agent eval suite, and transcripts should be read alongside scores."
+      }
+    ]
+  },
+  {
+    "id": "AUT-10",
+    "name": "Family task board and visual dashboards (Workboard, show_widget): not on iMessage",
+    "tier": 1,
+    "cluster": "boards and dashboards",
+    "description": "OpenClaw ships a Kanban board and agent-drawn widgets, but both live in the Control UI and neither can appear in an iMessage thread. For chores and shared to-dos the family's phones already do this better. Verdict: do not build a family board on Workboard; an operator-only backlog of Happy build tasks is its only sensible use here.",
+    "example": "\"Show me the chore board.\" Happy should answer from the shared Reminders list (F030), not from Workboard.",
+    "how": "Workboard: `openclaw plugins enable workboard` adds a Control UI tab, `workboard_*` agent tools and `/workboard` chat commands, with cards in one gateway-wide plugin database. show_widget: offered only to clients that declare `inline-widgets` (Control UI, native apps) or to a channel presenter (Discord). Leave Workboard disabled and allow neither on any family agent. The family path stays F030 (a shared Apple Reminders list) with F039 on top.",
+    "who": "operator",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "none"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "Workboard exists to queue agent work: card buttons start agent runs, the OpenAI button uses a stock catalog model id rather than Happy's per-person no-retention providers, and one dispatch pass starts up to 3 workers.",
+      "Its templates are bugfix, docs, release, pr_review and plugin.",
+      "Creating, moving and dispatching cards from chat is owner-only.",
+      "The board is one gateway-wide store, so both parents' agents would share a surface that sits outside the family registry.",
+      "Nobody but the operator can look at it: opening the Control UI means holding operator access.",
+      "A shared Reminders list already lets everyone add, complete and assign items, with each person's own notifications."
+    ],
+    "safety": "Enabling Workboard would hand a memory-holding agent tools whose purpose is to launch sub-agent workers. Keep it off for family agents. If Tony wants a build backlog, use it from the Control UI only.",
+    "unverified": [
+      "Whether `workboard_*` tools would even be constructed for sandboxed agents on the minimal profile.",
+      "Whether the OpenClaw iOS app, which does declare inline widgets, could be a second surface for the parents (another lens covers nodes and apps)."
+    ],
+    "overlaps_existing": [
+      "F030",
+      "F039",
+      "F031",
+      "G020"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:14",
+        "title": "Workboard plugin",
+        "anchor": "intentionally small",
+        "supports": "Workboard tracks local operating work for one gateway and is deliberately limited."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:20",
+        "title": "Workboard plugin: enable it",
+        "anchor": "bundled but disabled by default",
+        "supports": "The plugin ships with OpenClaw but is off until enabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:147",
+        "title": "Workboard plugin: starting work from a card",
+        "anchor": "openai/gpt-6-astra",
+        "supports": "A card's OpenAI run button uses a fixed catalog model id."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:260",
+        "title": "Workboard plugin: worker selection",
+        "anchor": "at most 3 workers by default",
+        "supports": "A dispatch pass starts up to three worker runs."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:326",
+        "title": "Workboard plugin: CLI and slash command",
+        "anchor": "require owner status on chat surfaces",
+        "supports": "Changing the board from chat is limited to owners."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/workboard.md:393",
+        "title": "Workboard plugin: templates",
+        "anchor": "pr_review",
+        "supports": "The built-in card templates are all software-development shapes."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/show-widget.md:42",
+        "title": "Show widget: how widgets work",
+        "anchor": "do not receive the tool",
+        "supports": "Channel runs without an inline-widget client or a matching presenter are not offered the widget tool."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/105124",
+        "title": "Share and assign reminders on your iPhone or iPad - Apple Support",
+        "anchor": "Share and assign reminders",
+        "supports": "People on a shared Reminders list can add, complete and delete items, and items can be assigned to a person."
+      }
+    ]
+  },
+  {
+    "id": "AUT-11",
+    "name": "Model-written code and large fan-out (Code Mode, Swarm, remote code execution): keep off",
+    "tier": 3,
+    "cluster": "code and fan-out",
+    "description": "Three platform features let the model write and run code or launch dozens of sub-agents at once. None earns a place in a family agent: two are already switched off in Happy's config and the third needs a cloud provider Happy does not use.",
+    "example": "\"Research 30 summer camps at once and make me a spreadsheet.\" Happy does three to five with ordinary background research and says so.",
+    "how": "Keep `tools.codeMode: false` and `tools.swarm: false` (both already set in happy-config) and leave `plugins.entries.xai.config.codeExecution` unset. For side-by-side comparisons, <p>-main starts a handful of ordinary `research` children with `sessions_spawn`: `maxSpawnDepth: 1` is already set, `maxChildrenPerAgent` defaults to 5, and `agents.defaults.subagents.maxConcurrent` can drop from its default of 8 to 3.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "F019 research agent (for the ordinary sub-agent alternative)"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "Code Mode is documented as experimental. Its default executor is Node's vm module, which the docs say is not a security boundary and which shares the gateway process's privileges.",
+      "If the Code Mode key is ever absent the default is automatic activation for preferred models, so the explicit false must survive every config refactor and upgrade.",
+      "Swarm is on by default with limits sized for engineering teams (32 children at once, up to 200 per group) and is meant for five or more similar children; each child is a paid model stream.",
+      "Swarm's script interface only exists with Code Mode on.",
+      "`code_execution` runs Python on xAI's servers at 5 dollars per 1,000 calls plus tokens and needs an xAI key: a second cloud provider outside the per-person no-retention setup, for arithmetic the model can already do.",
+      "Sub-agent caps apply per spawning session, not across the whole gateway."
+    ],
+    "safety": "Model-written JavaScript in the gateway process runs outside the Colima sandbox, beside the secret resolver and every agent's state; an injected page would become code. Off is a limit the model cannot talk past. Low fan-out caps bound cost and keep each research child reviewable.",
+    "unverified": [
+      "Whether trigger scripts and script payloads, which the docs say use the same executor, still run with `tools.codeMode: false`; this matters for F029."
+    ],
+    "overlaps_existing": [
+      "G014",
+      "F019",
+      "F029"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/tools/code-mode.md:12",
+        "title": "Code Mode",
+        "anchor": "experimental OpenClaw agent-runtime feature",
+        "supports": "Code Mode is labelled experimental."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/code-mode.md:21",
+        "title": "Code Mode",
+        "anchor": "is absent, OpenClaw uses the",
+        "supports": "With no setting, Code Mode engages automatically for models marked as preferred."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/code-mode/executors.md:26",
+        "title": "Code Mode executors",
+        "anchor": "not a security boundary",
+        "supports": "The default Node executor shares the gateway's operating-system privileges and is not an isolation boundary."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/swarm.md:13",
+        "title": "Swarm",
+        "anchor": "enabled by default",
+        "supports": "Swarm is on unless explicitly opted out."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/swarm.md:24",
+        "title": "Swarm: when to use",
+        "anchor": "about five or more",
+        "supports": "Swarm is reserved for large parallel fan-out; one or a few children should use ordinary spawns."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/swarm.md:73",
+        "title": "Swarm: limits",
+        "anchor": "`maxConcurrent`",
+        "supports": "The default allows 32 collector children to run at once in a group."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/swarm.md:75",
+        "title": "Swarm: limits",
+        "anchor": "`maxTotalPerGroup`",
+        "supports": "A group may spawn up to 200 children over its lifetime by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/code-execution.md:15",
+        "title": "Code execution",
+        "anchor": "$5 per 1,000 tool calls",
+        "supports": "The remote Python tool runs on xAI's servers and is billed per call plus tokens."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/experimental-features.md:26",
+        "title": "Experimental features: documented flags",
+        "anchor": "tools.codeMode.enabled",
+        "supports": "Code Mode is listed among the preview features controlled by a flag."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/nesting.md:23",
+        "title": "Nested sub-agents",
+        "anchor": "maxChildrenPerAgent: 5",
+        "supports": "An agent session may have five active children by default."
+      }
+    ]
+  },
+  {
+    "id": "AUT-12",
+    "name": "Ambient heartbeat monitor: keep off",
+    "tier": 3,
+    "cluster": "scheduled autonomy",
+    "description": "Heartbeat wakes each agent's main session every 30 minutes so the model can \"notice things\". Happy has it disabled. Keep it that way and express every recurring need as its own named job.",
+    "example": "\"Can Happy just keep an eye on things and ping me if something is up?\" The honest answer is a list of named watchers (weather F018, school mail F055), not a heartbeat.",
+    "how": "`agents.defaults.heartbeat.every: \"0m\"` (already set). If it is ever trialled: one agent only, with `isolatedSession: true`, `lightContext: true`, `activeHours`, and `target: \"none\"`, and a short checklist in the monitor scratch.",
+    "who": "operator",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "none"
+    ],
+    "value": 1,
+    "effort": "S",
+    "caveats": [
+      "The default interval is 30 minutes: up to 48 cloud turns per agent per day, in the main session with its conversation history unless an isolated session is forced.",
+      "Alerts go to the owner's direct message by default, so a heartbeat on jordan-main would report to Tony's thread.",
+      "With an empty checklist it has nothing to check, and the tools it would need (calendar, mail) are deliberately not on <p>-main.",
+      "Setting 0m stops only the recurring cadence; event-driven wakes still exist, which is harmless here because exec is denied.",
+      "The older feature that inferred follow-ups from conversation and delivered them through heartbeat was removed in v2026.8.1, so heartbeat no longer notices promises by itself."
+    ],
+    "safety": "Unattended main-session turns on a memory-holding agent, with a default recipient who may be a different person, cut across the one-domain-per-person rule. Named jobs with explicit owners, tool caps and recipients do the same work inside the rules.",
+    "unverified": [],
+    "overlaps_existing": [
+      "F013",
+      "F014",
+      "F015",
+      "F018",
+      "F055"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/heartbeat.md:15",
+        "title": "Heartbeat",
+        "anchor": "periodic agent turns",
+        "supports": "Heartbeat runs recurring agent turns in the main session."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/heartbeat.md:96",
+        "title": "Heartbeat: defaults",
+        "anchor": "Interval: `30m`",
+        "supports": "The default cadence is thirty minutes and zero disables it."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/heartbeat.md:97",
+        "title": "Heartbeat: defaults",
+        "anchor": "Delivery target: `owner`",
+        "supports": "By default heartbeat output goes to the first configured owner's direct message."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/heartbeat.md:25",
+        "title": "Heartbeat",
+        "anchor": "disables only the recurring cadence",
+        "supports": "A zero interval stops scheduled polls but leaves event-driven wakes available."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/heartbeat.md:537",
+        "title": "Heartbeat: cost notes",
+        "anchor": "isolatedSession: true",
+        "supports": "Without an isolated session each heartbeat resends the full conversation history."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/index.md:103",
+        "title": "Automation: heartbeat",
+        "anchor": "every 30 minutes by default",
+        "supports": "Heartbeat is a system-owned monitor that runs a main-session turn on a half-hour default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/automation/index.md:120",
+        "title": "Automation: retired inferred commitments",
+        "anchor": "inferred commitments experiment was removed",
+        "supports": "OpenClaw no longer extracts follow-ups from conversations or delivers them through heartbeat."
+      }
+    ]
+  },
+  {
+    "id": "AUT-13",
+    "name": "Nightly dreaming (automatic memory consolidation): keep off, promote by hand",
+    "tier": 3,
+    "cluster": "memory autonomy",
+    "description": "Dreaming would sweep every agent's recent conversations at 03:00 and promote the strongest snippets into MEMORY.md using a model call. It is gateway-wide, so it cannot be on for Tony and off for Jordan. Keep it off and use the manual preview command inside the weekly review.",
+    "example": "Once a week Tony runs the promote preview for each adult's agent and applies only what that adult agrees to keep (F085).",
+    "how": "`plugins.entries.memory-core.config.dreaming.enabled: false` (already set). Manual path from the operator account: `openclaw memory promote` to preview, `openclaw memory promote-explain` for one candidate, then `--apply`. Gateway-wide setting; the memory belongs to each <p>-main.",
+    "who": "operator",
+    "risk": "medium",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "F041 (there must be memory worth promoting)",
+      "F085 weekly review"
+    ],
+    "value": 2,
+    "effort": "S",
+    "caveats": [
+      "Dreaming is on by default in OpenClaw, so the explicit false has to survive every upgrade and config refactor.",
+      "One managed job sweeps all agent workspaces. Choosing the system agent picks who runs it and does not limit whose memory is swept.",
+      "Promotion rewrites MEMORY.md with nobody looking first; the dream diary that explains it is readable only in the Control UI.",
+      "The built-in guards are real (candidates with untrusted or system provenance are dropped, and only interactive sessions are ingested), but assistant text that quotes a search result is still conversation text.",
+      "It does nothing useful until the F041 memory path exists."
+    ],
+    "safety": "As documented, the sweep crosses the one-data-domain-per-person line: one job, one execution owner, every workspace. Automatic memory writes from sessions that included untrusted search content also remove the human gate the catalog's memory-write hook is there to keep. Manual promotion keeps that gate.",
+    "unverified": [
+      "Which model key and auth profile each workspace's consolidation call uses in a multi-agent fleet.",
+      "Whether `openclaw memory promote` takes an agent selector on 2026.9.7."
+    ],
+    "overlaps_existing": [
+      "F085",
+      "F041"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:14",
+        "title": "Dreaming",
+        "anchor": "Dreaming is enabled by default",
+        "supports": "Background consolidation runs unless it is explicitly disabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:178",
+        "title": "Dreaming: scheduling",
+        "anchor": "one cron job",
+        "supports": "A single managed job performs the full sweep across the primary and all configured agent workspaces."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:210",
+        "title": "Dreaming: scheduling",
+        "anchor": "limit the sweep to that",
+        "supports": "Selecting the system agent chooses the execution owner and does not restrict the sweep to that agent's memory."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:98",
+        "title": "Dreaming: consolidation safety",
+        "anchor": "structural",
+        "supports": "Candidates whose provenance is untrusted or system are removed before consolidation."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:88",
+        "title": "Dreaming: session transcript ingestion",
+        "anchor": "Only interactive sessions are eligible",
+        "supports": "Cron, heartbeat and sub-agent sessions are kept out of the candidate pool."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/dreaming.md:274",
+        "title": "Dreaming: CLI workflow",
+        "anchor": "openclaw memory promote",
+        "supports": "Promotion can be previewed and applied by hand from the CLI."
+      }
+    ]
+  },
+  {
+    "id": "AUT-14",
+    "name": "Deep recall of earlier conversations (Active Memory)",
+    "tier": 1,
+    "cluster": "memory autonomy",
+    "description": "When a parent asks about something from an earlier day, a short blocking recall step searches that same agent's own past private conversations and gives the answer a small summary to work from. It earns its keep on this stack because the conversation resets every morning.",
+    "example": "What did we decide about the summer camp deposit last week?",
+    "how": "Per agent: `agents.entries.<p>-main.memory.search.rememberAcrossConversations: true` with the active-memory plugin enabled in its default `escalate` mode, which runs the recall sub-agent only when the message asks about the past and the cheap deterministic lookup found nothing strong. Direct chats only, same agent only. Held by each <p>-main; never on research, the readers, or inbox.",
+    "who": "adult",
+    "risk": "medium",
+    "readiness": "build",
+    "depends_on": [
+      "F041 memory path and memory tools on <p>-main",
+      "a check that the keyword-only memory provider supports transcript recall",
+      "decision: index session transcripts or not"
+    ],
+    "value": 3,
+    "effort": "M",
+    "caveats": [
+      "It defaults to off on Happy because per-sender DM isolation is configured; it must be set explicitly per agent.",
+      "It adds a blocking model call to the replies it runs on: slower answers and extra cost.",
+      "It does not run for scheduled jobs, heartbeat or sub-agents, so the briefs get nothing from it.",
+      "Recalled excerpts come from transcripts that include search-tool output, and hidden personalization can surprise (\"how did it know that\").",
+      "A cheaper first step is already in the catalog: the session-memory hook plus memory search from F041. Try that before this."
+    ],
+    "safety": "Recall stays inside one agent, which is one person: another agent's transcripts are never eligible and groups are excluded. The recall sub-agent can call only memory recall tools and nothing leaves the gateway beyond the model call the agent already makes. Treat recalled text as possibly tainted by earlier search results and keep the F041 rule that tainted turns cannot write memory.",
+    "unverified": [
+      "Whether protected transcript recall works with `memory.search.provider: \"none\"` (keyword only, no embeddings).",
+      "Whether yesterday's pre-reset transcript of the same DM counts as another private conversation for recall.",
+      "The added latency and cost per recall on the models Happy uses."
+    ],
+    "overlaps_existing": [
+      "F041",
+      "F046",
+      "F085"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory.md:11",
+        "title": "Active memory",
+        "anchor": "blocking recall sub-agent",
+        "supports": "In the default mode the recall sub-agent runs only for questions about the past that the deterministic lane could not answer."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory/enabling.md:21",
+        "title": "Enabling active memory: remember across conversations",
+        "anchor": "rememberAcrossConversations: true",
+        "supports": "One per-agent setting turns on bounded recall across that agent's other private conversations."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory/enabling.md:32",
+        "title": "Enabling active memory: remember across conversations",
+        "anchor": "DM isolation defaults it off",
+        "supports": "The setting defaults to off whenever DM isolation is configured."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory/enabling.md:42",
+        "title": "Enabling active memory: privacy boundary",
+        "anchor": "another agent's transcripts are never eligible",
+        "supports": "Recall never reads a different agent's transcripts."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory/enabling.md:49",
+        "title": "Enabling active memory",
+        "anchor": "bounded blocking step",
+        "supports": "Retrieval adds a blocking step to eligible replies."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/concepts/active-memory/how-it-works.md:39",
+        "title": "How active memory works: surfaces",
+        "anchor": "Heartbeat/background runs",
+        "supports": "Background, heartbeat and sub-agent runs do not use active memory."
+      }
+    ]
+  },
+  {
+    "id": "AUT-15",
+    "name": "Screen journal (Logbook): not for a family",
+    "tier": 3,
+    "cluster": "device observation",
+    "description": "Logbook screenshots a paired Mac every 30 seconds and has a vision model write a timeline of what was on screen. It was built for a developer's own work log. Pointed at a family computer it is surveillance that ships screenshots to a cloud model.",
+    "example": "\"Can Happy tell me what the kids did on the Mac today?\" No. Use Screen Time.",
+    "how": "It would need a paired node exposing `screen.snapshot` or `logbook.snapshot` (none is paired), the Codex plugin signed in with an OpenAI login, and `plugins.entries.logbook` enabled. Leave the plugin disabled, and if a node is ever paired for another feature, put `screen.snapshot` in `gateway.nodes.commands.deny`.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "not-recommended",
+    "depends_on": [
+      "a paired node (none today)"
+    ],
+    "value": 1,
+    "effort": "M",
+    "caveats": [
+      "Enabling the plugin starts capturing at once, because capture defaults to on.",
+      "Sampled screenshots go to the configured vision model. That route needs the Codex plugin's own OpenAI sign-in, a different auth path from Happy's per-person no-retention providers.",
+      "The docs say plainly that snapshots can contain anything on screen, including secrets.",
+      "A child's screen sent to a cloud model is on the never list.",
+      "Apple's Screen Time already gives parents usage reports, app limits and schedules without screenshots.",
+      "The Mac mini's own desktop under the happy user has nothing worth journaling."
+    ],
+    "safety": "Private screen content to a cloud model with no content gate, and children's content to a provider whose terms exclude them. It cannot be made to fit the rules.",
+    "unverified": [],
+    "overlaps_existing": [
+      "F079"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:22",
+        "title": "Logbook plugin",
+        "anchor": "bundled and disabled by default",
+        "supports": "Logbook ships with OpenClaw but is off until enabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:23",
+        "title": "Logbook plugin",
+        "anchor": "Gateway into screen capture",
+        "supports": "Turning the plugin on opts the gateway into capturing, since capture defaults to enabled."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:17",
+        "title": "Logbook plugin",
+        "anchor": "not necessarily local",
+        "supports": "Screenshots and derived text are processed by the configured models, which may be remote."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:92",
+        "title": "Logbook plugin: how it works",
+        "anchor": "default 30s",
+        "supports": "A frame is captured from the selected node every thirty seconds by default."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:33",
+        "title": "Logbook plugin: before you begin",
+        "anchor": "bundled Codex plugin enabled",
+        "supports": "The feature requires the Codex plugin to be enabled and authenticated."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:225",
+        "title": "Logbook plugin: privacy notes",
+        "anchor": "including secrets",
+        "supports": "Snapshots can contain anything visible on screen."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/logbook.md:235",
+        "title": "Logbook plugin: privacy notes",
+        "anchor": "gateway.nodes.commands.deny",
+        "supports": "Denying the snapshot node command is the kill switch for screen capture."
+      },
+      {
+        "kind": "web",
+        "ref": "https://support.apple.com/en-us/108806",
+        "title": "Use Screen Time to manage your child's iPhone or iPad - Apple Support",
+        "anchor": "Screen Time",
+        "supports": "Apple's built-in parental controls show a child's device use and set app limits and schedules."
+      }
+    ]
+  },
+  {
+    "id": "AUT-16",
+    "name": "Developer, team and enterprise platform features (cloud workers, ACP harnesses, Session Share, Team Reports, Vault): skip",
+    "tier": 3,
+    "cluster": "off-host and team",
+    "description": "Cloud workers, session hosting on other machines, external coding harnesses, Session Share, Team Reports and HashiCorp Vault are built for development teams. None fits a one-Mac family agent, and two are blocked outright by Happy's own rules.",
+    "example": "\"Could Happy rent a cloud machine for a big job?\" or \"Can Jordan see my Happy chats?\" No to both.",
+    "how": "Leave `cloudWorkers.profiles` empty, do not install the acpx or team-reports packages, and do not enable `session-share` or `vault`. Secrets stay on the Keychain exec SecretRef chosen in M0. The 1Password plugin is the only item worth a second look, and only if the family already pays for 1Password and Tony wants to retire the Keychain script.",
+    "who": "operator",
+    "risk": "high",
+    "readiness": "blocked",
+    "depends_on": [
+      "none"
+    ],
+    "value": 1,
+    "effort": "L",
+    "caveats": [
+      "Cloud workers: the rented machine dials the gateway's public TLS endpoint and dispatch refuses loopback addresses, so they need exactly the public exposure the Tailscale-only rule forbids. They exist to move coding work off the host.",
+      "ACP: runs Claude Code, Codex, Gemini CLI and similar harnesses. It is hidden while the requester is sandboxed, which every Happy agent is, and the roadmap forbids the happy user from signing in to Claude Code.",
+      "Session Share: read-only sharing of sessions between two gateways for teammates. Happy has one gateway, and showing one parent's transcripts to the other contradicts one data domain per person.",
+      "Team Reports: GitHub organization activity and Discord discussion. Not a family thing.",
+      "Vault: needs a reachable HashiCorp Vault server; overkill for a handful of keys.",
+      "1Password: the plugin needs a service account and the op CLI on the host; the browser sign-in flow needs a person at the Mac plus Claude Code with Chrome; and the bundled 1password skill lets an agent read secrets, which must never be on a family agent."
+    ],
+    "safety": "Each item would add a public endpoint, a second trust domain, a coding harness with host access, or a secret-reading tool. All are ruled out by the roadmap; these are not features to harden, they are features to leave uninstalled.",
+    "unverified": [
+      "1Password service-account plan requirements and pricing (the vendor page redirected and was not fetched)."
+    ],
+    "overlaps_existing": [
+      "F087"
+    ],
+    "sources": [
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/cloud-workers.md:59",
+        "title": "Cloud Workers: what runs where",
+        "anchor": "public TLS endpoint",
+        "supports": "A cloud worker connects outbound to the gateway's public TLS address."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/cloud-workers.md:67",
+        "title": "Cloud Workers: what runs where",
+        "anchor": "Cloud dispatch refuses loopback",
+        "supports": "Dispatch is refused when the gateway address is loopback, link-local or unspecified."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/cloud-sessions.md:10",
+        "title": "Cloud Sessions",
+        "anchor": "coding work runs on another",
+        "supports": "A cloud session is an ordinary session whose coding work executes on a different machine."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/acp-agents.md:15",
+        "title": "ACP agents",
+        "anchor": "external coding harnesses",
+        "supports": "ACP sessions run outside coding tools such as Claude Code through a backend plugin."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/tools/subagents/slash-command.md:128",
+        "title": "Sub-agent slash command: modes and ACP runtime",
+        "anchor": "the requester is not sandboxed",
+        "supports": "The ACP runtime stays hidden unless ACP is enabled, a backend is loaded and the requester runs unsandboxed."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/session-share.md:10",
+        "title": "Session Share plugin",
+        "anchor": "another OpenClaw Gateway",
+        "supports": "Session Share lets teammates read selected sessions from a second gateway."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/team-reports.md:10",
+        "title": "Team Reports plugin",
+        "anchor": "GitHub organization activity",
+        "supports": "Team Reports builds periodic reports from GitHub organization activity and optional Discord discussion."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/plugins/vault.md:13",
+        "title": "Vault SecretRefs",
+        "anchor": "HashiCorp Vault",
+        "supports": "The Vault plugin resolves secret references from a HashiCorp Vault server."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/1password.md:22",
+        "title": "1Password: requirements",
+        "anchor": "1Password service account",
+        "supports": "The unattended plugin path needs a 1Password service account."
+      },
+      {
+        "kind": "installed",
+        "ref": "docs/gateway/1password.md:109",
+        "title": "1Password: browser sign-in",
+        "anchor": "A person at the gateway host",
+        "supports": "The browser sign-in flow needs someone at the host to confirm each credential use."
+      }
+    ]
+  }
+]

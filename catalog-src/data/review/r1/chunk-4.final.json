@@ -1,0 +1,575 @@
+[
+ {
+  "id": "CRT-01",
+  "verdict": "edit",
+  "reason": "Kept: an easy way to take back something the assistant got wrong is standard advice for assistants that act for people. The example was really a correction, which a second write already handles, so it is replaced with the case where undo matters: a household fact Happy overwrote.",
+  "who_trigger_result": "Either parent / texts 'undo that' within a day of one of Happy's own writes / Happy shows what it will reverse and, after a yes, restores the old value or deletes the item it created.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.microsoft.com/en-us/haxtoolkit/guideline/support-efficient-correction/",
+   "title": "Support efficient correction - Microsoft HAX Toolkit (Guideline 9)",
+   "anchor": "Support efficient correction",
+   "supports": "Microsoft's guidelines for human-AI interaction tell designers to make it easy to edit, refine or recover when the AI system is wrong, and list undoing automated actions as one pattern for doing so."
+  },
+  "edits": {
+   "description": "A parent can say 'undo that' after Happy adds the wrong reminder, list item or calendar entry, or overwrites a household fact, and Happy reverses its own last write after showing what it will reverse. It covers only Happy's own writes from the last 24 hours; anything already sent (a text, an email, a print job) cannot be recalled.",
+   "example": "Tony texts 'undo that' after Happy replaced the furnace filter size in the household facts with the wrong one. Happy shows the old value, waits for a yes and restores it."
+  },
+  "merge_hints": [
+   "G006"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict upheld; the Microsoft guideline was opened and it names undoing automated actions as a pattern, so the source note now says so."
+ },
+ {
+  "id": "AUT-09",
+  "verdict": "edit",
+  "reason": "Kept as operator tooling, but the promised ten-line table overclaimed: about half of the ten themes have nothing to test on Happy yet. It is reworded as a handful of extra cases in the eval suite Tony already runs, and the effort drops to small.",
+  "who_trigger_result": "Tony (operator) / runs the eval suite after a deploy or config change / a pass or fail line per behaviour before he tells the family something new is on.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/concepts/personal-agent-benchmark-pack.md:18",
+   "title": "Personal agent benchmark pack: scenarios",
+   "anchor": "Ten scenarios",
+   "supports": "OpenClaw itself publishes ten small checks of personal-assistant behaviour (reminder round trip, preference recall, no secret echo, stopping after a denial, no fake progress, honest failure reports), which is the list this entry ports to the family's own eval suite."
+  },
+  "edits": {
+   "name": "Personal-agent behaviour checks in the eval suite (Happy scorecard)",
+   "description": "A few fixed test cases, added to the existing eval suite, that check Happy on the behaviours OpenClaw's own personal-agent pack checks. Four apply today: no secret echo, no fake \"done\", honest partial-failure reports, and keeping pending apart from done. Reminder round trip, preference recall and stopping after a denied approval are added as those tools land. They run against the eval clones after each change. The shipped pack itself cannot run on this install.",
+   "example": "Tony runs the eval suite after a deploy and reads the pass or fail lines for these cases before texting the family that something new is on.",
+   "effort": "S"
+  },
+  "merge_hints": [],
+  "overturned": false
+ },
+ {
+  "id": "F014",
+  "verdict": "edit",
+  "reason": "Kept as the one entry for Happy's scheduled calendar-and-weather texts. The weekday morning brief (F013) and the Sunday week-ahead (F015) are the same job on other schedules, built in the same piece of work, so they are folded in here and the effort rises from small to medium.",
+  "who_trigger_result": "Each parent / scheduled jobs at 19:30 Sunday to Thursday, 18:00 on Sunday and, optionally, 07:00 on weekdays / one short text with the next day's or week's events, who drives, what to pack and the weather, or silence when the day is unremarkable.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://support.google.com/gemini/answer/16316416",
+   "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+   "anchor": "Daily digests of your calendar",
+   "supports": "Google ships scheduled daily digests of a person's calendar and to-do list to prepare for the day ahead, the same kind of recurring logistics text."
+  },
+  "edits": {
+   "name": "Family logistics briefs: evening (19:30), Sunday week-ahead (18:00), weekday morning (07:00)",
+   "description": "Each parent gets short scheduled texts built from the family calendar and the weather. Sunday to Thursday at 19:30: tomorrow's events, who drives, what to pack and the weather, and nothing when the day is unremarkable. Sunday at 18:00: the week ahead, with early releases, activities, drivers, packing, the weather outlook and open school deadlines. Optionally, weekdays at 07:00: weather and alerts, today's calendar, items due and trash day. Mail stays in its own digests (F056, F016).",
+   "example": "Sunday to Thursday at 19:30 each parent gets one text: tomorrow's two events and who drives each, 'pack shin guards', and rain after 3.",
+   "how": "One isolated job per parent per brief on <p>-main, all from one template: tools `home_weather` plus the read-only calendar MCP (`<p>-calendar__*`), no web tools, no `--light-context`, `--tz` set, `--announce --to imessage:<owner>`. Schedules: evening `--cron \"30 19 * * 0-4\"`, week-ahead `--cron \"0 18 * * 0\"`, morning `--cron \"0 7 * * 1-5\"`. The routines and gear table lives in AGENTS.md; a run replies `NO_REPLY` to stay silent. The week-ahead and morning legs also read the household store (F031) for items due, trash day and open school deadlines. Email-derived dates for the week-ahead come from a separate <p>-mail job using `llm-task`, never the same run. Build the evening brief first; the morning brief is the optional one.",
+   "depends_on": [
+    "F009 family calendar read-only",
+    "home_weather plugin (exists)",
+    "F031 household store for items due, trash day and open school deadlines (week-ahead and morning legs only)"
+   ],
+   "effort": "M",
+   "unverified": [
+    "The 'tight gaps' line: gog's MCP page lists a single Calendar tool (list events), so overlaps and gaps must be worked out by the model or a custom wrapper; no conflict tool was found.",
+    "The [T]/[S] driver tag is a family habit the brief depends on, not a product feature; no source can vouch that both adults will keep it up.",
+    "gog is not installed, so its flags were checked only against its website, not a binary.",
+    "How many days the NWS gridpoint forecast covers was not read on the opened page.",
+    "The deadlines input (home-store rows or a sheet) does not exist yet; its shape is a design choice, not a sourced fact.",
+    "The catalog passes `home-store__*` in `--tools`; the installed docs document the `<server>__<tool>` prefix only for MCP servers, and home-store is planned as a native plugin, so that glob is untested.",
+    "That the NWS forecast endpoints carry no sunrise or sunset field: the opened documentation page does not list one, absence was not proven.",
+    "The weather plugin's current fields (12-hour periods, alerts without id, no sunset) were read in ~/src/happy-config/plugins/home-weather/nws.js, which is not one of the two citable source kinds."
+   ],
+   "caveats": [
+    "On Sundays the 18:00 week-ahead and the 19:30 evening brief would both arrive within ninety minutes. Either let the Sunday week-ahead carry Monday's detail and run the evening brief Monday to Thursday only (`1-4`), or accept two texts.",
+    "The morning leg is the optional one: it needs the household store (F031) for items due and trash day, and the weather plugin returns no sunset, so a sunset line, if wanted, needs a small local calculation."
+   ]
+  },
+  "merge_hints": [
+   "F013",
+   "F015",
+   "F009",
+   "G001",
+   "G003"
+  ],
+  "overturned": false,
+  "challenge_note": "Merge upheld; added the caveat the merge itself creates, that the Sunday week-ahead and the Sunday evening brief would both fire on the same evening."
+ },
+ {
+  "id": "F013",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "This is the same job as the evening brief on a different schedule: the same calendar and weather, the same tools, built in the same piece of work. It becomes the optional 07:00 schedule of the combined briefs entry (F014).",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://www.cozi.com/blog/keep-family-date-daily-agenda-emails/",
+    "title": "Keep the Family Up to Date with Daily Agenda Emails | Cozi Family Organizer",
+    "anchor": "Daily Agenda emails",
+    "supports": "Cozi sends family members a morning email of the day's calendar events and offers the weekly agenda as a second setting of the same feature, which is how the combined briefs entry now treats them."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/cli/cron.md:36",
+    "title": "CLI reference: automations (cron)",
+    "anchor": "openclaw automations create",
+    "supports": "Each brief is one scheduled agent job created from a cron line, so the morning, evening and Sunday briefs differ only in schedule and prompt."
+   }
+  ],
+  "fold_into": "F014",
+  "fold_note": "F014's edit in this review already carries the 07:00 weekday schedule and its content as the optional leg. Still to move across: F013's sources, and the two notes it absorbed earlier (an optional pollen line from Google's Pollen API; keyless government inputs for sunrise and sunset, federal holidays and UV index). The weather plugin returns no sunset, so that line needs the small local calculation.",
+  "merge_hints": [
+   "F014",
+   "F015",
+   "F016"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F015",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "This is the same job as the evening brief with a Sunday schedule and a seven-day window: the same calendar and weather, the same tools, built in the same piece of work. It becomes the Sunday 18:00 schedule of the combined briefs entry (F014).",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://www.cozi.com/blog/wish-you-had-instant-way-tell-everyone-familys-weekly-plan/",
+    "title": "Wish You Had an Instant Way To Tell Everyone the Family’s Weekly Plan? (Cozi blog)",
+    "anchor": "goes out on Sundays",
+    "supports": "Cozi's weekly agenda email goes to chosen family members on Sundays with the week's events, a second schedule of the same agenda feature as its daily email."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/schedules.md:26",
+    "title": "Automation schedules",
+    "anchor": "--tz America/New_York",
+    "supports": "A brief's schedule is one cron expression in a named time zone, so the Sunday week-ahead is the evening brief's job with a different line."
+   }
+  ],
+  "fold_into": "F014",
+  "fold_note": "F014's edit in this review already carries the Sunday 18:00 schedule, its content and the rule that email-derived dates come from a separate mail job. Still to move across: F015's sources.",
+  "merge_hints": [
+   "F014",
+   "F013"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F016",
+  "verdict": "edit",
+  "reason": "Kept: a morning mail digest for each adult is the roadmap's own M4 milestone, and a daily inbox triage is OpenClaw's own worked example of a scheduled job. The 'reply drafts' part is taken out: the roadmap calls drafts optional, Gmail now writes replies for free, and leaving them out keeps a write tool out of an unattended job.",
+  "who_trigger_result": "Each adult / a 07:00 scheduled job on that adult's own mail agent / a text of about ten lines listing mail that needs a reply, has a deadline or involves money.",
+  "demand_source": {
+   "kind": "installed",
+   "ref": "docs/automation/standing-orders.md:67",
+   "title": "Standing orders: standing orders plus automations",
+   "anchor": "daily inbox triage",
+   "supports": "OpenClaw's own worked example of a scheduled job is a daily inbox triage that categorises mail and reports a summary to the owner."
+  },
+  "edits": {
+   "name": "07:00 morning email digest with action items (M4)",
+   "description": "Each adult gets a 07:00 text of about ten lines listing mail in their own inbox that needs a reply, has a deadline or involves money. The job only reads and reports; it writes no drafts.",
+   "how": "Isolated job on tool-restricted <p>-mail, `--tools \"<p>-gmail__*,llm-task\"`; gog MCP is read-only by default; no web tools and no drafts server in this job.",
+   "caveats": [
+    "The roadmap's M4 keeps each inbox on a local model so that mail never leaves the Mac. There is no local model today, so this digest would send personal mail to the cloud model; whether that is acceptable under store:false is Tony's open decision, and the digest waits on it.",
+    "Google announced a Gmail 'AI Inbox' in January 2026, described as like a personalised briefing that highlights to-dos, for trusted testers first with wider release promised later. If it has reached the parents' accounts it covers much of this digest inside Gmail, so check before building.",
+    "Reply drafts are left out: the roadmap treats them as optional ('if ever added'), and Gmail's own conversation summaries, Help Me Write and Suggested Replies are free for all users."
+   ],
+   "unverified": [
+    "Whether personal mail may go to the cloud model under store:false is Tony's open decision; no source settles it.",
+    "A read-only scope flag on `gog auth add`: the opened gog pages name a runtime `--readonly` flag and a baked read-only build, not an auth-time scope flag.",
+    "Whether Gmail's AI Inbox is available on the parents' accounts in October 2026: Google's January 2026 announcement was read, and later press coverage tying it to paid Google AI plans was seen only in search results."
+   ]
+  },
+  "merge_hints": [
+   "G015",
+   "F047",
+   "F053",
+   "F048",
+   "F052"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict upheld; dropped the pointer to F053 because other reviews this round remove the drafts entries, and added the roadmap's own local-model rule for mail as a caveat."
+ },
+ {
+  "id": "MKT-04",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "The entry itself says to skip it if a parent uses Gemini or Google Alerts, and Gemini already does daily topic tracking for up to ten topics. The catalog had already dropped this kind of topic brief once, and its one example (a registration date opening) is the page watcher's job (F029).",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/gemini/answer/16316416",
+    "title": "Schedule actions in Gemini Apps - Gemini Apps Help",
+    "anchor": "10 active scheduled actions",
+    "supports": "Gemini already offers daily topic tracking and news digests as scheduled actions, up to ten at a time, with or without a paid Google AI plan."
+   }
+  ],
+  "merge_hints": [
+   "F029",
+   "OCL-10"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "OCL-03",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "The board lives in OpenClaw's Control UI, which the vendor calls an admin surface, so in practice only Tony could open it, and it cannot be shown in iMessage. The entry itself says the phones' calendar widgets and the evening and Sunday briefs already cover it; four earlier board entries (AUT-10, HOM-10, MKT-09, MAC-08) were removed for the same reasons.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/web/dashboard.md:31",
+    "title": "Dashboard (Control UI) access and auth",
+    "anchor": "admin surface",
+    "supports": "The vendor describes the Control UI, where the board would live, as an admin surface for chat, config and approvals, not a page to hand to the rest of the family."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/show-widget.md:42",
+    "title": "Show widget: availability",
+    "anchor": "do not receive the tool",
+    "supports": "Channel runs such as iMessage are not offered the widget tool, so the board can never be asked for or shown in the family's thread."
+   }
+  ],
+  "merge_hints": [
+   "F014",
+   "OCL-01"
+  ],
+  "overturned": false,
+  "challenge_note": "Removal upheld after opening both vendor pages; corrected the count of earlier board removals from three to four."
+ },
+ {
+  "id": "HOM-14",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "This is the Sunday fridge sheet that the printing entry (F080) already lists. The only thing it adds is a build detail: producing the sheet with a plain scheduled script and no model call.",
+  "evidence": [
+   {
+    "kind": "installed",
+    "ref": "docs/automation/cron-jobs/payloads.md:171",
+    "title": "Automation payloads: command payloads",
+    "anchor": "without starting a model-backed turn",
+    "supports": "A scheduled command can run a script with no model call; that is the one thing this entry adds, and it is a build choice for the fridge sheet F080 already includes."
+   }
+  ],
+  "fold_into": "F080",
+  "fold_note": "Carry over the no-model way to make the Sunday fridge sheet: a scheduled command job runs a reviewed script that renders one page from the household store and a shared family calendar and sends it with lp, one copy, with no model call and no chat message. Carry the two limits: first names and times only because guests read the fridge, and it cannot run before F031 and F009 exist.",
+  "merge_hints": [
+   "F080"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "F056",
+  "verdict": "edit",
+  "reason": "Kept as the centre of the school features. It now also carries the per-platform setup recipe (was SRC-08), Google Classroom guardian summaries as one more sender (was MKT-01) and the one backup rule left over from the urgent-alert relay (was F055), so the school mail work is one entry. Because the platform emails carry grades and attendance, its risk goes from low to medium.",
+  "who_trigger_result": "Both parents / a 16:00 weekday job reads the day's mail in the school mailbox / one five-line text of school and activity items with dates spelled out, plus a dated to-do list with day-before reminders offered.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://apps.apple.com/app/id6746368694",
+   "title": "Fambot: AI Family Assistant (App Store listing by Fambot Inc)",
+   "anchor": "reads the school emails",
+   "supports": "A shipping family assistant sells the same function: it reads school emails and newsletters and sends parents a daily digest of what to know, do and decide."
+  },
+  "edits": {
+   "name": "School and activities mail digest (weekdays 16:00): five-line summary, dated checklist, lunch-balance and school-platform lines",
+   "description": "Weekday afternoons both parents get a five-line text of the day's school and activity mail with dates spelled out, plus a dated to-do list with day-before reminders offered. Where the school uses them, the platforms' own summary emails (ParentSquare's digest, PowerSchool's grades, attendance and balance emails, Google Classroom's guardian summary) add one line per child.",
+   "risk": "medium",
+   "depends_on": [
+    "F051 dedicated school mailbox and reader",
+    "F031 household store for the dated checklist",
+    "F007 reminders for the day-before offers",
+    "knowing which platforms the district uses"
+   ],
+   "caveats": [
+    "Per-platform setup, done once by a parent, decides what the digest can see. ParentSquare: posts set to Digest with email on. PowerSchool: scheduled emails (grades and attendance summary, Balance Alert) sent straight to the school mailbox through its 'Additional Notification Emails' field. Google Classroom: the school mailbox is invited as a guardian and receives the daily or weekly summary of missing and upcoming work (no grades), which works only if the school uses Classroom and the teacher switches summaries on. Each sender goes on the mailbox allowlist.",
+    "Urgent alerts are not this digest's job. ParentSquare says urgent alerts and attendance notices always come through whatever the digest setting, so closures reach the parents' phones first. The reader keeps one backup rule: a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep and not held until 16:00. The mail trigger cannot text a person by itself, so that pass-through needs a recipient-pinned message tool or a 15-minute sweep job.",
+    "PowerSchool emails carry grades and attendance, and Classroom summaries carry assignment titles. These are a child's education records and they reach the cloud model under store:false, which is why this entry is rated medium risk.",
+    "For a school or team app that sends no email, a parent's screenshot sent to Happy is the fallback. Canvas and ClassDojo have no verified email path."
+   ],
+   "safety": "All school mail is untrusted and is read only by the memory-less school-mail agent behind a sender allowlist with verified authentication; that agent has no web or file tools and can only announce to the two parents. Links are relayed only when their domain matches the allowlisted sender. No agent logs in to any school portal and no portal credentials are stored.",
+   "unverified": [
+    "Whether himalaya has an MCP mode; its README does not mention one, so the iCloud path likely needs an in-house wrapper. The README also says native keyring support was removed in v2, so its password comes from a command.",
+    "That one job takes exactly one delivery target (hence two jobs or one group chat for two parents); I saw single-target examples only.",
+    "Groups are off today, so a family group chat target needs the iMessage group allowlist switched on first.",
+    "The home-store checklist, the F007 reminder path and the promptfoo newsletter eval are in-house pieces.",
+    "PDF or image newsletters are not read: the IMAP path passes attachment names only.",
+    "Which platforms this family's district uses, and each platform's exact sender address and authentication result.",
+    "Whether the school uses Google Classroom at all, and whether a student can have the school mailbox as an extra guardian next to both parents.",
+    "ClassDojo's notification behaviour and Canvas's calendar feed for observers; neither page could be opened."
+   ]
+  },
+  "merge_hints": [
+   "F051",
+   "G016",
+   "OCL-10",
+   "OCL-14",
+   "F055",
+   "SRC-08",
+   "MKT-01",
+   "IPH-15"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict upheld; raised risk to medium and named the platform summaries in the name and description, so folding in the grade and attendance feeds does not hide the more sensitive half."
+ },
+ {
+  "id": "F055",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "The school's own alert system already sends closures and delays straight to both parents' phones and cannot be muted, so Happy's relay would arrive second, and a wrong 'routine' label could hide a closure. The one useful rule (do not hold an urgent school email until 16:00) moves into the school digest (F056); OCL-14 names this relay as a user of its classifier and SRC-08 calls it a backup, so both should point to F056.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://www.parentsquare.com/blog/2020-7-15-help-please-frequently-asked-parent-questions/",
+    "title": "ParentSquare: Help Please! Frequently Asked Parent Questions",
+    "anchor": "Urgent alerts",
+    "supports": "A widely used school messaging vendor says urgent alerts and attendance notices always come through whatever the parent's notification setting, and that only the school can stop them."
+   }
+  ],
+  "fold_into": "F056",
+  "fold_note": "F056's edit in this review already carries the backup rule (a closure, delay or early-dismissal message from an allowlisted school sender is passed on at the next sweep, not held until 16:00, with the school's own alert named as the primary path) and the note that the mail trigger cannot text a person by itself, so the pass-through needs a recipient-pinned message tool or a 15-minute sweep. Still to move across: F055's sources, and the untested point that sorting urgent from routine on real district mail may miss a closure.",
+  "merge_hints": [
+   "F056",
+   "F018",
+   "F051"
+  ],
+  "overturned": false,
+  "challenge_note": "Removal upheld after opening the ParentSquare page, which says urgent alerts always come through and only the school can stop them; the fold note now matches what F056 carries."
+ },
+ {
+  "id": "SRC-08",
+  "verdict": "remove",
+  "category": "vague",
+  "reason": "This is a setup recipe and a record of what each school system sends, not something Happy does by itself: a parent sets each platform's notification options once and the result shows up only inside the school digest. It moves into that entry (F056) as its per-platform setup. No other entry depends on it; the line another review folds in here (IPH-15) travels with it.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://ps.powerschool-docs.com/pssis-student-parent/latest/email-notifications",
+    "title": "PowerSchool SIS student and parent help: Email Notifications",
+    "anchor": "Additional Notification Emails",
+    "supports": "What this entry describes is a parent filling in the platform's own notification settings once, including an extra recipient address, which is a setup step for the school mailbox and its digest."
+   },
+   {
+    "kind": "web",
+    "ref": "https://www.parentsquare.com/blog/2020-7-15-help-please-frequently-asked-parent-questions/",
+    "title": "ParentSquare: Help Please! Frequently Asked Parent Questions",
+    "anchor": "Digest",
+    "supports": "ParentSquare's evening Digest is a setting the parent chooses per school, again a one-time configuration and not an agent feature."
+   }
+  ],
+  "fold_into": "F056",
+  "fold_note": "F056's edit in this review already carries the ParentSquare and PowerSchool recipes, the urgent-alerts limit, the education-records caveat, the safety text and SRC-08's medium risk. Still to move across: SRC-08's sources, and the line IPH-15 folds in (for an app with no website, try the app's own email notifications into the school mailbox first and a parent's screenshot second). Calendar links from ParentSquare or Canvas are subscribed in the family calendar (F009), not parsed.",
+  "merge_hints": [
+   "F056",
+   "F051",
+   "G016",
+   "MKT-01"
+  ],
+  "overturned": false,
+  "challenge_note": "Removal upheld; the fold now carries SRC-08's medium risk into F056 because the grade and attendance emails come with it."
+ },
+ {
+  "id": "MKT-01",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "A Classroom guardian summary is one more email arriving in the school mailbox, and its whole result is one line inside the school digest, the same way the lunch-balance and library notices were handled earlier. It becomes a sender in F056 instead of a separate entry; it also only applies if the school uses Google Classroom, which nobody has checked.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://support.google.com/edu/classroom/answer/6388136",
+    "title": "Get Classroom email summaries (for guardians) - Classroom Help",
+    "anchor": "sent to any email address",
+    "supports": "The guardian summary is an ordinary email that can go to any address, so in the school mailbox it is one more school message for the existing digest to read."
+   }
+  ],
+  "fold_into": "F056",
+  "fold_note": "F056's edit in this review already lists Classroom guardian summaries as a sender (invite the school mailbox as guardian; daily or weekly; missing and upcoming work; no grades; only if the teacher switches summaries on). Still to move across: MKT-01's Google sources, the 120-day invitation expiry, and the build note that the digest job turns the summary into {kid, missing, upcoming} with llm-task and relays titles and dates only, never links.",
+  "merge_hints": [
+   "F056",
+   "SRC-08"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "MKT-02",
+  "verdict": "edit",
+  "reason": "Kept: Alexa+ and Gemini both ship a quiz made from your own material, and here it is only a prompt on top of photo reading. The spelling-list and math-facts drills from F074 are folded in because they are the same parent-run quiz with a typed list in place of a photo, and 'who' is corrected to adults since the kids are not users.",
+  "who_trigger_result": "A parent, with the child beside them / sends a photo of the study guide, or a word list, and asks for a quiz / ten questions one at a time with a hint first, a running score and the answer key at the end.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+   "title": "Introducing Alexa+, the next generation of Alexa",
+   "anchor": "turn them into a quiz",
+   "supports": "Amazon's consumer assistant lets a household upload study materials and have them turned into a quiz."
+  },
+  "edits": {
+   "name": "Practice quiz from a study-guide photo or a word list, run by a parent",
+   "description": "A parent photographs the study guide or vocabulary sheet, or pastes a spelling list or asks for math facts, and Happy quizzes from it: ten questions, one at a time, hint first, a running score and the answer key at the end. Alexa+ and Gemini both ship a quiz made from your own material. The parent holds the phone; a version the kids use themselves waits for the kids agent (F072).",
+   "how": "A photo needs inbound attachments on (`channels.imessage.includeAttachments: true`; see F002) behind the F084 document gate; `<p>-main` reads it with the reply model's own vision. A small operator-reviewed workspace skill (AUT-06) fixes the format: one question per message, wait for the answer, one hint before revealing, a running score, the answer key at the end, no web lookups. A pasted spelling list or a request for math facts uses the same skill with no photo and needs no attachments. An optional one-shot `automations` reminder offers a re-quiz the night before the test. No new tool: this is a prompt-only addition.",
+   "who": "adult",
+   "depends_on": [
+    "F002 photo and PDF understanding with inbound attachments switched on, for the photo route only",
+    "F084 privacy gate, for the photo route only",
+    "AUT-06 operator-reviewed skill for the quiz format (optional; needs the `read` tool)",
+    "F007 automations tool on <p>-main (only for the optional re-quiz reminder)",
+    "VOX-04 local spoken replies (only for reading spelling words aloud)"
+   ],
+   "caveats": [
+    "Parent-run only: the kids are not users, and the parent holds the phone and sends the answers. The roadmap's child-safety rule keeps the kids' own content away from cloud providers, so this must not turn into a child chatting with Happy alone; that version waits for the kids agent (F072) and never uses a cloud model or cloud speech.",
+    "The ChatGPT or Gemini app on a parent's phone does the same thing today; Happy's only edge is that it lives in the same thread and can schedule the re-quiz.",
+    "Models write wrong answer keys, especially for arithmetic and for facts the sheet does not state. Tell it to quiz only from what is on the page and spot-check.",
+    "A text quiz shows spelling words on screen, so spelling practice needs the words read aloud: a spoken reply made on the Mac with the local voice (VOX-04, which starts with the built-in macOS say voice), whose quality for spelling words is untried.",
+    "The running score lives in the conversation and is gone after the daily session reset."
+   ],
+   "unverified": [
+    "Whether a spoken reply arrives as a playable voice message or as a file in iMessage Basic mode.",
+    "The quality of the macOS say voice for spelling words was not tried."
+   ]
+  },
+  "merge_hints": [
+   "F074",
+   "F002",
+   "AUT-06",
+   "VOX-04",
+   "F073"
+  ],
+  "overturned": false,
+  "challenge_note": "Verdict upheld; pointed the read-aloud note at VOX-04 because F004 is folded into it this round, and tied the parent-run limit to the roadmap's rule on kids' content."
+ },
+ {
+  "id": "SRC-14",
+  "verdict": "remove",
+  "category": "advised-against",
+  "reason": "There is no documented menu feed to watch, and the menu vendor's own site and app already show the current menu, while a once-a-month import would sometimes be wrong and Happy must never be the allergy authority. If a parent does send the monthly menu, that is ordinary snap-to-action (F011) and needs no entry of its own; the lunch-balance line already lives in the school digest (F056).",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://nutrislice.com/solutions/k12/",
+    "title": "Nutrislice: K-12 school foodservice solutions",
+    "anchor": "Online & Mobile Menus",
+    "supports": "The menu vendor already puts each school's menu online and on phones for parents, and its product page mentions no feed, API or calendar subscription a home agent could read."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/tools/web-fetch.md:12",
+    "title": "Web fetch",
+    "anchor": "execute JavaScript",
+    "supports": "Happy's page reader does not run JavaScript, so a script-rendered menu page would return no menu to it."
+   }
+  ],
+  "fold_into": "F011",
+  "fold_note": "One line at most: a monthly lunch menu PDF or photo is one more document whose dated rows Happy can propose and, after a yes, store (F031) for the evening brief to read; the proposed rows must be confirmed and Happy is never the allergy authority.",
+  "merge_hints": [
+   "F011",
+   "F031",
+   "F056"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "CRT-11",
+  "verdict": "edit",
+  "reason": "Kept. Two small fixes: form paperwork is left to CRT-12 so the two entries do not overlap, and the district calendar now comes through the family calendar (F009) because another review this round folds the separate feeds entry (G012) into it.",
+  "who_trigger_result": "Both parents / a monthly job from January to May and a weekly one before each break, or a parent adding cover by text / a list of the no-school days and summer weeks still uncovered for each child, with the registration dates coming up.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://buffettinstitute.nebraska.edu/blog/2023/04/spreadsheets-waitlists-and-camp-fees-welcome-to-the-jordan-care-scramble",
+   "title": "Spreadsheets, Waitlists, and Camp Fees: Welcome to the Jordan Care Scramble (Buffett Early Childhood Institute, University of Nebraska)",
+   "anchor": "Jordan Care Scramble",
+   "supports": "A university early-childhood institute describes parents building spreadsheets of camps, hitting waitlists on registration day and still having weeks of summer with no cover, which is the planning job this entry takes on."
+  },
+  "edits": {
+   "description": "A grid of every weekday the kids have no school (teacher days, breaks, early releases, the ten or so summer weeks) against who covers it: camp, grandparents, a trip, a parent off work. Happy keeps the grid, lists the open cells months ahead, tracks registration dates, and at tax time lists what was paid to which day camp. School and camp form paperwork is a separate entry (CRT-12).",
+   "how": "Inputs: the district calendar (a public feed the family Google Calendar is subscribed to, read through F009, or a photo or PDF through snap-to-action, F011) gives the no-school weekdays; parents add coverage by text. Store: household store rows (F031) keyed by date range and child nickname, with a status (open, pencilled, booked, paid) and a provider name. Jobs: a monthly isolated job on <p>-main from January to May, and weekly in the four weeks before each break ('--cron'), listing open cells; page watchers for 'registration opens' on camps the parents name (F029, created by Tony); options research by the stateless research agent given ages, weeks and a distance only (F026). Parents register and pay themselves. After paying, a parent sends the receipt and Happy records amount and provider. In February it lists day-camp totals per provider and which providers still lack a taxpayer number, because IRS Publication 503 treats day camp, and not overnight camp, as a possible work-related care expense for a child under 13, and asks for the provider's name, address and taxpayer number (Form W-10 is the request form).",
+   "depends_on": [
+    "F031 household store",
+    "F009 family calendar subscribed to the district feed, or F011 for a district calendar PDF",
+    "F029 watchers and F026 research (need the research agent)",
+    "F007 reminders",
+    "F084 privacy gate for receipts"
+   ]
+  },
+  "merge_hints": [
+   "CRT-12",
+   "F029",
+   "F026",
+   "F061"
+  ],
+  "overturned": false
+ },
+ {
+  "id": "CRT-12",
+  "verdict": "edit",
+  "reason": "Kept, and widened to take in the health-form helper (F067): this entry already promised the copy-paste answers and named F067 as the piece that supplies them, and another review this round folds F067 in here. The safety text now says plainly that drafting answers sends the children's health facts to the cloud model.",
+  "who_trigger_result": "A parent / asks what is still needed for a school or camp form, or a reminder fires 14 days before a form is due / a per-child list of which documents are on file, where each one is, which are too old to be accepted, and paste-ready answers.",
+  "demand_source": {
+   "kind": "web",
+   "ref": "https://www.cdc.gov/vaccines-children/records/index.html",
+   "title": "Keeping Track of Records | Childhood Vaccines | CDC",
+   "anchor": "may require vaccination records",
+   "supports": "CDC tells parents that schools, summer camps and teams may require vaccination records and to keep them in a safe place where they can be found easily; the page opened in this run."
+  },
+  "edits": {
+   "name": "Enrolment, camp and health-form paperwork kit",
+   "description": "Every August and every camp season the same documents are asked for again: the immunization record, a recent physical, insurance details, emergency contacts, proof of address. Happy keeps a per-child index of where each document is and when it stops being accepted, warns before a form is due, and, when a school, camp or sports form arrives as a photo or PDF, drafts the answers from the stored family facts as one copy-paste block. The parent fills, signs and submits.",
+   "how": "One Markdown page per child in the shared family folder, indexed through memory.search.extraPaths (F043 step 1). For each document it records where the official copy lives (the pediatric office, the state immunization registry, the filing cabinet), the date on it, and the date it stops being accepted. CDC says it holds no vaccination records and points parents to the child's doctor, the state immunization information system and the school, so the page notes which of those worked last time. A dated row per form in the household store (F031) drives the reminders: 'the physical on file is older than this camp accepts, book a visit' and 'forms due in 14 days'. The copy-paste block (formerly the health-form helper, F067) is drafted on <p>-main from a per-child 'form facts' section of the same page when the form arrives as a photo or PDF (F002), under a drafts-only rule in AGENTS.md; the agent has no exec, so it cannot alter or fill in the original form, and ID and policy numbers are left blank for the parent. Scans stay in Files or the paper folder; only the index and the form facts go to Happy.",
+   "depends_on": [
+    "F043 family folder",
+    "F031 household store",
+    "F002 photo and PDF reading with inbound attachments on, for a form sent as a photo or PDF",
+    "F007 reminders"
+   ],
+   "caveats": [
+    "Requirements differ by state, district and camp. Happy tracks what each form asked for last time; it does not know the rules.",
+    "The official immunization record has to come from the doctor or the state registry. Happy cannot fetch it, because portal logins are out of scope.",
+    "Signing is done by the parent, with the phone's markup tools or on paper. Happy never signs, fills a web form or submits.",
+    "An index of where documents are is itself sensitive. Keep ID numbers, policy numbers and certificate numbers out of it.",
+    "The form-facts section holds the children's health facts (allergies, medicines, conditions), and they reach the cloud model whenever an answer block is drafted.",
+    "The drafts-only rule is a prompt instruction; it holds only because the agent has no tool that could fill in or send a form."
+   ],
+   "safety": "Index pages hold locations and dates, not the documents or identifiers. The form-facts section does hold the children's health facts, and drafting an answer block sends them to the cloud model under store:false. Both sit in the parents' private agents' search path, nothing is browsed in the same turn, and nothing is sent outside the family. Children's health details stay out of research handoffs.",
+   "unverified": [
+    "Whether this state's immunization registry gives parents direct online access.",
+    "Typical validity windows for school and camp physicals; twelve months is often quoted but was not sourced here.",
+    "The estimate of 6 to 10 such forms a year is not sourced."
+   ]
+  },
+  "merge_hints": [
+   "F067",
+   "F063",
+   "F044",
+   "F043",
+   "CRT-11"
+  ],
+  "overturned": false,
+  "challenge_note": "Changed keep to edit: the entry now carries the health-form helper that another review folds into it, so it no longer depends on an entry that is being removed, and its safety text covers the health facts."
+ },
+ {
+  "id": "F074",
+  "verdict": "remove",
+  "category": "duplicate",
+  "reason": "The parent-run drills are the same thing as the practice quiz in MKT-02 with a typed list in place of a photo, and the entry itself says a parent can already run them from their own chat. The version the kids would use themselves cannot exist before the kids agent (F072), and 'reading buddy' and 'bedtime story' were named but never described.",
+  "evidence": [
+   {
+    "kind": "web",
+    "ref": "https://www.aboutamazon.com/news/devices/new-alexa-generative-artificial-intelligence",
+    "title": "Introducing Alexa+, the next generation of Alexa",
+    "anchor": "turn them into a quiz",
+    "supports": "The products that ship this treat it as one function, a quiz made from whatever material the user supplies, so a typed spelling list and a photographed study guide are the same feature."
+   },
+   {
+    "kind": "installed",
+    "ref": "docs/concepts/session.md:163",
+    "title": "Session management",
+    "anchor": "session.reset.atHour",
+    "supports": "The running score is just conversation state that lasts until the daily reset, so the drills need nothing built beyond the quiz prompt."
+   }
+  ],
+  "fold_into": "MKT-02",
+  "fold_note": "MKT-02's edit in this review already carries the spelling-list and math-facts modes, the running score, the read-aloud note for spelling words (local voice only, VOX-04) and the two unverified points. Still to move across: F074's three sources. The version the kids use themselves goes with homework hints (F073) on the kids agent (F072) once a local model exists, with local speech only; 'reading buddy' and 'bedtime story' were names with no description and are not carried.",
+  "merge_hints": [
+   "MKT-02",
+   "F073",
+   "F072",
+   "VOX-04"
+  ],
+  "overturned": false,
+  "challenge_note": "Removal upheld; the fold note now says where each half goes, the parent-run drills to MKT-02 and the kid-direct version to F073, which is where the merge pass also places it."
+ }
+]
