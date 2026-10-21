@@ -48,20 +48,25 @@ private and is not published here.
 
 ## What's in this repo
 
-| File | What it is |
+**Read the pages online: [tonylic.github.io/agent_plan](https://tonylic.github.io/agent_plan/)**
+(GitHub Pages, served from `main`). The links below open each page there; the source folders
+link to the repo.
+
+| Page | What it is |
 |---|---|
-| [`home-agent-blueprint.html`](home-agent-blueprint.html) | Hardware choice, machine topology, voice design and baseline security (23 Sep – 2 Oct) |
-| [`home-agent-roadmap.html`](home-agent-roadmap.html) | Milestones M0–M6, the three tracks, family data domains, and the decisions table |
-| [`home-agent-m0-runbook.html`](home-agent-m0-runbook.html) | M0 runbook and execution log (source: [`m0-runbook-src/`](m0-runbook-src)) |
-| [`home-agent-m1-runbook.html`](home-agent-m1-runbook.html) | M1 runbook and execution log (source: [`m1-runbook-src/`](m1-runbook-src)) |
-| [`home-agent-feature-catalog.md`](home-agent-feature-catalog.md) | 9 Oct brainstorm: 105 candidate features in three levels |
-| [`home-agent-capability-catalog.html`](home-agent-capability-catalog.html) | The reviewed catalog, which waves are planned from (source: [`catalog-src/`](catalog-src)) |
-| [`home-agent-review-confirmation.html`](home-agent-review-confirmation.html) | Record of the over-engineering review and the operator's answers (11–12 Oct) |
-| [`happy-wave-a-runbook.html`](happy-wave-a-runbook.html) | Wave A runbook (49 steps) and execution log (source: [`wave-a-runbook-src/`](wave-a-runbook-src)) |
+| [Blueprint](https://tonylic.github.io/agent_plan/home-agent-blueprint.html) | Hardware choice, machine topology, voice design and baseline security (23 Sep – 2 Oct) |
+| [Roadmap](https://tonylic.github.io/agent_plan/home-agent-roadmap.html) | Milestones M0–M6, the three tracks, family data domains, and the decisions table |
+| [M0 runbook](https://tonylic.github.io/agent_plan/home-agent-m0-runbook.html) | M0 runbook and execution log (source: [`m0-runbook-src/`](m0-runbook-src)) |
+| [M1 runbook](https://tonylic.github.io/agent_plan/home-agent-m1-runbook.html) | M1 runbook and execution log (source: [`m1-runbook-src/`](m1-runbook-src)) |
+| [Feature catalog](home-agent-feature-catalog.md) | 9 Oct brainstorm: 105 candidate features in three levels |
+| [Capability catalog](https://tonylic.github.io/agent_plan/home-agent-capability-catalog.html) | The reviewed catalog, which waves are planned from (source: [`catalog-src/`](catalog-src)) |
+| [Catalog review](https://tonylic.github.io/agent_plan/home-agent-review-confirmation.html) | Record of the over-engineering review and the operator's answers (11–12 Oct) |
+| [Wave A runbook](https://tonylic.github.io/agent_plan/happy-wave-a-runbook.html) | Wave A runbook (49 steps) and execution log (source: [`wave-a-runbook-src/`](wave-a-runbook-src)) |
 | [`tools/redact`](tools/redact) | The privacy filter described below |
 
-The HTML pages are self-contained. To read one, clone the repo and open the file in a browser
-(GitHub shows only the source).
+The site's front page is [`index.html`](index.html). `.nojekyll` makes Pages serve every file
+as it is: Jekyll would otherwise treat the `{{…}}` placeholders in the seed templates as its own
+template syntax.
 
 Each `*-runbook-src/happy-config/` folder holds the seed files that runbook adds to the config
 repo, and the page embeds them. They contain placeholder values only.
